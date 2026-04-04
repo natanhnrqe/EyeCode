@@ -13,6 +13,8 @@ public class EditorPanel extends JPanel {
 
         textArea = new JTextArea();
         textArea.setFont(new Font("Consolas", Font.PLAIN, 14));
+        textArea.setBackground(Color.DARK_GRAY);
+        textArea.setForeground(Color.WHITE);
 
         JScrollPane scrollPane = new JScrollPane(textArea);
 
