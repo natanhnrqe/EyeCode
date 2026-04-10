@@ -23,7 +23,7 @@ public class ConsolePanel extends JPanel {
     }
 
     public void print(String text){
-        consoleArea.append(text + "/n");
+        consoleArea.append(text + "\n");
     }
 
 }

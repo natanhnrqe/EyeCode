@@ -46,6 +46,10 @@ public class MainWindow extends JFrame {
 
         JMenu fileMenu = new JMenu("File");
 
+        JMenuItem newItem = new JMenuItem("New");
+        newItem.addActionListener(e -> newFile());
+        fileMenu.add(newItem);
+
         JMenuItem saveItem = new JMenuItem("Save");
         saveItem.addActionListener(e -> saveFile());
         fileMenu.add(saveItem);
@@ -125,5 +129,14 @@ public class MainWindow extends JFrame {
             consolePanel.print("File Saved As" + file.getName());
 
         }
+    }
+    private void newFile(){
+        Document doc = new Document(null,"");
+
+        editorPanel.setDocument(doc);
+
+        setTitle("Mini-IDE - Untitled");
+
+        consolePanel.print("New File Created");
     }
 }
