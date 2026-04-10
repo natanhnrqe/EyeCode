@@ -10,7 +10,7 @@ import java.io.File;
 
 public class MainWindow extends JFrame {
 
-    private EditorPanel editorPanel;
+    private JTabbedPane tabbedPane;
     private ConsolePanel consolePanel;
     private FileManager fileManager;
 
@@ -21,14 +21,14 @@ public class MainWindow extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        editorPanel = new EditorPanel();
+        tabbedPane = new JTabbedPane();
         consolePanel = new ConsolePanel();
 
         fileManager = new FileManager();
 
         JSplitPane splitPane = new JSplitPane(
                 JSplitPane.VERTICAL_SPLIT,
-                editorPanel,
+                tabbedPane,
                 consolePanel
         );
 
@@ -76,13 +76,19 @@ public class MainWindow extends JFrame {
 
             Document document = new Document(file, content);
 
-            editorPanel.setDocument(document);
+           addNewTab(document, file.getName());
 
-            setTitle("Mini-IDE - " + file.getName());
+           consolePanel.print("Opened" + file.getName());
+
+
         }
     }
     private void saveFile(){
-        Document doc = editorPanel.getDocument();
+        EditorPanel editor = getCurrentEditor();
+
+        if (editor == null) return;
+
+        Document doc = editor.getDocument();
 
         if (doc == null){
             return;
@@ -104,7 +110,11 @@ public class MainWindow extends JFrame {
 
     //Save file for new docs
     private void saveFileAs(){
-        Document doc = editorPanel.getDocument();
+        EditorPanel editor = getCurrentEditor();
+
+        if (editor == null) return;
+
+        Document doc = editor.getDocument();
 
         if (doc == null){
             return;
@@ -122,21 +132,31 @@ public class MainWindow extends JFrame {
             doc.setModified(false);
 
             doc = new Document(file, doc.getContent());
-            editorPanel.setDocument(doc);
+            editor.setDocument(doc);
 
-            setTitle("Mine-IDE" + file.getName());
+            tabbedPane.setTitleAt(
+                    tabbedPane.getSelectedIndex(),
+                    file.getName()
+            );
 
             consolePanel.print("File Saved As" + file.getName());
-
         }
     }
     private void newFile(){
         Document doc = new Document(null,"");
 
-        editorPanel.setDocument(doc);
-
-        setTitle("Mini-IDE - Untitled");
+        addNewTab(doc,"Untitled");
 
         consolePanel.print("New File Created");
+    }
+    private void addNewTab(Document document, String title){
+        EditorPanel editor = new EditorPanel();
+        editor.setDocument(document);
+
+        tabbedPane.addTab(title, editor);
+        tabbedPane.setSelectedComponent(editor);
+    }
+    private EditorPanel getCurrentEditor(){
+        return (EditorPanel) tabbedPane.getSelectedComponent();
     }
 }
