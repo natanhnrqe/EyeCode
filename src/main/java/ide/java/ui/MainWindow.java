@@ -54,9 +54,13 @@ public class MainWindow extends JFrame {
         saveItem.addActionListener(e -> saveFile());
         fileMenu.add(saveItem);
 
-
         JMenuItem openItem = new JMenuItem("Open");
         openItem.addActionListener(e -> openFile());
+
+        JMenuItem closeItem = new JMenuItem("Close");
+        closeItem.addActionListener(e -> closeCurrentTab());
+
+        fileMenu.add(closeItem);
 
         fileMenu.add(openItem);
         menuBar.add(fileMenu);
@@ -153,10 +157,52 @@ public class MainWindow extends JFrame {
         EditorPanel editor = new EditorPanel();
         editor.setDocument(document);
 
+        editor.setOnChangeCallback(() -> updateTabTitle(editor));
+
         tabbedPane.addTab(title, editor);
         tabbedPane.setSelectedComponent(editor);
     }
     private EditorPanel getCurrentEditor(){
         return (EditorPanel) tabbedPane.getSelectedComponent();
+    }
+    private void updateTabTitle(EditorPanel editor){
+        Document doc = editor.getDocument();
+
+        int index = tabbedPane.indexOfComponent(editor);
+
+        if (index == -1) return;
+
+        String title;
+
+        if (doc.getFile() != null){
+            title = doc.getFile().getName();
+        }else {
+            title = "Untitled";
+        }
+        if (doc.getModified()){
+            title += " *";
+        }
+
+        tabbedPane.setTitleAt(index, title);
+    }
+    private void closeCurrentTab(){
+        EditorPanel editor = getCurrentEditor();
+
+        if (editor == null) return;
+
+        Document doc = editor.getDocument();
+
+        if (doc != null && doc.getModified()){
+            int opt = JOptionPane.showConfirmDialog(
+                    this,
+                    "File has unsaved changes. Save before closing?",
+                    "Warning",
+                    JOptionPane.YES_NO_CANCEL_OPTION
+            );
+            if (opt == JOptionPane.CANCEL_OPTION) return;
+
+            if (opt == JOptionPane.YES_OPTION) saveFile();
+        }
+        tabbedPane.remove(editor);
     }
 }

@@ -11,6 +11,7 @@ public class EditorPanel extends JPanel {
 
     private JTextArea textArea;
     private Document document;
+    private Runnable onChangeCallback;
 
     public EditorPanel() {
 
@@ -60,10 +61,23 @@ public class EditorPanel extends JPanel {
     private void updateDocument(){
         if (document != null){
             document.setContent(textArea.getText());
+
+            if (onChangeCallback != null){
+                onChangeCallback.run();
+            }
         }
+
     }
 
     public JTextArea getTextArea() {
         return textArea;
+    }
+
+    public Runnable getOnChangeCallback() {
+        return onChangeCallback;
+    }
+
+    public void setOnChangeCallback(Runnable onChangeCallback) {
+        this.onChangeCallback = onChangeCallback;
     }
 }
