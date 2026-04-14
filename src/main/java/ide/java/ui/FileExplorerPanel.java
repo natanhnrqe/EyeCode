@@ -17,13 +17,17 @@ public class FileExplorerPanel extends JPanel {
     private JTree jTree;
     private DefaultTreeModel treeModel;
     private Consumer<File> fileOpenCallBack;
+    private File currentRoot;
 
 
 
     public FileExplorerPanel(File rootDirectory) {
         setLayout(new BorderLayout());
 
+        this.currentRoot = rootDirectory;
+
         DefaultMutableTreeNode rootNode = createNode(rootDirectory);
+
 
         treeModel = new DefaultTreeModel(rootNode);
         this.jTree = new JTree(treeModel);
@@ -77,8 +81,15 @@ public class FileExplorerPanel extends JPanel {
     }
 
     public void setRootDirectory(File rootDirectory){
+        this.currentRoot = rootDirectory;
+
         DefaultMutableTreeNode rootNode = createNode(rootDirectory);
         treeModel.setRoot(rootNode);
         treeModel.reload();
+    }
+    public void refresh(){
+        if (currentRoot != null){
+            setRootDirectory(currentRoot);
+        }
     }
 }

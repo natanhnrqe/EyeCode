@@ -92,6 +92,10 @@ public class MainWindow extends JFrame {
         openFolder.addActionListener(e -> openFolder());
         fileMenu.add(openFolder);
 
+        JMenuItem refresh = new JMenuItem("Refresh");
+        refresh.addActionListener(e -> refreshExplorer());
+        fileMenu.add(refresh);
+
         fileMenu.add(closeItem);
 
         fileMenu.add(openItem);
@@ -277,5 +281,10 @@ public class MainWindow extends JFrame {
 
             consolePanel.print("Opened Folder: " + folder.getAbsolutePath());
         }
+    }
+
+    private void refreshExplorer(){
+        explorerPanel.refresh();
+        consolePanel.print("Explorer Refreshed");
     }
 }
