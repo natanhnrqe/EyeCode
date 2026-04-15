@@ -9,36 +9,62 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 
+/**
+ * Classe principal da interface da aplicação.
+ *
+ * Atua como o "Controller" da arquitetura:
+ * - gerencia a UI
+ * - controla fluxo (open, save, run, close)
+ * - conecta Editor ↔ Document ↔ Services
+ *
+ * É o ponto central de orquestração do IDE.
+ */
 public class MainWindow extends JFrame {
 
+    // Gerencia multiplos editores (cada aba = 1 arquivo)
     private JTabbedPane tabbedPane;
+
+    // Exibe logs e saida de execucao
     private ConsolePanel consolePanel;
+
+    // Responsavel por operacoes de arquivo (ler/salvar)
     private FileManager fileManager;
+
+    // Responsavel por compilar/executar o codigo
     private RunManager runManager;
+
+    // Explorer de arquivos (lado esquerdo)
     private FileExplorerPanel explorerPanel;
 
     public MainWindow(){
 
+        // Titulo da janela
         setTitle("Mini IDE");
+
+        //Tamanho inicial
         setSize(1000, 700);
+
+        // Encerra a aplicacao ao fechar
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        tabbedPane = new JTabbedPane();
-        consolePanel = new ConsolePanel();
-
+        // Inicializa service (camada de logica)
         fileManager = new FileManager();
-
         runManager = new RunManager();
 
+        // Cria componentes principais
+        tabbedPane = new JTabbedPane();
+        consolePanel = new ConsolePanel();
         explorerPanel = new FileExplorerPanel(new File("."));
 
-        explorerPanel.setFileOpenCallBack(file -> {
-            String content = fileManager.openFile(file);
-            Document doc = new Document(file, content);
-            addNewTab(doc, file.getName());
-        });
-
+        /**
+         * Layout principal dividido:
+         *
+         * [ Explorer | Editor ]
+         * [      Console      ]
+         *
+         * Isso simula layout de IDE real
+         */
         JSplitPane horizontalSplit = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,
                 explorerPanel,
@@ -52,10 +78,21 @@ public class MainWindow extends JFrame {
         );
 
         verticalSplit.setDividerLocation(450);
-
         add(verticalSplit, BorderLayout.CENTER);
 
+        // Cria o menu superior
         createMenu();
+
+        /**
+         * Conecta o explorer ao editor:
+         * Quando o usuário abre um arquivo na árvore,
+         * criamos uma nova aba com o conteúdo.
+         */
+        explorerPanel.setFileOpenCallBack(file -> {
+            String content = fileManager.openFile(file);
+            Document doc = new Document(file, content);
+            addNewTab(doc, file.getName());
+        });
 
         setVisible(true);
     }
@@ -104,6 +141,12 @@ public class MainWindow extends JFrame {
         setJMenuBar(menuBar);
     }
 
+    /**
+     * Executa o código Java do documento atual.
+     *
+     * Pipeline:
+     * salvar → compilar → executar → mostrar saída
+     */
     private void runCode(){
         EditorPanel editor = getCurrentEditor();
 
@@ -113,22 +156,36 @@ public class MainWindow extends JFrame {
 
         if (doc == null) return;
 
+        /**
+         * Garante que o arquivo exista antes de rodar.
+         * (não dá pra compilar algo que não está no disco)
+         */
         if (doc.getFile() == null){
             saveFileAs();
             doc = editor.getDocument();
         }
 
+        /**
+         * Garante que o código atual está salvo
+         * antes de compilar.
+         */
         if (doc.getModified()){
             saveFile();
         }
         consolePanel.print("Running...\n");
 
+        // Executa via RunManager
         String output = runManager.runJavaFile(doc.getFile());
 
         consolePanel.print(output);
 
     }
-
+    /**
+     * Abre um arquivo do sistema usando JFileChooser.
+     *
+     * Fluxo:
+     * arquivo → conteúdo → Document → nova aba
+     */
     private void openFile(){
         JFileChooser chooser = new JFileChooser();
 
@@ -137,17 +194,27 @@ public class MainWindow extends JFrame {
         if (result == JFileChooser.APPROVE_OPTION){
             File file = chooser.getSelectedFile();
 
+            // Lê conteúdo do arquivo
             String content = fileManager.openFile(file);
 
+            // Cria model em memória
             Document document = new Document(file, content);
 
-           addNewTab(document, file.getName());
+            // Abre no editor
+            addNewTab(document, file.getName());
 
            consolePanel.print("Opened" + file.getName());
 
 
         }
     }
+
+    /**
+     * Salva o arquivo atual.
+     *
+     * Se não existir arquivo (novo documento),
+     * redireciona para Save As.
+     */
     private void saveFile(){
         EditorPanel editor = getCurrentEditor();
 
@@ -161,13 +228,16 @@ public class MainWindow extends JFrame {
 
         File file = doc.getFile();
 
+        // Documento novo → precisa escolher onde salvar
         if (file == null){
             saveFileAs();
             return;
         }
 
+        // Salva no disco
         fileManager.saveFile(file, doc.getContent());
 
+        // Marca como sincronizado
         doc.setModified(false);
 
         consolePanel.print("File Saved: " + file.getName());
@@ -214,18 +284,47 @@ public class MainWindow extends JFrame {
 
         consolePanel.print("New File Created");
     }
+
+    /**
+     * Cria uma nova aba com um editor independente.
+     *
+     * Cada aba possui:
+     * - seu próprio EditorPanel
+     * - seu próprio Document
+     *
+     * Isso permite múltiplos arquivos abertos simultaneamente.
+     */
     private void addNewTab(Document document, String title){
         EditorPanel editor = new EditorPanel();
+
+        // Conecta o documento ao editor
         editor.setDocument(document);
 
+        /**
+         * Callback disparado quando o usuário digita.
+         * Usado para atualizar o título da aba (*)
+         */
         editor.setOnChangeCallback(() -> updateTabTitle(editor));
 
+        // Adiciona aba
         tabbedPane.addTab(title, editor);
+
+        // Foca na aba recém criada
         tabbedPane.setSelectedComponent(editor);
     }
+
+    /**
+     * Retorna o editor atualmente ativo.
+     *
+     * Isso é essencial porque:
+     * - todas as ações (save, run, etc.)
+     *   atuam apenas na aba atual
+     */
     private EditorPanel getCurrentEditor(){
         return (EditorPanel) tabbedPane.getSelectedComponent();
     }
+
+
     private void updateTabTitle(EditorPanel editor){
         Document doc = editor.getDocument();
 
@@ -246,6 +345,14 @@ public class MainWindow extends JFrame {
 
         tabbedPane.setTitleAt(index, title);
     }
+
+    /**
+     * Fecha a aba atual com segurança.
+     *
+     * Se houver alterações não salvas:
+     * - pergunta ao usuário
+     * - evita perda de dados
+     */
     private void closeCurrentTab(){
         EditorPanel editor = getCurrentEditor();
 

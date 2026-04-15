@@ -9,12 +9,16 @@ import java.awt.*;
 
 public class EditorPanel extends JPanel {
 
+    // Componente principal da edicao de texto
     private JTextArea textArea;
+
+    // Representa o arquivo atual em memoria (model)
     private Document document;
+
+    // Callback usado para notificar as mudancas
     private Runnable onChangeCallback;
 
     public EditorPanel() {
-
         setLayout(new BorderLayout());
 
         textArea = new JTextArea();
@@ -22,16 +26,21 @@ public class EditorPanel extends JPanel {
         textArea.setBackground(Color.DARK_GRAY);
         textArea.setForeground(Color.WHITE);
 
+        // Adiciona scroll automaticamente ao editor
         JScrollPane scrollPane = new JScrollPane(textArea);
 
         add(scrollPane, BorderLayout.CENTER);
 
+        // Listener que detecta QUALQUER mudanca no texto
         setupDocumentListener();
 
     }
 
     public void setDocument(Document document){
         this.document = document;
+
+        // Atualiza a UI com o conteudo do Document
+        // Isso acontece ao abrir o arquivo ou trocar de aba
         textArea.setText(document.getContent());
     }
 
@@ -58,10 +67,13 @@ public class EditorPanel extends JPanel {
         });
     }
 
+    // Sincroniza o conteudo da UI com o Documente
     private void updateDocument(){
         if (document != null){
+            // Atualiza o conteudo do model com o texto atual do editor
             document.setContent(textArea.getText());
 
+            // Notifica outras partes do sistema (ex: adicionar "*" na aba)
             if (onChangeCallback != null){
                 onChangeCallback.run();
             }
