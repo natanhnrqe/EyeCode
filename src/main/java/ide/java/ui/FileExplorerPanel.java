@@ -45,6 +45,8 @@ public class FileExplorerPanel extends JPanel {
         treeModel = new DefaultTreeModel(rootNode);
         this.jTree = new JTree(treeModel);
 
+        jTree.setCellRenderer(new FileTreeCellRender());
+
         JScrollPane scrollPane = new JScrollPane(jTree);
         add(scrollPane, BorderLayout.CENTER);
 
