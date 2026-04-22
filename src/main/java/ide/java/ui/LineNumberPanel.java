@@ -3,9 +3,16 @@ package ide.java.ui;
 import javax.swing.*;
 import javax.swing.text.Element;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.HashSet;
+import java.util.Set;
 
 public class LineNumberPanel extends JPanel {
+
     private final JTextPane textPane;
+
+    private final Set<Integer> breakpoints = new HashSet<>();
 
     public LineNumberPanel(JTextPane textPane) {
         this.textPane = textPane;
@@ -14,6 +21,21 @@ public class LineNumberPanel extends JPanel {
         setBackground(new Color(43,43,43));
         setForeground(new Color(128,128,128));
         setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int y = e.getY();
+
+                int offset = textPane.viewToModel2D(new Point(0, y));
+
+                Element root = textPane.getDocument().getDefaultRootElement();
+                int line = root.getElementIndex(offset);
+
+                toggleBreakpoint(line);
+                repaint();
+            }
+        });
     }
 
     @Override
@@ -45,9 +67,23 @@ public class LineNumberPanel extends JPanel {
                 int y = r.y + fm.getAscent();
 
                 g.drawString(lineNumbers, x, y);
+
+                if (breakpoints.contains(i)){
+                    g.setColor(Color.RED);
+
+                    int size = 8;
+                    int xCircle = 4;
+                    int yCircle = r.y + (r.height - size) / 2;
+
+                    g.fillOval(xCircle, yCircle, size, size);
+
+                    g.setColor(getForeground());
+                }
             }catch (Exception e){
                 //ignore
             }
+
+
         }
     }
 
@@ -56,8 +92,17 @@ public class LineNumberPanel extends JPanel {
         int lines = textPane.getDocument().getDefaultRootElement().getElementCount();
         int digits = String.valueOf(lines).length();
 
-        int width = 10 + digits * getFontMetrics(getFont()).charWidth('0');
+        int width = 20 + digits * getFontMetrics(getFont()).charWidth('0');
 
         return new Dimension(width, Integer.MAX_VALUE);
+    }
+
+    private void toggleBreakpoint(int line){
+        if (breakpoints.contains(line)){
+            breakpoints.remove(line);
+        }else {
+            breakpoints.add(line);
+        }
+
     }
 }
