@@ -45,7 +45,33 @@ public class EditorPanel extends JPanel {
         doc = textPane.getStyledDocument();
 
         setLayout(new BorderLayout());
-        add(new JScrollPane(textPane), BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(textPane);
+        LineNumberPanel lineNumbers = new LineNumberPanel(textPane);
+        scrollPane.setRowHeaderView(lineNumbers);
+        add(scrollPane, BorderLayout.CENTER);
+
+
+
+        scrollPane.getVerticalScrollBar().addAdjustmentListener(e -> {
+            lineNumbers.repaint();
+        });
+
+        textPane.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                lineNumbers.repaint();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                lineNumbers.repaint();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                lineNumbers.repaint();
+            }
+        });
 
         keywordStyle = doc.addStyle("Keyword", null);
         StyleConstants.setForeground(keywordStyle, new Color(204, 120, 50));
