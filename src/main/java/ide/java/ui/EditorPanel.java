@@ -7,6 +7,8 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -47,6 +49,18 @@ public class EditorPanel extends JPanel {
         setLayout(new BorderLayout());
 
         textPane = new JTextPane();
+        InputMap im = textPane.getInputMap();
+        ActionMap am = textPane.getActionMap();
+
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "custom-enter");
+
+        am.put("custom-enter", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleEnter();
+            }
+        });
+
         textPane.setMargin(new Insets(0,0,0,0));
         lineNumbers = new LineNumberPanel(textPane);
 
@@ -312,6 +326,49 @@ public class EditorPanel extends JPanel {
         textPane.setForeground(new Color(169, 183, 198));
         textPane.setCaretColor(Color.WHITE);
         textPane.setSelectionColor(new Color(33, 66, 131));
+    }
+
+    private void handleEnter(){
+        try {
+            int caret = textPane.getCaretPosition();
+            javax.swing.text.Document doc = textPane.getDocument();
+
+            Element root = doc.getDefaultRootElement();
+            int line = root.getElementIndex(caret);
+            Element lineEl = root.getElement(line);
+
+            int start = lineEl.getStartOffset();
+            int end = lineEl.getEndOffset();
+
+            String text = doc.getText(start, end - start);
+
+            // extrai identacao (espacos ou tabs no comeco)
+            String indent = getIdentation(text);
+
+            if (text.trim().endsWith("{")){
+                indent += "    ";
+            }
+            // quebra de linhas + ident
+            doc.insertString(caret, "\n" + indent, null);
+
+            textPane.setCaretPosition(caret + 1 + indent.length());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String getIdentation(String text){
+        StringBuilder indent = new StringBuilder();
+
+        for (char c : text.toCharArray()){
+            if (c == ' ' || c == '\t'){
+                indent.append(c);
+            }else {
+                break;
+            }
+        }
+        return indent.toString();
     }
 
     public Runnable getOnChangeCallback() {
