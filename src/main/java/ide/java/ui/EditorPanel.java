@@ -8,6 +8,7 @@ import javax.swing.event.DocumentListener;
 import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,10 +29,12 @@ public class EditorPanel extends JPanel {
     private Object currentLineHighlight;
     private LineNumberPanel lineNumbers;
     private final List<Object> breakpointHighlights = new ArrayList<>();
+    private JPopupMenu popup;
+    private JList<String> suggestionList;
 
 
 
-    private final String[] keywords = {
+    private static final String[] keywords = {
             "public", "class", "static", "void",
             "if", "else", "for", "while", "return",
             "new", "int", "double", "String", "boolean"
@@ -49,8 +52,42 @@ public class EditorPanel extends JPanel {
         setLayout(new BorderLayout());
 
         textPane = new JTextPane();
-        InputMap im = textPane.getInputMap();
+
+        InputMap im = textPane.getInputMap(JComponent.WHEN_FOCUSED);
         ActionMap am = textPane.getActionMap();
+
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "enter-custom");
+
+        am.put("enter-custom", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                System.out.println("ENTER binding");
+
+                if (popup != null && popup.isVisible()) {
+                    insertSuggestion(suggestionList.getSelectedValue());
+                } else {
+                    handleEnter();
+                }
+            }
+        });
+
+        textPane.getDocument().addDocumentListener(new DocumentListener() {
+
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                handleAutoComplete();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                handleAutoComplete();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {}
+        });
+
 
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "custom-enter");
 
@@ -133,6 +170,22 @@ public class EditorPanel extends JPanel {
         // Listener que detecta QUALQUER mudanca no texto
         setupDocumentListener();
 
+    }
+
+
+
+    private String getCurrentWord() throws BadLocationException{
+        int caret = textPane.getCaretPosition();
+        javax.swing.text.Document doc = textPane.getDocument();
+
+        int start = caret;
+
+        while (start > 0){
+            String ch = doc.getText(start - 1, 1);
+            if (!Character.isLetter(ch.charAt(0))) break;
+            start--;
+        }
+        return doc.getText(start, caret - start);
     }
 
     private void setupDocumentListener(){
@@ -330,6 +383,10 @@ public class EditorPanel extends JPanel {
 
     private void handleEnter(){
         try {
+            if (isPopupVisible()) {
+                insertSuggestion(suggestionList.getSelectedValue());
+                return;
+            }
             int caret = textPane.getCaretPosition();
             javax.swing.text.Document doc = textPane.getDocument();
 
@@ -341,11 +398,24 @@ public class EditorPanel extends JPanel {
             int end = lineEl.getEndOffset();
 
             String text = doc.getText(start, end - start);
+            String beforeCaret = doc.getText(start, caret - start);
 
             // extrai identacao (espacos ou tabs no comeco)
             String indent = getIdentation(text);
+            String trimed = beforeCaret.trim();
 
-            if (text.trim().endsWith("{")){
+            if (trimed.endsWith("{") && text.trim().endsWith("}")){
+
+                String innerIndent = indent + "    ";
+                String insert = "\n" + innerIndent + "\n" + indent;
+
+                doc.insertString(caret, insert, null);
+
+                textPane.setCaretPosition(caret + 1 + innerIndent.length());
+                return;
+            }
+
+            if (trimed.endsWith("{")){
                 indent += "    ";
             }
             // quebra de linhas + ident
@@ -371,8 +441,97 @@ public class EditorPanel extends JPanel {
         return indent.toString();
     }
 
+    private void showAutocomplete(List<String> suggestions) {
+
+        if (popup != null && popup.isVisible()) {
+            popup.setVisible(false);
+        }
+
+        popup = new JPopupMenu();
+        suggestionList = new JList<>(suggestions.toArray(new String[0]));
+
+        suggestionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        suggestionList.setSelectedIndex(0);
+
+        JScrollPane scroll = new JScrollPane(suggestionList);
+        scroll.setBorder(null);
+
+        popup.add(scroll);
+
+        try {
+            Rectangle r = textPane.modelToView2D(textPane.getCaretPosition()).getBounds();
+
+            popup.show(textPane, r.x, r.y + r.height);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void insertSuggestion(String suggestion) {
+        try {
+            if (suggestion == null) return;
+
+            int caret = textPane.getCaretPosition();
+            javax.swing.text.Document doc = textPane.getDocument();
+
+            int start = caret;
+
+            while (start > 0) {
+                String ch = doc.getText(start - 1, 1);
+                if (!Character.isLetterOrDigit(ch.charAt(0))) break;
+                start--;
+            }
+
+            doc.remove(start, caret - start);
+            doc.insertString(start, suggestion, null);
+
+            textPane.setCaretPosition(start + suggestion.length());
+
+            popup.setVisible(false);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleAutoComplete() {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                String word = getCurrentWord();
+
+
+                if (word.length() == 0) {
+                    if (popup != null) popup.setVisible(false);
+                    return;
+                }
+
+                List<String> matches = new ArrayList<>();
+
+                for (String kw : keywords) {
+                    if (kw.startsWith(word)) {
+                        matches.add(kw);
+                    }
+                }
+
+                if (!matches.isEmpty()) {
+                    showAutocomplete(matches);
+                } else {
+                    if (popup != null) popup.setVisible(false);
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
     public Runnable getOnChangeCallback() {
         return onChangeCallback;
+    }
+
+    private boolean isPopupVisible() {
+        return popup != null && popup.isVisible();
     }
 
     public void setOnChangeCallback(Runnable onChangeCallback) {
@@ -396,6 +555,15 @@ public class EditorPanel extends JPanel {
     }
 }
 
+
+
+
+
+
+
+
+
+
 class FullLineHighlightPaint implements Highlighter.HighlightPainter{
     private final Color color;
 
@@ -414,4 +582,5 @@ class FullLineHighlightPaint implements Highlighter.HighlightPainter{
             e.printStackTrace();
         }
     }
+
 }
