@@ -31,6 +31,7 @@ public class EditorPanel extends JPanel {
     private final List<Object> breakpointHighlights = new ArrayList<>();
     private JPopupMenu popup;
     private JList<String> suggestionList;
+    private JWindow autocompleteWindow;
 
 
 
@@ -53,8 +54,15 @@ public class EditorPanel extends JPanel {
 
         textPane = new JTextPane();
 
+        Action defaultEnter = textPane.getActionMap().get(DefaultEditorKit.insertBreakAction);
+        Action defaultTab = textPane.getActionMap().get(DefaultEditorKit.insertTabAction);
+
+        initAutocompleteWindow();
+
         InputMap im = textPane.getInputMap(JComponent.WHEN_FOCUSED);
         ActionMap am = textPane.getActionMap();
+
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0), "tab-custom");
 
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "enter-custom");
 
@@ -64,9 +72,10 @@ public class EditorPanel extends JPanel {
 
                 if (isPopupVisible() && suggestionList.getSelectedValue() != null) {
                     insertSuggestion(suggestionList.getSelectedValue());
-                } else {
-                    handleEnter(); // comportamento normal
+                    return;
                 }
+
+                handleEnter(); // 🔥 SUA lógica de indentação
             }
         });
 
@@ -78,19 +87,23 @@ public class EditorPanel extends JPanel {
 
                 if (isPopupVisible() && suggestionList.getSelectedValue() != null) {
                     insertSuggestion(suggestionList.getSelectedValue());
-                } else {
-                    textPane.replaceSelection("    ");
+                    return;
                 }
-            }
-        });
 
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "esc");
+                try {
+                    int caret = textPane.getCaretPosition();
+                    javax.swing.text.Document doc = textPane.getDocument();
 
-        am.put("esc", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (isPopupVisible()) {
-                    popup.setVisible(false);
+                    Element root = doc.getDefaultRootElement();
+                    int line = root.getElementIndex(caret);
+                    Element lineEl = root.getElement(line);
+
+                    int start = lineEl.getStartOffset();
+
+                    doc.insertString(start, "    ", null);
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
                 }
             }
         });
@@ -169,7 +182,18 @@ public class EditorPanel extends JPanel {
 
     }
 
+    private void initAutocompleteWindow() {
+        autocompleteWindow = new JWindow();
 
+        suggestionList = new JList<>();
+        suggestionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        JScrollPane scroll = new JScrollPane(suggestionList);
+        scroll.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY));
+
+        autocompleteWindow.add(scroll);
+        autocompleteWindow.setSize(200, 120);
+    }
 
     private String getCurrentWord() throws BadLocationException{
         int caret = textPane.getCaretPosition();
@@ -179,7 +203,7 @@ public class EditorPanel extends JPanel {
 
         while (start > 0){
             String ch = doc.getText(start - 1, 1);
-            if (!Character.isLetter(ch.charAt(0))) break;
+            if (!Character.isLetterOrDigit(ch.charAt(0))) break;
             start--;
         }
         return doc.getText(start, caret - start);
@@ -189,37 +213,67 @@ public class EditorPanel extends JPanel {
         textPane.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
-                update();
+                onDocumentChange();
             }
-
             @Override
             public void removeUpdate(DocumentEvent e) {
-                update();
+                onDocumentChange();
             }
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                update();
+                onDocumentChange();
             }
 
-            private void update(){
-               if (isUpdating) return;
+        });
+    }
 
-               SwingUtilities.invokeLater(() -> {
-                   if (isUpdating) return;
+    private void onDocumentChange() {
+        if (isUpdating) return;
 
-                   isUpdating = true;
+        updateDocument();
 
-                   try {
-                       highlight();
-                       updateDocument();
-                       handleAutoComplete();
-                   } finally {
-                       isUpdating = false;
-                   }
-               });
+        SwingUtilities.invokeLater(() -> {
+            if (isUpdating) return;
+
+            isUpdating = true;
+            try {
+                highlight();
+            } finally {
+                isUpdating = false;
             }
         });
+
+        SwingUtilities.invokeLater(this::handleAutoComplete);
+    }
+
+    private void handleAutoComplete() {
+        try {
+            String word = getCurrentWord();
+
+            if (word.isEmpty()) {
+                hideAutocomplete();
+                return;
+            }
+
+            List<String> matches = new ArrayList<>();
+
+            for (String kw : keywords) {
+                if (kw.startsWith(word)) {
+                    matches.add(kw);
+                }
+            }
+
+            if (matches.isEmpty()) {
+                hideAutocomplete();
+                return;
+            }
+
+            showAutocomplete(matches);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     // Sincroniza o conteudo da UI com o Documente
@@ -265,7 +319,7 @@ public class EditorPanel extends JPanel {
     }
 
     private void highlightStrings(String text){
-        Pattern pattern = Pattern.compile("(.*?)");
+        Pattern pattern = Pattern.compile("\".*?\"");
         Matcher matcher = pattern.matcher(text);
 
         while (matcher.find()){
@@ -379,9 +433,41 @@ public class EditorPanel extends JPanel {
         textPane.setSelectionColor(new Color(33, 66, 131));
     }
 
-    private void handleEnter(){
+    private void insertSuggestion(String suggestion) {
         try {
+            if (suggestion == null) return;
 
+            int caret = textPane.getCaretPosition();
+            javax.swing.text.Document doc = textPane.getDocument();
+
+            int start = caret;
+
+            // volta até o início da palavra
+            while (start > 0) {
+                String ch = doc.getText(start - 1, 1);
+                if (!Character.isLetterOrDigit(ch.charAt(0))) break;
+                start--;
+            }
+
+            // remove a palavra atual
+            doc.remove(start, caret - start);
+
+            // insere a sugestão
+            doc.insertString(start, suggestion, null);
+
+            // move o cursor
+            textPane.setCaretPosition(start + suggestion.length());
+
+            // fecha o autocomplete
+            hideAutocomplete();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleEnter() {
+        try {
             int caret = textPane.getCaretPosition();
             javax.swing.text.Document doc = textPane.getDocument();
 
@@ -392,30 +478,32 @@ public class EditorPanel extends JPanel {
             int start = lineEl.getStartOffset();
             int end = lineEl.getEndOffset();
 
-            String text = doc.getText(start, end - start);
+            String lineText = doc.getText(start, end - start);
             String beforeCaret = doc.getText(start, caret - start);
+            String afterCaret = doc.getText(caret, end - caret);
 
-            // extrai identacao (espacos ou tabs no comeco)
-            String indent = getIdentation(text);
-            String trimed = beforeCaret.trim();
+            String indent = getIndentation(beforeCaret);
 
-            if (trimed.endsWith("{") && text.trim().endsWith("}")){
+            // 🔥 CASO ESPECIAL: { }
+            if (beforeCaret.trim().endsWith("{") && afterCaret.trim().startsWith("}")) {
 
                 String innerIndent = indent + "    ";
+
                 String insert = "\n" + innerIndent + "\n" + indent;
 
                 doc.insertString(caret, insert, null);
 
+                // posiciona cursor no meio
                 textPane.setCaretPosition(caret + 1 + innerIndent.length());
                 return;
             }
 
-            if (trimed.endsWith("{")){
+            // 🔥 CASO NORMAL: linha termina com {
+            if (beforeCaret.trim().endsWith("{")) {
                 indent += "    ";
             }
-            // quebra de linhas + ident
-            doc.insertString(caret, "\n" + indent, null);
 
+            doc.insertString(caret, "\n" + indent, null);
             textPane.setCaretPosition(caret + 1 + indent.length());
 
         } catch (Exception e) {
@@ -423,13 +511,13 @@ public class EditorPanel extends JPanel {
         }
     }
 
-    private String getIdentation(String text){
+    private String getIndentation(String text) {
         StringBuilder indent = new StringBuilder();
 
-        for (char c : text.toCharArray()){
-            if (c == ' ' || c == '\t'){
+        for (char c : text.toCharArray()) {
+            if (c == ' ' || c == '\t') {
                 indent.append(c);
-            }else {
+            } else {
                 break;
             }
         }
@@ -438,102 +526,41 @@ public class EditorPanel extends JPanel {
 
     private void showAutocomplete(List<String> suggestions) {
 
-        if (popup != null && popup.isVisible()) {
-            popup.setVisible(false);
+        if (autocompleteWindow == null) {
+            initAutocompleteWindow();
         }
 
-        popup = new JPopupMenu();
-        suggestionList = new JList<>(suggestions.toArray(new String[0]));
-
-        suggestionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        suggestionList.setListData(suggestions.toArray(new String[0]));
         suggestionList.setSelectedIndex(0);
-
-        JScrollPane scroll = new JScrollPane(suggestionList);
-        scroll.setBorder(null);
-
-        popup.add(scroll);
 
         try {
             Rectangle r = textPane.modelToView2D(textPane.getCaretPosition()).getBounds();
+            Point p = new Point(r.x, r.y + r.height);
 
-            popup.show(textPane, r.x, r.y + r.height);
+            SwingUtilities.convertPointToScreen(p, textPane);
 
-            popup.setFocusable(false);
-            suggestionList.setFocusable(false);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void insertSuggestion(String suggestion) {
-        try {
-            if (suggestion == null) return;
-
-            int caret = textPane.getCaretPosition();
-            javax.swing.text.Document doc = textPane.getDocument();
-
-            int start = caret;
-
-            while (start > 0) {
-                String ch = doc.getText(start - 1, 1);
-                if (!Character.isLetterOrDigit(ch.charAt(0))) break;
-                start--;
-            }
-
-            doc.remove(start, caret - start);
-            doc.insertString(start, suggestion, null);
-
-            textPane.setCaretPosition(start + suggestion.length());
-
-            popup.setVisible(false);
+            autocompleteWindow.setLocation(p);
+            autocompleteWindow.setVisible(true);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void handleAutoComplete() {
-        SwingUtilities.invokeLater(() -> {
-            try {
+    private void hideAutocomplete() {
+        if (autocompleteWindow != null) {
+            autocompleteWindow.setVisible(false);
+        }
+    }
 
-                String word = getCurrentWord();
-
-                if (word.length() == 0) {
-                    if (popup != null) popup.setVisible(false);
-                    return;
-                }
-
-                List<String> matches = new ArrayList<>();
-
-                // 🔴 PRIMEIRO popula
-                for (String kw : keywords) {
-                    if (kw.startsWith(word)) {
-                        matches.add(kw);
-                    }
-                }
-
-                // 🔴 DEPOIS verifica
-                if (matches.isEmpty()) {
-                    if (popup != null) popup.setVisible(false);
-                    return;
-                }
-
-                showAutocomplete(matches);
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
+    private boolean isPopupVisible() {
+        return autocompleteWindow != null && autocompleteWindow.isVisible();
     }
 
     public Runnable getOnChangeCallback() {
         return onChangeCallback;
     }
 
-    private boolean isPopupVisible() {
-        return popup != null && popup.isVisible();
-    }
 
     public void setOnChangeCallback(Runnable onChangeCallback) {
         this.onChangeCallback = onChangeCallback;
@@ -555,15 +582,6 @@ public class EditorPanel extends JPanel {
         return document;
     }
 }
-
-
-
-
-
-
-
-
-
 
 class FullLineHighlightPaint implements Highlighter.HighlightPainter{
     private final Color color;
