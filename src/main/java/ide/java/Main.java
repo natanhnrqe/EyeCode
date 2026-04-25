@@ -13,7 +13,6 @@ public class Main {
         UIManager.put("defaultFont", new Font("JetBrains Mono", Font.PLAIN, 14));
         UIManager.put("Tree.rowHeight", 24);
         UIManager.put("TabbedPane.tabInsets", new Insets(5,10,5,10));
-        System.out.println("opa");
 
         SwingUtilities.invokeLater(() -> {
             new MainWindow();

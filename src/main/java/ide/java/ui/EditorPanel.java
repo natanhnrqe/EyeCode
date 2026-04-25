@@ -39,6 +39,7 @@ public class EditorPanel extends JPanel {
             "public", "class", "static", "void",
             "if", "else", "for", "while", "return",
             "new", "int", "double", "String", "boolean"
+
     };
 
     // Representa o arquivo atual em memoria (model)
@@ -249,6 +250,18 @@ public class EditorPanel extends JPanel {
 
     private void handleAutoComplete() {
         try {
+            String line = getCurrentLineBeforeCaret();
+
+            if (line.endsWith("System.")){
+                showAutocomplete(List.of("out"));
+                return;
+            }
+
+            if (line.endsWith("System.out.")){
+                showAutocomplete(List.of("println", "print"));
+                return;
+            }
+
             String word = getCurrentWord();
 
             if (word.isEmpty()) {
@@ -264,12 +277,11 @@ public class EditorPanel extends JPanel {
                 }
             }
 
-            if (matches.isEmpty()) {
+            if (!matches.isEmpty()) {
+                showAutocomplete(matches);
+            }else {
                 hideAutocomplete();
-                return;
             }
-
-            showAutocomplete(matches);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -545,6 +557,19 @@ public class EditorPanel extends JPanel {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private String getCurrentLineBeforeCaret() throws BadLocationException{
+        int caret = textPane.getCaretPosition();
+        javax.swing.text.Document doc = textPane.getDocument();
+
+        Element root = doc.getDefaultRootElement();
+        int line = root.getElementIndex(caret);
+        Element lineEl = root.getElement(line);
+
+        int start = lineEl.getStartOffset();
+
+        return doc.getText(start, caret - start).trim();
     }
 
     private void hideAutocomplete() {
