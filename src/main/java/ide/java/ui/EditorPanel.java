@@ -62,39 +62,36 @@ public class EditorPanel extends JPanel {
             @Override
             public void actionPerformed(ActionEvent e) {
 
-                System.out.println("ENTER binding");
-
-                if (popup != null && popup.isVisible()) {
+                if (isPopupVisible() && suggestionList.getSelectedValue() != null) {
                     insertSuggestion(suggestionList.getSelectedValue());
                 } else {
-                    handleEnter();
+                    handleEnter(); // comportamento normal
                 }
             }
         });
 
-        textPane.getDocument().addDocumentListener(new DocumentListener() {
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0), "tab-custom");
 
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                handleAutoComplete();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                handleAutoComplete();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {}
-        });
-
-
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "custom-enter");
-
-        am.put("custom-enter", new AbstractAction() {
+        am.put("tab-custom", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                handleEnter();
+
+                if (isPopupVisible() && suggestionList.getSelectedValue() != null) {
+                    insertSuggestion(suggestionList.getSelectedValue());
+                } else {
+                    textPane.replaceSelection("    ");
+                }
+            }
+        });
+
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "esc");
+
+        am.put("esc", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isPopupVisible()) {
+                    popup.setVisible(false);
+                }
             }
         });
 
@@ -216,6 +213,7 @@ public class EditorPanel extends JPanel {
                    try {
                        highlight();
                        updateDocument();
+                       handleAutoComplete();
                    } finally {
                        isUpdating = false;
                    }
@@ -383,10 +381,7 @@ public class EditorPanel extends JPanel {
 
     private void handleEnter(){
         try {
-            if (isPopupVisible()) {
-                insertSuggestion(suggestionList.getSelectedValue());
-                return;
-            }
+
             int caret = textPane.getCaretPosition();
             javax.swing.text.Document doc = textPane.getDocument();
 
@@ -463,6 +458,9 @@ public class EditorPanel extends JPanel {
 
             popup.show(textPane, r.x, r.y + r.height);
 
+            popup.setFocusable(false);
+            suggestionList.setFocusable(false);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -498,8 +496,8 @@ public class EditorPanel extends JPanel {
     private void handleAutoComplete() {
         SwingUtilities.invokeLater(() -> {
             try {
-                String word = getCurrentWord();
 
+                String word = getCurrentWord();
 
                 if (word.length() == 0) {
                     if (popup != null) popup.setVisible(false);
@@ -508,17 +506,20 @@ public class EditorPanel extends JPanel {
 
                 List<String> matches = new ArrayList<>();
 
+                // 🔴 PRIMEIRO popula
                 for (String kw : keywords) {
                     if (kw.startsWith(word)) {
                         matches.add(kw);
                     }
                 }
 
-                if (!matches.isEmpty()) {
-                    showAutocomplete(matches);
-                } else {
+                // 🔴 DEPOIS verifica
+                if (matches.isEmpty()) {
                     if (popup != null) popup.setVisible(false);
+                    return;
                 }
+
+                showAutocomplete(matches);
 
             } catch (Exception e) {
                 e.printStackTrace();
