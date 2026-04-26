@@ -11,7 +11,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,7 +41,6 @@ public class EditorPanel extends JPanel {
             "public", "class", "static", "void",
             "if", "else", "for", "while", "return",
             "new", "int", "double", "String", "boolean"
-
     };
 
     // Representa o arquivo atual em memoria (model)
@@ -76,7 +77,7 @@ public class EditorPanel extends JPanel {
                     return;
                 }
 
-                handleEnter(); // 🔥 SUA lógica de indentação
+                handleEnter();
             }
         });
 
@@ -250,7 +251,25 @@ public class EditorPanel extends JPanel {
 
     private void handleAutoComplete() {
         try {
+            String fullText = getTextBeforeCaret();
             String line = getCurrentLineBeforeCaret();
+
+            String obj = getObjectBeforeDot(line);
+
+            if (obj != null) {
+                Map<String, String> vars = extractVariables(fullText);
+
+                String type = vars.get(obj);
+
+                if (type != null) {
+                    List<String> methods = getMethodsForType(type);
+
+                    if (!methods.isEmpty()) {
+                        showAutocomplete(methods);
+                        return;
+                    }
+                }
+            }
 
             if (line.endsWith("System.")){
                 showAutocomplete(List.of("out"));
@@ -559,6 +578,11 @@ public class EditorPanel extends JPanel {
         }
     }
 
+    private String getTextBeforeCaret() throws BadLocationException{
+        int caret = textPane.getCaretPosition();
+        return textPane.getDocument().getText(0, caret);
+    }
+
     private String getCurrentLineBeforeCaret() throws BadLocationException{
         int caret = textPane.getCaretPosition();
         javax.swing.text.Document doc = textPane.getDocument();
@@ -570,6 +594,41 @@ public class EditorPanel extends JPanel {
         int start = lineEl.getStartOffset();
 
         return doc.getText(start, caret - start).trim();
+    }
+
+    private Map<String, String> extractVariables(String text){
+        Map<String, String> vars = new HashMap<>();
+
+        Pattern pattern = Pattern.compile("\\b(String|int|double|boolean)\\s+(\\w+)");
+
+        Matcher matcher = pattern.matcher(text);
+
+        while (matcher.find()){
+            String type = matcher.group(1);
+            String name = matcher.group(2);
+
+            vars.put(name, type);
+        }
+        return vars;
+    }
+
+    private String getObjectBeforeDot(String line){
+        int dotIndex = line.lastIndexOf(".");
+
+        if (dotIndex == -1) return null;
+
+        String beforeDot = line.substring(0, dotIndex).trim();
+
+        String[] parts = beforeDot.split("\\s+");
+        return parts[parts.length - 1];
+    }
+
+    private List<String> getMethodsForType(String type){
+        return switch (type) {
+            case "String" -> List.of("length()", "charAt()", "substring()", "toUpperCase");
+            case "int" -> List.of();
+            default -> List.of();
+        };
     }
 
     private void hideAutocomplete() {
