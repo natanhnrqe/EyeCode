@@ -264,10 +264,16 @@ public class EditorPanel extends JPanel {
                 if (type != null) {
                     List<String> methods = getMethodsForType(type);
 
-                    if (!methods.isEmpty()) {
-                        showAutocomplete(methods);
-                        return;
+                    String prefix = getPrefixAfterDot(line);
+
+                    List<String> filtered = filterByPrefix(methods, prefix);
+
+                    if (!filtered.isEmpty()) {
+                        showAutocomplete(filtered);
+                    }else {
+                        hideAutocomplete();
                     }
+                    return;
                 }
             }
 
@@ -276,8 +282,18 @@ public class EditorPanel extends JPanel {
                 return;
             }
 
-            if (line.endsWith("System.out.")){
-                showAutocomplete(List.of("println", "print"));
+            if (line.contains("System.out.")){
+                String prefix = getPrefixAfterDot(line);
+
+                List<String> methods = List.of("println", "print");
+
+                List<String> filtered = filterByPrefix(methods, prefix);
+
+                if (!filtered.isEmpty()){
+                    showAutocomplete(filtered);
+                } else {
+                    hideAutocomplete();
+                }
                 return;
             }
 
@@ -619,8 +635,32 @@ public class EditorPanel extends JPanel {
 
         String beforeDot = line.substring(0, dotIndex).trim();
 
-        String[] parts = beforeDot.split("\\s+");
+        String[] parts = beforeDot.split("[^a-zA-Z0-9_]");
+
+        if (parts.length == 0) return null;
+
         return parts[parts.length - 1];
+    }
+
+    private String getPrefixAfterDot(String line){
+        int dotIndex = line.lastIndexOf(".");
+
+        if (dotIndex == -1) return null;
+
+        return line.substring(dotIndex + 1).trim();
+    }
+
+    private List<String> filterByPrefix(List<String> list, String prefix){
+        if (prefix.isEmpty()) return list;
+
+        List<String> result = new ArrayList<>();
+
+        for (String item : list){
+            if (item.startsWith(prefix)){
+                result.add(item);
+            }
+        }
+        return result;
     }
 
     private List<String> getMethodsForType(String type){
