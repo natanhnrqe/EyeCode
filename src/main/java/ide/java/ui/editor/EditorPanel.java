@@ -1,6 +1,7 @@
-package ide.java.ui;
+package ide.java.ui.editor;
 
 import ide.java.editor.Document;
+import ide.java.ui.LineNumberPanel;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -30,7 +31,7 @@ public class EditorPanel extends JPanel {
     private LineNumberPanel lineNumbers;
     private final List<Object> breakpointHighlights = new ArrayList<>();
     private JPopupMenu popup;
-    private JList<String> suggestionList;
+    private JList<Suggestion> suggestionList;
     private JWindow autocompleteWindow;
 
 
@@ -75,7 +76,8 @@ public class EditorPanel extends JPanel {
             public void actionPerformed(ActionEvent e) {
 
                 if (isPopupVisible() && suggestionList.getSelectedValue() != null) {
-                    insertSuggestion(suggestionList.getSelectedValue());
+                    Suggestion selected = suggestionList.getSelectedValue();
+                    insertSuggestion(selected.getText());
                     return;
                 }
 
@@ -90,7 +92,8 @@ public class EditorPanel extends JPanel {
             public void actionPerformed(ActionEvent e) {
 
                 if (isPopupVisible() && suggestionList.getSelectedValue() != null) {
-                    insertSuggestion(suggestionList.getSelectedValue());
+                    Suggestion selected = suggestionList.getSelectedValue();
+                    insertSuggestion(selected.getText());
                     return;
                 }
 
@@ -151,7 +154,8 @@ public class EditorPanel extends JPanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2){
-                    insertSuggestion(suggestionList.getSelectedValue());
+                    Suggestion selected = suggestionList.getSelectedValue();
+                    insertSuggestion(selected.getText());
                 }
             }
         });
@@ -159,9 +163,7 @@ public class EditorPanel extends JPanel {
         textPane.setMargin(new Insets(0,0,0,0));
         lineNumbers = new LineNumberPanel(textPane);
 
-        lineNumbers.setListener(() -> {
-            updateBreakpointHighlights();
-        });
+        lineNumbers.setListener(this::updateBreakpointHighlights);
 
 
         textPane.addCaretListener(e -> {
@@ -203,7 +205,6 @@ public class EditorPanel extends JPanel {
                 lineNumbers.repaint();
             }
         });
-        p
 
         suggestionList.setBackground(new Color(43, 43, 43));
         suggestionList.setForeground(new Color(169, 183, 198));
@@ -240,7 +241,7 @@ public class EditorPanel extends JPanel {
         autocompleteWindow = new JWindow();
 
         suggestionList = new JList<>();
-        suggestionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        suggestionList.setCellRenderer(new SuggestionRenderer());
 
         JScrollPane scroll = new JScrollPane(suggestionList);
         scroll.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY));
@@ -314,11 +315,11 @@ public class EditorPanel extends JPanel {
                 String type = vars.get(obj);
 
                 if (type != null) {
-                    List<String> methods = getMethodsForType(type);
+                    List<Suggestion> methods = getMethodsForType(type);
 
                     String prefix = getPrefixAfterDot(line);
 
-                    List<String> filtered = filterByPrefix(methods, prefix);
+                    List<Suggestion> filtered = filterByPrefix(methods, prefix);
 
                     if (!filtered.isEmpty()) {
                         showAutocomplete(filtered);
@@ -330,16 +331,19 @@ public class EditorPanel extends JPanel {
             }
 
             if (line.endsWith("System.")){
-                showAutocomplete(List.of("out"));
+                showAutocomplete(List.of(new Suggestion("out", "METHOD")));
                 return;
             }
 
             if (line.contains("System.out.")){
                 String prefix = getPrefixAfterDot(line);
 
-                List<String> methods = List.of("println", "print");
+                List<Suggestion> methods = List.of(
+                        new Suggestion("println", "METHOD"),
+                        new Suggestion("print", "METHOD")
+                        );
 
-                List<String> filtered = filterByPrefix(methods, prefix);
+                List<Suggestion> filtered = filterByPrefix(methods, prefix);
 
                 if (!filtered.isEmpty()){
                     showAutocomplete(filtered);
@@ -356,11 +360,11 @@ public class EditorPanel extends JPanel {
                 return;
             }
 
-            List<String> matches = new ArrayList<>();
+            List<Suggestion> matches = new ArrayList<>();
 
             for (String kw : keywords) {
                 if (kw.startsWith(word)) {
-                    matches.add(kw);
+                    matches.add(new Suggestion(kw, "KEYWORD"));
                 }
             }
 
@@ -623,13 +627,13 @@ public class EditorPanel extends JPanel {
         return indent.toString();
     }
 
-    private void showAutocomplete(List<String> suggestions) {
+    private void showAutocomplete(List<Suggestion> suggestions) {
 
         if (autocompleteWindow == null) {
             initAutocompleteWindow();
         }
 
-        suggestionList.setListData(suggestions.toArray(new String[0]));
+        suggestionList.setListData(suggestions.toArray(new Suggestion[0]));
         suggestionList.setSelectedIndex(0);
 
         try {
@@ -702,25 +706,31 @@ public class EditorPanel extends JPanel {
         return line.substring(dotIndex + 1).trim();
     }
 
-    private List<String> filterByPrefix(List<String> list, String prefix){
+    private List<Suggestion> filterByPrefix(List<Suggestion> list, String prefix){
+
         if (prefix.isEmpty()) return list;
 
-        List<String> result = new ArrayList<>();
+        List<Suggestion> result = new ArrayList<>();
 
-        for (String item : list){
-            if (item.startsWith(prefix)){
-                result.add(item);
+        for (Suggestion s : list){
+            if (s.getText().startsWith(prefix)){
+                result.add(s);
             }
         }
         return result;
     }
 
-    private List<String> getMethodsForType(String type){
-        return switch (type) {
-            case "String" -> List.of("length()", "charAt()", "substring()", "toUpperCase");
-            case "int" -> List.of();
-            default -> List.of();
-        };
+    private List<Suggestion> getMethodsForType(String type){
+
+        if (type.equals("String")) {
+            return List.of(
+                    new Suggestion("length()", "METHOD"),
+                    new Suggestion("substring()", "METHOD"),
+                    new Suggestion("toUpperCase()", "METHOD"),
+                    new Suggestion("charAt()", "METHOD")
+            );
+        }
+        return List.of();
     }
 
     private void hideAutocomplete() {

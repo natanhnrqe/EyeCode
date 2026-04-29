@@ -3,8 +3,8 @@ package ide.java.ui;
 import ide.java.editor.Document;
 import ide.java.filesystem.FileManager;
 import ide.java.run.RunManager;
+import ide.java.ui.editor.EditorPanel;
 
-import javax.print.Doc;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;

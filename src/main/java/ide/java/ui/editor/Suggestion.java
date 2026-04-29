@@ -1,4 +1,4 @@
-package ide.java.ui;
+package ide.java.ui.editor;
 
 public class Suggestion {
 
