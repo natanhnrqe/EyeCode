@@ -4,10 +4,12 @@ public class Suggestion {
 
     private String text;
     private String type;
+    private String detail;
 
-    public Suggestion(String text, String type) {
+    public Suggestion(String text, String type, String detail) {
         this.text = text;
         this.type = type;
+        this.detail = detail;
     }
 
     public String getText() {
@@ -16,6 +18,10 @@ public class Suggestion {
 
     public String getType() {
         return type;
+    }
+
+    public String getDetail() {
+        return detail;
     }
 
     @Override

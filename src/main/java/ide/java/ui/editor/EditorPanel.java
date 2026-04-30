@@ -247,7 +247,7 @@ public class EditorPanel extends JPanel {
         scroll.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY));
 
         autocompleteWindow.add(scroll);
-        autocompleteWindow.setSize(200, 120);
+        autocompleteWindow.setSize(320, 180);
     }
 
     private String getCurrentWord() throws BadLocationException{
@@ -331,7 +331,7 @@ public class EditorPanel extends JPanel {
             }
 
             if (line.endsWith("System.")){
-                showAutocomplete(List.of(new Suggestion("out", "METHOD")));
+                showAutocomplete(List.of(new Suggestion("out", "METHOD", "void")));
                 return;
             }
 
@@ -339,8 +339,8 @@ public class EditorPanel extends JPanel {
                 String prefix = getPrefixAfterDot(line);
 
                 List<Suggestion> methods = List.of(
-                        new Suggestion("println", "METHOD"),
-                        new Suggestion("print", "METHOD")
+                        new Suggestion("println", "METHOD", "void"),
+                        new Suggestion("print", "METHOD", "void")
                         );
 
                 List<Suggestion> filtered = filterByPrefix(methods, prefix);
@@ -364,7 +364,7 @@ public class EditorPanel extends JPanel {
 
             for (String kw : keywords) {
                 if (kw.startsWith(word)) {
-                    matches.add(new Suggestion(kw, "KEYWORD"));
+                    matches.add(new Suggestion(kw, "KEYWORD", "void"));
                 }
             }
 
@@ -724,10 +724,10 @@ public class EditorPanel extends JPanel {
 
         if (type.equals("String")) {
             return List.of(
-                    new Suggestion("length()", "METHOD"),
-                    new Suggestion("substring()", "METHOD"),
-                    new Suggestion("toUpperCase()", "METHOD"),
-                    new Suggestion("charAt()", "METHOD")
+                    new Suggestion("length()", "METHOD", "int"),
+                    new Suggestion("substring()", "METHOD", "String"),
+                    new Suggestion("toUpperCase()", "METHOD", "String"),
+                    new Suggestion("charAt()", "METHOD", "char")
             );
         }
         return List.of();
