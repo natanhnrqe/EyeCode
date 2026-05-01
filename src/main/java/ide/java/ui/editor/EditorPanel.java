@@ -303,17 +303,19 @@ public class EditorPanel extends JPanel {
 
     private void handleAutoComplete() {
         try {
+
             String fullText = getTextBeforeCaret();
             String line = getCurrentLineBeforeCaret();
 
             String obj = getObjectBeforeDot(line);
 
             if (obj != null) {
-                Map<String, String> vars = extractVariables(fullText);
 
+                Map<String, String> vars = extractVariables(fullText);
                 String type = vars.get(obj);
 
                 if (type != null) {
+
                     List<Suggestion> methods = getMethodsForType(type);
 
                     String prefix = getPrefixAfterDot(line);
@@ -329,17 +331,36 @@ public class EditorPanel extends JPanel {
                 }
             }
 
+
             if (line.endsWith("System.")){
-                showAutocomplete(List.of(new Suggestion("out", "METHOD", "void")));
+                showAutocomplete(List.of(new Suggestion(
+                        "out",
+                        "FIELD",
+                        "PrintStream System.out",
+                        "Standart output stream",
+                        100)
+                ));
                 return;
             }
 
             if (line.contains("System.out.")){
+
                 String prefix = getPrefixAfterDot(line);
 
                 List<Suggestion> methods = List.of(
-                        new Suggestion("println", "METHOD", "void"),
-                        new Suggestion("print", "METHOD", "void")
+
+                        new Suggestion("println",
+                                "METHOD",
+                                "void println(String x)",
+                                "Prints text with line break",
+                                100
+
+                        ),
+                        new Suggestion("print",
+                                "METHOD",
+                                "void print(String x)",
+                                "Print text",
+                                100)
                         );
 
                 List<Suggestion> filtered = filterByPrefix(methods, prefix);
@@ -361,11 +382,15 @@ public class EditorPanel extends JPanel {
 
             List<Suggestion> matches = new ArrayList<>();
 
-            for (String kw : keywords) {
-                if (kw.startsWith(word)) {
-                    matches.add(new Suggestion(kw, "KEYWORD", getKeywordDetails(kw)));
-                }
-            }
+            matches.addAll(
+                    getVariableSuggestion(fullText, word)
+            );
+
+            matches.addAll(
+                    getKeywordSuggestion(word)
+            );
+
+            sortSuggestion(matches);
 
             if (!matches.isEmpty()) {
                 showAutocomplete(matches);
@@ -719,18 +744,6 @@ public class EditorPanel extends JPanel {
         return result;
     }
 
-    private List<Suggestion> getMethodsForType(String type){
-
-        if (type.equals("String")) {
-            return List.of(
-                    new Suggestion("length()", "METHOD", "int"),
-                    new Suggestion("substring()", "METHOD", "String"),
-                    new Suggestion("toUpperCase()", "METHOD", "String"),
-                    new Suggestion("charAt()", "METHOD", "char")
-            );
-        }
-        return List.of();
-    }
 
     private void hideAutocomplete() {
         if (autocompleteWindow != null) {
@@ -767,33 +780,131 @@ public class EditorPanel extends JPanel {
         return document;
     }
 
-    private String getKeywordDetails(String kw){
-        return switch (kw) {
-            case "public" -> "access modifier";
-            case "private" -> "access modifier";
-            case "protected" -> "access modifier";
+    private List<Suggestion> getMethodsForType(String type){
 
-            case "static" -> "class member modifier";
-            case "final" -> "immutable modifier";
-            case "abstract" -> "inheritance modifier";
+        switch (type) {
 
-            case "void" -> "no return type";
+            case "String":
+                return List.of(
 
-            case "int" -> "primitive type";
-            case "double" -> "primitive type";
-            case "boolean" -> "primitive type";
-            case "char" -> "primitive type";
+                        new Suggestion(
+                                "length()",
+                                "METHOD",
+                                "int length()",
+                                "Returns text length",
+                                100
+                                ),
 
-            case "class" -> "type declaration";
-            case "new" -> "object instantiation";
+                        new Suggestion(
+                                "substring()",
+                                "METHOD",
+                                "String substring(int a, int b)",
+                                "Returns parts of text ",
+                                95
+                        ),
 
-            case "if", "else" -> "conditional statement";
-            case "while", "for" -> "loop statement";
+                        new Suggestion(
+                                "toUpperCase()",
+                                "METHOD",
+                                "String toUpperCase()",
+                                "Uppercase text ",
+                                90
+                        )
+                );
+            case "ArrayList":
+                return List.of(
 
-            case "return"-> "method return statement";
+                        new Suggestion(
+                                "add()",
+                                "METHOD",
+                                "boolean add(E a)",
+                                "Adds item",
+                                100
+                        ),
 
-            default -> "keyword";
-        };
+                        new Suggestion(
+                                "size()",
+                                "METHOD",
+                                "int size()",
+                                "Returns quantity ",
+                                95
+                        )
+                );
+        }
+        return new ArrayList<>();
+    }
+
+    private List<Suggestion> getKeywordSuggestion(String prefix){
+
+        List<Suggestion> list = new ArrayList<>();
+
+        addIfMatch(list, prefix, "public", "KEYWORD",
+                "access modifier", "Visible everywhere", 80);
+
+        addIfMatch(list, prefix, "private", "KEYWORD",
+                "access modifier", "Visible only inside class", 80);
+
+        addIfMatch(list, prefix, "protected", "KEYWORD",
+                "access modifier", "visible only same package", 80);
+
+        addIfMatch(list, prefix, "static", "KEYWORD",
+                "class modifier", "Belongs to class, not instance", 75);
+
+        addIfMatch(list, prefix, "void", "KEYWORD",
+                "return type", "Methods returns nothing", 70);
+
+        addIfMatch(list, prefix, "class", "KEYWORD",
+                "type declaration", "Defines a class", 70);
+
+        addIfMatch(list, prefix, "return", "KEYWORD",
+                "flow statement", "Returns a value", 65);
+
+        return list;
+    }
+
+    private List<Suggestion> getVariableSuggestion(String fullText, String prefix){
+
+        Map<String, String> vars = extractVariables(fullText);
+
+        List<Suggestion> list = new ArrayList<>();
+
+        for (String name : vars.keySet()) {
+
+            if (name.startsWith(prefix)) {
+                String type = vars.get(name);
+
+                list.add(new Suggestion(
+                        name,
+                        "VARIABLE",
+                        "variable " + type,
+                        "Detected variable",
+                        90
+                ));
+            }
+        }
+        return list;
+    }
+
+    private void addIfMatch(
+            List<Suggestion> list,
+            String prefix,
+            String text,
+            String type,
+            String detail,
+            String desc,
+            int priority
+    ){
+        if (text.startsWith(prefix)) {
+            list.add(new Suggestion(text, type, detail, desc, priority));
+        }
+
+    }
+
+    private void sortSuggestion(List<Suggestion> list){
+        list.sort((a,b) ->
+        Integer.compare(b.getPriority(), a.getPriority())
+        );
+
     }
 }
 
