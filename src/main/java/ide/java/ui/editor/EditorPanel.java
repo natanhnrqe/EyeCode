@@ -387,7 +387,7 @@ public class EditorPanel extends JPanel {
             );
 
             matches.addAll(
-                    getKeywordSuggestion(word)
+                    getBasicSuggestion(word)
             );
 
             sortSuggestion(matches);
@@ -834,30 +834,11 @@ public class EditorPanel extends JPanel {
         return new ArrayList<>();
     }
 
-    private List<Suggestion> getKeywordSuggestion(String prefix){
+    private List<Suggestion> getBasicSuggestion(String prefix){
 
         List<Suggestion> list = new ArrayList<>();
 
-        addIfMatch(list, prefix, "public", "KEYWORD",
-                "access modifier", "Visible everywhere", 80);
-
-        addIfMatch(list, prefix, "private", "KEYWORD",
-                "access modifier", "Visible only inside class", 80);
-
-        addIfMatch(list, prefix, "protected", "KEYWORD",
-                "access modifier", "visible only same package", 80);
-
-        addIfMatch(list, prefix, "static", "KEYWORD",
-                "class modifier", "Belongs to class, not instance", 75);
-
-        addIfMatch(list, prefix, "void", "KEYWORD",
-                "return type", "Methods returns nothing", 70);
-
-        addIfMatch(list, prefix, "class", "KEYWORD",
-                "type declaration", "Defines a class", 70);
-
-        addIfMatch(list, prefix, "return", "KEYWORD",
-                "flow statement", "Returns a value", 65);
+        addJavaBaseSuggestions(list, prefix);
 
         return list;
     }
@@ -885,6 +866,8 @@ public class EditorPanel extends JPanel {
         return list;
     }
 
+
+
     private void addIfMatch(
             List<Suggestion> list,
             String prefix,
@@ -900,6 +883,109 @@ public class EditorPanel extends JPanel {
 
     }
 
+    private void addJavaBaseSuggestions(List<Suggestion> list, String prefix){
+
+        // Tipos primitivos
+        addIfMatch(list, prefix, "int", "TYPE",
+                "primitive type", "32-bit integer", 90);
+
+        addIfMatch(list, prefix, "double", "TYPE",
+                "primitive type", "true or false", 90);
+
+        addIfMatch(list, prefix, "boolean", "TYPE",
+                "primitive type", "32-bit integer", 90);
+
+        addIfMatch(list, prefix, "char", "TYPE",
+                "primitive type", "single character", 90);
+
+        addIfMatch(list, prefix, "long", "TYPE",
+                "primitive type", "64-bit integer", 90);
+
+        addIfMatch(list, prefix, "float", "TYPE",
+                "primitive type", "32-bit decimal", 90);
+
+
+        // Classes comuns
+        addIfMatch(list, prefix, "String", "CLASS",
+                "java.lang.String", "Text object", 95);
+
+        addIfMatch(list, prefix, "Integer", "CLASS",
+                "java.lang.Integer", "Wrapper for int", 95);
+
+        addIfMatch(list, prefix, "System", "CLASS",
+                "java.lang.System", "System utilities", 95);
+
+        addIfMatch(list, prefix, "Math", "CLASS",
+                "java.lang.Math", "Math helpers", 95);
+
+        addIfMatch(list, prefix, "Object", "CLASS",
+                "java.lang.Object", "Base class", 95);
+
+        // Collections
+
+        addIfMatch(list, prefix, "List", "INTERFACE",
+                "java.lang.List", "Ordered collection", 92);
+
+        addIfMatch(list, prefix, "ArrayList", "CLASS",
+                "java.lang.ArrayList", "Resizable list", 92);
+
+        addIfMatch(list, prefix, "Map", "INTERFACE",
+                "java.lang.Map", "Key/Value structure", 92);
+
+        addIfMatch(list, prefix, "HashMap", "CLASS",
+                "java.lang.HashMap", "Map implementation", 92);
+
+        addIfMatch(list, prefix, "Set", "INTERFACE",
+                "java.lang.Set", "Unique elements", 92);
+
+        addIfMatch(list, prefix, "HashSet", "CLASS",
+                "java.lang.HashSet", "Set implementation", 92);
+
+        // Keywords
+        addIfMatch(list, prefix, "public", "KEYWORD",
+                "access modifier", "Visible everywhere", 80);
+
+        addIfMatch(list, prefix, "private", "KEYWORD",
+                "access modifier", "Visible inside class", 80);
+
+        addIfMatch(list, prefix, "protected", "KEYWORD",
+                "access modifier", "visible to subclasses", 80);
+
+        addIfMatch(list, prefix, "static", "KEYWORD",
+                "class modifier", "Belongs to class, not instance", 78);
+
+        addIfMatch(list, prefix, "final", "KEYWORD",
+                "modifier", "Cannot change", 78);
+
+        addIfMatch(list, prefix, "interface", "KEYWORD",
+                "declaration", "Defines interface", 78);
+
+
+        addIfMatch(list, prefix, "class", "KEYWORD",
+                "type declaration", "Defines a class", 78);
+
+        addIfMatch(list, prefix, "if", "KEYWORD",
+                "flow control", "Conditional block ", 78);
+
+        addIfMatch(list, prefix, "else", "KEYWORD",
+                "flow control", "Alternative block", 75);
+
+        addIfMatch(list, prefix, "for", "KEYWORD",
+                "loop", "For loop", 75);
+
+        addIfMatch(list, prefix, "while", "KEYWORD",
+                "loop", "While loop", 75);
+
+        addIfMatch(list, prefix, "void", "KEYWORD",
+                "return type", "Returns nothing", 75);
+
+        addIfMatch(list, prefix, "new", "KEYWORD",
+                "operator", "Creates object", 75);
+
+        addIfMatch(list, prefix, "return", "KEYWORD",
+                "flow statement", "Returns a value", 65);
+    }
+
     private void sortSuggestion(List<Suggestion> list){
         list.sort((a,b) ->
         Integer.compare(b.getPriority(), a.getPriority())
@@ -907,8 +993,6 @@ public class EditorPanel extends JPanel {
 
     }
 }
-
-
 
 class FullLineHighlightPaint implements Highlighter.HighlightPainter{
     private final Color color;
