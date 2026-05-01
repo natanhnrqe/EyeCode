@@ -35,7 +35,6 @@ public class EditorPanel extends JPanel {
     private JWindow autocompleteWindow;
 
 
-
     private static final String[] keywords = {
             "public", "class", "static", "void",
             "if", "else", "for", "while", "return",
@@ -364,7 +363,7 @@ public class EditorPanel extends JPanel {
 
             for (String kw : keywords) {
                 if (kw.startsWith(word)) {
-                    matches.add(new Suggestion(kw, "KEYWORD", "void"));
+                    matches.add(new Suggestion(kw, "KEYWORD", getKeywordDetails(kw)));
                 }
             }
 
@@ -767,7 +766,38 @@ public class EditorPanel extends JPanel {
     public Document getDocument(){
         return document;
     }
+
+    private String getKeywordDetails(String kw){
+        return switch (kw) {
+            case "public" -> "access modifier";
+            case "private" -> "access modifier";
+            case "protected" -> "access modifier";
+
+            case "static" -> "class member modifier";
+            case "final" -> "immutable modifier";
+            case "abstract" -> "inheritance modifier";
+
+            case "void" -> "no return type";
+
+            case "int" -> "primitive type";
+            case "double" -> "primitive type";
+            case "boolean" -> "primitive type";
+            case "char" -> "primitive type";
+
+            case "class" -> "type declaration";
+            case "new" -> "object instantiation";
+
+            case "if", "else" -> "conditional statement";
+            case "while", "for" -> "loop statement";
+
+            case "return"-> "method return statement";
+
+            default -> "keyword";
+        };
+    }
 }
+
+
 
 class FullLineHighlightPaint implements Highlighter.HighlightPainter{
     private final Color color;
