@@ -95,6 +95,7 @@ public class MainWindow extends JFrame {
         });
 
         setVisible(true);
+        SwingUtilities.invokeLater(this::openDefaultFile);
     }
 
     private void createMenu(){
@@ -393,5 +394,15 @@ public class MainWindow extends JFrame {
     private void refreshExplorer(){
         explorerPanel.refresh();
         consolePanel.print("Explorer Refreshed");
+    }
+
+    private void openDefaultFile() {
+        File mainFile = new File("src/main/java/com/eyecode/Main.java");
+
+        if (mainFile.exists()) {
+            String content = fileManager.openFile(mainFile);
+            Document doc = new Document(mainFile, content);
+            addNewTab(doc, mainFile.getName());
+        }
     }
 }
