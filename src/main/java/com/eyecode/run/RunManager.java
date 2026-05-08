@@ -3,6 +3,8 @@ package com.eyecode.run;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -59,7 +61,7 @@ public class RunManager {
              *
              * EyeCode/src/main/java
              */
-            File srcRoot = new File(projectRoot, "src/main/java");
+            File srcRoot = projectRoot;
 
 
             /**
@@ -125,7 +127,7 @@ public class RunManager {
              * encontrados no projeto.
              */
             for (File file : javaFiles) {
-                compileCommand.add(file.getPath());
+                compileCommand.add(file.getAbsolutePath());
             }
 
             /**
@@ -155,10 +157,31 @@ public class RunManager {
             compileProcess.waitFor();
 
             /**
+             * Copia resources para o runtime.
+             *
+             * Ex:
+             * icons/
+             * themes/
+             * fonts/
+             */
+            File resourcesDir = new File(
+                    projectRoot,
+                    "src/main/resources"
+            );
+
+            copyResources(resourcesDir, outDir);
+
+            int compileExit = compileProcess.exitValue();
+
+            output.append(
+                    "\nCompile Exit Code: "
+            ).append(compileExit).append("\n");
+
+            /**
              * Se houve erro de compilacao,
              * interrompe a execucao.
              */
-            if (!output.isEmpty()) {
+            if (compileExit != 0) {
                 return output.toString();
             }
 
@@ -210,10 +233,9 @@ public class RunManager {
                     new InputStreamReader(runProcess.getErrorStream())
             );
 
-            while ((line = runOutput.readLine()) != null) {
+            while ((line = runErrors.readLine()) != null) {
                 output.append(line).append("\n");
             }
-
             runProcess.waitFor();
 
         } catch (Exception e) {
@@ -221,6 +243,56 @@ public class RunManager {
                     .append(e.getMessage());
         }
         return output.toString();
+    }
+
+    private void copyResources(File source, File target) {
+
+        // Se a pasta não existir, não faz nada
+        if (!source.exists()) {
+            return;
+        }
+
+        /**
+         * Se for diretório:
+         * cria no destino
+         * e copia filhos recursivamente.
+         */
+        if (source.isDirectory()) {
+
+            if (!target.exists()) {
+                target.mkdirs();
+            }
+
+            File[] files = source.listFiles();
+
+            if (files != null) {
+                for (File file : files) {
+
+                    copyResources(
+                            file,
+                            new File(target, file.getName())
+                    );
+                }
+            }
+
+            return;
+        }
+
+        /**
+         * Se for arquivo:
+         * copia para destino.
+         */
+        try {
+
+            Files.copy(
+                    source.toPath(),
+                    target.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING
+            );
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 }
