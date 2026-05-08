@@ -1,6 +1,7 @@
 package com.eyecode;
 
-import com.formdev.flatlaf.FlatDarkLaf;
+import com.eyecode.run.ProjectScanner;
+//import com.formdev.flatlaf.FlatDarkLaf;
 import com.eyecode.ui.MainWindow;
 
 import javax.swing.*;
@@ -8,12 +9,13 @@ import java.awt.*;
 
 public class Main {
     public static void main(String[] args) {
-        FlatDarkLaf.setup();
+//        FlatDarkLaf.setup();
 
 
         UIManager.put("defaultFont", loadEditorFont());
         UIManager.put("Tree.rowHeight", 24);
         UIManager.put("TabbedPane.tabInsets", new Insets(5,10,5,10));
+
 
 
         SwingUtilities.invokeLater(() -> {

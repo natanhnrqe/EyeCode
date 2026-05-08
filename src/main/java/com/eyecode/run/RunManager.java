@@ -3,94 +3,224 @@ package com.eyecode.run;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Responsável por compilar e executar arquivos Java.
+ * Responsável por:
  *
- * Atua como um "orquestrador de processos":
- * - chama o compilador (javac)
- * - executa a classe (java)
- * - captura saída e erros
+ * - escanear o projeto
+ * - compilar todos os arquivos Java
+ * - executar a classe principal
  *
- * Não interpreta Java → delega para o próprio JDK.
+ * Diferente da primeira versão:
+ * esta classe agora entende PROJETOS,
+ * e não apenas arquivos isolados.
  */
 public class RunManager {
 
     /**
-     * Compila e executa um arquivo Java.
-     *
-     * @param file Arquivo .java a ser executado
-     * @return Saída completa (erros + execução)
+     * Scanner responsável por localizar
+     * todos os arquivos .java do projeto.
      */
-    public String runJavaFile(File file){
+    private final ProjectScanner scanner = new ProjectScanner();
+
+    /**
+     * Compila e executa um projeto Java inteiro.
+     *
+     * @param projectRoot raiz do projeto
+     *                    Exemplo:
+     *                    EyeCode/
+     *
+     * @param mainClass classe principal completa
+     *                  Ex:
+     *                  com.eyecode.Main
+     *
+     * @return saída da compilação + execução
+     */
+    public String runProject(File projectRoot, String mainClass) {
+
         StringBuilder output = new StringBuilder();
 
         try {
-            // Diretorio onde o arquivo esta localizado
-            File dir = file.getParentFile();
 
             /**
-             * ETAPA 1: COMPILAÇÃO
+             * =========================
+             * SOURCE ROOT
+             * =========================
              *
-             * Executa: javac NomeArquivo.java
+             * Agora trabalhamos com:
+             *
+             * projeto inteiro
+             *
+             * e NÃO mais com arquivo solto.
+             *
+             * Então a source root fica:
+             *
+             * EyeCode/src/main/java
              */
-            ProcessBuilder compile = new ProcessBuilder(
-                    "javac",
-                    file.getName()
-            );
+            File srcRoot = new File(projectRoot, "src/main/java");
 
-            // Define o diretório de execução
-            compile.directory(dir);
 
-            Process compileProcess = compile.start();
+            /**
+             * =========================
+             * OUT DIRECTORY
+             * =========================
+             *
+             * Diretório onde os .class
+             * compilados serão gerados.
+             *
+             * Ex:
+             *
+             * out/com/eyecode/Main.class
+             */
+            File outDir = new File(projectRoot, "out");
 
-            // Captura erros de compilacao (stderr)
+            if (!outDir.exists()) {
+                outDir.mkdirs();
+            }
+
+            /**
+             * =========================
+             * SCAN PROJECT
+             * =========================
+             *
+             * Procura TODOS os .java
+             * do projeto recursivamente.
+             */
+            List<File> javaFiles = scanner.findJavaFiles(srcRoot);
+
+            if (javaFiles.isEmpty()) {
+                return "No Java files found.";
+            }
+
+            /**
+             * =========================
+             * BUILD COMPILE COMMAND
+             * =========================
+             *
+             * Monta dinamicamente:
+             *
+             * javac -d out arquivo1.java arquivo2.java ...
+             *
+             * Isso substitui o antigo:
+             *
+             * javac Main.java
+             */
+            List<String> compileCommand = new ArrayList<>();
+
+            compileCommand.add("javac");
+
+            /**
+             * -d
+             *
+             * Define pasta de saída
+             * dos arquivos compilados.
+             */
+            compileCommand.add("-d");
+            compileCommand.add("out");
+
+            /**
+             * Adiciona TODOS os arquivos Java
+             * encontrados no projeto.
+             */
+            for (File file : javaFiles) {
+                compileCommand.add(file.getPath());
+            }
+
+            /**
+             * =========================
+             * COMPILE PROCESS
+             * =========================
+             */
+            ProcessBuilder compileBuilder = new ProcessBuilder(compileCommand);
+            compileBuilder.directory(projectRoot);
+
+            Process compileProcess = compileBuilder.start();
+
+            /**
+             * Captura erros de compilação.
+             */
             BufferedReader compileError = new BufferedReader(
-                    new InputStreamReader(compileProcess.getErrorStream())
+                    new InputStreamReader(compileProcess.getErrorStream()
+                    )
             );
 
             String line;
 
-            // Le todas as mensagens de erro
-            while ((line = compileError.readLine()) != null){
+            while ((line = compileError.readLine()) != null) {
                 output.append(line).append("\n");
             }
 
-            // Espera a compilacao terminar
             compileProcess.waitFor();
 
             /**
-             * ETAPA 2: EXECUÇÃO
-             *
-             * Executa: java NomeClasse
+             * Se houve erro de compilacao,
+             * interrompe a execucao.
              */
-            String className = file.getName().replace(".java", "");
+            if (!output.isEmpty()) {
+                return output.toString();
+            }
 
-            ProcessBuilder run = new ProcessBuilder(
+            /**
+             * =========================
+             * RUN COMMAND
+             * =========================
+             *
+             * Executa:
+             *
+             * java -cp out com.eyecode.Main
+             *
+             * Agora usamos classpath.
+             *
+             * Isso permite:
+             *
+             * - imports
+             * - packages
+             * - múltiplas classes
+             */
+            ProcessBuilder runBuilder = new ProcessBuilder(
                     "java",
-                    className
+                    "-cp",
+                    "out",
+                    mainClass
             );
-            run.directory(dir);
 
-            Process runProcess = run.start();
+            runBuilder.directory(projectRoot);
 
-            // Captura a saida normal (stdout)
+            Process runProcess = runBuilder.start();
+
+            /**
+             * Captura saída normal.
+             */
             BufferedReader runOutput = new BufferedReader(
                     new InputStreamReader(runProcess.getInputStream())
             );
 
-            // Le a saida do programa
-            while ((line = runOutput.readLine()) != null){
+            while ((line = runOutput.readLine()) != null) {
+                output.append(line).append("\n");
+            }
+
+            /**
+             * Captura erros da JVM.
+             *
+             * MUITO importante para debug.
+             */
+            BufferedReader runErrors = new BufferedReader(
+                    new InputStreamReader(runProcess.getErrorStream())
+            );
+
+            while ((line = runOutput.readLine()) != null) {
                 output.append(line).append("\n");
             }
 
             runProcess.waitFor();
 
-        }catch (Exception e){
-
-            // Tratamento generico de erro
-            output.append("Error: ").append(e.getMessage());
+        } catch (Exception e) {
+            output.append("Error: ")
+                    .append(e.getMessage());
         }
         return output.toString();
     }
+
 }

@@ -176,7 +176,8 @@ public class MainWindow extends JFrame {
         consolePanel.print("Running...\n");
 
         // Executa via RunManager
-        String output = runManager.runJavaFile(doc.getFile());
+        String output = runManager.runProject(new File("."),
+                "com.eyecode.Main");
 
         consolePanel.print(output);
 
