@@ -184,6 +184,7 @@ public class MainWindow extends JFrame {
         consolePanel.print(output);
 
     }
+
     /**
      * Abre um arquivo do sistema usando JFileChooser.
      *
