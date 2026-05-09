@@ -34,13 +34,9 @@ public class RunManager {
      *                    Exemplo:
      *                    EyeCode/
      *
-     * @param mainClass classe principal completa
-     *                  Ex:
-     *                  com.eyecode.Main
-     *
      * @return saída da compilação + execução
      */
-    public String runProject(File projectRoot, String mainClass) {
+    public String runProject(File projectRoot) {
 
         StringBuilder output = new StringBuilder();
 
@@ -92,8 +88,11 @@ public class RunManager {
              */
             List<File> javaFiles = scanner.findJavaFiles(srcRoot);
 
-            if (javaFiles.isEmpty()) {
-                return "No Java files found.";
+            String mainClass = findMainClass(javaFiles);
+
+
+            if (mainClass == null) {
+                return "Main class not found.";
             }
 
             /**
@@ -293,6 +292,82 @@ public class RunManager {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private String buildQualifiedClassName(File file) {
+
+        try {
+
+            // Le conteudo do arquivo
+            String content = Files.readString(file.toPath());
+
+            String packageName = "";
+
+            /**
+             * Procura a linha do package...
+             */
+            for (String line : content.split("\n")) {
+
+                line = line.trim();
+
+                if (line.startsWith("package ")) {
+
+                    packageName = line.replace("package ", "")
+                            .replace(";", "");
+
+                    break;
+                }
+
+            }
+
+            /**
+             * Nome da Class:
+             * Main.java -> Main
+             */
+            String className = file.getName().replace(".java", "");
+
+            /**
+             * Se existir package:
+             * Ex: com.br.Main
+             */
+            if (!packageName.isEmpty()) {
+
+                return packageName + "." + className;
+            }
+
+            /**
+             * Classe sem package.
+             */
+            return className;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private String findMainClass(List<File> javaFiles){
+
+        for (File file : javaFiles) {
+
+            try {
+
+                // Le todo o conteudo do arquivo
+                String content = Files.readString(file.toPath()
+                );
+
+                /**
+                 * Procura o metodo Main.
+                 * verificacao de texto simples.
+                 */
+                if (content.contains("public static void main")){
+
+                    return buildQualifiedClassName(file);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
     }
 
 }

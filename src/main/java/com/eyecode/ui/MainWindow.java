@@ -36,6 +36,7 @@ public class MainWindow extends JFrame {
     // Explorer de arquivos (lado esquerdo)
     private FileExplorerPanel explorerPanel;
 
+
     public MainWindow(){
 
         // Titulo da janela
@@ -175,9 +176,10 @@ public class MainWindow extends JFrame {
         }
         consolePanel.print("Running...\n");
 
+        File projectRoot = explorerPanel.getCurrentRoot();
+
         // Executa via RunManager
-        String output = runManager.runProject(new File("."),
-                "com.eyecode.Main");
+        String output = runManager.runProject(projectRoot);
 
         consolePanel.print(output);
 

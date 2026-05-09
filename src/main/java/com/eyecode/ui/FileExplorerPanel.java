@@ -256,4 +256,8 @@ public class FileExplorerPanel extends JPanel {
         deleteRecursively(file);
         refresh();
     }
+
+    public File getCurrentRoot() {
+        return currentRoot;
+    }
 }
