@@ -1,7 +1,7 @@
 package com.eyecode;
 
 import com.eyecode.run.ProjectScanner;
-//import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.FlatDarkLaf;
 import com.eyecode.ui.MainWindow;
 
 import javax.swing.*;
@@ -9,7 +9,7 @@ import java.awt.*;
 
 public class Main {
     public static void main(String[] args) {
-//        FlatDarkLaf.setup();
+        FlatDarkLaf.setup();
 
 
         UIManager.put("defaultFont", loadEditorFont());

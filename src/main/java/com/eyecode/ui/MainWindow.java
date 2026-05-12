@@ -37,7 +37,7 @@ public class MainWindow extends JFrame {
     private FileExplorerPanel explorerPanel;
 
 
-    public MainWindow(){
+    public MainWindow() {
 
         // Titulo da janela
         setTitle("EyeCode");
@@ -99,13 +99,12 @@ public class MainWindow extends JFrame {
         SwingUtilities.invokeLater(this::openDefaultFile);
     }
 
-    private void createMenu(){
+    private void createMenu() {
         JMenuBar menuBar = new JMenuBar();
 
         JMenu runMenu = new JMenu("Run");
         JMenuItem runItem = new JMenuItem("Run");
         runItem.addActionListener(e -> runCode());
-
 
 
         runMenu.add(runItem);
@@ -145,11 +144,11 @@ public class MainWindow extends JFrame {
 
     /**
      * Executa o código Java do documento atual.
-     *
+     * <p>
      * Pipeline:
      * salvar → compilar → executar → mostrar saída
      */
-    private void runCode(){
+    private void runCode() {
         EditorPanel editor = getCurrentEditor();
 
         if (editor == null) return;
@@ -162,7 +161,7 @@ public class MainWindow extends JFrame {
          * Garante que o arquivo exista antes de rodar.
          * (não dá pra compilar algo que não está no disco)
          */
-        if (doc.getFile() == null){
+        if (doc.getFile() == null) {
             saveFileAs();
             doc = editor.getDocument();
         }
@@ -171,7 +170,7 @@ public class MainWindow extends JFrame {
          * Garante que o código atual está salvo
          * antes de compilar.
          */
-        if (doc.getModified()){
+        if (doc.getModified()) {
             saveFile();
         }
         consolePanel.print("Running...\n");
@@ -179,24 +178,28 @@ public class MainWindow extends JFrame {
         File projectRoot = explorerPanel.getCurrentRoot();
 
         // Executa via RunManager
-        String output = runManager.runProject(projectRoot);
+        new Thread(() -> {
+            String output = runManager.runProject(projectRoot);
 
-        consolePanel.print(output);
+            SwingUtilities.invokeLater(() -> {
+                consolePanel.print(output);
+        });
+        }).start();
 
     }
 
     /**
      * Abre um arquivo do sistema usando JFileChooser.
-     *
+     * <p>
      * Fluxo:
      * arquivo → conteúdo → Document → nova aba
      */
-    private void openFile(){
+    private void openFile() {
         JFileChooser chooser = new JFileChooser();
 
         int result = chooser.showOpenDialog(this);
 
-        if (result == JFileChooser.APPROVE_OPTION){
+        if (result == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
 
             // Lê conteúdo do arquivo
@@ -208,7 +211,7 @@ public class MainWindow extends JFrame {
             // Abre no editor
             addNewTab(document, file.getName());
 
-           consolePanel.print("Opened" + file.getName());
+            consolePanel.print("Opened" + file.getName());
 
 
         }
@@ -216,25 +219,25 @@ public class MainWindow extends JFrame {
 
     /**
      * Salva o arquivo atual.
-     *
+     * <p>
      * Se não existir arquivo (novo documento),
      * redireciona para Save As.
      */
-    private void saveFile(){
+    private void saveFile() {
         EditorPanel editor = getCurrentEditor();
 
         if (editor == null) return;
 
         Document doc = editor.getDocument();
 
-        if (doc == null){
+        if (doc == null) {
             return;
         }
 
         File file = doc.getFile();
 
         // Documento novo → precisa escolher onde salvar
-        if (file == null){
+        if (file == null) {
             saveFileAs();
             return;
         }
@@ -249,14 +252,14 @@ public class MainWindow extends JFrame {
     }
 
     //Save file for new docs
-    private void saveFileAs(){
+    private void saveFileAs() {
         EditorPanel editor = getCurrentEditor();
 
         if (editor == null) return;
 
         Document doc = editor.getDocument();
 
-        if (doc == null){
+        if (doc == null) {
             return;
         }
 
@@ -264,7 +267,7 @@ public class MainWindow extends JFrame {
 
         int result = chooser.showSaveDialog(this);
 
-        if (result == JFileChooser.APPROVE_OPTION){
+        if (result == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
 
             fileManager.saveFile(file, doc.getContent());
@@ -282,24 +285,25 @@ public class MainWindow extends JFrame {
             consolePanel.print("File Saved As" + file.getName());
         }
     }
-    private void newFile(){
-        Document doc = new Document(null,"");
 
-        addNewTab(doc,"Untitled");
+    private void newFile() {
+        Document doc = new Document(null, "");
+
+        addNewTab(doc, "Untitled");
 
         consolePanel.print("New File Created");
     }
 
     /**
      * Cria uma nova aba com um editor independente.
-     *
+     * <p>
      * Cada aba possui:
      * - seu próprio EditorPanel
      * - seu próprio Document
-     *
+     * <p>
      * Isso permite múltiplos arquivos abertos simultaneamente.
      */
-    private void addNewTab(Document document, String title){
+    private void addNewTab(Document document, String title) {
         EditorPanel editor = new EditorPanel();
 
         // Conecta o documento ao editor
@@ -320,17 +324,17 @@ public class MainWindow extends JFrame {
 
     /**
      * Retorna o editor atualmente ativo.
-     *
+     * <p>
      * Isso é essencial porque:
      * - todas as ações (save, run, etc.)
-     *   atuam apenas na aba atual
+     * atuam apenas na aba atual
      */
-    private EditorPanel getCurrentEditor(){
+    private EditorPanel getCurrentEditor() {
         return (EditorPanel) tabbedPane.getSelectedComponent();
     }
 
 
-    private void updateTabTitle(EditorPanel editor){
+    private void updateTabTitle(EditorPanel editor) {
         Document doc = editor.getDocument();
 
         int index = tabbedPane.indexOfComponent(editor);
@@ -339,12 +343,12 @@ public class MainWindow extends JFrame {
 
         String title;
 
-        if (doc.getFile() != null){
+        if (doc.getFile() != null) {
             title = doc.getFile().getName();
-        }else {
+        } else {
             title = "Untitled";
         }
-        if (doc.getModified()){
+        if (doc.getModified()) {
             title += " *";
         }
 
@@ -353,19 +357,19 @@ public class MainWindow extends JFrame {
 
     /**
      * Fecha a aba atual com segurança.
-     *
+     * <p>
      * Se houver alterações não salvas:
      * - pergunta ao usuário
      * - evita perda de dados
      */
-    private void closeCurrentTab(){
+    private void closeCurrentTab() {
         EditorPanel editor = getCurrentEditor();
 
         if (editor == null) return;
 
         Document doc = editor.getDocument();
 
-        if (doc != null && doc.getModified()){
+        if (doc != null && doc.getModified()) {
             int opt = JOptionPane.showConfirmDialog(
                     this,
                     "File has unsaved changes. Save before closing?",
@@ -379,14 +383,14 @@ public class MainWindow extends JFrame {
         tabbedPane.remove(editor);
     }
 
-    private void openFolder(){
+    private void openFolder() {
         JFileChooser chooser = new JFileChooser();
 
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
         int result = chooser.showOpenDialog(this);
 
-        if (result == JFileChooser.APPROVE_OPTION){
+        if (result == JFileChooser.APPROVE_OPTION) {
             File folder = chooser.getSelectedFile();
 
             explorerPanel.setRootDirectory(folder);
@@ -395,7 +399,7 @@ public class MainWindow extends JFrame {
         }
     }
 
-    private void refreshExplorer(){
+    private void refreshExplorer() {
         explorerPanel.refresh();
         consolePanel.print("Explorer Refreshed");
     }
@@ -410,3 +414,5 @@ public class MainWindow extends JFrame {
         }
     }
 }
+
+

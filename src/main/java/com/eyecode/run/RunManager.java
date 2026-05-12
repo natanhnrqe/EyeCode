@@ -57,7 +57,7 @@ public class RunManager {
              *
              * EyeCode/src/main/java
              */
-            File srcRoot = projectRoot;
+            File srcRoot = new File(projectRoot, "src/main/java");
 
 
             /**
@@ -110,7 +110,12 @@ public class RunManager {
              */
             List<String> compileCommand = new ArrayList<>();
 
+            String classPath = buildLibraryClasspath(projectRoot);
+
             compileCommand.add("javac");
+
+            compileCommand.add("-cp");
+            compileCommand.add(classPath);
 
             /**
              * -d
@@ -201,10 +206,14 @@ public class RunManager {
              * - packages
              * - múltiplas classes
              */
+
+            System.out.println("opa" + compileCommand);
+
+
             ProcessBuilder runBuilder = new ProcessBuilder(
                     "java",
                     "-cp",
-                    "out",
+                    classPath,
                     mainClass
             );
 
@@ -370,4 +379,40 @@ public class RunManager {
         return null;
     }
 
+    private String buildLibraryClasspath(File projectRoot) {
+
+        File libsDir = new File(projectRoot, "libs");
+
+
+
+        String separtor = System.getProperty("os.name")
+                .toLowerCase()
+                .contains("win")
+                ? ";" : ":";
+
+        StringBuilder classPath = new StringBuilder("out");
+
+        if (!libsDir.exists()) {
+            return classPath.toString();
+        }
+
+        File[] files = libsDir.listFiles();
+
+        if (files != null) {
+
+            for (File file : files) {
+
+                if (file.getName().endsWith(".jar")) {
+
+                    classPath.append(separtor).append(file.getAbsolutePath());
+                }
+            }
+        }
+
+        return classPath.toString();
+    }
 }
+
+
+
+
