@@ -5,27 +5,45 @@ import java.awt.*;
 
 public class ConsolePanel extends JPanel {
 
-    private JTextArea consoleArea;
+    private JTextArea outputArea;
+    private JTextField inputField;
 
     public ConsolePanel() {
 
         setLayout(new BorderLayout());
 
-        consoleArea = new JTextArea();
-        consoleArea.setFont(new Font("Consolas", Font.PLAIN, 14));
-        consoleArea.setEditable(false);
+        setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
 
-        consoleArea.setBackground(new Color(43, 43, 43));
-        consoleArea.setForeground(new Color(169, 183, 198));
-        consoleArea.setCaretColor(Color.WHITE);
+        outputArea = new JTextArea();
+        outputArea.setEditable(false);
+        outputArea.setBorder(
+                BorderFactory.createEmptyBorder(8, 8, 8, 8)
+        );
 
-        JScrollPane scrollPane = new JScrollPane(consoleArea);
+        JScrollPane scrollPane = new JScrollPane(outputArea);
+
+        inputField = new JTextField();
+        inputField.setToolTipText("Digite um comando...");
+        inputField.setBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(new Color(60,63,65), 1),
+                        BorderFactory.createEmptyBorder(6, 8, 6, 8)
+                )
+        );
+
+
 
         add(scrollPane, BorderLayout.CENTER);
+        add(inputField, BorderLayout.SOUTH);
+
+
     }
 
     public void print(String text){
-        consoleArea.append(text + "\n");
+        outputArea.append(text + "\n");
     }
 
+    public JTextField getInputField() {
+        return inputField;
+    }
 }

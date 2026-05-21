@@ -25,7 +25,7 @@ public class MainWindow extends JFrame {
     private JTabbedPane tabbedPane;
 
     // Exibe logs e saida de execucao
-    private ConsolePanel consolePanel;
+    private TerminalPanel terminalPanel;
 
     // Responsavel por operacoes de arquivo (ler/salvar)
     private FileManager fileManager;
@@ -55,7 +55,7 @@ public class MainWindow extends JFrame {
 
         // Cria componentes principais
         tabbedPane = new JTabbedPane();
-        consolePanel = new ConsolePanel();
+        terminalPanel = new TerminalPanel();
         explorerPanel = new FileExplorerPanel(new File("."));
 
         /**
@@ -75,11 +75,19 @@ public class MainWindow extends JFrame {
         JSplitPane verticalSplit = new JSplitPane(
                 JSplitPane.VERTICAL_SPLIT,
                 horizontalSplit,
-                consolePanel
+                terminalPanel
         );
+
+
 
         verticalSplit.setDividerLocation(450);
         add(verticalSplit, BorderLayout.CENTER);
+
+        horizontalSplit.setDividerSize(4);
+        verticalSplit.setDividerSize(4);
+
+        horizontalSplit.setBorder(null);
+        verticalSplit.setBorder(null);
 
         // Cria o menu superior
         createMenu();
@@ -173,7 +181,7 @@ public class MainWindow extends JFrame {
         if (doc.getModified()) {
             saveFile();
         }
-        consolePanel.print("Running...\n");
+        terminalPanel.print("Running...\n");
 
         File projectRoot = explorerPanel.getCurrentRoot();
 
@@ -182,7 +190,7 @@ public class MainWindow extends JFrame {
             String output = runManager.runProject(projectRoot);
 
             SwingUtilities.invokeLater(() -> {
-                consolePanel.print(output);
+                terminalPanel.print(output);
         });
         }).start();
 
@@ -211,7 +219,7 @@ public class MainWindow extends JFrame {
             // Abre no editor
             addNewTab(document, file.getName());
 
-            consolePanel.print("Opened" + file.getName());
+            terminalPanel.print("Opened" + file.getName());
 
 
         }
@@ -248,7 +256,7 @@ public class MainWindow extends JFrame {
         // Marca como sincronizado
         doc.setModified(false);
 
-        consolePanel.print("File Saved: " + file.getName());
+        terminalPanel.print("File Saved: " + file.getName());
     }
 
     //Save file for new docs
@@ -282,7 +290,7 @@ public class MainWindow extends JFrame {
                     file.getName()
             );
 
-            consolePanel.print("File Saved As" + file.getName());
+            terminalPanel.print("File Saved As" + file.getName());
         }
     }
 
@@ -291,7 +299,7 @@ public class MainWindow extends JFrame {
 
         addNewTab(doc, "Untitled");
 
-        consolePanel.print("New File Created");
+        terminalPanel.print("New File Created");
     }
 
     /**
@@ -395,13 +403,13 @@ public class MainWindow extends JFrame {
 
             explorerPanel.setRootDirectory(folder);
 
-            consolePanel.print("Opened Folder: " + folder.getAbsolutePath());
+            terminalPanel.print("Opened Folder: " + folder.getAbsolutePath());
         }
     }
 
     private void refreshExplorer() {
         explorerPanel.refresh();
-        consolePanel.print("Explorer Refreshed");
+        terminalPanel.print("Explorer Refreshed");
     }
 
     private void openDefaultFile() {
