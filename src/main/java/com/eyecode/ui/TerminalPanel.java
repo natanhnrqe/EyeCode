@@ -9,17 +9,21 @@ import java.awt.event.KeyEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TerminalPanel extends JPanel {
 
-    /**
-     * Area principal do terminal
-     */
+
     private JTextPane terminalArea;
 
     private int promptPosition;
 
     private File currentDirectory;
+
+    private final List<String> commandHistory = new ArrayList<>();
+
+    private int historyIndex = -1;
 
     public TerminalPanel() {
 
@@ -87,11 +91,43 @@ public class TerminalPanel extends JPanel {
                     }
                 }
 
-                if (
-                        e.getKeyCode() == KeyEvent.VK_DOWN ||
-                        e.getKeyCode() == KeyEvent.VK_LEFT ||
-                        e.getKeyCode() == KeyEvent.VK_UP
-                ) {
+                if (e.getKeyCode() == KeyEvent.VK_UP) {
+
+                    e.consume();
+
+                    if (commandHistory.isEmpty()) return;
+
+                    historyIndex--;
+
+                    if (historyIndex < 0) historyIndex = 0;
+
+                    replaceCurrentCommand(commandHistory.get(historyIndex));
+
+                    return;
+                }
+
+                if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+
+                    e.consume();
+
+                    if (commandHistory.isEmpty()) return;
+
+                    historyIndex++;
+
+                    if (historyIndex >= commandHistory.size()) {
+                        historyIndex = commandHistory.size();
+
+                        replaceCurrentCommand("");
+
+                        return;
+                    }
+
+                    replaceCurrentCommand(commandHistory.get(historyIndex));
+
+                    return;
+                }
+
+                if (e.getKeyCode() == KeyEvent.VK_LEFT) {
                     if (caretPosition <= promptPosition) {
                         e.consume();
                         moveCaretToEnd();
@@ -129,74 +165,127 @@ public class TerminalPanel extends JPanel {
      */
     private void handleCommand(){
 
-        try {
+            try {
 
-            int length = terminalArea.getDocument().getLength();
+                int length =
+                        terminalArea.getDocument().getLength();
 
-            String command = terminalArea.getText(promptPosition,
-                    length - promptPosition)
-                    .trim();
+                String command =
+                        terminalArea.getText(
+                                promptPosition,
+                                length - promptPosition
+                        ).trim();
 
-            if (command.isBlank()) {
-                appendPrompt();
-                return;
-            }
+                if (command.isBlank()) {
 
-            if (command.startsWith("cd ")) {
+                    appendPrompt();
 
-                String path = command.substring(3).trim();
-
-                File newDir = new File(currentDirectory, path);
-
-                if (newDir.exists() && newDir.isDirectory()) {
-
-                    currentDirectory = newDir.getCanonicalFile();
-
-                } else {
-                    appendText("\nDirectory not found");
+                    return;
                 }
 
-                appendPrompt();
-                return;
+                if (command.equals("clear")
+                        || command.equals("cls")) {
 
+
+                    ui(() -> terminalArea.setText(""));
+
+                    ui(() -> appendPrompt());
+
+
+                    return;
+                }
+
+                commandHistory.add(command);
+
+                historyIndex = commandHistory.size();
+
+                new Thread(() -> {
+
+                    try {
+
+                        if (command.startsWith("cd ")) {
+
+                            String path = command.substring(3).trim();
+
+                            File newDir = new File(currentDirectory, path);
+
+                            if (newDir.exists() && newDir.isDirectory()) {
+
+                                currentDirectory = newDir.getCanonicalFile();
+
+                            } else {
+                                appendText("\nDirectory not found");
+                            }
+
+                            appendPrompt();
+                            return;
+
+                    }
+
+
+                        ProcessBuilder builder =
+                                new ProcessBuilder(
+                                        "powershell",
+                                        "-Command",
+                                        command
+                                );
+
+                        builder.directory(currentDirectory);
+
+                        builder.redirectErrorStream(true);
+
+                        Process process =
+                                builder.start();
+
+                        BufferedReader reader =
+                                new BufferedReader(
+                                        new InputStreamReader(
+                                                process.getInputStream()
+                                        )
+                                );
+
+                        String line;
+
+                        ui(() -> appendText("\n"));
+
+                        while ((line = reader.readLine()) != null) {
+
+                            String finalLine = line;
+
+                            ui(() ->
+                                    appendText(
+                                            finalLine + "\n"
+                                    )
+                            );
+                        }
+
+                        process.waitFor();
+
+                        ui(() -> {
+
+                            appendPrompt();
+                        });
+
+                    } catch (Exception e) {
+
+                        ui(() -> {
+
+                            appendText(
+                                    "\nError: "
+                                            + e.getMessage()
+                            );
+
+                            appendPrompt();
+                        });
+                    }
+
+                }).start();
+
+            } catch (Exception e) {
+
+                e.printStackTrace();
             }
 
-            ProcessBuilder builder = new ProcessBuilder(
-                    "powershell",
-                    "-Command",
-                    command
-            );
-
-            builder.directory(currentDirectory);
-
-            builder.redirectErrorStream(true);
-
-            Process process = builder.start();
-
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(
-                            process.getInputStream()
-                    )
-            );
-
-            String line;
-
-            appendText("\n");
-
-            while ((line = reader.readLine()) != null) {
-
-                appendText(line + "\n");
-            }
-
-            process.waitFor();
-
-            appendPrompt();
-
-        } catch (Exception e) {
-            appendText("/nError: " + e.getMessage());
-
-            appendPrompt();
-        }
     }
 
     public void print(String text){
@@ -239,5 +328,29 @@ public class TerminalPanel extends JPanel {
         terminalArea.insertComponent(separator);
 
         appendText("\n");
+
+    }
+
+    private void replaceCurrentCommand(String text) {
+
+        try {
+
+            StyledDocument doc = terminalArea.getStyledDocument();
+
+            doc.remove(promptPosition, doc.getLength() - promptPosition);
+
+            doc.insertString(doc.getLength(), text, null);
+
+            moveCaretToEnd();
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+        }
+    }
+
+    private void ui(Runnable runnable) {
+
+        SwingUtilities.invokeLater(runnable);
     }
 }

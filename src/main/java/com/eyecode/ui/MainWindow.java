@@ -63,7 +63,7 @@ public class MainWindow extends JFrame {
          * Layout principal dividido:
          *
          * [ Explorer | Editor ]
-         * [      Console      ]
+         * [      Terminal      ]
          *
          * Isso simula layout de IDE real
          */

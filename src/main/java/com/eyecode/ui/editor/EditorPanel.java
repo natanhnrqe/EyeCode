@@ -44,7 +44,7 @@ public class EditorPanel extends JPanel {
             "if", "else", "for", "while", "return",
             "new", "record", "sealed", "permits", "var", "yield",
             "interface", "int", "private", "protected", "do", "boolean",
-            "final"
+            "final", "import", "package"
 
     };
 
