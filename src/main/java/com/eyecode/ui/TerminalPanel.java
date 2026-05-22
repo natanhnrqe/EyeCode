@@ -4,6 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 public class TerminalPanel extends JPanel {
 
@@ -45,12 +47,33 @@ public class TerminalPanel extends JPanel {
 
         appendPrompt();
 
+
         /**
          * Captura ENTER.
          */
         terminalArea.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
+
+
+                int caretPosition = terminalArea.getCaretPosition();
+
+                if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
+
+                    if (caretPosition <= promptPosition) {
+
+                        e.consume();
+
+                        return;
+                    }
+                }
+
+                if (e.getKeyCode() == KeyEvent.VK_UP) {
+
+                    if (caretPosition <= promptPosition) {
+                        e.consume();
+                    }
+                }
 
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
 
@@ -69,6 +92,8 @@ public class TerminalPanel extends JPanel {
 
         promptPosition = terminalArea.getDocument().getLength();
 
+        moveCaretToEnd();
+
     }
 
     /**
@@ -84,7 +109,37 @@ public class TerminalPanel extends JPanel {
                     length - promptPosition)
                     .trim();
 
-            terminalArea.append("\nExecuted: " + command);
+            if (command.isBlank()) {
+                appendPrompt();
+                return;
+            }
+
+            ProcessBuilder builder = new ProcessBuilder(
+                    "powershell",
+                    "-Command",
+                    command
+            );
+
+            builder.redirectErrorStream(true);
+
+            Process process = builder.start();
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(
+                            process.getInputStream()
+                    )
+            );
+
+            String line;
+
+            terminalArea.append("\n");
+
+            while ((line = reader.readLine()) != null) {
+
+                terminalArea.append(line + "\n");
+            }
+
+            process.waitFor();
 
             appendPrompt();
 
@@ -97,5 +152,12 @@ public class TerminalPanel extends JPanel {
 
     public void print(String text){
         terminalArea.append(text + "\n");
+    }
+
+    private void moveCaretToEnd(){
+
+        terminalArea.setCaretPosition(
+                terminalArea.getDocument().getLength()
+        );
     }
 }
