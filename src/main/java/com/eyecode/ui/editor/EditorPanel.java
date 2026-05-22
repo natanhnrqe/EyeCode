@@ -61,6 +61,8 @@ public class EditorPanel extends JPanel {
 
         textPane = new JTextPane();
 
+
+
         Action defaultEnter = textPane.getActionMap().get(DefaultEditorKit.insertBreakAction);
         Action defaultTab = textPane.getActionMap().get(DefaultEditorKit.insertTabAction);
 
@@ -645,7 +647,7 @@ public class EditorPanel extends JPanel {
             currentLineHighlight = highlighter.addHighlight(
                     lineElement.getStartOffset(),
                     lineElement.getEndOffset(),
-                    new FullLineHighlightPaint(new Color(60,63,65))
+                    new FullLineHighlightPaint(new Color(39,41,42))
             );
         } catch (Exception e) {
             e.printStackTrace();
@@ -670,7 +672,7 @@ public class EditorPanel extends JPanel {
                 Object tag = highlighter.addHighlight(
                         el.getStartOffset(),
                         el.getEndOffset(),
-                        new FullLineHighlightPaint(new Color(72, 76, 78))
+                        new FullLineHighlightPaint(new Color(70, 15, 40))
                 );
 
                 breakpointHighlights.add(tag);
@@ -681,7 +683,7 @@ public class EditorPanel extends JPanel {
 
 
     private void applyDarkTheme(){
-        textPane.setBackground(new Color(25, 26 ,28));
+        textPane.setBackground(new Color(30, 30, 30));
         textPane.setForeground(new Color(188, 190, 196));
         textPane.setCaretColor(Color.WHITE);
         textPane.setSelectionColor(new Color(33, 66, 131));

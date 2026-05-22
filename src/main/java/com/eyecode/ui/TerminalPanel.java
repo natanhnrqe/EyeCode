@@ -1,6 +1,8 @@
 package com.eyecode.ui;
 
 import javax.swing.*;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.StyledDocument;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -13,7 +15,7 @@ public class TerminalPanel extends JPanel {
     /**
      * Area principal do terminal
      */
-    private JTextArea terminalArea;
+    private JTextPane terminalArea;
 
     private int promptPosition;
 
@@ -23,9 +25,19 @@ public class TerminalPanel extends JPanel {
 
         setLayout(new BorderLayout());
 
-        terminalArea = new JTextArea();
+        terminalArea = new JTextPane();
+
+        terminalArea.setHighlighter(null);
 
         currentDirectory = new File(System.getProperty("user.dir"));
+
+        terminalArea.addCaretListener(e -> {
+
+            if (terminalArea.getCaretPosition() < promptPosition) {
+
+                moveCaretToEnd();
+            }
+        });
 
         /**
          * Customizacao CONSOLE
@@ -37,14 +49,16 @@ public class TerminalPanel extends JPanel {
 
         terminalArea.setCaretColor(Color.WHITE);
 
-        terminalArea.setFont(new Font("Consolas", Font.PLAIN, 14));
+
 
         terminalArea.setBorder(BorderFactory.createEmptyBorder(
-                10,
-                10,
-                10,
-                10
+                12,
+                12,
+                12,
+                12
         ));
+
+        terminalArea.setEditable(true);
 
         JScrollPane scrollPane = new JScrollPane(terminalArea);
 
@@ -73,11 +87,17 @@ public class TerminalPanel extends JPanel {
                     }
                 }
 
-                if (e.getKeyCode() == KeyEvent.VK_UP) {
-
+                if (
+                        e.getKeyCode() == KeyEvent.VK_DOWN ||
+                        e.getKeyCode() == KeyEvent.VK_LEFT ||
+                        e.getKeyCode() == KeyEvent.VK_UP
+                ) {
                     if (caretPosition <= promptPosition) {
                         e.consume();
+                        moveCaretToEnd();
+                        return;
                     }
+
                 }
 
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
@@ -91,8 +111,11 @@ public class TerminalPanel extends JPanel {
         }
 
     private void appendPrompt(){
-        terminalArea.append(
-                "\nPS " + currentDirectory.getAbsolutePath() + "> "
+
+        appendSeparator();
+
+        appendText(
+                "PS " + currentDirectory.getAbsolutePath() + "> "
         );
 
         promptPosition = terminalArea.getDocument().getLength();
@@ -130,7 +153,7 @@ public class TerminalPanel extends JPanel {
                     currentDirectory = newDir.getCanonicalFile();
 
                 } else {
-                    terminalArea.append("\nDirectory not found");
+                    appendText("\nDirectory not found");
                 }
 
                 appendPrompt();
@@ -158,11 +181,11 @@ public class TerminalPanel extends JPanel {
 
             String line;
 
-            terminalArea.append("\n");
+            appendText("\n");
 
             while ((line = reader.readLine()) != null) {
 
-                terminalArea.append(line + "\n");
+                appendText(line + "\n");
             }
 
             process.waitFor();
@@ -170,14 +193,14 @@ public class TerminalPanel extends JPanel {
             appendPrompt();
 
         } catch (Exception e) {
-            terminalArea.append("/nError: " + e.getMessage());
+            appendText("/nError: " + e.getMessage());
 
             appendPrompt();
         }
     }
 
     public void print(String text){
-        terminalArea.append(text + "\n");
+        appendText(text + "\n");
     }
 
     private void moveCaretToEnd(){
@@ -185,5 +208,36 @@ public class TerminalPanel extends JPanel {
         terminalArea.setCaretPosition(
                 terminalArea.getDocument().getLength()
         );
+    }
+
+    private void appendText(String text){
+
+        StyledDocument doc = terminalArea.getStyledDocument();
+
+        try {
+
+            doc.insertString(
+                    doc.getLength(),
+                    text,
+                    null
+            );
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+        }
+
+    }
+
+    private void appendSeparator() {
+
+        JSeparator separator = new JSeparator();
+
+        separator.setForeground(new Color(60, 63, 65));
+
+
+        terminalArea.insertComponent(separator);
+
+        appendText("\n");
     }
 }

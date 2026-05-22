@@ -23,7 +23,7 @@ public class LineNumberPanel extends JPanel {
         this.textPane = textPane;
 
         setFont(textPane.getFont());
-        setBackground(new Color(43,43,43));
+        setBackground(new Color(39,41,42));
         setForeground(new Color(128,128,128));
         setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
         setBorder(null);
@@ -72,18 +72,18 @@ public class LineNumberPanel extends JPanel {
             try {
                 Rectangle r = textPane.modelToView2D(line.getStartOffset()).getBounds();
                 // 1. FUNDO BASE (sempre)
-                g.setColor(new Color(43, 43, 43));
+                g.setColor(new Color(30, 30, 30));
                 g.fillRect(0, r.y, getWidth(), r.height);
 
                 // fundo breakpoint
                 if (breakpoints.contains(i)){
-                    g.setColor(new Color(60,63,65));
+                    g.setColor(new Color(30, 30, 30));
                     g.fillRect(0, r.y, getWidth(), r.height);
                 }
 
                 // linha atual
                 if (i == currentLine){
-                    g.setColor(new Color(69, 73, 74));
+                    g.setColor(new Color(39,41,42));
                     g.fillRect(0, r.y, getWidth(), r.height);
                 }
 

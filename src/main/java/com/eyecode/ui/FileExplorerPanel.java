@@ -52,7 +52,7 @@ public class FileExplorerPanel extends JPanel {
         JScrollPane scrollPane = new JScrollPane(jTree);
         add(scrollPane, BorderLayout.CENTER);
 
-        jTree.setBackground(new Color(43, 43, 43));
+        jTree.setBackground(new Color(30, 30, 30));
         jTree.setForeground(new Color(169, 183, 198));
 
 

@@ -45,6 +45,7 @@ public class MainWindow extends JFrame {
         //Tamanho inicial
         setSize(1000, 700);
 
+
         // Encerra a aplicacao ao fechar
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
