@@ -5,6 +5,7 @@ import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStreamReader;
 
 public class TerminalPanel extends JPanel {
@@ -16,11 +17,15 @@ public class TerminalPanel extends JPanel {
 
     private int promptPosition;
 
+    private File currentDirectory;
+
     public TerminalPanel() {
 
         setLayout(new BorderLayout());
 
         terminalArea = new JTextArea();
+
+        currentDirectory = new File(System.getProperty("user.dir"));
 
         /**
          * Customizacao CONSOLE
@@ -87,7 +92,7 @@ public class TerminalPanel extends JPanel {
 
     private void appendPrompt(){
         terminalArea.append(
-                "\nPS EyeCode> "
+                "\nPS " + currentDirectory.getAbsolutePath() + "> "
         );
 
         promptPosition = terminalArea.getDocument().getLength();
@@ -114,11 +119,32 @@ public class TerminalPanel extends JPanel {
                 return;
             }
 
+            if (command.startsWith("cd ")) {
+
+                String path = command.substring(3).trim();
+
+                File newDir = new File(currentDirectory, path);
+
+                if (newDir.exists() && newDir.isDirectory()) {
+
+                    currentDirectory = newDir.getCanonicalFile();
+
+                } else {
+                    terminalArea.append("\nDirectory not found");
+                }
+
+                appendPrompt();
+                return;
+
+            }
+
             ProcessBuilder builder = new ProcessBuilder(
                     "powershell",
                     "-Command",
                     command
             );
+
+            builder.directory(currentDirectory);
 
             builder.redirectErrorStream(true);
 
