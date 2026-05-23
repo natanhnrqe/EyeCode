@@ -2,6 +2,8 @@ package com.eyecode.ui;
 
 import javax.swing.*;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
@@ -34,6 +36,7 @@ public class TerminalPanel extends JPanel {
         terminalArea.setHighlighter(null);
 
         currentDirectory = new File(System.getProperty("user.dir"));
+
 
         terminalArea.addCaretListener(e -> {
 
@@ -253,7 +256,7 @@ public class TerminalPanel extends JPanel {
                             String finalLine = line;
 
                             ui(() ->
-                                    appendText(
+                                    appendAnsiText(
                                             finalLine + "\n"
                                     )
                             );
@@ -352,5 +355,45 @@ public class TerminalPanel extends JPanel {
     private void ui(Runnable runnable) {
 
         SwingUtilities.invokeLater(runnable);
+    }
+
+    private void appendColoredText(String text, Color color) {
+
+        StyledDocument doc = terminalArea.getStyledDocument();
+
+        Style style = terminalArea.addStyle("ColorStyle", null);
+
+        StyleConstants.setForeground(style, color);
+
+        try {
+            doc.insertString(doc.getLength(), text, style);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void appendAnsiText(String text) {
+
+        if (text.contains("\u001B[31m")) {
+
+            text = text.replace("\u001B[31m", "");
+
+            appendColoredText(text, new Color(255, 85, 85));
+
+            return;
+        }
+
+        if (text.contains("\u001B[32m")) {
+
+            text = text.replace("\u001B[32m", "");
+
+            appendColoredText(text, new Color(80, 250, 123));
+
+            return;
+        }
+
+        appendText(text);
     }
 }
