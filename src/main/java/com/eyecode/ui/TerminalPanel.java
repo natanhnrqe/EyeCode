@@ -8,9 +8,7 @@ import javax.swing.text.StyledDocument;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,6 +24,10 @@ public class TerminalPanel extends JPanel {
     private final List<String> commandHistory = new ArrayList<>();
 
     private int historyIndex = -1;
+
+    private Process shellProcess;
+    private BufferedWriter shellInput;
+    private BufferedReader shellOutput;
 
     public TerminalPanel() {
 
@@ -395,5 +397,75 @@ public class TerminalPanel extends JPanel {
         }
 
         appendText(text);
+    }
+
+    private void startShell() {
+
+        try {
+
+            ProcessBuilder builder = new ProcessBuilder("powershell");
+
+            builder.directory(currentDirectory);
+
+            builder.redirectErrorStream(true);
+
+            shellProcess = builder.start();
+
+            shellInput = new BufferedWriter(new OutputStreamWriter(shellProcess.getOutputStream()));
+
+            shellOutput = new BufferedReader(new InputStreamReader(shellProcess.getInputStream()));
+
+            startOutputReader();
+
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+        }
+    }
+
+    private void startOutputReader() {
+
+        new Thread(() -> {
+
+            try {
+
+                String line;
+
+                while ((line = shellOutput.readLine()) != null) {
+
+                    String finalLine = line;
+
+                    ui(() -> {
+
+                        appendAnsiText(finalLine + "\n");
+
+                        moveCaretToEnd();
+                    });
+                }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+            }
+
+
+        }).start();
+    }
+
+    private void executeCommand(String command) {
+
+        try {
+
+            shellInput.write(command);
+
+            shellInput.newLine();
+
+            shellInput.flush();
+        } catch (Exception e) {
+
+            e.printStackTrace();
+        }
+
+        }
     }
 }
