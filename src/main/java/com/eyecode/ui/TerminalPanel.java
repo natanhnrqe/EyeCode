@@ -1,7 +1,6 @@
 package com.eyecode.ui;
 
 import javax.swing.*;
-import javax.swing.text.BadLocationException;
 import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
@@ -73,7 +72,7 @@ public class TerminalPanel extends JPanel {
 
         add(scrollPane, BorderLayout.CENTER);
 
-        appendPrompt();
+        startShell();
 
 
         /**
@@ -151,145 +150,45 @@ public class TerminalPanel extends JPanel {
         });
         }
 
-    private void appendPrompt(){
-
-        appendSeparator();
-
-        appendText(
-                "PS " + currentDirectory.getAbsolutePath() + "> "
-        );
-
-        promptPosition = terminalArea.getDocument().getLength();
-
-        moveCaretToEnd();
-
-    }
+//    private void appendPrompt(){
+//
+//        appendSeparator();
+//
+//        appendText(
+//                "PS " + currentDirectory.getAbsolutePath() + "> "
+//        );
+//
+//        promptPosition = terminalArea.getDocument().getLength();
+//
+//        moveCaretToEnd();
+//
+//    }
 
     /**
      * Processa o comando digitado.
      */
     private void handleCommand(){
 
-            try {
+        try {
 
-                int length =
-                        terminalArea.getDocument().getLength();
+            int length = terminalArea.getDocument().getLength();
 
-                String command =
-                        terminalArea.getText(
-                                promptPosition,
-                                length - promptPosition
-                        ).trim();
+            String command = terminalArea.getText(promptPosition, length - promptPosition).trim();
 
-                if (command.isBlank()) {
-
-                    appendPrompt();
-
-                    return;
-                }
-
-                if (command.equals("clear")
-                        || command.equals("cls")) {
-
-
-                    ui(() -> terminalArea.setText(""));
-
-                    ui(() -> appendPrompt());
-
-
-                    return;
-                }
-
-                commandHistory.add(command);
-
-                historyIndex = commandHistory.size();
-
-                new Thread(() -> {
-
-                    try {
-
-                        if (command.startsWith("cd ")) {
-
-                            String path = command.substring(3).trim();
-
-                            File newDir = new File(currentDirectory, path);
-
-                            if (newDir.exists() && newDir.isDirectory()) {
-
-                                currentDirectory = newDir.getCanonicalFile();
-
-                            } else {
-                                appendText("\nDirectory not found");
-                            }
-
-                            appendPrompt();
-                            return;
-
-                    }
-
-
-                        ProcessBuilder builder =
-                                new ProcessBuilder(
-                                        "powershell",
-                                        "-Command",
-                                        command
-                                );
-
-                        builder.directory(currentDirectory);
-
-                        builder.redirectErrorStream(true);
-
-                        Process process =
-                                builder.start();
-
-                        BufferedReader reader =
-                                new BufferedReader(
-                                        new InputStreamReader(
-                                                process.getInputStream()
-                                        )
-                                );
-
-                        String line;
-
-                        ui(() -> appendText("\n"));
-
-                        while ((line = reader.readLine()) != null) {
-
-                            String finalLine = line;
-
-                            ui(() ->
-                                    appendAnsiText(
-                                            finalLine + "\n"
-                                    )
-                            );
-                        }
-
-                        process.waitFor();
-
-                        ui(() -> {
-
-                            appendPrompt();
-                        });
-
-                    } catch (Exception e) {
-
-                        ui(() -> {
-
-                            appendText(
-                                    "\nError: "
-                                            + e.getMessage()
-                            );
-
-                            appendPrompt();
-                        });
-                    }
-
-                }).start();
-
-            } catch (Exception e) {
-
-                e.printStackTrace();
+            if (command.isBlank()) {
+                return;
             }
+
+            commandHistory.add(command);
+            historyIndex = commandHistory.size();
+
+            appendSeparator();
+
+            executeCommand(command);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
     }
 
@@ -468,4 +367,4 @@ public class TerminalPanel extends JPanel {
 
         }
     }
-}
+
