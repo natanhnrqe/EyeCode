@@ -24,8 +24,10 @@ public class MainWindow extends JFrame {
     // Gerencia multiplos editores (cada aba = 1 arquivo)
     private JTabbedPane tabbedPane;
 
-    // Exibe logs e saida de execucao
+    // Terminal PTY real
     private TerminalPanel terminalPanel;
+
+    private FakeTerminal fakeTerminal;
 
     // Responsavel por operacoes de arquivo (ler/salvar)
     private FileManager fileManager;
@@ -182,7 +184,7 @@ public class MainWindow extends JFrame {
         if (doc.getModified()) {
             saveFile();
         }
-        terminalPanel.print("Running...\n");
+//        terminalPanel.print("Running...\n");
 
         File projectRoot = explorerPanel.getCurrentRoot();
 
@@ -191,7 +193,7 @@ public class MainWindow extends JFrame {
             String output = runManager.runProject(projectRoot);
 
             SwingUtilities.invokeLater(() -> {
-                terminalPanel.print(output);
+                fakeTerminal.print(output);
         });
         }).start();
 
@@ -220,7 +222,7 @@ public class MainWindow extends JFrame {
             // Abre no editor
             addNewTab(document, file.getName());
 
-            terminalPanel.print("Opened" + file.getName());
+            fakeTerminal.print("Opened" + file.getName());
 
 
         }
@@ -257,7 +259,7 @@ public class MainWindow extends JFrame {
         // Marca como sincronizado
         doc.setModified(false);
 
-        terminalPanel.print("File Saved: " + file.getName());
+        fakeTerminal.print("File Saved: " + file.getName());
     }
 
     //Save file for new docs
@@ -291,7 +293,7 @@ public class MainWindow extends JFrame {
                     file.getName()
             );
 
-            terminalPanel.print("File Saved As" + file.getName());
+            fakeTerminal.print("File Saved As" + file.getName());
         }
     }
 
@@ -300,7 +302,7 @@ public class MainWindow extends JFrame {
 
         addNewTab(doc, "Untitled");
 
-        terminalPanel.print("New File Created");
+        fakeTerminal.print("New File Created");
     }
 
     /**
@@ -404,13 +406,13 @@ public class MainWindow extends JFrame {
 
             explorerPanel.setRootDirectory(folder);
 
-            terminalPanel.print("Opened Folder: " + folder.getAbsolutePath());
+            fakeTerminal.print("Opened Folder: " + folder.getAbsolutePath());
         }
     }
 
     private void refreshExplorer() {
         explorerPanel.refresh();
-        terminalPanel.print("Explorer Refreshed");
+        fakeTerminal.print("Explorer Refreshed");
     }
 
     private void openDefaultFile() {
