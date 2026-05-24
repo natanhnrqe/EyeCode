@@ -1,10 +1,10 @@
-package com.eyecode.ui;
+package com.eyecode.terminal;
 
+import com.eyecode.ui.EyeCodeTerminalSettings;
 import com.jediterm.pty.PtyProcessTtyConnector;
 import com.jediterm.terminal.TtyConnector;
 import com.jediterm.terminal.ui.JediTermWidget;
 import com.jediterm.terminal.ui.settings.DefaultSettingsProvider;
-import com.jediterm.terminal.ui.settings.SettingsProvider;
 import com.pty4j.PtyProcess;
 import com.pty4j.PtyProcessBuilder;
 
@@ -46,7 +46,7 @@ public class TerminalPanel extends JPanel {
             /**
              * Cria o terminal.
              */
-            terminal = new JediTermWidget(80, 20, new DefaultSettingsProvider());
+            terminal = new JediTermWidget(80, 20, new EyeCodeTerminalSettings());
 
             TtyConnector connector = new PtyProcessTtyConnector(
                     process, StandardCharsets.UTF_8
@@ -57,6 +57,21 @@ public class TerminalPanel extends JPanel {
             terminal.start();
 
             add(terminal, BorderLayout.CENTER);
+
+            setBackground(new java.awt.Color(
+                    30,
+                    30,
+                    30
+            ));
+
+            terminal.getComponent().setBorder(
+                    BorderFactory.createEmptyBorder(
+                            5,
+                            5,
+                            5,
+                            5
+                    )
+            );
 
 
 

@@ -3,6 +3,7 @@ package com.eyecode.ui;
 import com.eyecode.editor.Document;
 import com.eyecode.filesystem.FileManager;
 import com.eyecode.run.RunManager;
+import com.eyecode.terminal.TerminalPanel;
 import com.eyecode.ui.editor.EditorPanel;
 
 import javax.swing.*;
