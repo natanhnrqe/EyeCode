@@ -14,7 +14,9 @@ import java.util.List;
 public class TerminalPanel extends JPanel {
 
 
-    private JTextPane terminalArea;
+    private JTextPane outputPane;
+
+    private JTextField inputField;
 
     private int promptPosition;
 
@@ -30,139 +32,126 @@ public class TerminalPanel extends JPanel {
 
     public TerminalPanel() {
 
-        setLayout(new BorderLayout());
+        /**
+         * Customizacao SAIDA terminal
+         */
 
-        terminalArea = new JTextPane();
+        outputPane = new JTextPane();
 
-        terminalArea.setHighlighter(null);
+        outputPane.setHighlighter(null);
 
-        currentDirectory = new File(System.getProperty("user.dir"));
+        outputPane.setEditable(false);
 
 
-        terminalArea.addCaretListener(e -> {
+        outputPane.addCaretListener(e -> {
 
-            if (terminalArea.getCaretPosition() < promptPosition) {
+            if (outputPane.getCaretPosition() < promptPosition) {
 
                 moveCaretToEnd();
             }
         });
 
-        /**
-         * Customizacao CONSOLE
-         */
+        outputPane.setBackground(new Color(30, 30, 30));
 
-        terminalArea.setBackground(new Color(30, 30, 30));
+        outputPane.setForeground(new Color(220, 220, 220));
 
-        terminalArea.setForeground(new Color(220, 220, 220));
+        outputPane.setCaretColor(Color.WHITE);
 
-        terminalArea.setCaretColor(Color.WHITE);
-
-
-
-        terminalArea.setBorder(BorderFactory.createEmptyBorder(
+        outputPane.setBorder(BorderFactory.createEmptyBorder(
                 12,
                 12,
                 12,
                 12
         ));
 
-        terminalArea.setEditable(true);
+        inputField = new JTextField();
 
-        JScrollPane scrollPane = new JScrollPane(terminalArea);
+        inputField.setBackground(new Color(43, 43, 43));
+
+        inputField.setForeground(new Color(220, 220, 220));
+
+        inputField.setCaretColor(Color.WHITE);
+
+        inputField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0,
+                new Color(60, 63, 65)),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+
+        setLayout(new BorderLayout());
+
+        JScrollPane scrollPane = new JScrollPane(outputPane);
 
         add(scrollPane, BorderLayout.CENTER);
 
+        add(inputField, BorderLayout.SOUTH);
+
         startShell();
 
+        inputField.addActionListener(e -> {
 
-        /**
-         * Captura ENTER.
-         */
-        terminalArea.addKeyListener(new KeyAdapter() {
+            String command = inputField.getText().trim();
+
+            if (command.isBlank()) return;
+
+            commandHistory.add(command);
+
+            historyIndex = commandHistory.size();
+
+            appendCommand(command);
+
+            executeCommand(command);
+
+            inputField.setText("");
+        });
+
+        inputField.addKeyListener(new KeyAdapter(){
+
             @Override
             public void keyPressed(KeyEvent e) {
 
-
-                int caretPosition = terminalArea.getCaretPosition();
-
-                if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
-
-                    if (caretPosition <= promptPosition) {
-
-                        e.consume();
-
-                        return;
-                    }
-                }
-
                 if (e.getKeyCode() == KeyEvent.VK_UP) {
-
-                    e.consume();
 
                     if (commandHistory.isEmpty()) return;
 
                     historyIndex--;
 
-                    if (historyIndex < 0) historyIndex = 0;
+                    if (historyIndex < 0) {
+                        historyIndex = 0;
+                    }
 
-                    replaceCurrentCommand(commandHistory.get(historyIndex));
-
-                    return;
+                    inputField.setText(commandHistory.get(historyIndex));
                 }
 
                 if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-
-                    e.consume();
 
                     if (commandHistory.isEmpty()) return;
 
                     historyIndex++;
 
                     if (historyIndex >= commandHistory.size()) {
+
                         historyIndex = commandHistory.size();
 
-                        replaceCurrentCommand("");
+                        inputField.setText("");
 
                         return;
                     }
 
-                    replaceCurrentCommand(commandHistory.get(historyIndex));
-
-                    return;
-                }
-
-                if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-                    if (caretPosition <= promptPosition) {
-                        e.consume();
-                        moveCaretToEnd();
-                        return;
-                    }
-
-                }
-
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-
-                    e.consume();
-
-                    handleCommand();
+                    inputField.setText(commandHistory.get(historyIndex));
                 }
             }
         });
-        }
+    }
 
-//    private void appendPrompt(){
-//
-//        appendSeparator();
-//
-//        appendText(
-//                "PS " + currentDirectory.getAbsolutePath() + "> "
-//        );
-//
-//        promptPosition = terminalArea.getDocument().getLength();
-//
-//        moveCaretToEnd();
-//
-//    }
+    private void appendCommand(String command){
+
+        appendSeparator();
+
+        appendColoredText("PS > " + command + "\n\n",
+                new Color(120, 170, 255));
+
+    }
 
     /**
      * Processa o comando digitado.
@@ -171,9 +160,9 @@ public class TerminalPanel extends JPanel {
 
         try {
 
-            int length = terminalArea.getDocument().getLength();
+            int length = outputPane.getDocument().getLength();
 
-            String command = terminalArea.getText(promptPosition, length - promptPosition).trim();
+            String command = outputPane.getText(promptPosition, length - promptPosition).trim();
 
             if (command.isBlank()) {
                 return;
@@ -198,14 +187,14 @@ public class TerminalPanel extends JPanel {
 
     private void moveCaretToEnd(){
 
-        terminalArea.setCaretPosition(
-                terminalArea.getDocument().getLength()
+        outputPane.setCaretPosition(
+                outputPane.getDocument().getLength()
         );
     }
 
     private void appendText(String text){
 
-        StyledDocument doc = terminalArea.getStyledDocument();
+        StyledDocument doc = outputPane.getStyledDocument();
 
         try {
 
@@ -229,7 +218,7 @@ public class TerminalPanel extends JPanel {
         separator.setForeground(new Color(60, 63, 65));
 
 
-        terminalArea.insertComponent(separator);
+        outputPane.insertComponent(separator);
 
         appendText("\n");
 
@@ -239,7 +228,7 @@ public class TerminalPanel extends JPanel {
 
         try {
 
-            StyledDocument doc = terminalArea.getStyledDocument();
+            StyledDocument doc = outputPane.getStyledDocument();
 
             doc.remove(promptPosition, doc.getLength() - promptPosition);
 
@@ -260,9 +249,9 @@ public class TerminalPanel extends JPanel {
 
     private void appendColoredText(String text, Color color) {
 
-        StyledDocument doc = terminalArea.getStyledDocument();
+        StyledDocument doc = outputPane.getStyledDocument();
 
-        Style style = terminalArea.addStyle("ColorStyle", null);
+        Style style = outputPane.addStyle("ColorStyle", null);
 
         StyleConstants.setForeground(style, color);
 
