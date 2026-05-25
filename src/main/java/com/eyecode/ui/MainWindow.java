@@ -25,11 +25,6 @@ public class MainWindow extends JFrame {
     // Gerencia multiplos editores (cada aba = 1 arquivo)
     private JTabbedPane tabbedPane;
 
-    // Terminal PTY real
-    private TerminalPanel terminalPanel;
-
-    private FakeTerminal fakeTerminal;
-
     // Responsavel por operacoes de arquivo (ler/salvar)
     private FileManager fileManager;
 
@@ -38,6 +33,10 @@ public class MainWindow extends JFrame {
 
     // Explorer de arquivos (lado esquerdo)
     private FileExplorerPanel explorerPanel;
+
+    private ActivityBar activityBar;
+
+    private BottomToolWindowPanel bottomTool;
 
 
     public MainWindow() {
@@ -59,8 +58,10 @@ public class MainWindow extends JFrame {
 
         // Cria componentes principais
         tabbedPane = new JTabbedPane();
-        terminalPanel = new TerminalPanel();
         explorerPanel = new FileExplorerPanel(new File("."));
+
+        activityBar = new ActivityBar();
+        bottomTool = new BottomToolWindowPanel();
 
         /**
          * Layout principal dividido:
@@ -70,28 +71,38 @@ public class MainWindow extends JFrame {
          *
          * Isso simula layout de IDE real
          */
-        JSplitPane horizontalSplit = new JSplitPane(
+        JPanel leftArea = new JPanel(new BorderLayout());
+
+        leftArea.add(activityBar, BorderLayout.WEST);
+        leftArea.add(explorerPanel, BorderLayout.CENTER);
+
+        JSplitPane centerSplit = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,
-                explorerPanel,
+                leftArea,
                 tabbedPane
         );
 
-        JSplitPane verticalSplit = new JSplitPane(
+        JSplitPane rootSplit = new JSplitPane(
                 JSplitPane.VERTICAL_SPLIT,
-                horizontalSplit,
-                terminalPanel
+                centerSplit,
+                bottomTool
         );
 
+        centerSplit.setResizeWeight(0.20);
+        rootSplit.setResizeWeight(0.78);
 
+        centerSplit.setDividerSize(4);
+        rootSplit.setDividerSize(4);
 
-        verticalSplit.setDividerLocation(450);
-        add(verticalSplit, BorderLayout.CENTER);
+        centerSplit.setBorder(null);
+        rootSplit.setBorder(null);
 
-        horizontalSplit.setDividerSize(4);
-        verticalSplit.setDividerSize(4);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
 
-        horizontalSplit.setBorder(null);
-        verticalSplit.setBorder(null);
+        setMinimumSize(new Dimension(1200, 700));
+
+        add(rootSplit, BorderLayout.CENTER);
+
 
         // Cria o menu superior
         createMenu();
@@ -185,7 +196,7 @@ public class MainWindow extends JFrame {
         if (doc.getModified()) {
             saveFile();
         }
-//        terminalPanel.print("Running...\n");
+        bottomTool.printRunOutput("Running...\n");
 
         File projectRoot = explorerPanel.getCurrentRoot();
 
@@ -194,7 +205,7 @@ public class MainWindow extends JFrame {
             String output = runManager.runProject(projectRoot);
 
             SwingUtilities.invokeLater(() -> {
-                fakeTerminal.print(output);
+                bottomTool.printRunOutput(output);
         });
         }).start();
 
@@ -223,7 +234,7 @@ public class MainWindow extends JFrame {
             // Abre no editor
             addNewTab(document, file.getName());
 
-            fakeTerminal.print("Opened" + file.getName());
+            bottomTool.printRunOutput("Opened" + file.getName());
 
 
         }
@@ -260,7 +271,7 @@ public class MainWindow extends JFrame {
         // Marca como sincronizado
         doc.setModified(false);
 
-        fakeTerminal.print("File Saved: " + file.getName());
+        bottomTool.printRunOutput("File Saved: " + file.getName());
     }
 
     //Save file for new docs
@@ -294,7 +305,7 @@ public class MainWindow extends JFrame {
                     file.getName()
             );
 
-            fakeTerminal.print("File Saved As" + file.getName());
+            bottomTool.printRunOutput("File Saved As" + file.getName());
         }
     }
 
@@ -303,7 +314,7 @@ public class MainWindow extends JFrame {
 
         addNewTab(doc, "Untitled");
 
-        fakeTerminal.print("New File Created");
+        bottomTool.printRunOutput("New File Created");
     }
 
     /**
@@ -407,13 +418,13 @@ public class MainWindow extends JFrame {
 
             explorerPanel.setRootDirectory(folder);
 
-            fakeTerminal.print("Opened Folder: " + folder.getAbsolutePath());
+            bottomTool.printRunOutput("Opened Folder: " + folder.getAbsolutePath());
         }
     }
 
     private void refreshExplorer() {
         explorerPanel.refresh();
-        fakeTerminal.print("Explorer Refreshed");
+        bottomTool.printRunOutput("Explorer Refreshed");
     }
 
     private void openDefaultFile() {
