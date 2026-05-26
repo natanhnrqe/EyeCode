@@ -38,6 +38,8 @@ public class MainWindow extends JFrame {
 
     private BottomToolWindowPanel bottomTool;
 
+    private TopBarPanel topBar;
+
 
     public MainWindow() {
 
@@ -56,8 +58,6 @@ public class MainWindow extends JFrame {
         fileManager = new FileManager();
         runManager = new RunManager();
 
-        JToolBar toolbar = new JToolBar();
-
         JPanel statusBar = new JPanel(new BorderLayout());
 
         // Cria componentes principais
@@ -66,6 +66,9 @@ public class MainWindow extends JFrame {
 
         activityBar = new ActivityBar();
         bottomTool = new BottomToolWindowPanel();
+
+        topBar = new TopBarPanel();
+
 
         /**
          * Layout principal dividido:
@@ -115,11 +118,7 @@ public class MainWindow extends JFrame {
                 )
         );
 
-        toolbar.setFloatable(false);
-        toolbar.add(new JButton("▶ Run"));
-        toolbar.add(new JButton("💾 Save"));
-        toolbar.add(new JButton("📂 Open"));
-        add(toolbar, BorderLayout.NORTH);
+
 
         statusBar.setPreferredSize(new Dimension(0, 24));
         statusBar.add(new JLabel("UTF-8"), BorderLayout.WEST);
@@ -131,9 +130,7 @@ public class MainWindow extends JFrame {
 
         add(rootSplit, BorderLayout.CENTER);
 
-
-        // Cria o menu superior
-        createMenu();
+        add(topBar, BorderLayout.NORTH);
 
         /**
          * Conecta o explorer ao editor:
