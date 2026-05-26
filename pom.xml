@@ -39,7 +39,7 @@
         <dependency>
             <groupId>org.jetbrains.pty4j</groupId>
             <artifactId>pty4j</artifactId>
-            <version>0.13.4</version>
+            <version>0.13.12</version>
         </dependency>
 
         <dependency>
