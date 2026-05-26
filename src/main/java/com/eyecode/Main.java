@@ -16,6 +16,74 @@ public class Main {
         UIManager.put("Tree.rowHeight", 24);
         UIManager.put("TabbedPane.tabInsets", new Insets(5,10,5,10));
 
+        UIManager.put(
+                "Panel.background",
+                new Color(30, 30, 30)
+        );
+
+        UIManager.put(
+                "TabbedPane.background",
+                new Color(30, 30, 30)
+        );
+
+        UIManager.put(
+                "TabbedPane.selectedBackground",
+                new Color(37, 37, 38)
+        );
+
+        UIManager.put(
+                "SplitPane.background",
+                new Color(30, 30, 30)
+        );
+
+        UIManager.put(
+                "Tree.background",
+                new Color(30, 30, 30)
+        );
+
+        UIManager.put(
+                "Viewport.background",
+                new Color(30, 30, 30)
+        );
+
+        UIManager.put(
+                "ScrollPane.background",
+                new Color(30, 30, 30)
+        );
+
+        UIManager.put(
+                "ToolBar.background",
+                new Color(37, 37, 38)
+        );
+
+        UIManager.put(
+                "MenuBar.background",
+                new Color(37, 37, 38)
+        );
+
+        UIManager.put(
+                "Menu.background",
+                new Color(37, 37, 38)
+        );
+
+        UIManager.put(
+                "MenuItem.background",
+                new Color(37, 37, 38)
+        );
+
+        /**
+         * Divider styling
+         */
+        UIManager.put(
+                "SplitPaneDivider.style",
+                "plain"
+        );
+
+        UIManager.put(
+                "SplitPaneDivider.gripColor",
+                new Color(60, 60, 60)
+        );
+
 
 
         SwingUtilities.invokeLater(() -> {

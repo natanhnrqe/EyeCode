@@ -56,6 +56,10 @@ public class MainWindow extends JFrame {
         fileManager = new FileManager();
         runManager = new RunManager();
 
+        JToolBar toolbar = new JToolBar();
+
+        JPanel statusBar = new JPanel(new BorderLayout());
+
         // Cria componentes principais
         tabbedPane = new JTabbedPane();
         explorerPanel = new FileExplorerPanel(new File("."));
@@ -96,6 +100,30 @@ public class MainWindow extends JFrame {
 
         centerSplit.setBorder(null);
         rootSplit.setBorder(null);
+
+        tabbedPane.putClientProperty("JTabbedPane.tabHeight", 34);
+        tabbedPane.setBackground(new Color(30, 31, 34));
+        tabbedPane.setBorder(BorderFactory.createEmptyBorder());
+        tabbedPane.putClientProperty("JTabbedPane.showTabsSeparators", true);
+        tabbedPane.putClientProperty("JTabbedPane.tabInsets", new Insets(8, 16, 8, 16));
+        tabbedPane.setBorder(
+                BorderFactory.createEmptyBorder(
+                        6,
+                        6,
+                        6,
+                        6
+                )
+        );
+
+        toolbar.setFloatable(false);
+        toolbar.add(new JButton("▶ Run"));
+        toolbar.add(new JButton("💾 Save"));
+        toolbar.add(new JButton("📂 Open"));
+        add(toolbar, BorderLayout.NORTH);
+
+        statusBar.setPreferredSize(new Dimension(0, 24));
+        statusBar.add(new JLabel("UTF-8"), BorderLayout.WEST);
+        add(statusBar, BorderLayout.SOUTH);
 
         setExtendedState(JFrame.MAXIMIZED_BOTH);
 

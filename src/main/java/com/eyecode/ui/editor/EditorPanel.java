@@ -193,6 +193,8 @@ public class EditorPanel extends JPanel {
 
 
 
+
+
         scrollPane.getVerticalScrollBar().addAdjustmentListener(e -> {
             lineNumbers.repaint();
         });

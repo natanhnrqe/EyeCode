@@ -52,7 +52,15 @@ public class FileExplorerPanel extends JPanel {
         JScrollPane scrollPane = new JScrollPane(jTree);
         add(scrollPane, BorderLayout.CENTER);
 
-        jTree.setBackground(new Color(30, 30, 30));
+        setBorder(BorderFactory.createEmptyBorder(
+                        8,
+                        8,
+                        8,
+                        8
+                )
+        );
+
+        jTree.setOpaque(false);
         jTree.setForeground(new Color(169, 183, 198));
 
 
@@ -259,5 +267,28 @@ public class FileExplorerPanel extends JPanel {
 
     public File getCurrentRoot() {
         return currentRoot;
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+
+        Graphics2D g2 = (Graphics2D) g.create();
+
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        g2.setColor(new Color(30, 31, 34));
+
+        g2.fillRoundRect(
+                0,
+                0,
+                getWidth(),
+                getHeight(),
+                14,
+                14
+        );
+
+        g2.dispose();
+
+        super.paintComponent(g);
     }
 }

@@ -25,6 +25,15 @@ public class BottomToolWindowPanel extends JPanel {
 
         tabs.addTab("Run", createRunPanel());
 
+        setBorder(
+                BorderFactory.createEmptyBorder(
+                        4,
+                        4,
+                        4,
+                        4
+                )
+        );
+
         add(tabs, BorderLayout.CENTER);
 
     }
@@ -40,6 +49,8 @@ public class BottomToolWindowPanel extends JPanel {
         runOutputArea.setBackground(new Color(30, 30, 30));
 
         runOutputArea.setForeground(new Color(187, 187, 187));
+
+
 
         panel.add(new JScrollPane(runOutputArea), BorderLayout.CENTER);
 
