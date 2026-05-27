@@ -118,6 +118,19 @@ public class MainWindow extends JFrame {
                 )
         );
 
+        tabbedPane.addChangeListener(e -> {
+
+            for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+
+                Component component = tabbedPane.getTabComponentAt(i);
+
+                if (component instanceof TabComponent tab) {
+
+                    tab.setSelected(i == tabbedPane.getSelectedIndex());
+                }
+            }
+        });
+
 
 
         statusBar.setPreferredSize(new Dimension(0, 24));
@@ -365,6 +378,11 @@ public class MainWindow extends JFrame {
 
         // Adiciona aba
         tabbedPane.addTab(title, editor);
+
+        int index = tabbedPane.indexOfTabComponent(editor);
+
+        tabbedPane.setTabComponentAt(index, new TabComponent(tabbedPane, title) {
+        });
 
         // Foca na aba recém criada
         tabbedPane.setSelectedComponent(editor);
