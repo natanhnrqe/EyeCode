@@ -15,11 +15,11 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
 
     private Icon javaIcon;
 
-    public FileTreeCellRender() {
-        folderIcon = new ImageIcon(getClass().getResource("/icons/pasta.png"));
-        fileIcon = new ImageIcon(getClass().getResource("/icons/arquivo.png"));
+    private boolean selected;
 
-        javaIcon = new ImageIcon(getClass().getResource("/icons/javaico.png"));
+    private boolean hovered;
+
+    public FileTreeCellRender() {
 
         folderIcon = loadIcon("/icons/pasta.png", 18);
         fileIcon   = loadIcon("/icons/arquivo.png", 18);
@@ -45,6 +45,8 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
                 jTree, value, selected, expanded, leaf, row, hasFocus
         );
 
+        this.selected = selected;
+
         setIconTextGap(6);
         setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
 
@@ -66,6 +68,20 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
             }
         }
 
+        setOpaque(false);
+
+        setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+        setFont(new Font("JetBrains Mono", Font.PLAIN, 13));
+
+        if (selected) {
+
+            setForeground(new Color(255, 255, 255));
+        } else {
+
+            setForeground(new Color(210, 210, 210));
+        }
+
+
     return this;
     }
 
@@ -76,5 +92,32 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
         Image scaled = image.getScaledInstance(size, size, Image.SCALE_SMOOTH);
 
         return new ImageIcon(scaled);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+
+        Graphics2D g2 = (Graphics2D) g.create();
+
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        if (selected) {
+            g2.setColor(new Color(55, 57, 61));
+
+            g2.fillRoundRect(
+                    2,
+                    2,
+                    getWidth() - 4,
+                    getHeight() - 4,
+                    10,
+                    10
+            );
+        }
+
+
+
+        g2.dispose();
+
+        super.paintComponent(g);
     }
 }

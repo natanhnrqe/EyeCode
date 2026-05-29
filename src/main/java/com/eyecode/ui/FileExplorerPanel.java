@@ -35,6 +35,7 @@ public class FileExplorerPanel extends JPanel {
     private File currentRoot;
 
 
+
     public FileExplorerPanel(File rootDirectory) {
         setLayout(new BorderLayout());
 
@@ -66,6 +67,10 @@ public class FileExplorerPanel extends JPanel {
         jTree.setCellRenderer(new FileTreeCellRender());
 
         JScrollPane scrollPane = new JScrollPane(jTree);
+        scrollPane.setBorder(null);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setOpaque(false);
+
         add(scrollPane, BorderLayout.CENTER);
 
         setBorder(BorderFactory.createEmptyBorder(
