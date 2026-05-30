@@ -1,6 +1,7 @@
 package com.eyecode.terminal;
 
 import com.eyecode.ui.EyeCodeTerminalSettings;
+import com.eyecode.ui.scroll.ModernScrollBarUI;
 import com.jediterm.pty.PtyProcessTtyConnector;
 import com.jediterm.terminal.TtyConnector;
 import com.jediterm.terminal.ui.JediTermWidget;
@@ -19,6 +20,12 @@ public class TerminalPanel extends JPanel {
     public TerminalPanel() {
 
         setLayout(new BorderLayout());
+
+        JScrollPane scrollPane = new JScrollPane(terminal);
+
+        scrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+
+        scrollPane.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
 
         startTerminal();
     }

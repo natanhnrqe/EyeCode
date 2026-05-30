@@ -1,5 +1,6 @@
 package com.eyecode.ui;
 
+import com.eyecode.ui.scroll.ModernScrollBarUI;
 import com.pty4j.PtyProcess;
 
 import javax.swing.*;
@@ -89,6 +90,10 @@ public class FakeTerminal extends JPanel {
         setLayout(new BorderLayout());
 
         JScrollPane scrollPane = new JScrollPane(outputPane);
+
+        scrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+
+        scrollPane.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
 
         add(scrollPane, BorderLayout.CENTER);
 

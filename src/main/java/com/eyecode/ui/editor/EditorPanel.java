@@ -2,6 +2,7 @@ package com.eyecode.ui.editor;
 
 import com.eyecode.editor.Document;
 import com.eyecode.ui.LineNumberPanel;
+import com.eyecode.ui.scroll.ModernScrollBarUI;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -187,6 +188,16 @@ public class EditorPanel extends JPanel {
 
         setLayout(new BorderLayout());
         JScrollPane scrollPane = new JScrollPane(textPane);
+
+        scrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+
+        scrollPane.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
+
+//        scrollPane.setBorder(null);
+//
+//        scrollPane.getViewport().setBackground(
+//                new Color(30,30,30)
+//        );
 
         scrollPane.setRowHeaderView(lineNumbers);
         add(scrollPane, BorderLayout.CENTER);

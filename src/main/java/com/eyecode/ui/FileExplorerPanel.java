@@ -1,5 +1,7 @@
 package com.eyecode.ui;
 
+import com.eyecode.ui.scroll.ModernScrollBarUI;
+
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
@@ -67,9 +69,9 @@ public class FileExplorerPanel extends JPanel {
         jTree.setCellRenderer(new FileTreeCellRender());
 
         JScrollPane scrollPane = new JScrollPane(jTree);
-        scrollPane.setBorder(null);
-        scrollPane.getViewport().setOpaque(false);
-        scrollPane.setOpaque(false);
+        scrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+
+        scrollPane.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
 
         add(scrollPane, BorderLayout.CENTER);
 
