@@ -11,6 +11,10 @@ public class BottomToolWindowPanel extends JPanel {
 
     private JTextArea runOutputArea;
 
+    private TerminalPanel terminalPanel;
+
+    private JPanel runPanel;
+
     public BottomToolWindowPanel() {
 
         setLayout(new BorderLayout());
@@ -21,7 +25,11 @@ public class BottomToolWindowPanel extends JPanel {
 
         tabs.putClientProperty("JTabbedPane.tabHeight", 32);
 
-        tabs.addTab("Terminal", new TerminalPanel());
+        terminalPanel = new TerminalPanel();
+
+        runPanel = new JPanel(new BorderLayout());
+
+        tabs.addTab("Terminal", terminalPanel);
 
         tabs.addTab("Run", createRunPanel());
 
@@ -40,8 +48,6 @@ public class BottomToolWindowPanel extends JPanel {
 
     private JPanel createRunPanel() {
 
-        JPanel panel = new JPanel(new BorderLayout());
-
         runOutputArea = new JTextArea();
 
         runOutputArea.setEditable(false);
@@ -51,14 +57,30 @@ public class BottomToolWindowPanel extends JPanel {
         runOutputArea.setForeground(new Color(187, 187, 187));
 
 
+        runPanel.add(new JScrollPane(runOutputArea), BorderLayout.CENTER);
 
-        panel.add(new JScrollPane(runOutputArea), BorderLayout.CENTER);
-
-        return panel;
+        return runPanel;
     }
 
     public void printRunOutput(String text) {
 
         runOutputArea.append(text + "\n");
+    }
+
+    public void showTerminal() {
+
+        setVisible(true);
+        tabs.setSelectedIndex(0);
+    }
+
+    public void showRun() {
+
+        setVisible(true);
+        tabs.setSelectedIndex(1);
+    }
+
+    public void toggleVisibility(){
+
+        setVisible(!isVisible());
     }
 }

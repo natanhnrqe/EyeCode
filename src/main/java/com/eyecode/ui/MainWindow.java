@@ -5,6 +5,7 @@ import com.eyecode.filesystem.FileManager;
 import com.eyecode.run.RunManager;
 import com.eyecode.terminal.TerminalPanel;
 import com.eyecode.ui.editor.EditorPanel;
+import com.eyecode.ui.editor.ToolWindowBar;
 
 import javax.swing.*;
 import java.awt.*;
@@ -42,6 +43,12 @@ public class MainWindow extends JFrame {
 
     private StatusBar statusBar;
 
+    private ToolWindowBar toolWindowBar;
+
+    private TerminalPanel terminalPanel;
+
+    private FakeTerminal fakeTerminal;
+
 
     public MainWindow() {
 
@@ -70,6 +77,23 @@ public class MainWindow extends JFrame {
         topBar = new TopBarPanel();
 
         statusBar = new StatusBar();
+        toolWindowBar = new ToolWindowBar();
+
+
+        toolWindowBar.setActionListener(action -> {
+
+            switch (action) {
+
+                case "PROJECT" -> explorerPanel.setVisible(!explorerPanel.isVisible());
+
+                case "TERMINAL" -> bottomTool.showTerminal();
+
+                case "RUN" -> bottomTool.showRun();
+            }
+
+            revalidate();
+            repaint();
+        });
 
         /**
          * Layout principal dividido:
@@ -81,7 +105,7 @@ public class MainWindow extends JFrame {
          */
         JPanel leftArea = new JPanel(new BorderLayout());
 
-        leftArea.add(activityBar, BorderLayout.WEST);
+        leftArea.add(toolWindowBar, BorderLayout.WEST);
         leftArea.add(explorerPanel, BorderLayout.CENTER);
 
         JSplitPane centerSplit = new JSplitPane(
