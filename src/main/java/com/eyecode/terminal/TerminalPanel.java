@@ -63,7 +63,10 @@ public class TerminalPanel extends JPanel {
 
             terminal.start();
 
+            applyScrollBar(terminal);
+
             add(terminal, BorderLayout.CENTER);
+
 
             setBackground(new java.awt.Color(
                     30,
@@ -88,6 +91,40 @@ public class TerminalPanel extends JPanel {
         }
     }
 
+    private void printComponents(Component component) {
+
+        System.out.println(
+                component.getClass().getName()
+        );
+
+        if (component instanceof Container container) {
+
+            for (Component child :
+                    container.getComponents()) {
+
+                printComponents(child);
+            }
+        }
+    }
+
+    private void applyScrollBar(Component component) {
+
+        if (component instanceof JScrollBar bar) {
+
+            bar.setUI(
+                    new ModernScrollBarUI()
+            );
+        }
+
+        if (component instanceof Container container) {
+
+            for (Component child :
+                    container.getComponents()) {
+
+                applyScrollBar(child);
+            }
+        }
+    }
 
 
 

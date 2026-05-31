@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +39,7 @@ public class EditorPanel extends JPanel {
     private JPopupMenu popup;
     private JList<Suggestion> suggestionList;
     private JWindow autocompleteWindow;
+    private BiConsumer<Integer, Integer> caretPositionListener;
 
 
     private static final String[] keywords = {
@@ -174,7 +176,6 @@ public class EditorPanel extends JPanel {
 
         lineNumbers.setListener(this::updateBreakpointHighlights);
 
-
         textPane.addCaretListener(e -> {
             highlightCurrentLine();
             int offset = textPane.getCaretPosition();
@@ -193,17 +194,8 @@ public class EditorPanel extends JPanel {
 
         scrollPane.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
 
-//        scrollPane.setBorder(null);
-//
-//        scrollPane.getViewport().setBackground(
-//                new Color(30,30,30)
-//        );
-
         scrollPane.setRowHeaderView(lineNumbers);
         add(scrollPane, BorderLayout.CENTER);
-
-
-
 
 
         scrollPane.getVerticalScrollBar().addAdjustmentListener(e -> {
@@ -224,6 +216,31 @@ public class EditorPanel extends JPanel {
             @Override
             public void changedUpdate(DocumentEvent e) {
                 lineNumbers.repaint();
+            }
+        });
+
+        textPane.addCaretListener(e -> {
+
+            int caret = textPane.getCaretPosition();
+
+            Element root =
+                    textPane.getDocument()
+                            .getDefaultRootElement();
+
+            int line =
+                    root.getElementIndex(caret);
+
+            int column =
+                    caret -
+                            root.getElement(line)
+                                    .getStartOffset();
+
+            if (caretPositionListener != null) {
+
+                caretPositionListener.accept(
+                        line + 1,
+                        column + 1
+                );
             }
         });
 
@@ -1387,6 +1404,11 @@ public class EditorPanel extends JPanel {
         );
 
     }
+
+
+    public void setCaretPositionListener(BiConsumer<Integer, Integer> caretPositionListener) {
+        this.caretPositionListener = caretPositionListener;
+    }
 }
 
 class FullLineHighlightPaint implements Highlighter.HighlightPainter{
@@ -1407,5 +1429,7 @@ class FullLineHighlightPaint implements Highlighter.HighlightPainter{
             e.printStackTrace();
         }
     }
+
+
 
 }

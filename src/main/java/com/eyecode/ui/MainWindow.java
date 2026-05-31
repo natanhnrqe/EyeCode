@@ -40,6 +40,8 @@ public class MainWindow extends JFrame {
 
     private TopBarPanel topBar;
 
+    private StatusBar statusBar;
+
 
     public MainWindow() {
 
@@ -58,8 +60,6 @@ public class MainWindow extends JFrame {
         fileManager = new FileManager();
         runManager = new RunManager();
 
-        JPanel statusBar = new JPanel(new BorderLayout());
-
         // Cria componentes principais
         tabbedPane = new JTabbedPane();
         explorerPanel = new FileExplorerPanel(new File("."));
@@ -69,6 +69,7 @@ public class MainWindow extends JFrame {
 
         topBar = new TopBarPanel();
 
+        statusBar = new StatusBar();
 
         /**
          * Layout principal dividido:
@@ -131,10 +132,6 @@ public class MainWindow extends JFrame {
             }
         });
 
-
-
-        statusBar.setPreferredSize(new Dimension(0, 24));
-        statusBar.add(new JLabel("UTF-8"), BorderLayout.WEST);
         add(statusBar, BorderLayout.SOUTH);
 
         setExtendedState(JFrame.MAXIMIZED_BOTH);
@@ -369,6 +366,8 @@ public class MainWindow extends JFrame {
 
         // Conecta o documento ao editor
         editor.setDocument(document);
+
+        editor.setCaretPositionListener((line, col) -> statusBar.updateCaretPosition(line, col));
 
         /**
          * Callback disparado quando o usuário digita.
