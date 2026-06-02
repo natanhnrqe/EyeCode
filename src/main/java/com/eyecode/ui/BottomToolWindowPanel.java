@@ -15,6 +15,7 @@ public class BottomToolWindowPanel extends JPanel {
 
     private JPanel runPanel;
 
+
     public BottomToolWindowPanel() {
 
         setLayout(new BorderLayout());
@@ -82,5 +83,15 @@ public class BottomToolWindowPanel extends JPanel {
     public void toggleVisibility(){
 
         setVisible(!isVisible());
+    }
+
+    public boolean isTerminalSelected(){
+
+        return tabs.getSelectedIndex() == 0;
+    }
+
+    public boolean isRunSelected() {
+
+        return tabs.getSelectedIndex() == 1;
     }
 }

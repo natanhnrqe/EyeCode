@@ -49,6 +49,12 @@ public class MainWindow extends JFrame {
 
     private FakeTerminal fakeTerminal;
 
+    private JSplitPane rootSplit;
+
+    private int lastBottomHeight = 300;
+
+    private boolean bottomVisible = true;
+
 
     public MainWindow() {
 
@@ -86,9 +92,31 @@ public class MainWindow extends JFrame {
 
                 case "PROJECT" -> explorerPanel.setVisible(!explorerPanel.isVisible());
 
-                case "TERMINAL" -> bottomTool.showTerminal();
+                case "TERMINAL" -> {
 
-                case "RUN" -> bottomTool.showRun();
+
+                    if (bottomVisible && bottomTool.isTerminalSelected()) {
+                        hideBottomPanel();
+
+                    } else {
+
+                        showBottomPanel();
+                        bottomTool.showTerminal();
+                    }
+                }
+
+                case "RUN" -> {
+
+                    if (bottomVisible && bottomTool.isRunSelected()) {
+
+                        hideBottomPanel();
+
+                    } else {
+
+                        showBottomPanel();
+                        bottomTool.showRun();
+                    }
+                }
             }
 
             revalidate();
@@ -114,7 +142,7 @@ public class MainWindow extends JFrame {
                 tabbedPane
         );
 
-        JSplitPane rootSplit = new JSplitPane(
+        rootSplit = new JSplitPane(
                 JSplitPane.VERTICAL_SPLIT,
                 centerSplit,
                 bottomTool
@@ -501,6 +529,30 @@ public class MainWindow extends JFrame {
             Document doc = new Document(mainFile, content);
             addNewTab(doc, mainFile.getName());
         }
+    }
+
+    private void hideBottomPanel() {
+
+        int totalHeight =
+                rootSplit.getHeight();
+
+        rootSplit.setDividerLocation(
+                totalHeight - 5
+        );
+
+        bottomVisible = false;
+    }
+
+    private void showBottomPanel() {
+
+        int totalHeight =
+                rootSplit.getHeight();
+
+        rootSplit.setDividerLocation(
+                totalHeight - lastBottomHeight
+        );
+
+        bottomVisible = true;
     }
 }
 
