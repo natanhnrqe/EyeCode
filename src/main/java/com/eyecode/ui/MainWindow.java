@@ -55,6 +55,8 @@ public class MainWindow extends JFrame {
 
     private boolean bottomVisible = true;
 
+    private BreadcrumpPanel breadcrumpPanel;
+
 
     public MainWindow() {
 
@@ -81,9 +83,10 @@ public class MainWindow extends JFrame {
         bottomTool = new BottomToolWindowPanel();
 
         topBar = new TopBarPanel();
-
         statusBar = new StatusBar();
         toolWindowBar = new ToolWindowBar();
+
+        breadcrumpPanel = new BreadcrumpPanel();
 
 
         toolWindowBar.setActionListener(action -> {
@@ -136,10 +139,16 @@ public class MainWindow extends JFrame {
         leftArea.add(toolWindowBar, BorderLayout.WEST);
         leftArea.add(explorerPanel, BorderLayout.CENTER);
 
+        JPanel editorArea = new JPanel(new BorderLayout());
+
+        editorArea.add(breadcrumpPanel, BorderLayout.NORTH);
+
+        editorArea.add(tabbedPane, BorderLayout.CENTER);
+
         JSplitPane centerSplit = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,
                 leftArea,
-                tabbedPane
+                editorArea
         );
 
         rootSplit = new JSplitPane(
@@ -182,6 +191,7 @@ public class MainWindow extends JFrame {
                     tab.setSelected(i == tabbedPane.getSelectedIndex());
                 }
             }
+            updateBreadcrump();
         });
 
         add(statusBar, BorderLayout.SOUTH);
@@ -437,6 +447,8 @@ public class MainWindow extends JFrame {
 
         // Foca na aba recém criada
         tabbedPane.setSelectedComponent(editor);
+
+        updateBreadcrump();
     }
 
     /**
@@ -553,6 +565,27 @@ public class MainWindow extends JFrame {
         );
 
         bottomVisible = true;
+    }
+
+    private void updateBreadcrump() {
+
+        EditorPanel editor = getCurrentEditor();
+
+        if (editor == null) {
+
+            breadcrumpPanel.updatePath(null);
+            return;
+        }
+
+        Document doc = editor.getDocument();
+
+        if (doc == null) {
+
+            breadcrumpPanel.updatePath(null);
+            return;
+        }
+
+        breadcrumpPanel.updatePath(doc.getFile());
     }
 }
 
