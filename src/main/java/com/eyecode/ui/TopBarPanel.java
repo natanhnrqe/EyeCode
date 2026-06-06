@@ -5,6 +5,17 @@ import java.awt.*;
 
 public class TopBarPanel extends JPanel {
 
+    private Runnable onRun;
+    private Runnable onSave;
+    private Runnable onOpenFolder;
+    private Runnable onNewFile;
+
+    private JButton runButton;
+    private JButton saveButton;
+    private JButton openFolderButton;
+    private JButton newFileButton;
+
+
     public TopBarPanel() {
 
         setLayout(new BorderLayout());
@@ -16,37 +27,93 @@ public class TopBarPanel extends JPanel {
         buildUi();
     }
 
-    private void buildUi(){
+    private void buildUi() {
 
-       JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10 , 6));
+        JPanel left =
+                new JPanel(
+                        new FlowLayout(
+                                FlowLayout.LEFT,
+                                10,
+                                6
+                        )
+                );
 
         left.setOpaque(false);
 
         JLabel logo = new JLabel("EyeCode");
 
-        logo.setFont(new Font("JetBrains Mono", Font.BOLD, 16));
+        logo.setFont(
+                new Font(
+                        "JetBrains Mono",
+                        Font.BOLD,
+                        16
+                )
+        );
 
-        logo.setForeground(new Color(220, 220, 220));
+        logo.setForeground(
+                new Color(220,220,220)
+        );
 
-        JLabel branch = new JLabel("main");
+        left.add(logo);
 
-        branch.setForeground(new Color(150, 150, 150));
+        JPanel right =
+                new JPanel(
+                        new FlowLayout(
+                                FlowLayout.RIGHT,
+                                8,
+                                5
+                        )
+                );
 
+        right.setOpaque(false);
 
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 5));
+        newFileButton =
+                createToolbarButton("+");
 
-        JButton runButton = createToolbarButton("▶");
-        JButton searchButton = createToolbarButton("⌕");
-        JButton saveButton = createToolbarButton("💾");
+        openFolderButton =
+                createToolbarButton("📂");
 
-        right.add(runButton);
+        saveButton =
+                createToolbarButton("💾");
+
+        runButton =
+                createToolbarButton("▶");
+
+        right.add(newFileButton);
+        right.add(openFolderButton);
         right.add(saveButton);
-        right.add(searchButton);
+        right.add(runButton);
 
         add(left, BorderLayout.WEST);
-
         add(right, BorderLayout.EAST);
 
+        runButton.addActionListener(e -> {
+
+            if (onRun != null) {
+                onRun.run();
+            }
+        });
+
+        saveButton.addActionListener(e -> {
+
+            if (onSave != null) {
+                onSave.run();
+            }
+        });
+
+        openFolderButton.addActionListener(e -> {
+
+            if (onOpenFolder != null) {
+                onOpenFolder.run();
+            }
+        });
+
+        newFileButton.addActionListener(e -> {
+
+            if (onNewFile != null) {
+                onNewFile.run();
+            }
+        });
     }
 
     private JButton createToolbarButton(String text) {
@@ -66,5 +133,21 @@ public class TopBarPanel extends JPanel {
         button.setPreferredSize(new Dimension(36, 30));
 
         return button;
+    }
+
+    public void setOnRun(Runnable onRun) {
+        this.onRun = onRun;
+    }
+
+    public void setOnSave(Runnable onSave) {
+        this.onSave = onSave;
+    }
+
+    public void setOnOpenFolder(Runnable onOpenFolder) {
+        this.onOpenFolder = onOpenFolder;
+    }
+
+    public void setOnNewFile(Runnable onNewFile) {
+        this.onNewFile = onNewFile;
     }
 }

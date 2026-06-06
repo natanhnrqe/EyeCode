@@ -88,6 +88,11 @@ public class MainWindow extends JFrame {
 
         breadcrumpPanel = new BreadcrumpPanel();
 
+        topBar.setOnRun(this::runCode);
+        topBar.setOnSave(this::saveFile);
+        topBar.setOnOpenFolder(this::openFolder);
+        topBar.setOnNewFile(this::newFile);
+
 
         toolWindowBar.setActionListener(action -> {
 
@@ -451,17 +456,10 @@ public class MainWindow extends JFrame {
         updateBreadcrump();
     }
 
-    /**
-     * Retorna o editor atualmente ativo.
-     * <p>
-     * Isso é essencial porque:
-     * - todas as ações (save, run, etc.)
-     * atuam apenas na aba atual
-     */
+
     private EditorPanel getCurrentEditor() {
         return (EditorPanel) tabbedPane.getSelectedComponent();
     }
-
 
     private void updateTabTitle(EditorPanel editor) {
         Document doc = editor.getDocument();
