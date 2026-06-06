@@ -302,6 +302,11 @@ public class MainWindow extends JFrame {
 
         File projectRoot = explorerPanel.getCurrentRoot();
 
+        System.out.println(
+                "RUNNING PROJECT: " +
+                        projectRoot.getAbsolutePath()
+        );
+
         // Executa via RunManager
         new Thread(() -> {
             String output = runManager.runProject(projectRoot);

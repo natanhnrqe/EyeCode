@@ -59,7 +59,23 @@ public class JavaRunner implements ProjectRunner {
                      *
                      * EyeCode/src/main/java
                      */
-                    File srcRoot = new File(projectRoot, "src/main/java");
+                    File srcRoot =
+                            new File(
+                                    projectRoot,
+                                    "src/main/java"
+                            );
+
+                    if (!srcRoot.exists()) {
+
+                        return """
+                           Invalid project structure.
+                
+                           Expected:
+                           src/main/java
+                
+                           Selected root:
+                           """ + projectRoot.getAbsolutePath();
+                    }
 
 
                     /**

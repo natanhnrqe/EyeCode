@@ -13,6 +13,8 @@ public class MavenRunner implements ProjectRunner{
         try {
 
             ProcessBuilder builder = new ProcessBuilder(
+                    "cmd",
+                    "/c",
                     "mvn",
                     "clean",
                     "compile"

@@ -30,6 +30,8 @@ public class RunManager {
 
         BuildSystem buildSystem = BuildSystemDetector.detected(projectRoot);
 
+        System.out.println(buildSystem);
+
         return switch (buildSystem) {
 
             case MAVEN -> mavenRunner.run(projectRoot);

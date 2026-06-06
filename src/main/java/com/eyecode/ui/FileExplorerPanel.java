@@ -210,6 +210,11 @@ public class FileExplorerPanel extends JPanel {
     public void setRootDirectory(File rootDirectory){
         this.currentRoot = rootDirectory;
 
+        System.out.println(
+                "NEW ROOT = " +
+                        rootDirectory.getAbsolutePath()
+        );
+
         DefaultMutableTreeNode rootNode = createNode(rootDirectory);
         treeModel.setRoot(rootNode);
         treeModel.reload();
@@ -289,7 +294,13 @@ public class FileExplorerPanel extends JPanel {
     }
 
     public File getCurrentRoot() {
+        System.out.println(
+                "CURRENT ROOT = " +
+                        currentRoot.getAbsolutePath()
+        );
         return currentRoot;
+
+
     }
 
     @Override
