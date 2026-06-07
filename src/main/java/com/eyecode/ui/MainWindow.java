@@ -2,6 +2,9 @@ package com.eyecode.ui;
 
 import com.eyecode.editor.Document;
 import com.eyecode.filesystem.FileManager;
+import com.eyecode.maven.MavenProject;
+import com.eyecode.maven.PomParser;
+import com.eyecode.run.MavenClasspathResolver;
 import com.eyecode.run.RunManager;
 import com.eyecode.terminal.TerminalPanel;
 import com.eyecode.ui.editor.EditorPanel;
@@ -60,6 +63,19 @@ public class MainWindow extends JFrame {
 
     public MainWindow() {
 
+        File pom =
+                new File("pom.xml");
+
+        PomParser parser =
+                new PomParser();
+
+        MavenProject project =
+                parser.parse(pom);
+
+        System.out.println(project.getGroupId());
+        System.out.println(project.getArtifactId());
+        System.out.println(project.getVersion());
+
         // Titulo da janela
         setTitle("EyeCode");
 
@@ -92,6 +108,8 @@ public class MainWindow extends JFrame {
         topBar.setOnSave(this::saveFile);
         topBar.setOnOpenFolder(this::openFolder);
         topBar.setOnNewFile(this::newFile);
+
+
 
 
         toolWindowBar.setActionListener(action -> {
@@ -302,10 +320,6 @@ public class MainWindow extends JFrame {
 
         File projectRoot = explorerPanel.getCurrentRoot();
 
-        System.out.println(
-                "RUNNING PROJECT: " +
-                        projectRoot.getAbsolutePath()
-        );
 
         // Executa via RunManager
         new Thread(() -> {

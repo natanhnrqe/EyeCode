@@ -1,12 +1,23 @@
 package com.eyecode.run;
 
 import java.io.File;
+import java.util.List;
 
 public class MavenClasspathResolver {
 
-    public String resolveClassPath(File projectRoot){
+    private final CommandExecutor executor = new CommandExecutor();
 
-        return "";
+    public String resolve(File projectRoot){
+
+        return executor.execute(
+                List.of(
+                        "cmd",
+                        "/c",
+                        "mvn",
+                        "dependency:build-classpath"
+                ),
+                projectRoot
+        );
 
     }
 }

@@ -1,6 +1,6 @@
 package com.eyecode;
 
-import com.eyecode.run.ProjectScanner;
+
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.eyecode.ui.MainWindow;
 
@@ -16,6 +16,9 @@ public class Main {
         UIManager.put("Tree.rowHeight", 24);
         UIManager.put("TabbedPane.tabInsets", new Insets(5,10,5,10));
         UIManager.put("Tree.paintLines", false);
+
+
+
 
         UIManager.put(
                 "Panel.background",
