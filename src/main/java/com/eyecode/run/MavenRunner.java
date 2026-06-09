@@ -17,8 +17,11 @@ public class MavenRunner implements ProjectRunner{
                     "/c",
                     "mvn",
                     "clean",
-                    "compile"
+                    "compile",
+                    "exec:java",
+                    "-Dexec.mainClass=com.eyecode.Main"
             );
+
 
             builder.directory(projectRoot);
 
