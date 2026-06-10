@@ -1,9 +1,9 @@
 package com.eyecode.ui.editor;
 
 import com.eyecode.ui.ToolWindowButton;
+import com.eyecode.ui.UiIcons;
 
 import javax.swing.*;
-import javax.tools.Tool;
 import java.awt.*;
 import java.util.function.Consumer;
 
@@ -15,30 +15,19 @@ public class ToolWindowBar extends JPanel {
     private ToolWindowButton terminalButton;
     private ToolWindowButton runButton;
 
-
     public ToolWindowBar() {
-
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-
         setPreferredSize(new Dimension(48, 0));
-
         setBackground(new Color(43, 43, 43));
+        setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
 
-        add(Box.createVerticalStrut(8));
-
-        projectButton =
-                createButton("Pasta", "PROJECT");
-
-        terminalButton =
-                createButton(">_", "TERMINAL");
-
-        runButton =
-                createButton("▶", "RUN");
+        projectButton = createButton(UiIcons.project(), "PROJECT", "Project");
+        terminalButton = createButton(UiIcons.terminal(), "TERMINAL", "Terminal");
+        runButton = createButton(UiIcons.run(), "RUN", "Run");
 
         add(projectButton);
         add(terminalButton);
         add(runButton);
-
         add(Box.createVerticalGlue());
     }
 
@@ -46,12 +35,12 @@ public class ToolWindowBar extends JPanel {
         this.actionListener = actionListener;
     }
 
-    private ToolWindowButton createButton(String text, String action) {
-
-        ToolWindowButton button = new ToolWindowButton(text);
+    private ToolWindowButton createButton(Icon icon, String action, String tooltip) {
+        ToolWindowButton button = new ToolWindowButton(icon);
+        button.setToolTipText(tooltip);
+        button.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         button.addActionListener(e -> {
-
             selectedButton(button);
 
             if (actionListener != null) {
@@ -63,7 +52,6 @@ public class ToolWindowBar extends JPanel {
     }
 
     private void selectedButton(ToolWindowButton button) {
-
         projectButton.setSelectedState(false);
         runButton.setSelectedState(false);
         terminalButton.setSelectedState(false);
