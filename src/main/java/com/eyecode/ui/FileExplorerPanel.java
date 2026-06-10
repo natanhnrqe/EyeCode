@@ -9,6 +9,8 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.function.Consumer;
 import javax.swing.JTree;
 
@@ -23,7 +25,7 @@ import javax.swing.JTree;
  *
  * Não abre arquivos diretamente → delega essa responsabilidade via callback.
  */
-public class FileExplorerPanel extends JPanel {
+public class FileExplorerPanel extends RoundedPanel {
 
     private JPopupMenu popupMenu;
 
@@ -40,6 +42,7 @@ public class FileExplorerPanel extends JPanel {
 
     public FileExplorerPanel(File rootDirectory) {
         setLayout(new BorderLayout());
+        setBackground(new Color(35, 37, 41));
 
         // Guarda o estado atual da raiz
         this.currentRoot = rootDirectory;
@@ -56,7 +59,7 @@ public class FileExplorerPanel extends JPanel {
         jTree.setToggleClickCount(1);
         jTree.setOpaque(false);
 
-        jTree.setBackground(new Color(30, 30, 30));
+        jTree.setBackground(new Color(35, 37, 41));
         jTree.setBorder(BorderFactory.createEmptyBorder(
                 8,
                 8,
@@ -68,11 +71,24 @@ public class FileExplorerPanel extends JPanel {
 
         jTree.setCellRenderer(new FileTreeCellRender());
 
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.setBorder(BorderFactory.createEmptyBorder(0, 4, 8, 4));
+
+        JLabel title = new JLabel("Project");
+        title.setForeground(new Color(187, 187, 187));
+        title.setFont(new Font("JetBrains Mono", Font.BOLD, 12));
+        header.add(title, BorderLayout.WEST);
+
         JScrollPane scrollPane = new JScrollPane(jTree);
+        scrollPane.setOpaque(false);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setOpaque(false);
         scrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
 
         scrollPane.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
 
+        add(header, BorderLayout.NORTH);
         add(scrollPane, BorderLayout.CENTER);
 
         setBorder(BorderFactory.createEmptyBorder(
@@ -148,7 +164,14 @@ public class FileExplorerPanel extends JPanel {
             File[] files = file.listFiles();
 
             if (files != null){
+                Arrays.sort(files, Comparator
+                        .comparing(File::isFile)
+                        .thenComparing(File::getName, String.CASE_INSENSITIVE_ORDER));
+
                 for (File child : files){
+                    if (shouldHide(child)) {
+                        continue;
+                    }
 
                     // Recursao: cria subarvores para cada filho
                     node.add(createNode(child));
@@ -156,6 +179,14 @@ public class FileExplorerPanel extends JPanel {
             }
         }
         return node;
+    }
+
+    private boolean shouldHide(File file) {
+        String name = file.getName();
+        return name.equals(".git")
+                || name.equals(".idea")
+                || name.equals("target")
+                || name.equals("out");
     }
 
     private void createPopMenu(File file){
@@ -271,7 +302,7 @@ public class FileExplorerPanel extends JPanel {
     private void deleteRecursively(File file){
         if (file.isDirectory()){
             File[] files = file.listFiles();
-            if (file != null){
+            if (files != null){
                 for (File f : files){
                     deleteRecursively(f);
                 }
@@ -287,7 +318,7 @@ public class FileExplorerPanel extends JPanel {
                 "Confirm",
                 JOptionPane.YES_NO_OPTION
         );
-        if (confirm != JOptionPane.YES_NO_OPTION) return;
+        if (confirm != JOptionPane.YES_OPTION) return;
 
         deleteRecursively(file);
         refresh();
@@ -303,26 +334,4 @@ public class FileExplorerPanel extends JPanel {
 
     }
 
-    @Override
-    protected void paintComponent(Graphics g) {
-
-        Graphics2D g2 = (Graphics2D) g.create();
-
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-        g2.setColor(new Color(30, 31, 34));
-
-        g2.fillRoundRect(
-                0,
-                0,
-                getWidth(),
-                getHeight(),
-                14,
-                14
-        );
-
-        g2.dispose();
-
-        super.paintComponent(g);
-    }
 }
