@@ -4,242 +4,229 @@ import com.eyecode.editor.Document;
 import com.eyecode.filesystem.FileManager;
 import com.eyecode.maven.MavenProject;
 import com.eyecode.maven.PomParser;
-import com.eyecode.run.MavenClasspathResolver;
 import com.eyecode.run.RunManager;
-import com.eyecode.terminal.TerminalPanel;
 import com.eyecode.ui.editor.EditorPanel;
 import com.eyecode.ui.editor.ToolWindowBar;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.WindowEvent;
 import java.io.File;
 
-/**
- * Classe principal da interface da aplicação.
- *
- * Atua como o "Controller" da arquitetura:
- * - gerencia a UI
- * - controla fluxo (open, save, run, close)
- * - conecta Editor ↔ Document ↔ Services
- *
- * É o ponto central de orquestração do IDE.
- */
 public class MainWindow extends JFrame {
 
-    // Gerencia multiplos editores (cada aba = 1 arquivo)
-    private JTabbedPane tabbedPane;
+    private static final String WELCOME_VIEW = "WELCOME";
+    private static final String EDITOR_VIEW = "EDITOR";
 
-    // Responsavel por operacoes de arquivo (ler/salvar)
-    private FileManager fileManager;
-
-    // Responsavel por compilar/executar o codigo
-    private RunManager runManager;
-
-    // Explorer de arquivos (lado esquerdo)
-    private FileExplorerPanel explorerPanel;
-
-    private ActivityBar activityBar;
-
-    private BottomToolWindowPanel bottomTool;
-
-    private TopBarPanel topBar;
-
-    private StatusBar statusBar;
-
-    private ToolWindowBar toolWindowBar;
-
-    private TerminalPanel terminalPanel;
-
-    private FakeTerminal fakeTerminal;
+    private final JTabbedPane tabbedPane;
+    private final FileManager fileManager;
+    private final RunManager runManager;
+    private final FileExplorerPanel explorerPanel;
+    private final BottomToolWindowPanel bottomTool;
+    private final TopBarPanel topBar;
+    private final StatusBar statusBar;
+    private final ToolWindowBar toolWindowBar;
+    private final BreadcrumpPanel breadcrumpPanel;
+    private final JPanel editorStack;
+    private final CardLayout editorCards;
 
     private JSplitPane rootSplit;
-
     private int lastBottomHeight = 300;
-
     private boolean bottomVisible = true;
-
-    private BreadcrumpPanel breadcrumpPanel;
-
+    private Point dragStart;
 
     public MainWindow() {
 
-        File pom =
-                new File("pom.xml");
-
-        PomParser parser =
-                new PomParser();
-
-        MavenProject project =
-                parser.parse(pom);
-
-        System.out.println(project.getGroupId());
-        System.out.println(project.getArtifactId());
-        System.out.println(project.getVersion());
-
-        // Titulo da janela
         setTitle("EyeCode");
-
-        //Tamanho inicial
+        setUndecorated(true);
         setSize(1000, 700);
-
-
-        // Encerra a aplicacao ao fechar
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+        getContentPane().setBackground(new Color(24, 25, 28));
 
-        // Inicializa service (camada de logica)
         fileManager = new FileManager();
         runManager = new RunManager();
 
-        // Cria componentes principais
         tabbedPane = new JTabbedPane();
         explorerPanel = new FileExplorerPanel(new File("."));
-
-        activityBar = new ActivityBar();
         bottomTool = new BottomToolWindowPanel();
-
         topBar = new TopBarPanel();
         statusBar = new StatusBar();
         toolWindowBar = new ToolWindowBar();
-
         breadcrumpPanel = new BreadcrumpPanel();
 
+        editorCards = new CardLayout();
+        editorStack = new JPanel(editorCards);
+        editorStack.setOpaque(false);
+        editorStack.add(new WelcomePanel(this::newFile, this::openFolder, this::runCode), WELCOME_VIEW);
+        editorStack.add(tabbedPane, EDITOR_VIEW);
+
+        configureActions();
+        configureLayout();
+        configureTabs();
+        configureExplorer();
+        configureWindowChrome();
+
+        updateProjectUi(new File("."));
+        showWelcomeIfNeeded();
+
+        setMaximizedBounds(GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds());
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
+        setMinimumSize(new Dimension(1200, 700));
+        setVisible(true);
+
+        SwingUtilities.invokeLater(this::openDefaultFile);
+    }
+
+    private void configureActions() {
         topBar.setOnRun(this::runCode);
         topBar.setOnSave(this::saveFile);
         topBar.setOnOpenFolder(this::openFolder);
         topBar.setOnNewFile(this::newFile);
-
-
-
+        topBar.setOnSettings(() -> statusBar.updateStatus("Settings coming soon"));
+        topBar.setOnMinimize(() -> setState(Frame.ICONIFIED));
+        topBar.setOnMaximize(this::toggleMaximize);
+        topBar.setOnClose(() -> dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
 
         toolWindowBar.setActionListener(action -> {
-
             switch (action) {
-
                 case "PROJECT" -> explorerPanel.setVisible(!explorerPanel.isVisible());
-
-                case "TERMINAL" -> {
-
-
-                    if (bottomVisible && bottomTool.isTerminalSelected()) {
-                        hideBottomPanel();
-
-                    } else {
-
-                        showBottomPanel();
-                        bottomTool.showTerminal();
-                    }
-                }
-
-                case "RUN" -> {
-
-                    if (bottomVisible && bottomTool.isRunSelected()) {
-
-                        hideBottomPanel();
-
-                    } else {
-
-                        showBottomPanel();
-                        bottomTool.showRun();
-                    }
-                }
+                case "TERMINAL" -> toggleBottomTool(true);
+                case "RUN" -> toggleBottomTool(false);
             }
 
             revalidate();
             repaint();
         });
+    }
 
-        /**
-         * Layout principal dividido:
-         *
-         * [ Explorer | Editor ]
-         * [      Terminal      ]
-         *
-         * Isso simula layout de IDE real
-         */
+    private void configureWindowChrome() {
+        getRootPane().setBorder(BorderFactory.createLineBorder(new Color(55, 58, 64)));
+
+        topBar.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                dragStart = e.getPoint();
+            }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && SwingUtilities.isLeftMouseButton(e)) {
+                    toggleMaximize();
+                }
+            }
+        });
+
+        topBar.addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (dragStart == null || (getExtendedState() & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH) {
+                    return;
+                }
+
+                Point screenPoint = e.getLocationOnScreen();
+                setLocation(screenPoint.x - dragStart.x, screenPoint.y - dragStart.y);
+            }
+        });
+    }
+
+    private void toggleMaximize() {
+        int state = getExtendedState();
+
+        if ((state & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH) {
+            setExtendedState(Frame.NORMAL);
+            return;
+        }
+
+        setExtendedState(Frame.MAXIMIZED_BOTH);
+    }
+
+    private void configureLayout() {
         JPanel leftArea = new JPanel(new BorderLayout());
-
+        leftArea.setOpaque(false);
         leftArea.add(toolWindowBar, BorderLayout.WEST);
         leftArea.add(explorerPanel, BorderLayout.CENTER);
 
-        JPanel editorArea = new JPanel(new BorderLayout());
-
-        editorArea.add(breadcrumpPanel, BorderLayout.NORTH);
-
-        editorArea.add(tabbedPane, BorderLayout.CENTER);
-
-        JSplitPane centerSplit = new JSplitPane(
-                JSplitPane.HORIZONTAL_SPLIT,
-                leftArea,
-                editorArea
+        RoundedPanel editorArea = new RoundedPanel(
+                new BorderLayout(),
+                new Color(28, 30, 34),
+                new Color(54, 57, 63),
+                14
         );
+        editorArea.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        editorArea.add(editorStack, BorderLayout.CENTER);
 
-        rootSplit = new JSplitPane(
-                JSplitPane.VERTICAL_SPLIT,
-                centerSplit,
-                bottomTool
-        );
+        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftArea, editorArea);
+        rootSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, centerSplit, bottomTool);
 
         centerSplit.setResizeWeight(0.20);
         rootSplit.setResizeWeight(0.78);
-
-        centerSplit.setDividerSize(4);
-        rootSplit.setDividerSize(4);
-
+        centerSplit.setDividerSize(8);
+        rootSplit.setDividerSize(8);
         centerSplit.setBorder(null);
         rootSplit.setBorder(null);
+        centerSplit.setOpaque(false);
+        rootSplit.setOpaque(false);
+        centerSplit.setBackground(new Color(24, 25, 28));
+        rootSplit.setBackground(new Color(24, 25, 28));
 
+        JPanel workspace = new JPanel(new BorderLayout());
+        workspace.setOpaque(false);
+        workspace.setBorder(BorderFactory.createEmptyBorder(8, 8, 6, 8));
+        workspace.add(rootSplit, BorderLayout.CENTER);
+
+        add(statusBar, BorderLayout.SOUTH);
+        add(workspace, BorderLayout.CENTER);
+        add(topBar, BorderLayout.NORTH);
+    }
+
+    private void configureTabs() {
         tabbedPane.putClientProperty("JTabbedPane.tabHeight", 34);
-        tabbedPane.setBackground(new Color(30, 31, 34));
-        tabbedPane.setBorder(BorderFactory.createEmptyBorder());
         tabbedPane.putClientProperty("JTabbedPane.showTabsSeparators", true);
         tabbedPane.putClientProperty("JTabbedPane.tabInsets", new Insets(8, 16, 8, 16));
-        tabbedPane.setBorder(
-                BorderFactory.createEmptyBorder(
-                        6,
-                        6,
-                        6,
-                        6
-                )
-        );
+        tabbedPane.setBackground(new Color(28, 30, 34));
+        tabbedPane.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
 
         tabbedPane.addChangeListener(e -> {
-
             for (int i = 0; i < tabbedPane.getTabCount(); i++) {
-
                 Component component = tabbedPane.getTabComponentAt(i);
 
                 if (component instanceof TabComponent tab) {
-
                     tab.setSelected(i == tabbedPane.getSelectedIndex());
                 }
             }
+
             updateBreadcrump();
+            updateSelectedFileUi();
         });
+    }
 
-        add(statusBar, BorderLayout.SOUTH);
-
-        setExtendedState(JFrame.MAXIMIZED_BOTH);
-
-        setMinimumSize(new Dimension(1200, 700));
-
-        add(rootSplit, BorderLayout.CENTER);
-
-        add(topBar, BorderLayout.NORTH);
-
-        /**
-         * Conecta o explorer ao editor:
-         * Quando o usuário abre um arquivo na árvore,
-         * criamos uma nova aba com o conteúdo.
-         */
+    private void configureExplorer() {
         explorerPanel.setFileOpenCallBack(file -> {
             String content = fileManager.openFile(file);
             Document doc = new Document(file, content);
             addNewTab(doc, file.getName());
+            statusBar.updateStatus("Opened " + file.getName());
         });
+    }
 
-        setVisible(true);
-        SwingUtilities.invokeLater(this::openDefaultFile);
+    private void toggleBottomTool(boolean terminal) {
+        boolean selected = terminal ? bottomTool.isTerminalSelected() : bottomTool.isRunSelected();
+
+        if (bottomVisible && selected) {
+            hideBottomPanel();
+            return;
+        }
+
+        showBottomPanel();
+
+        if (terminal) {
+            bottomTool.showTerminal();
+        } else {
+            bottomTool.showRun();
+        }
     }
 
     private void createMenu() {
@@ -248,8 +235,6 @@ public class MainWindow extends JFrame {
         JMenu runMenu = new JMenu("Run");
         JMenuItem runItem = new JMenuItem("Run");
         runItem.addActionListener(e -> runCode());
-
-
         runMenu.add(runItem);
         menuBar.add(runMenu);
 
@@ -278,20 +263,69 @@ public class MainWindow extends JFrame {
         fileMenu.add(refresh);
 
         fileMenu.add(closeItem);
-
         fileMenu.add(openItem);
         menuBar.add(fileMenu);
 
         setJMenuBar(menuBar);
     }
 
-    /**
-     * Executa o código Java do documento atual.
-     * <p>
-     * Pipeline:
-     * salvar → compilar → executar → mostrar saída
-     */
     private void runCode() {
+        EditorPanel editor = getCurrentEditor();
+
+        if (editor != null) {
+            Document doc = editor.getDocument();
+
+            if (doc == null) return;
+
+            if (doc.getFile() == null) {
+                saveFileAs();
+                doc = editor.getDocument();
+            }
+
+            if (doc.getModified()) {
+                saveFile();
+            }
+        }
+
+        bottomTool.showRun();
+        bottomTool.clearRunOutput();
+        bottomTool.setRunStatus("Running");
+        bottomTool.printRunOutput("Running...");
+        topBar.setRunActive(true);
+        statusBar.setRunning(true);
+        showBottomPanel();
+
+        File projectRoot = explorerPanel.getCurrentRoot();
+
+        new Thread(() -> {
+            String output = runManager.runProject(projectRoot);
+
+            SwingUtilities.invokeLater(() -> {
+                bottomTool.printRunOutput(output);
+                bottomTool.setRunStatus("Finished");
+                topBar.setRunActive(false);
+                statusBar.setRunning(false);
+                statusBar.updateStatus("Run finished");
+            });
+        }).start();
+    }
+
+    private void openFile() {
+        JFileChooser chooser = new JFileChooser();
+        int result = chooser.showOpenDialog(this);
+
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            String content = fileManager.openFile(file);
+            Document document = new Document(file, content);
+
+            addNewTab(document, file.getName());
+            bottomTool.printRunOutput("Opened " + file.getName());
+            statusBar.updateStatus("Opened " + file.getName());
+        }
+    }
+
+    private void saveFile() {
         EditorPanel editor = getCurrentEditor();
 
         if (editor == null) return;
@@ -300,102 +334,21 @@ public class MainWindow extends JFrame {
 
         if (doc == null) return;
 
-        /**
-         * Garante que o arquivo exista antes de rodar.
-         * (não dá pra compilar algo que não está no disco)
-         */
-        if (doc.getFile() == null) {
-            saveFileAs();
-            doc = editor.getDocument();
-        }
-
-        /**
-         * Garante que o código atual está salvo
-         * antes de compilar.
-         */
-        if (doc.getModified()) {
-            saveFile();
-        }
-        bottomTool.printRunOutput("Running...\n");
-
-        File projectRoot = explorerPanel.getCurrentRoot();
-
-
-        // Executa via RunManager
-        new Thread(() -> {
-            String output = runManager.runProject(projectRoot);
-
-            SwingUtilities.invokeLater(() -> {
-                bottomTool.printRunOutput(output);
-        });
-        }).start();
-
-    }
-
-    /**
-     * Abre um arquivo do sistema usando JFileChooser.
-     * <p>
-     * Fluxo:
-     * arquivo → conteúdo → Document → nova aba
-     */
-    private void openFile() {
-        JFileChooser chooser = new JFileChooser();
-
-        int result = chooser.showOpenDialog(this);
-
-        if (result == JFileChooser.APPROVE_OPTION) {
-            File file = chooser.getSelectedFile();
-
-            // Lê conteúdo do arquivo
-            String content = fileManager.openFile(file);
-
-            // Cria model em memória
-            Document document = new Document(file, content);
-
-            // Abre no editor
-            addNewTab(document, file.getName());
-
-            bottomTool.printRunOutput("Opened" + file.getName());
-
-
-        }
-    }
-
-    /**
-     * Salva o arquivo atual.
-     * <p>
-     * Se não existir arquivo (novo documento),
-     * redireciona para Save As.
-     */
-    private void saveFile() {
-        EditorPanel editor = getCurrentEditor();
-
-        if (editor == null) return;
-
-        Document doc = editor.getDocument();
-
-        if (doc == null) {
-            return;
-        }
-
         File file = doc.getFile();
 
-        // Documento novo → precisa escolher onde salvar
         if (file == null) {
             saveFileAs();
             return;
         }
 
-        // Salva no disco
         fileManager.saveFile(file, doc.getContent());
-
-        // Marca como sincronizado
         doc.setModified(false);
 
         bottomTool.printRunOutput("File Saved: " + file.getName());
+        statusBar.updateStatus("Saved " + file.getName());
+        updateTabTitle(editor);
     }
 
-    //Save file for new docs
     private void saveFileAs() {
         EditorPanel editor = getCurrentEditor();
 
@@ -403,78 +356,51 @@ public class MainWindow extends JFrame {
 
         Document doc = editor.getDocument();
 
-        if (doc == null) {
-            return;
-        }
+        if (doc == null) return;
 
         JFileChooser chooser = new JFileChooser();
-
         int result = chooser.showSaveDialog(this);
 
         if (result == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
-
             fileManager.saveFile(file, doc.getContent());
 
             doc.setModified(false);
-
             doc = new Document(file, doc.getContent());
             editor.setDocument(doc);
 
-            tabbedPane.setTitleAt(
-                    tabbedPane.getSelectedIndex(),
-                    file.getName()
-            );
+            tabbedPane.setTitleAt(tabbedPane.getSelectedIndex(), file.getName());
 
-            bottomTool.printRunOutput("File Saved As" + file.getName());
+            bottomTool.printRunOutput("File Saved As " + file.getName());
+            statusBar.updateStatus("Saved " + file.getName());
+            updateTabTitle(editor);
+            updateSelectedFileUi();
         }
     }
 
     private void newFile() {
         Document doc = new Document(null, "");
-
         addNewTab(doc, "Untitled");
-
         bottomTool.printRunOutput("New File Created");
+        statusBar.updateStatus("New file created");
     }
 
-    /**
-     * Cria uma nova aba com um editor independente.
-     * <p>
-     * Cada aba possui:
-     * - seu próprio EditorPanel
-     * - seu próprio Document
-     * <p>
-     * Isso permite múltiplos arquivos abertos simultaneamente.
-     */
     private void addNewTab(Document document, String title) {
         EditorPanel editor = new EditorPanel();
-
-        // Conecta o documento ao editor
         editor.setDocument(document);
-
-        editor.setCaretPositionListener((line, col) -> statusBar.updateCaretPosition(line, col));
-
-        /**
-         * Callback disparado quando o usuário digita.
-         * Usado para atualizar o título da aba (*)
-         */
+        editor.setCaretPositionListener(statusBar::updateCaretPosition);
         editor.setOnChangeCallback(() -> updateTabTitle(editor));
 
-        // Adiciona aba
         tabbedPane.addTab(title, editor);
 
-        int index = tabbedPane.indexOfTabComponent(editor);
+        int index = tabbedPane.indexOfComponent(editor);
+        tabbedPane.setTabComponentAt(index, new TabComponent(title, () -> closeTabAt(editor)));
 
-        tabbedPane.setTabComponentAt(index, new TabComponent(tabbedPane, title) {
-        });
-
-        // Foca na aba recém criada
         tabbedPane.setSelectedComponent(editor);
-
+        editorCards.show(editorStack, EDITOR_VIEW);
         updateBreadcrump();
+        updateSelectedFileUi();
     }
-
 
     private EditorPanel getCurrentEditor() {
         return (EditorPanel) tabbedPane.getSelectedComponent();
@@ -482,72 +408,83 @@ public class MainWindow extends JFrame {
 
     private void updateTabTitle(EditorPanel editor) {
         Document doc = editor.getDocument();
-
         int index = tabbedPane.indexOfComponent(editor);
 
         if (index == -1) return;
 
-        String title;
+        String title = doc.getFile() != null ? doc.getFile().getName() : "Untitled";
 
-        if (doc.getFile() != null) {
-            title = doc.getFile().getName();
-        } else {
-            title = "Untitled";
-        }
         if (doc.getModified()) {
             title += " *";
         }
 
         tabbedPane.setTitleAt(index, title);
+
+        Component component = tabbedPane.getTabComponentAt(index);
+        if (component instanceof TabComponent tab) {
+            tab.setTitle(title);
+        }
+
+        updateSelectedFileUi();
     }
 
-    /**
-     * Fecha a aba atual com segurança.
-     * <p>
-     * Se houver alterações não salvas:
-     * - pergunta ao usuário
-     * - evita perda de dados
-     */
     private void closeCurrentTab() {
         EditorPanel editor = getCurrentEditor();
 
-        if (editor == null) return;
+        if (editor != null) {
+            closeTabAt(editor);
+        }
+    }
 
+    private boolean closeTabAt(EditorPanel editor) {
         Document doc = editor.getDocument();
 
         if (doc != null && doc.getModified()) {
+            tabbedPane.setSelectedComponent(editor);
+
             int opt = JOptionPane.showConfirmDialog(
                     this,
                     "File has unsaved changes. Save before closing?",
                     "Warning",
                     JOptionPane.YES_NO_CANCEL_OPTION
             );
-            if (opt == JOptionPane.CANCEL_OPTION) return;
 
-            if (opt == JOptionPane.YES_OPTION) saveFile();
+            if (opt == JOptionPane.CANCEL_OPTION) return false;
+
+            if (opt == JOptionPane.YES_OPTION) {
+                saveFile();
+
+                if (doc.getModified()) {
+                    return false;
+                }
+            }
         }
+
         tabbedPane.remove(editor);
+        showWelcomeIfNeeded();
+        statusBar.updateStatus("Tab closed");
+        return true;
     }
 
     private void openFolder() {
         JFileChooser chooser = new JFileChooser();
-
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
         int result = chooser.showOpenDialog(this);
 
         if (result == JFileChooser.APPROVE_OPTION) {
             File folder = chooser.getSelectedFile();
-
             explorerPanel.setRootDirectory(folder);
-
+            updateProjectUi(folder);
             bottomTool.printRunOutput("Opened Folder: " + folder.getAbsolutePath());
+            statusBar.updateStatus("Opened folder " + folder.getName());
         }
     }
 
     private void refreshExplorer() {
         explorerPanel.refresh();
         bottomTool.printRunOutput("Explorer Refreshed");
+        statusBar.updateStatus("Explorer refreshed");
     }
 
     private void openDefaultFile() {
@@ -561,49 +498,63 @@ public class MainWindow extends JFrame {
     }
 
     private void hideBottomPanel() {
-
-        int totalHeight =
-                rootSplit.getHeight();
-
-        rootSplit.setDividerLocation(
-                totalHeight - 5
-        );
-
+        int totalHeight = rootSplit.getHeight();
+        rootSplit.setDividerLocation(totalHeight - 5);
         bottomVisible = false;
     }
 
     private void showBottomPanel() {
-
-        int totalHeight =
-                rootSplit.getHeight();
-
-        rootSplit.setDividerLocation(
-                totalHeight - lastBottomHeight
-        );
-
+        int totalHeight = rootSplit.getHeight();
+        rootSplit.setDividerLocation(totalHeight - lastBottomHeight);
         bottomVisible = true;
     }
 
     private void updateBreadcrump() {
-
         EditorPanel editor = getCurrentEditor();
 
-        if (editor == null) {
-
+        if (editor == null || editor.getDocument() == null) {
             breadcrumpPanel.updatePath(null);
+            statusBar.updatePath(null);
             return;
         }
 
-        Document doc = editor.getDocument();
+        File file = editor.getDocument().getFile();
+        breadcrumpPanel.updatePath(file);
+        statusBar.updatePath(file);
+    }
 
-        if (doc == null) {
-
+    private void showWelcomeIfNeeded() {
+        if (tabbedPane.getTabCount() == 0) {
+            editorCards.show(editorStack, WELCOME_VIEW);
             breadcrumpPanel.updatePath(null);
+            statusBar.updateFile(null);
+            statusBar.updatePath(null);
             return;
         }
 
-        breadcrumpPanel.updatePath(doc.getFile());
+        editorCards.show(editorStack, EDITOR_VIEW);
+    }
+
+    private void updateSelectedFileUi() {
+        EditorPanel editor = getCurrentEditor();
+
+        if (editor == null || editor.getDocument() == null) {
+            statusBar.updateFile(null);
+            return;
+        }
+
+        File file = editor.getDocument().getFile();
+        statusBar.updateFile(file == null ? "Untitled" : file.getName());
+    }
+
+    private void updateProjectUi(File root) {
+        String name = root.getAbsoluteFile().getName();
+
+        if (name == null || name.isBlank() || name.equals(".")) {
+            name = "EyeCode";
+        }
+
+        topBar.setProjectName(name);
+        statusBar.updateProject(name);
     }
 }
-
-
