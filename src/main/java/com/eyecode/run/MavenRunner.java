@@ -1,5 +1,7 @@
 package com.eyecode.run;
 
+
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
@@ -8,7 +10,12 @@ public class MavenRunner implements ProjectRunner{
     @Override
     public String run(File projectRoot) {
 
+        MainClassFinder finder = new MainClassFinder();
+
+        String mainClass = finder.findMainClass(projectRoot);
+
         StringBuilder output = new StringBuilder();
+
 
         try {
 
@@ -19,7 +26,7 @@ public class MavenRunner implements ProjectRunner{
                     "clean",
                     "compile",
                     "exec:java",
-                    "-Dexec.mainClass=com.eyecode.Main"
+                    "-Dexec.mainClass=" + mainClass
             );
 
 

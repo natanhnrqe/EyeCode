@@ -21,6 +21,7 @@ import java.util.List;
  */
 public class JavaRunner implements ProjectRunner {
 
+
     @Override
     public String run(File projectRoot) {
 
@@ -29,6 +30,7 @@ public class JavaRunner implements ProjectRunner {
              * todos os arquivos .java do projeto.
              */
             final ProjectScanner scanner = new ProjectScanner();
+            MainClassFinder finder = new MainClassFinder();
 
             /**
              * Compila e executa um projeto Java inteiro.
@@ -106,7 +108,7 @@ public class JavaRunner implements ProjectRunner {
                      */
                     List<File> javaFiles = scanner.findJavaFiles(srcRoot);
 
-                    String mainClass = findMainClass(javaFiles);
+                    String mainClass = finder.findMainClass(srcRoot);
 
 
                     if (mainClass == null) {
@@ -321,81 +323,7 @@ public class JavaRunner implements ProjectRunner {
         }
     }
 
-    private String buildQualifiedClassName(File file) {
 
-        try {
-
-            // Le conteudo do arquivo
-            String content = Files.readString(file.toPath());
-
-            String packageName = "";
-
-            /**
-             * Procura a linha do package...
-             */
-            for (String line : content.split("\n")) {
-
-                line = line.trim();
-
-                if (line.startsWith("package ")) {
-
-                    packageName = line.replace("package ", "")
-                            .replace(";", "");
-
-                    break;
-                }
-
-            }
-
-            /**
-             * Nome da Class:
-             * Main.java -> Main
-             */
-            String className = file.getName().replace(".java", "");
-
-            /**
-             * Se existir package:
-             * Ex: com.br.Main
-             */
-            if (!packageName.isEmpty()) {
-
-                return packageName + "." + className;
-            }
-
-            /**
-             * Classe sem package.
-             */
-            return className;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    private String findMainClass(List<File> javaFiles){
-
-        for (File file : javaFiles) {
-
-            try {
-
-                // Le todo o conteudo do arquivo
-                String content = Files.readString(file.toPath()
-                );
-
-                /**
-                 * Procura o metodo Main.
-                 * verificacao de texto simples.
-                 */
-                if (content.contains("public static void main")){
-
-                    return buildQualifiedClassName(file);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        return null;
-    }
 
     private String buildLibraryClasspath(File projectRoot) {
 
