@@ -25,11 +25,11 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
         fileIcon   = loadIcon("/icons/arquivo.png", 18);
         javaIcon   = loadIcon("/icons/javaico.png", 18);
 
-        setBackgroundNonSelectionColor(new Color(30,30,30));
-        setTextNonSelectionColor(new Color(169, 183,198));
-        setBackgroundSelectionColor(new Color(68,71,74));
+        setBackgroundNonSelectionColor(null);
+        setTextNonSelectionColor(new Color(169, 183, 198));
+        setBackgroundSelectionColor(null);
         setTextSelectionColor(Color.WHITE);
-
+        setBorderSelectionColor(null);
     }
     @Override
     public Component getTreeCellRendererComponent(
@@ -92,6 +92,21 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
         Image scaled = image.getScaledInstance(size, size, Image.SCALE_SMOOTH);
 
         return new ImageIcon(scaled);
+    }
+
+    @Override
+    public Color getBackgroundSelectionColor() {
+        return null;
+    }
+
+    @Override
+    public Color getBackgroundNonSelectionColor() {
+        return null;
+    }
+
+    @Override
+    public Color getBorderSelectionColor() {
+        return null;
     }
 
     @Override

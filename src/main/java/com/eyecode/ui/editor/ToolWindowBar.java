@@ -12,23 +12,30 @@ public class ToolWindowBar extends JPanel {
     private Consumer<String> actionListener;
 
     private ToolWindowButton projectButton;
-    private ToolWindowButton terminalButton;
     private ToolWindowButton runButton;
+    private ToolWindowButton terminalButton;
+    private ToolWindowButton problemButton;
 
     public ToolWindowBar() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setPreferredSize(new Dimension(48, 0));
-        setBackground(new Color(43, 43, 43));
-        setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        setPreferredSize(new Dimension(64, 0));
+        setOpaque(false);
+        setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
 
         projectButton = createButton(UiIcons.project(), "PROJECT", "Project");
-        terminalButton = createButton(UiIcons.terminal(), "TERMINAL", "Terminal");
         runButton = createButton(UiIcons.run(), "RUN", "Run");
+        terminalButton = createButton(UiIcons.terminal(), "TERMINAL", "Terminal");
+        problemButton = createButton(UiIcons.problem(), "PROBLEM", "Problems");
 
         add(projectButton);
-        add(terminalButton);
-        add(runButton);
+        
         add(Box.createVerticalGlue());
+        
+        add(runButton);
+        add(Box.createVerticalStrut(6));
+        add(terminalButton);
+        add(Box.createVerticalStrut(6));
+        add(problemButton);
     }
 
     public void setActionListener(Consumer<String> actionListener) {
@@ -36,7 +43,7 @@ public class ToolWindowBar extends JPanel {
     }
 
     private ToolWindowButton createButton(Icon icon, String action, String tooltip) {
-        ToolWindowButton button = new ToolWindowButton(icon);
+        ToolWindowButton button = new ToolWindowButton(icon, tooltip);
         button.setToolTipText(tooltip);
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -55,6 +62,7 @@ public class ToolWindowBar extends JPanel {
         projectButton.setSelectedState(false);
         runButton.setSelectedState(false);
         terminalButton.setSelectedState(false);
+        problemButton.setSelectedState(false);
 
         button.setSelectedState(true);
     }

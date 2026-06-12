@@ -53,6 +53,13 @@ public final class UiIcons {
         return new VectorIcon("maximize");
     }
 
+    public static Icon commit() { return new VectorIcon("commit"); }
+    public static Icon pr() { return new VectorIcon("pr"); }
+    public static Icon structure() { return new VectorIcon("structure"); }
+    public static Icon services() { return new VectorIcon("services"); }
+    public static Icon problem() { return new VectorIcon("problem"); }
+    public static Icon git() { return new VectorIcon("git"); }
+
     private static class VectorIcon implements Icon {
 
         private final String name;
@@ -93,6 +100,12 @@ public final class UiIcons {
                 case "settings" -> paintSettings(g2);
                 case "minimize" -> paintMinimize(g2);
                 case "maximize" -> paintMaximize(g2);
+                case "commit" -> paintCommit(g2);
+                case "pr" -> paintPr(g2);
+                case "structure" -> paintStructure(g2);
+                case "services" -> paintServices(g2);
+                case "problem" -> paintProblem(g2);
+                case "git" -> paintGit(g2);
                 default -> paintFile(g2);
             }
 
@@ -185,6 +198,50 @@ public final class UiIcons {
 
         private void paintMaximize(Graphics2D g2) {
             g2.drawRoundRect(5, 5, 8, 8, 1, 1);
+        }
+
+        private void paintCommit(Graphics2D g2) {
+            g2.drawOval(8, 2, 4, 4);
+            g2.drawLine(10, 6, 10, 14);
+            g2.drawOval(8, 14, 4, 4);
+        }
+
+        private void paintPr(Graphics2D g2) {
+            g2.drawLine(6, 4, 6, 14);
+            g2.drawLine(6, 4, 12, 4);
+            g2.drawOval(10, 2, 4, 4);
+            g2.drawLine(12, 6, 12, 9);
+            g2.drawLine(12, 9, 6, 12);
+        }
+
+        private void paintStructure(Graphics2D g2) {
+            g2.drawRoundRect(3, 3, 5, 4, 1, 1);
+            g2.drawRoundRect(10, 3, 5, 4, 1, 1);
+            g2.drawRoundRect(6, 11, 6, 4, 1, 1);
+            g2.drawLine(5, 7, 5, 9);
+            g2.drawLine(5, 9, 9, 9);
+            g2.drawLine(9, 9, 9, 11);
+            g2.drawLine(12, 7, 12, 9);
+            g2.drawLine(12, 9, 9, 9);
+        }
+
+        private void paintServices(Graphics2D g2) {
+            g2.drawRoundRect(4, 4, 10, 10, 2, 2);
+            g2.drawLine(4, 8, 14, 8);
+        }
+
+        private void paintProblem(Graphics2D g2) {
+            g2.drawOval(3, 3, 12, 12);
+            g2.drawLine(9, 6, 9, 10);
+            g2.drawLine(9, 12, 9, 12);
+        }
+
+        private void paintGit(Graphics2D g2) {
+            g2.drawLine(9, 3, 5, 9);
+            g2.drawLine(5, 9, 9, 15);
+            g2.drawLine(9, 15, 13, 9);
+            g2.drawLine(13, 9, 9, 3);
+            g2.drawOval(7, 7, 4, 4);
         }
     }
 }

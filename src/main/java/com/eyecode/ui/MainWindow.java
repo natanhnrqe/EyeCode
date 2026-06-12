@@ -146,7 +146,6 @@ public class MainWindow extends JFrame {
     private void configureLayout() {
         JPanel leftArea = new JPanel(new BorderLayout());
         leftArea.setOpaque(false);
-        leftArea.add(toolWindowBar, BorderLayout.WEST);
         leftArea.add(explorerPanel, BorderLayout.CENTER);
 
         RoundedPanel editorArea = new RoundedPanel(
@@ -175,6 +174,7 @@ public class MainWindow extends JFrame {
         JPanel workspace = new JPanel(new BorderLayout());
         workspace.setOpaque(false);
         workspace.setBorder(BorderFactory.createEmptyBorder(8, 8, 6, 8));
+        workspace.add(toolWindowBar, BorderLayout.WEST);
         workspace.add(rootSplit, BorderLayout.CENTER);
 
         add(statusBar, BorderLayout.SOUTH);
