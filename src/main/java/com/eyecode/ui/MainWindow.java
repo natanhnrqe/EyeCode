@@ -173,7 +173,7 @@ public class MainWindow extends JFrame {
 
         JPanel workspace = new JPanel(new BorderLayout());
         workspace.setOpaque(false);
-        workspace.setBorder(BorderFactory.createEmptyBorder(8, 8, 6, 8));
+        workspace.setBorder(BorderFactory.createEmptyBorder(8, 0, 6, 0));
         workspace.add(toolWindowBar, BorderLayout.WEST);
         workspace.add(rootSplit, BorderLayout.CENTER);
 

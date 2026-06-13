@@ -60,12 +60,7 @@ public class FileExplorerPanel extends RoundedPanel {
         jTree.setOpaque(false);
 
         jTree.setBackground(new Color(35, 37, 41));
-        jTree.setBorder(BorderFactory.createEmptyBorder(
-                8,
-                8,
-                8,
-                8
-        ));
+        jTree.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
 
 
 
@@ -73,7 +68,7 @@ public class FileExplorerPanel extends RoundedPanel {
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        header.setBorder(BorderFactory.createEmptyBorder(0, 4, 8, 4));
+        header.setBorder(BorderFactory.createEmptyBorder(0, 8, 8, 8));
 
         JLabel title = new JLabel("Project");
         title.setForeground(new Color(187, 187, 187));
@@ -90,14 +85,6 @@ public class FileExplorerPanel extends RoundedPanel {
 
         add(header, BorderLayout.NORTH);
         add(scrollPane, BorderLayout.CENTER);
-
-        setBorder(BorderFactory.createEmptyBorder(
-                        8,
-                        8,
-                        8,
-                        8
-                )
-        );
 
         jTree.setOpaque(false);
         jTree.setForeground(new Color(169, 183, 198));

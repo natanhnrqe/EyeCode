@@ -22,6 +22,7 @@ public class ToolWindowBar extends JPanel {
         setOpaque(false);
         setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
 
+
         projectButton = createButton(UiIcons.project(), "PROJECT", "Project");
         runButton = createButton(UiIcons.run(), "RUN", "Run");
         terminalButton = createButton(UiIcons.terminal(), "TERMINAL", "Terminal");

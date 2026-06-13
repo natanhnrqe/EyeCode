@@ -17,7 +17,7 @@ public class ToolWindowButton extends JButton {
         
         setFont(new Font("JetBrains Mono", Font.PLAIN, 10));
         setIconTextGap(4);
-        setMargin(new Insets(0, 0, 0, 14));
+        setMargin(new Insets(0, 0, 0, 0));
 
         setFocusPainted(false);
         setBorderPainted(false);
