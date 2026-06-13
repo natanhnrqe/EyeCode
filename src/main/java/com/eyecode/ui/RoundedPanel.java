@@ -9,7 +9,7 @@ public class RoundedPanel extends JPanel {
     private final Color borderColor;
 
     public RoundedPanel() {
-        this(new BorderLayout(), new Color(35, 37, 41), new Color(54, 57, 63), 14);
+        this(new BorderLayout(), new Color(25, 26, 28), new Color(54, 57, 63), 14);
     }
 
     public RoundedPanel(LayoutManager layout) {

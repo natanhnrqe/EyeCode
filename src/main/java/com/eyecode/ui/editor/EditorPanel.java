@@ -713,7 +713,7 @@ public class EditorPanel extends JPanel {
 
 
     private void applyDarkTheme(){
-        textPane.setBackground(new Color(30, 30, 30));
+        textPane.setBackground(new Color(25, 26, 28));
         textPane.setForeground(new Color(188, 190, 196));
         textPane.setCaretColor(Color.WHITE);
         textPane.setSelectionColor(new Color(33, 66, 131));

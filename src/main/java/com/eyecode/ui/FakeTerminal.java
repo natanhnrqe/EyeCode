@@ -60,7 +60,7 @@ public class FakeTerminal extends JPanel {
             }
         });
 
-        outputPane.setBackground(new Color(30, 30, 30));
+        outputPane.setBackground(new Color(25, 26, 28));
 
         outputPane.setForeground(new Color(220, 220, 220));
 
@@ -75,7 +75,7 @@ public class FakeTerminal extends JPanel {
 
         inputField = new JTextField();
 
-        inputField.setBackground(new Color(43, 43, 43));
+        inputField.setBackground(new Color(25, 26, 28));
 
         inputField.setForeground(new Color(220, 220, 220));
 

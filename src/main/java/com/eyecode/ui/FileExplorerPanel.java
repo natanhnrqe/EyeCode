@@ -42,7 +42,7 @@ public class FileExplorerPanel extends RoundedPanel {
 
     public FileExplorerPanel(File rootDirectory) {
         setLayout(new BorderLayout());
-        setBackground(new Color(35, 37, 41));
+        setBackground(new Color(25, 26, 28));
 
         // Guarda o estado atual da raiz
         this.currentRoot = rootDirectory;
@@ -53,13 +53,13 @@ public class FileExplorerPanel extends RoundedPanel {
         treeModel = new DefaultTreeModel(rootNode);
         this.jTree = new JTree(treeModel);
 
-        jTree.setRowHeight(26);
+        jTree.setRowHeight(28);
         jTree.setShowsRootHandles(true);
 
         jTree.setToggleClickCount(1);
         jTree.setOpaque(false);
 
-        jTree.setBackground(new Color(35, 37, 41));
+        jTree.setBackground(new Color(25, 26, 28));
         jTree.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
 
 
@@ -68,11 +68,11 @@ public class FileExplorerPanel extends RoundedPanel {
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        header.setBorder(BorderFactory.createEmptyBorder(0, 8, 8, 8));
+        header.setBorder(BorderFactory.createEmptyBorder(8, 8, 4, 8));
 
         JLabel title = new JLabel("Project");
         title.setForeground(new Color(187, 187, 187));
-        title.setFont(new Font("JetBrains Mono", Font.BOLD, 12));
+        title.setFont(new Font("JetBrains Mono", Font.BOLD, 14));
         header.add(title, BorderLayout.WEST);
 
         JScrollPane scrollPane = new JScrollPane(jTree);

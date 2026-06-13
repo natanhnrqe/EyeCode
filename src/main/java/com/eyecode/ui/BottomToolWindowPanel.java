@@ -16,7 +16,7 @@ public class BottomToolWindowPanel extends RoundedPanel {
 
     public BottomToolWindowPanel() {
         setLayout(new BorderLayout());
-        setBackground(new Color(30, 32, 36));
+        setBackground(new Color(25, 26, 28));
 
         tabs = new JTabbedPane();
         tabs.putClientProperty("JTabbedPane.tabHeight", 32);
@@ -34,7 +34,7 @@ public class BottomToolWindowPanel extends RoundedPanel {
 
     private JPanel createRunPanel() {
         JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(new Color(35, 37, 41));
+        header.setBackground(new Color(25, 26, 28));
         header.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 6));
 
         runStatusLabel = new JLabel("Run");
@@ -55,7 +55,7 @@ public class BottomToolWindowPanel extends RoundedPanel {
 
         runOutputArea = new JTextArea();
         runOutputArea.setEditable(false);
-        runOutputArea.setBackground(new Color(25, 26, 29));
+        runOutputArea.setBackground(new Color(25, 26, 28));
         runOutputArea.setForeground(new Color(187, 187, 187));
         runOutputArea.setFont(new Font("JetBrains Mono", Font.PLAIN, 13));
         runOutputArea.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));

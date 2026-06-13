@@ -150,7 +150,7 @@ public class MainWindow extends JFrame {
 
         RoundedPanel editorArea = new RoundedPanel(
                 new BorderLayout(),
-                new Color(28, 30, 34),
+                new Color(25, 26, 28),
                 new Color(54, 57, 63),
                 14
         );
@@ -186,7 +186,7 @@ public class MainWindow extends JFrame {
         tabbedPane.putClientProperty("JTabbedPane.tabHeight", 34);
         tabbedPane.putClientProperty("JTabbedPane.showTabsSeparators", true);
         tabbedPane.putClientProperty("JTabbedPane.tabInsets", new Insets(8, 16, 8, 16));
-        tabbedPane.setBackground(new Color(28, 30, 34));
+        tabbedPane.setBackground(new Color(25, 26, 28));
         tabbedPane.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
 
         tabbedPane.addChangeListener(e -> {
@@ -551,7 +551,7 @@ public class MainWindow extends JFrame {
         String name = root.getAbsoluteFile().getName();
 
         if (name == null || name.isBlank() || name.equals(".")) {
-            name = "EyeCode";
+            name = "No project";
         }
 
         topBar.setProjectName(name);

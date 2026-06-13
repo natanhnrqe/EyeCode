@@ -15,22 +15,41 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
 
     private Icon javaIcon;
 
-    private boolean selected;
-
-    private boolean hovered;
-
     public FileTreeCellRender() {
 
         folderIcon = loadIcon("/icons/pasta.png", 18);
         fileIcon   = loadIcon("/icons/arquivo.png", 18);
         javaIcon   = loadIcon("/icons/javaico.png", 18);
 
-        setBackgroundNonSelectionColor(null);
-        setTextNonSelectionColor(new Color(169, 183, 198));
-        setBackgroundSelectionColor(null);
+        setBackgroundNonSelectionColor(new Color(30,30,30));
+        setTextNonSelectionColor(new Color(169, 183,198));
+        setBackgroundSelectionColor(new Color(68,71,74));
         setTextSelectionColor(Color.WHITE);
-        setBorderSelectionColor(null);
     }
+
+    private boolean selected;
+    private boolean painting;
+
+    @Override
+    public Color getBackgroundSelectionColor() {
+        return painting ? null : new Color(40, 94, 184);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        if (selected) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(new Color(40, 94, 184));
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
+            g2.dispose();
+        }
+        painting = true;
+        super.paintComponent(g);
+        painting = false;
+    }
+
+
     @Override
     public Component getTreeCellRendererComponent(
             JTree jTree,
@@ -73,13 +92,7 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
         setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
         setFont(new Font("JetBrains Mono", Font.PLAIN, 13));
 
-        if (selected) {
 
-            setForeground(new Color(255, 255, 255));
-        } else {
-
-            setForeground(new Color(210, 210, 210));
-        }
 
 
     return this;
@@ -94,45 +107,4 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
         return new ImageIcon(scaled);
     }
 
-    @Override
-    public Color getBackgroundSelectionColor() {
-        return null;
-    }
-
-    @Override
-    public Color getBackgroundNonSelectionColor() {
-        return null;
-    }
-
-    @Override
-    public Color getBorderSelectionColor() {
-        return null;
-    }
-
-    @Override
-    protected void paintComponent(Graphics g) {
-
-        Graphics2D g2 = (Graphics2D) g.create();
-
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-        if (selected) {
-            g2.setColor(new Color(55, 57, 61));
-
-            g2.fillRoundRect(
-                    2,
-                    2,
-                    getWidth() - 4,
-                    getHeight() - 4,
-                    10,
-                    10
-            );
-        }
-
-
-
-        g2.dispose();
-
-        super.paintComponent(g);
-    }
 }

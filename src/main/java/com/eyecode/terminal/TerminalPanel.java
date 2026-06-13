@@ -69,9 +69,9 @@ public class TerminalPanel extends JPanel {
 
 
             setBackground(new java.awt.Color(
-                    30,
-                    30,
-                    30
+                    25,
+                    26,
+                    28
             ));
 
             terminal.getComponent().setBorder(
