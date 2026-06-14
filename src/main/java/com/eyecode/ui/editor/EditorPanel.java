@@ -939,6 +939,15 @@ public class EditorPanel extends JPanel {
         return document;
     }
 
+    public void setEditorFont(Font font) {
+        textPane.setFont(font);
+        lineNumbers.setFont(font);
+    }
+
+    public Font getEditorFont() {
+        return textPane.getFont();
+    }
+
     private List<Suggestion> getMethodsForType(String type){
 
         switch (type) {

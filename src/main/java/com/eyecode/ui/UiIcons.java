@@ -119,42 +119,46 @@ public final class UiIcons {
         }
 
         private void paintNewFile(Graphics2D g2) {
-            paintFile(g2);
-            g2.drawLine(9, 8, 9, 14);
-            g2.drawLine(6, 11, 12, 11);
+            g2.drawRoundRect(3, 2, 12, 14, 2, 2);
+            g2.drawLine(9, 5, 9, 13);
+            g2.drawLine(5, 9, 13, 9);
         }
 
         private void paintFolder(Graphics2D g2) {
             Path2D path = new Path2D.Double();
-            path.moveTo(2, 6);
-            path.lineTo(7, 6);
-            path.lineTo(8.7, 8);
-            path.lineTo(16, 8);
-            path.lineTo(16, 15);
+            path.moveTo(2, 5);
+            path.lineTo(6, 5);
+            path.quadTo(7, 5, 8, 7);
+            path.lineTo(16, 7);
+            path.lineTo(14, 15);
             path.lineTo(2, 15);
             path.closePath();
             g2.draw(path);
+            g2.drawLine(2, 5, 2, 4);
+            g2.drawLine(2, 4, 7, 4);
+            g2.drawLine(7, 4, 8, 7);
         }
 
         private void paintSave(Graphics2D g2) {
-            g2.drawRoundRect(3, 3, 12, 12, 2, 2);
-            g2.drawLine(6, 3, 6, 7);
-            g2.drawLine(11, 3, 11, 7);
-            g2.drawLine(6, 12, 12, 12);
+            g2.drawRoundRect(3, 2, 12, 14, 2, 2);
+            g2.drawLine(7, 2, 7, 7);
+            g2.drawLine(11, 2, 11, 7);
+            g2.drawRoundRect(5, 9, 8, 6, 1, 1);
+            g2.drawLine(9, 11, 9, 14);
         }
 
         private void paintRun(Graphics2D g2) {
             Path2D path = new Path2D.Double();
-            path.moveTo(6, 4);
-            path.lineTo(14, 9);
-            path.lineTo(6, 14);
+            path.moveTo(5, 3);
+            path.lineTo(15, 9);
+            path.lineTo(5, 15);
             path.closePath();
             g2.draw(path);
         }
 
         private void paintClose(Graphics2D g2) {
-            g2.drawLine(5, 5, 13, 13);
-            g2.drawLine(13, 5, 5, 13);
+            g2.drawLine(4, 4, 14, 14);
+            g2.drawLine(14, 4, 4, 14);
         }
 
         private void paintTerminal(Graphics2D g2) {
@@ -181,15 +185,16 @@ public final class UiIcons {
         }
 
         private void paintSettings(Graphics2D g2) {
-            g2.drawOval(6, 6, 6, 6);
-            g2.drawLine(9, 2, 9, 4);
-            g2.drawLine(9, 14, 9, 16);
-            g2.drawLine(2, 9, 4, 9);
-            g2.drawLine(14, 9, 16, 9);
-            g2.drawLine(5, 5, 6, 6);
-            g2.drawLine(12, 12, 13, 13);
-            g2.drawLine(13, 5, 12, 6);
-            g2.drawLine(6, 12, 5, 13);
+            g2.drawOval(4, 4, 10, 10);
+            g2.drawOval(7, 7, 4, 4);
+            g2.drawLine(9, 1, 9, 3);
+            g2.drawLine(9, 15, 9, 17);
+            g2.drawLine(1, 9, 3, 9);
+            g2.drawLine(15, 9, 17, 9);
+            g2.drawLine(4, 4, 5, 5);
+            g2.drawLine(14, 14, 13, 13);
+            g2.drawLine(14, 4, 13, 5);
+            g2.drawLine(4, 14, 5, 13);
         }
 
         private void paintMinimize(Graphics2D g2) {

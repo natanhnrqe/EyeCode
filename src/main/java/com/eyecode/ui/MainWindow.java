@@ -85,7 +85,21 @@ public class MainWindow extends JFrame {
         topBar.setOnSave(this::saveFile);
         topBar.setOnOpenFolder(this::openFolder);
         topBar.setOnNewFile(this::newFile);
-        topBar.setOnSettings(() -> statusBar.updateStatus("Settings coming soon"));
+        topBar.setOnSettings(() -> {
+            Font currentFont = new Font("JetBrains Mono", Font.PLAIN, 14);
+            EditorPanel editor = getCurrentEditor();
+            if (editor != null && editor.getDocument() != null) {
+                currentFont = editor.getEditorFont();
+            }
+            new SettingsDialog(MainWindow.this, currentFont, newFont -> {
+                for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+                    Component c = tabbedPane.getComponentAt(i);
+                    if (c instanceof EditorPanel ep) {
+                        ep.setEditorFont(newFont);
+                    }
+                }
+            });
+        });
         topBar.setOnMinimize(() -> setState(Frame.ICONIFIED));
         topBar.setOnMaximize(this::toggleMaximize);
         topBar.setOnClose(() -> dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
