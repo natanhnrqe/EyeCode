@@ -85,7 +85,9 @@ public class MainWindow extends JFrame {
     private void configureActions() {
         topBar.setOnRun(this::runCode);
         topBar.setOnSave(this::saveFile);
-        topBar.setOnOpenFolder(this::openFolder);
+        topBar.setOnOpenProject(this::openFolder);
+        topBar.setOnOpenFile(this::openFile);
+        topBar.setOnSearch(this::showSearchDialog);
         topBar.setOnNewFile(this::newFile);
         topBar.setOnSettings(() -> {
             Font currentFont = TypographyManager.UI_TITLE();
@@ -509,6 +511,48 @@ public class MainWindow extends JFrame {
             String content = fileManager.openFile(mainFile);
             Document doc = new Document(mainFile, content);
             addNewTab(doc, mainFile.getName());
+        }
+    }
+
+    private void showSearchDialog() {
+        String query = JOptionPane.showInputDialog(this, "Search in project:", "Search", JOptionPane.PLAIN_MESSAGE);
+        if (query == null || query.isBlank()) return;
+
+        bottomTool.showRun();
+        bottomTool.clearRunOutput();
+        bottomTool.setRunStatus("Search results");
+        bottomTool.printRunOutput("Searching for: " + query + "\n");
+        showBottomPanel();
+
+        File root = explorerPanel.getCurrentRoot();
+        new Thread(() -> {
+            StringBuilder results = new StringBuilder();
+            searchInDirectory(root, query, results);
+            SwingUtilities.invokeLater(() -> {
+                if (results.isEmpty()) {
+                    bottomTool.printRunOutput("No results found.");
+                } else {
+                    bottomTool.printRunOutput(results.toString());
+                }
+                statusBar.updateStatus("Search complete");
+            });
+        }).start();
+    }
+
+    private void searchInDirectory(File dir, String query, StringBuilder results) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (f.isDirectory()) {
+                searchInDirectory(f, query, results);
+            } else if (f.getName().endsWith(".java") || f.getName().endsWith(".txt") || f.getName().endsWith(".xml")) {
+                try {
+                    String content = fileManager.openFile(f);
+                    if (content.toLowerCase().contains(query.toLowerCase())) {
+                        results.append(f.getPath()).append("\n");
+                    }
+                } catch (Exception ignored) {}
+            }
         }
     }
 

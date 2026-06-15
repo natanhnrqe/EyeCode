@@ -12,7 +12,9 @@ public class TopBarPanel extends JPanel {
 
     private Runnable onRun;
     private Runnable onSave;
-    private Runnable onOpenFolder;
+    private Runnable onOpenProject;
+    private Runnable onOpenFile;
+    private Runnable onSearch;
     private Runnable onNewFile;
     private Runnable onSettings;
     private Runnable onMinimize;
@@ -32,36 +34,40 @@ public class TopBarPanel extends JPanel {
     }
 
     private void buildUi() {
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, SpacingSystem.LG, SpacingSystem.XS));
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, SpacingSystem.XS));
         left.setOpaque(false);
 
         JLabel logo = new JLabel("EyeCode");
         logo.setFont(TypographyManager.UI_LOGO());
         logo.setForeground(ColorManager.TEXT_PRIMARY);
+        logo.setBorder(BorderFactory.createEmptyBorder(0, SpacingSystem.XL, 0, SpacingSystem.LG));
 
         projectLabel = new JLabel("No project");
         projectLabel.setFont(TypographyManager.UI_LABEL());
         projectLabel.setForeground(ColorManager.TEXT_TERTIARY);
 
         left.add(logo);
-        left.add(projectLabel);
 
         JPanel titleSpace = new JPanel(new BorderLayout());
         titleSpace.setOpaque(false);
 
-        JPanel ideActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, SpacingSystem.XS, 3));
+        JPanel ideActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, SpacingSystem.XXS, 3));
         ideActions.setOpaque(false);
 
-        JButton newFileButton = createToolbarButton(IconManager.newFile(), "New file");
-        JButton openFolderButton = createToolbarButton(IconManager.folder(), "Open folder");
-        JButton saveButton = createToolbarButton(IconManager.save(), "Save file");
-        runButton = createToolbarButton(IconManager.run(), "Run project");
+        JButton searchButton   = createToolbarButton(IconManager.search(), "Search (Ctrl+Shift+F)");
+        JButton openProjectBtn = createToolbarButton(IconManager.folder(), "Open project");
+        JButton openFileButton = createToolbarButton(IconManager.newFile(), "Open file");
+        JButton saveButton     = createToolbarButton(IconManager.save(), "Save file");
+        runButton              = createToolbarButton(IconManager.run(), "Run project");
         JButton settingsButton = createToolbarButton(IconManager.settings(), "Settings");
 
-        ideActions.add(newFileButton);
-        ideActions.add(openFolderButton);
+        ideActions.add(searchButton);
+        ideActions.add(createSeparator());
+        ideActions.add(openProjectBtn);
+        ideActions.add(openFileButton);
         ideActions.add(saveButton);
         ideActions.add(runButton);
+        ideActions.add(createSeparator());
         ideActions.add(settingsButton);
 
         JPanel windowControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
@@ -72,18 +78,33 @@ public class TopBarPanel extends JPanel {
 
         JPanel right = new JPanel(new BorderLayout());
         right.setOpaque(false);
-        right.add(ideActions, BorderLayout.WEST);
+        right.add(ideActions, BorderLayout.CENTER);
         right.add(windowControls, BorderLayout.EAST);
 
         add(left, BorderLayout.WEST);
         add(titleSpace, BorderLayout.CENTER);
         add(right, BorderLayout.EAST);
 
-        runButton.addActionListener(e -> run(onRun));
+        searchButton.addActionListener(e -> run(onSearch));
+        openProjectBtn.addActionListener(e -> run(onOpenProject));
+        openFileButton.addActionListener(e -> run(onOpenFile));
         saveButton.addActionListener(e -> run(onSave));
-        openFolderButton.addActionListener(e -> run(onOpenFolder));
-        newFileButton.addActionListener(e -> run(onNewFile));
+        runButton.addActionListener(e -> run(onRun));
         settingsButton.addActionListener(e -> run(onSettings));
+    }
+
+    private JComponent createSeparator() {
+        JPanel sep = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                g.setColor(ColorManager.BORDER);
+                g.fillRect(0, 0, 1, getHeight());
+            }
+        };
+        sep.setPreferredSize(new Dimension(1, SpacingSystem.HUGE));
+        sep.setMaximumSize(new Dimension(1, SpacingSystem.HUGE));
+        sep.setOpaque(false);
+        return sep;
     }
 
     private JButton createToolbarButton(Icon icon, String tooltip) {
@@ -145,9 +166,7 @@ public class TopBarPanel extends JPanel {
     }
 
     private void run(Runnable action) {
-        if (action != null) {
-            action.run();
-        }
+        if (action != null) action.run();
     }
 
     public void setProjectName(String projectName) {
@@ -156,41 +175,17 @@ public class TopBarPanel extends JPanel {
 
     public void setRunActive(boolean runActive) {
         this.runActive = runActive;
-
-        if (runButton != null) {
-            updateToolbarButtonState(runButton);
-        }
+        if (runButton != null) updateToolbarButtonState(runButton);
     }
 
-    public void setOnRun(Runnable onRun) {
-        this.onRun = onRun;
-    }
-
-    public void setOnSave(Runnable onSave) {
-        this.onSave = onSave;
-    }
-
-    public void setOnOpenFolder(Runnable onOpenFolder) {
-        this.onOpenFolder = onOpenFolder;
-    }
-
-    public void setOnNewFile(Runnable onNewFile) {
-        this.onNewFile = onNewFile;
-    }
-
-    public void setOnSettings(Runnable onSettings) {
-        this.onSettings = onSettings;
-    }
-
-    public void setOnMinimize(Runnable onMinimize) {
-        this.onMinimize = onMinimize;
-    }
-
-    public void setOnMaximize(Runnable onMaximize) {
-        this.onMaximize = onMaximize;
-    }
-
-    public void setOnClose(Runnable onClose) {
-        this.onClose = onClose;
-    }
+    public void setOnRun(Runnable onRun) { this.onRun = onRun; }
+    public void setOnSave(Runnable onSave) { this.onSave = onSave; }
+    public void setOnOpenProject(Runnable onOpenProject) { this.onOpenProject = onOpenProject; }
+    public void setOnOpenFile(Runnable onOpenFile) { this.onOpenFile = onOpenFile; }
+    public void setOnSearch(Runnable onSearch) { this.onSearch = onSearch; }
+    public void setOnNewFile(Runnable onNewFile) { this.onNewFile = onNewFile; }
+    public void setOnSettings(Runnable onSettings) { this.onSettings = onSettings; }
+    public void setOnMinimize(Runnable onMinimize) { this.onMinimize = onMinimize; }
+    public void setOnMaximize(Runnable onMaximize) { this.onMaximize = onMaximize; }
+    public void setOnClose(Runnable onClose) { this.onClose = onClose; }
 }

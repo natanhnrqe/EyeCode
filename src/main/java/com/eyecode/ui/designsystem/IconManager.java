@@ -12,6 +12,7 @@ public final class IconManager {
     public static Icon save()        { return UiIcons.save(); }
     public static Icon run()         { return UiIcons.run(); }
     public static Icon close()       { return UiIcons.close(); }
+    public static Icon search()      { return UiIcons.search(); }
     public static Icon terminal()    { return UiIcons.terminal(); }
     public static Icon project()     { return UiIcons.project(); }
     public static Icon clear()       { return UiIcons.clear(); }

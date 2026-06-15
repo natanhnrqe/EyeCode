@@ -62,6 +62,7 @@ public final class UiIcons {
     public static Icon structure() { return new VectorIcon("structure"); }
     public static Icon services() { return new VectorIcon("services"); }
     public static Icon problem() { return new VectorIcon("problem"); }
+    public static Icon search() { return new VectorIcon("search"); }
     public static Icon git() { return new VectorIcon("git"); }
 
     private static class VectorIcon implements Icon {
@@ -110,6 +111,7 @@ public final class UiIcons {
                 case "services" -> paintServices(g2);
                 case "problem" -> paintProblem(g2);
                 case "git" -> paintGit(g2);
+                case "search" -> paintSearch(g2);
                 case "javaFile" -> paintJavaFile(g2);
                 case "textFile" -> paintFile(g2);
                 case "modifiedDot" -> paintModifiedDot(g2);
@@ -265,6 +267,11 @@ public final class UiIcons {
 
         private void paintModifiedDot(Graphics2D g2) {
             g2.fillOval(6, 6, 6, 6);
+        }
+
+        private void paintSearch(Graphics2D g2) {
+            g2.drawOval(3, 3, 10, 10);
+            g2.drawLine(11, 11, 15, 15);
         }
     }
 }
