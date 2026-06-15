@@ -8,24 +8,23 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class StatusBar extends JPanel {
 
     private static final int DOT_SIZE = 10;
-    private static final int SEPARATOR_HEIGHT = 14;
+    private static final int SEPARATOR_HEIGHT = 16;
 
-    private final JLabel statusIcon;
-    private final JLabel statusLabel;
+    private final StatusBarItem logoItem;
+    private final StatusBarItem projectItem;
+    private final StatusBarItem statusItem;
+    private final StatusBarItem languageItem;
+    private final StatusBarItem encodingItem;
+    private final StatusBarItem lineSeparatorItem;
+    private final StatusBarItem positionItem;
+
     private final JLabel pathLabel;
-    private final JLabel positionLabel;
-    private final JLabel encodingLabel;
-    private final JLabel languageLabel;
-    private final JLabel gitLabel;
-    private final JLabel projectLabel;
 
     private File projectRoot;
-    private Color currentDotColor = ColorManager.STATUS_READY;
 
     public StatusBar() {
         setLayout(new BorderLayout());
@@ -33,54 +32,62 @@ public class StatusBar extends JPanel {
         setBackground(ColorManager.WINDOW_BG);
         setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, ColorManager.BORDER_DIVIDER));
 
-        statusIcon = new JLabel(new DotIcon(ColorManager.STATUS_READY));
-        statusIcon.setBorder(BorderFactory.createEmptyBorder(0, SpacingSystem.LG, 0, 0));
+        // ── left panel ───────────────────────────────────────
+        logoItem = new StatusBarItem("EyeCode");
+        logoItem.setForeground(ColorManager.TEXT_PRIMARY);
 
-        statusLabel = createLabel("Ready");
-        statusLabel.setBorder(BorderFactory.createEmptyBorder(0, SpacingSystem.XS, 0, 0));
+        projectItem = new StatusBarItem("No project");
 
-        pathLabel = createLabel("");
+        statusItem = new StatusBarItem("Ready", new DotIcon(ColorManager.STATUS_READY));
+
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        leftPanel.setOpaque(false);
+        leftPanel.add(logoItem);
+        leftPanel.add(createSeparator());
+        leftPanel.add(projectItem);
+        leftPanel.add(createSeparator());
+        leftPanel.add(statusItem);
+
+        // ── center (path) ────────────────────────────────────
+        pathLabel = new JLabel();
+        pathLabel.setFont(TypographyManager.UI_STATUS());
         pathLabel.setForeground(ColorManager.TEXT_MUTED);
+        pathLabel.setBorder(BorderFactory.createEmptyBorder(0, SpacingSystem.SM, 0, 0));
 
-        positionLabel = createLabel("Ln 1, Col 1");
-        encodingLabel = createLabel("UTF-8");
-        languageLabel = createLabel("Plain Text");
-        gitLabel = createLabel("main");
-        projectLabel = createLabel("EyeCode");
+        JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        centerPanel.setOpaque(false);
+        centerPanel.add(pathLabel);
 
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 4));
-        left.setOpaque(false);
-        left.add(statusIcon);
-        left.add(statusLabel);
+        // ── right panel ──────────────────────────────────────
+        languageItem = new StatusBarItem("Plain Text");
+        encodingItem = new StatusBarItem("UTF-8");
+        lineSeparatorItem = new StatusBarItem("LF");
+        positionItem = new StatusBarItem("Ln 1, Col 1");
 
-        JPanel center = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 4));
-        center.setOpaque(false);
-        center.add(pathLabel);
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        rightPanel.setOpaque(false);
+        rightPanel.add(languageItem);
+        rightPanel.add(createSeparator());
+        rightPanel.add(encodingItem);
+        rightPanel.add(createSeparator());
+        rightPanel.add(lineSeparatorItem);
+        rightPanel.add(createSeparator());
+        rightPanel.add(positionItem);
 
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 4));
-        right.setOpaque(false);
-        right.add(positionLabel);
-        right.add(createSeparator());
-        right.add(encodingLabel);
-        right.add(createSeparator());
-        right.add(languageLabel);
-        right.add(createSeparator());
-        right.add(gitLabel);
-        right.add(createSeparator());
-        right.add(projectLabel);
-
-        add(left, BorderLayout.WEST);
-        add(center, BorderLayout.CENTER);
-        add(right, BorderLayout.EAST);
+        // ── assemble ─────────────────────────────────────────
+        add(leftPanel, BorderLayout.WEST);
+        add(centerPanel, BorderLayout.CENTER);
+        add(rightPanel, BorderLayout.EAST);
     }
+
+    // ── public API ───────────────────────────────────────────
 
     public void setProjectRoot(File root) {
         this.projectRoot = root;
-        detectGitBranch();
     }
 
     public void updateCaretPosition(int line, int column) {
-        positionLabel.setText("Ln " + line + ", Col " + column);
+        positionItem.setText("Ln " + line + ", Col " + column);
     }
 
     public void updateFile(String fileName) {
@@ -113,53 +120,32 @@ public class StatusBar extends JPanel {
     }
 
     public void updateProject(String projectName) {
-        projectLabel.setText(projectName == null || projectName.isBlank() ? "EyeCode" : projectName);
+        projectItem.setText(projectName == null || projectName.isBlank() ? "No project" : projectName);
     }
 
     public void updateStatus(String status) {
-        statusLabel.setText(status == null || status.isBlank() ? "Ready" : status);
+        statusItem.setText(status == null || status.isBlank() ? "Ready" : status);
     }
 
     public void setRunning(boolean running) {
         if (running) {
-            statusLabel.setText("Running");
-            setDotColor(ColorManager.STATUS_BUSY);
+            statusItem.setText("Running");
+            statusItem.setIcon(new DotIcon(ColorManager.STATUS_BUSY));
         } else {
-            statusLabel.setText("Ready");
-            setDotColor(ColorManager.STATUS_READY);
+            statusItem.setText("Ready");
+            statusItem.setIcon(new DotIcon(ColorManager.STATUS_READY));
         }
     }
 
-    private void setDotColor(Color color) {
-        currentDotColor = color;
-        statusIcon.setIcon(new DotIcon(color));
-        statusIcon.repaint();
-    }
-
-    private void detectGitBranch() {
-        if (projectRoot == null) return;
-        try {
-            File headFile = new File(projectRoot, ".git/HEAD");
-            if (headFile.exists()) {
-                String content = new String(java.nio.file.Files.readAllBytes(headFile.toPath())).trim();
-                if (content.startsWith("ref: refs/heads/")) {
-                    gitLabel.setText(content.substring(16));
-                } else {
-                    gitLabel.setText(content.substring(0, Math.min(7, content.length())));
-                }
-                return;
-            }
-        } catch (Exception ignored) {}
-        gitLabel.setText("main");
-    }
+    // ── internal ─────────────────────────────────────────────
 
     private void updateLanguage(String fileName) {
         if (fileName == null || !fileName.contains(".")) {
-            languageLabel.setText("Plain Text");
+            languageItem.setText("Plain Text");
             return;
         }
         String extension = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
-        languageLabel.setText(switch (extension) {
+        languageItem.setText(switch (extension) {
             case "java" -> "Java";
             case "xml" -> "XML";
             case "md" -> "Markdown";
@@ -179,15 +165,8 @@ public class StatusBar extends JPanel {
         sep.setPreferredSize(new Dimension(1, SEPARATOR_HEIGHT));
         sep.setMaximumSize(new Dimension(1, SEPARATOR_HEIGHT));
         sep.setOpaque(false);
-        sep.setBorder(BorderFactory.createEmptyBorder(0, SpacingSystem.LG, 0, SpacingSystem.LG));
+        sep.setBorder(BorderFactory.createEmptyBorder(0, SpacingSystem.XL, 0, SpacingSystem.XL));
         return sep;
-    }
-
-    private JLabel createLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setForeground(ColorManager.TEXT_SECONDARY);
-        label.setFont(TypographyManager.UI_STATUS());
-        return label;
     }
 
     private static class DotIcon implements Icon {
