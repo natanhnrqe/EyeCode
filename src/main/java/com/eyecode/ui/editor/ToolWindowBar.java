@@ -17,6 +17,7 @@ public class ToolWindowBar extends JPanel {
     private ToolWindowButton runButton;
     private ToolWindowButton terminalButton;
     private ToolWindowButton problemButton;
+    private ToolWindowButton gitButton;
 
     public ToolWindowBar() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -24,21 +25,23 @@ public class ToolWindowBar extends JPanel {
         setOpaque(false);
         setBorder(BorderFactory.createEmptyBorder(SpacingSystem.MD, 0, SpacingSystem.MD, 0));
 
-
         projectButton = createButton(IconManager.project(), "PROJECT", "Project");
         runButton = createButton(IconManager.run(), "RUN", "Run");
         terminalButton = createButton(IconManager.terminal(), "TERMINAL", "Terminal");
         problemButton = createButton(IconManager.problem(), "PROBLEM", "Problems");
+        gitButton     = createButton(IconManager.git(), "GIT", "Git");
 
         add(projectButton);
-        
+
         add(Box.createVerticalGlue());
-        
+
         add(runButton);
         add(Box.createVerticalStrut(6));
         add(terminalButton);
         add(Box.createVerticalStrut(6));
         add(problemButton);
+        add(Box.createVerticalStrut(6));
+        add(gitButton);
     }
 
     public void setActionListener(Consumer<String> actionListener) {
@@ -66,6 +69,7 @@ public class ToolWindowBar extends JPanel {
         runButton.setSelectedState(false);
         terminalButton.setSelectedState(false);
         problemButton.setSelectedState(false);
+        gitButton.setSelectedState(false);
 
         button.setSelectedState(true);
     }
