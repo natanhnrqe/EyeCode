@@ -46,6 +46,8 @@ public final class ColorManager {
     public static final Color ERROR_RED         = new Color(196, 43, 28);
     public static final Color BREAKPOINT_RED    = new Color(255, 85, 85);
     public static final Color TAB_HOVER_RED     = new Color(255, 90, 90);
+    public static final Color STATUS_READY      = new Color(87, 166, 74);
+    public static final Color STATUS_BUSY       = new Color(255, 190, 50);
 
     // ── Editor ──────────────────────────────────────────────
     public static final Color EDITOR_FOREGROUND = new Color(188, 190, 196);

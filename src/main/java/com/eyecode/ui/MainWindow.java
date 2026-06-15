@@ -614,6 +614,7 @@ public class MainWindow extends JFrame {
         }
 
         topBar.setProjectName(name);
+        statusBar.setProjectRoot(root);
         statusBar.updateProject(name);
     }
 }
