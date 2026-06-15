@@ -29,6 +29,10 @@ public final class UiIcons {
         return new VectorIcon("close");
     }
 
+    public static Icon javaFile() { return new VectorIcon("javaFile"); }
+    public static Icon textFile() { return new VectorIcon("textFile"); }
+    public static Icon modifiedDot() { return new VectorIcon("modifiedDot"); }
+
     public static Icon terminal() {
         return new VectorIcon("terminal");
     }
@@ -106,6 +110,9 @@ public final class UiIcons {
                 case "services" -> paintServices(g2);
                 case "problem" -> paintProblem(g2);
                 case "git" -> paintGit(g2);
+                case "javaFile" -> paintJavaFile(g2);
+                case "textFile" -> paintFile(g2);
+                case "modifiedDot" -> paintModifiedDot(g2);
                 default -> paintFile(g2);
             }
 
@@ -247,6 +254,17 @@ public final class UiIcons {
             g2.drawLine(9, 15, 13, 9);
             g2.drawLine(13, 9, 9, 3);
             g2.drawOval(7, 7, 4, 4);
+        }
+
+        private void paintJavaFile(Graphics2D g2) {
+            g2.drawRoundRect(4, 2, 10, 14, 2, 2);
+            g2.drawLine(7, 6, 11, 6);
+            g2.drawLine(7, 9, 11, 9);
+            g2.drawRoundRect(7, 11, 4, 3, 1, 1);
+        }
+
+        private void paintModifiedDot(Graphics2D g2) {
+            g2.fillOval(6, 6, 6, 6);
         }
     }
 }

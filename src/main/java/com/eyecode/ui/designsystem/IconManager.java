@@ -24,4 +24,15 @@ public final class IconManager {
     public static Icon services()    { return UiIcons.services(); }
     public static Icon problem()     { return UiIcons.problem(); }
     public static Icon git()         { return UiIcons.git(); }
+
+    public static Icon javaFile()    { return UiIcons.javaFile(); }
+    public static Icon textFile()    { return UiIcons.textFile(); }
+    public static Icon modifiedDot() { return UiIcons.modifiedDot(); }
+
+    public static Icon forFile(String filename) {
+        if (filename == null) return textFile();
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".java")) return javaFile();
+        return textFile();
+    }
 }

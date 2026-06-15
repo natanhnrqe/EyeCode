@@ -410,7 +410,9 @@ public class MainWindow extends JFrame {
         tabbedPane.addTab(title, editor);
 
         int index = tabbedPane.indexOfComponent(editor);
-        tabbedPane.setTabComponentAt(index, new TabComponent(title, () -> closeTabAt(editor)));
+        String filename = document.getFile() != null ? document.getFile().getName() : title;
+        TabComponent tab = new TabComponent(title, filename, () -> closeTabAt(editor));
+        tabbedPane.setTabComponentAt(index, tab);
 
         tabbedPane.setSelectedComponent(editor);
         editorCards.show(editorStack, EDITOR_VIEW);
@@ -430,15 +432,12 @@ public class MainWindow extends JFrame {
 
         String title = doc.getFile() != null ? doc.getFile().getName() : "Untitled";
 
-        if (doc.getModified()) {
-            title += " *";
-        }
-
         tabbedPane.setTitleAt(index, title);
 
         Component component = tabbedPane.getTabComponentAt(index);
         if (component instanceof TabComponent tab) {
             tab.setTitle(title);
+            tab.setModified(doc.getModified());
         }
 
         updateSelectedFileUi();
