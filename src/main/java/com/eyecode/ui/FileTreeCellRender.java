@@ -1,6 +1,7 @@
 package com.eyecode.ui;
 
 import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.IconManager;
 import com.eyecode.ui.designsystem.SpacingSystem;
 import com.eyecode.ui.designsystem.TypographyManager;
 import javax.swing.*;
@@ -9,21 +10,9 @@ import javax.swing.tree.DefaultTreeCellRenderer;
 import java.awt.*;
 import java.io.File;
 
-
 public class FileTreeCellRender extends DefaultTreeCellRenderer {
 
-    private Icon folderIcon;
-
-    private Icon fileIcon;
-
-    private Icon javaIcon;
-
     public FileTreeCellRender() {
-
-        folderIcon = loadIcon("/icons/pasta.png", SpacingSystem.TREE_ICON_SIZE);
-        fileIcon   = loadIcon("/icons/arquivo.png", SpacingSystem.TREE_ICON_SIZE);
-        javaIcon   = loadIcon("/icons/javaico.png", SpacingSystem.TREE_ICON_SIZE);
-
         setBackgroundNonSelectionColor(ColorManager.PANEL_BG);
         setTextNonSelectionColor(ColorManager.TEXT_FILE_TREE);
         setBackgroundSelectionColor(ColorManager.ACCENT_SELECTION);
@@ -31,12 +20,13 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
     }
 
     private boolean selected;
-    private boolean painting;
 
     @Override
     public Color getBackgroundSelectionColor() {
         return painting ? null : ColorManager.ACCENT_BLUE;
     }
+
+    private boolean painting;
 
     @Override
     protected void paintComponent(Graphics g) {
@@ -52,7 +42,6 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
         painting = false;
     }
 
-
     @Override
     public Component getTreeCellRendererComponent(
             JTree jTree,
@@ -61,11 +50,9 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
             boolean expanded,
             boolean leaf,
             int row,
-            boolean hasFocus){
+            boolean hasFocus) {
 
-        super.getTreeCellRendererComponent(
-                jTree, value, selected, expanded, leaf, row, hasFocus
-        );
+        super.getTreeCellRendererComponent(jTree, value, selected, expanded, leaf, row, hasFocus);
 
         this.selected = selected;
 
@@ -73,41 +60,22 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
         setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XXS, SpacingSystem.XXS, SpacingSystem.XXS, SpacingSystem.XXS));
 
         DefaultMutableTreeNode node = (DefaultMutableTreeNode) value;
-
         Object obj = node.getUserObject();
 
-        if (obj instanceof File file){
+        if (obj instanceof File file) {
             setText(file.getName().isEmpty() ? file.getAbsolutePath() : file.getName());
 
-            if (file.isDirectory()){
-                setIcon(folderIcon);
-            }else {
-                if (file.getName().endsWith(".java")){
-                    setIcon(javaIcon);
-                }else {
-                    setIcon(fileIcon);
-                }
+            if (file.isDirectory()) {
+                setIcon(IconManager.folder());
+            } else {
+                setIcon(IconManager.forFile(file.getName()));
             }
         }
 
         setOpaque(false);
-
         setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XS, SpacingSystem.MD, SpacingSystem.XS, SpacingSystem.MD));
         setFont(TypographyManager.UI_TREE());
 
-
-
-
-    return this;
+        return this;
     }
-
-    private Icon loadIcon(String path, int size) {
-        ImageIcon icon = new ImageIcon(getClass().getResource(path));
-        Image image = icon.getImage();
-
-        Image scaled = image.getScaledInstance(size, size, Image.SCALE_SMOOTH);
-
-        return new ImageIcon(scaled);
-    }
-
 }
