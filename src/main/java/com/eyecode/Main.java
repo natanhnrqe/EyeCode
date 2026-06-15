@@ -1,6 +1,9 @@
 package com.eyecode;
 
 
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.TypographyManager;
+import com.eyecode.ui.designsystem.UIConstants;
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.eyecode.ui.MainWindow;
 
@@ -11,82 +14,28 @@ public class Main {
     public static void main(String[] args) {
         FlatDarkLaf.setup();
 
-
-        UIManager.put("defaultFont", loadEditorFont());
-        UIManager.put("Tree.rowHeight", 24);
+        UIManager.put("defaultFont", TypographyManager.UI_DEFAULT());
+        UIManager.put("Tree.rowHeight", UIConstants.TREE_ROW_HEIGHT);
         UIManager.put("TabbedPane.tabInsets", new Insets(5,10,5,10));
         UIManager.put("Tree.paintLines", false);
 
 
 
 
-        UIManager.put(
-                "Panel.background",
-                new Color(30, 30, 30)
-        );
+        UIManager.put("Panel.background", ColorManager.PANEL_BG);
+        UIManager.put("TabbedPane.background", ColorManager.PANEL_BG);
+        UIManager.put("TabbedPane.selectedBackground", ColorManager.SELECTED_TAB_BG);
+        UIManager.put("SplitPane.background", ColorManager.PANEL_BG);
+        UIManager.put("Tree.background", ColorManager.PANEL_BG);
+        UIManager.put("Viewport.background", ColorManager.PANEL_BG);
+        UIManager.put("ScrollPane.background", ColorManager.PANEL_BG);
+        UIManager.put("ToolBar.background", ColorManager.TOOLBAR_BG);
+        UIManager.put("MenuBar.background", ColorManager.TOOLBAR_BG);
+        UIManager.put("Menu.background", ColorManager.TOOLBAR_BG);
+        UIManager.put("MenuItem.background", ColorManager.TOOLBAR_BG);
 
-        UIManager.put(
-                "TabbedPane.background",
-                new Color(30, 30, 30)
-        );
-
-        UIManager.put(
-                "TabbedPane.selectedBackground",
-                new Color(37, 37, 38)
-        );
-
-        UIManager.put(
-                "SplitPane.background",
-                new Color(30, 30, 30)
-        );
-
-        UIManager.put(
-                "Tree.background",
-                new Color(30, 30, 30)
-        );
-
-        UIManager.put(
-                "Viewport.background",
-                new Color(30, 30, 30)
-        );
-
-        UIManager.put(
-                "ScrollPane.background",
-                new Color(30, 30, 30)
-        );
-
-        UIManager.put(
-                "ToolBar.background",
-                new Color(37, 37, 38)
-        );
-
-        UIManager.put(
-                "MenuBar.background",
-                new Color(37, 37, 38)
-        );
-
-        UIManager.put(
-                "Menu.background",
-                new Color(37, 37, 38)
-        );
-
-        UIManager.put(
-                "MenuItem.background",
-                new Color(37, 37, 38)
-        );
-
-        /**
-         * Divider styling
-         */
-        UIManager.put(
-                "SplitPaneDivider.style",
-                "plain"
-        );
-
-        UIManager.put(
-                "SplitPaneDivider.gripColor",
-                new Color(60, 60, 60)
-        );
+        UIManager.put("SplitPaneDivider.style", "plain");
+        UIManager.put("SplitPaneDivider.gripColor", ColorManager.DIVIDER_COLOR);
 
 
 
@@ -97,30 +46,4 @@ public class Main {
 
     }
 
-    private static Font loadEditorFont() {
-
-        GraphicsEnvironment ge =
-                GraphicsEnvironment
-                        .getLocalGraphicsEnvironment();
-
-        for (String name :
-                ge.getAvailableFontFamilyNames()) {
-
-            if (name.equalsIgnoreCase(
-                    "JetBrains Mono")) {
-
-                return new Font(
-                        "JetBrains Mono",
-                        Font.PLAIN,
-                        13
-                );
-            }
-        }
-
-        return new Font(
-                "Consolas",
-                Font.PLAIN,
-                13
-        );
-    }
 }

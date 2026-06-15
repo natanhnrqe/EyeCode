@@ -1,7 +1,9 @@
 package com.eyecode.ui.editor;
 
 import com.eyecode.ui.ToolWindowButton;
-import com.eyecode.ui.UiIcons;
+import com.eyecode.ui.designsystem.IconManager;
+import com.eyecode.ui.designsystem.SpacingSystem;
+import com.eyecode.ui.designsystem.UIConstants;
 
 import javax.swing.*;
 import java.awt.*;
@@ -18,15 +20,15 @@ public class ToolWindowBar extends JPanel {
 
     public ToolWindowBar() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setPreferredSize(new Dimension(64, 0));
+        setPreferredSize(new Dimension(UIConstants.TOOLWINDOW_WIDTH, 0));
         setOpaque(false);
-        setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
+        setBorder(BorderFactory.createEmptyBorder(SpacingSystem.MD, 0, SpacingSystem.MD, 0));
 
 
-        projectButton = createButton(UiIcons.project(), "PROJECT", "Project");
-        runButton = createButton(UiIcons.run(), "RUN", "Run");
-        terminalButton = createButton(UiIcons.terminal(), "TERMINAL", "Terminal");
-        problemButton = createButton(UiIcons.problem(), "PROBLEM", "Problems");
+        projectButton = createButton(IconManager.project(), "PROJECT", "Project");
+        runButton = createButton(IconManager.run(), "RUN", "Run");
+        terminalButton = createButton(IconManager.terminal(), "TERMINAL", "Terminal");
+        problemButton = createButton(IconManager.problem(), "PROBLEM", "Problems");
 
         add(projectButton);
         

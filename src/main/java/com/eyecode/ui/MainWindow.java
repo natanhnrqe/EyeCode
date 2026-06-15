@@ -2,9 +2,11 @@ package com.eyecode.ui;
 
 import com.eyecode.editor.Document;
 import com.eyecode.filesystem.FileManager;
-import com.eyecode.maven.MavenProject;
-import com.eyecode.maven.PomParser;
 import com.eyecode.run.RunManager;
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.SpacingSystem;
+import com.eyecode.ui.designsystem.TypographyManager;
+import com.eyecode.ui.designsystem.UIConstants;
 import com.eyecode.ui.editor.EditorPanel;
 import com.eyecode.ui.editor.ToolWindowBar;
 
@@ -44,7 +46,7 @@ public class MainWindow extends JFrame {
         setSize(1000, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        getContentPane().setBackground(new Color(24, 25, 28));
+        getContentPane().setBackground(ColorManager.WINDOW_BG);
 
         fileManager = new FileManager();
         runManager = new RunManager();
@@ -74,7 +76,7 @@ public class MainWindow extends JFrame {
 
         setMaximizedBounds(GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds());
         setExtendedState(JFrame.MAXIMIZED_BOTH);
-        setMinimumSize(new Dimension(1200, 700));
+        setMinimumSize(new Dimension(UIConstants.WINDOW_MIN_WIDTH, UIConstants.WINDOW_MIN_HEIGHT));
         setVisible(true);
 
         SwingUtilities.invokeLater(this::openDefaultFile);
@@ -86,7 +88,7 @@ public class MainWindow extends JFrame {
         topBar.setOnOpenFolder(this::openFolder);
         topBar.setOnNewFile(this::newFile);
         topBar.setOnSettings(() -> {
-            Font currentFont = new Font("JetBrains Mono", Font.PLAIN, 14);
+            Font currentFont = TypographyManager.UI_TITLE();
             EditorPanel editor = getCurrentEditor();
             if (editor != null && editor.getDocument() != null) {
                 currentFont = editor.getEditorFont();
@@ -117,7 +119,7 @@ public class MainWindow extends JFrame {
     }
 
     private void configureWindowChrome() {
-        getRootPane().setBorder(BorderFactory.createLineBorder(new Color(55, 58, 64)));
+        getRootPane().setBorder(BorderFactory.createLineBorder(ColorManager.BORDER));
 
         topBar.addMouseListener(new MouseAdapter() {
             @Override
@@ -164,30 +166,30 @@ public class MainWindow extends JFrame {
 
         RoundedPanel editorArea = new RoundedPanel(
                 new BorderLayout(),
-                new Color(25, 26, 28),
-                new Color(54, 57, 63),
-                14
+                ColorManager.EDITOR_BG,
+                ColorManager.BORDER_EDITOR,
+                UIConstants.BORDER_RADIUS_PANEL
         );
-        editorArea.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        editorArea.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XS, SpacingSystem.XS, SpacingSystem.XS, SpacingSystem.XS));
         editorArea.add(editorStack, BorderLayout.CENTER);
 
         JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftArea, editorArea);
         rootSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, centerSplit, bottomTool);
 
-        centerSplit.setResizeWeight(0.20);
-        rootSplit.setResizeWeight(0.78);
-        centerSplit.setDividerSize(8);
-        rootSplit.setDividerSize(8);
+        centerSplit.setResizeWeight(UIConstants.SPLIT_EXPLORER_WEIGHT);
+        rootSplit.setResizeWeight(UIConstants.SPLIT_VERTICAL_WEIGHT);
+        centerSplit.setDividerSize(UIConstants.SPLIT_DIVIDER_SIZE);
+        rootSplit.setDividerSize(UIConstants.SPLIT_DIVIDER_SIZE);
         centerSplit.setBorder(null);
         rootSplit.setBorder(null);
         centerSplit.setOpaque(false);
         rootSplit.setOpaque(false);
-        centerSplit.setBackground(new Color(24, 25, 28));
-        rootSplit.setBackground(new Color(24, 25, 28));
+        centerSplit.setBackground(ColorManager.WINDOW_BG);
+        rootSplit.setBackground(ColorManager.WINDOW_BG);
 
         JPanel workspace = new JPanel(new BorderLayout());
         workspace.setOpaque(false);
-        workspace.setBorder(BorderFactory.createEmptyBorder(8, 0, 6, 0));
+        workspace.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.MD, 0, 6, 0));
         workspace.add(toolWindowBar, BorderLayout.WEST);
         workspace.add(rootSplit, BorderLayout.CENTER);
 
@@ -197,11 +199,11 @@ public class MainWindow extends JFrame {
     }
 
     private void configureTabs() {
-        tabbedPane.putClientProperty("JTabbedPane.tabHeight", 34);
+        tabbedPane.putClientProperty("JTabbedPane.tabHeight", UIConstants.TAB_HEIGHT);
         tabbedPane.putClientProperty("JTabbedPane.showTabsSeparators", true);
-        tabbedPane.putClientProperty("JTabbedPane.tabInsets", new Insets(8, 16, 8, 16));
-        tabbedPane.setBackground(new Color(25, 26, 28));
-        tabbedPane.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
+        tabbedPane.putClientProperty("JTabbedPane.tabInsets", new Insets(SpacingSystem.MD, SpacingSystem.XXL, SpacingSystem.MD, SpacingSystem.XXL));
+        tabbedPane.setBackground(ColorManager.EDITOR_BG);
+        tabbedPane.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XXS, SpacingSystem.XXS, SpacingSystem.XXS, SpacingSystem.XXS));
 
         tabbedPane.addChangeListener(e -> {
             for (int i = 0; i < tabbedPane.getTabCount(); i++) {

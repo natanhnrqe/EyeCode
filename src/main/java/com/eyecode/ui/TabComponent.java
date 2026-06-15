@@ -1,5 +1,9 @@
 package com.eyecode.ui;
 
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.IconManager;
+import com.eyecode.ui.designsystem.SpacingSystem;
+import com.eyecode.ui.designsystem.TypographyManager;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -12,31 +16,31 @@ public class TabComponent extends JPanel {
 
     public TabComponent(String title, Runnable onClose) {
         setOpaque(false);
-        setLayout(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        setLayout(new FlowLayout(FlowLayout.LEFT, SpacingSystem.SM, 0));
 
         titleLabel = new JLabel(title);
-        titleLabel.setForeground(new Color(220, 220, 220));
-        titleLabel.setFont(new Font("JetBrains Mono", Font.PLAIN, 13));
+        titleLabel.setForeground(ColorManager.TEXT_PRIMARY);
+        titleLabel.setFont(TypographyManager.UI_TAB());
 
-        JButton closeButton = new JButton(UiIcons.close());
+        JButton closeButton = new JButton(IconManager.close());
         closeButton.setBorderPainted(false);
         closeButton.setContentAreaFilled(false);
         closeButton.setFocusPainted(false);
-        closeButton.setForeground(new Color(160, 160, 160));
+        closeButton.setForeground(ColorManager.TEXT_TAB_CLOSE);
         closeButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        closeButton.setPreferredSize(new Dimension(22, 22));
+        closeButton.setPreferredSize(new Dimension(SpacingSystem.TAB_CLOSE_SIZE, SpacingSystem.TAB_CLOSE_SIZE));
         closeButton.setToolTipText("Close tab");
 
         closeButton.addMouseListener(new MouseAdapter() {
 
             @Override
             public void mouseEntered(MouseEvent e) {
-                closeButton.setForeground(new Color(255, 90, 90));
+                closeButton.setForeground(ColorManager.TAB_HOVER_RED);
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                closeButton.setForeground(new Color(160, 160, 160));
+                closeButton.setForeground(ColorManager.TEXT_TAB_CLOSE);
             }
         });
 
@@ -65,7 +69,7 @@ public class TabComponent extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         if (selected) {
-            g2.setColor(new Color(45, 45, 48));
+            g2.setColor(ColorManager.SELECTED_TAB_BG);
             g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
         }
 

@@ -2,6 +2,7 @@ package com.eyecode.ui.editor;
 
 import com.eyecode.editor.Document;
 import com.eyecode.ui.LineNumberPanel;
+import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.scroll.ModernScrollBarUI;
 
 import javax.swing.*;
@@ -246,40 +247,40 @@ public class EditorPanel extends JPanel {
 
 
 
-        suggestionList.setBackground(new Color(43, 43, 43));
-        suggestionList.setForeground(new Color(169, 183, 198));
-        suggestionList.setSelectionBackground(new Color(75, 110, 175));
+        suggestionList.setBackground(ColorManager.AUTOCOMPLETE_BG);
+        suggestionList.setForeground(ColorManager.AUTOCOMPLETE_FG);
+        suggestionList.setSelectionBackground(ColorManager.AUTOCOMPLETE_SELECTION_BG);
         suggestionList.setSelectionForeground(Color.WHITE);
 
         typeStyle = doc.addStyle("Type", null);
-        StyleConstants.setForeground(typeStyle, new Color(78, 201, 176));
+        StyleConstants.setForeground(typeStyle, ColorManager.SYNTAX_TYPE);
 
         classStyle = doc.addStyle("Class", null);
-        StyleConstants.setForeground(classStyle, new Color(78, 201, 176 ));
+        StyleConstants.setForeground(classStyle, ColorManager.SYNTAX_CLASS);
 
         annotationStyle = doc.addStyle("Annotation", null);
-        StyleConstants.setForeground(annotationStyle, new Color(187, 181, 41));
+        StyleConstants.setForeground(annotationStyle, ColorManager.SYNTAX_ANNOTATION);
 
         constantStyle = doc.addStyle("Constant", null);
-        StyleConstants.setForeground(constantStyle, new Color(199, 125, 187));
+        StyleConstants.setForeground(constantStyle, ColorManager.SYNTAX_CONSTANT);
 
         keywordStyle = doc.addStyle("Keyword", null);
-        StyleConstants.setForeground(keywordStyle, new Color(207, 109, 100));
+        StyleConstants.setForeground(keywordStyle, ColorManager.SYNTAX_KEYWORD);
 
         normalStyle = doc.addStyle("Normal", null);
-        StyleConstants.setForeground(normalStyle, new Color(188, 190, 196));
+        StyleConstants.setForeground(normalStyle, ColorManager.EDITOR_FOREGROUND);
 
         stringStyle = doc.addStyle("String", null);
-        StyleConstants.setForeground(stringStyle, new Color(106, 171, 115));
+        StyleConstants.setForeground(stringStyle, ColorManager.SYNTAX_STRING);
 
         commentStyle = doc.addStyle("Comment", null);
-        StyleConstants.setForeground(commentStyle, new Color(122, 126, 133));
+        StyleConstants.setForeground(commentStyle, ColorManager.SYNTAX_COMMENT);
 
         numberStyle = doc.addStyle("Number", null);
-        StyleConstants.setForeground(numberStyle, new Color(42,172,184));
+        StyleConstants.setForeground(numberStyle, ColorManager.SYNTAX_NUMBER);
 
         methodStyle = doc.addStyle("Method", null);
-        StyleConstants.setForeground(methodStyle, new Color(86,168,245));
+        StyleConstants.setForeground(methodStyle, ColorManager.SYNTAX_METHOD);
 
         applyDarkTheme();
 
@@ -677,7 +678,7 @@ public class EditorPanel extends JPanel {
             currentLineHighlight = highlighter.addHighlight(
                     lineElement.getStartOffset(),
                     lineElement.getEndOffset(),
-                    new FullLineHighlightPaint(new Color(39,41,42))
+                    new FullLineHighlightPaint(ColorManager.LINE_NUMBER_BG)
             );
         } catch (Exception e) {
             e.printStackTrace();
@@ -702,7 +703,7 @@ public class EditorPanel extends JPanel {
                 Object tag = highlighter.addHighlight(
                         el.getStartOffset(),
                         el.getEndOffset(),
-                        new FullLineHighlightPaint(new Color(70, 15, 40))
+                        new FullLineHighlightPaint(ColorManager.BREAKPOINT_LINE_BG)
                 );
 
                 breakpointHighlights.add(tag);
@@ -713,10 +714,10 @@ public class EditorPanel extends JPanel {
 
 
     private void applyDarkTheme(){
-        textPane.setBackground(new Color(25, 26, 28));
-        textPane.setForeground(new Color(188, 190, 196));
+        textPane.setBackground(ColorManager.EDITOR_BG);
+        textPane.setForeground(ColorManager.EDITOR_FOREGROUND);
         textPane.setCaretColor(Color.WHITE);
-        textPane.setSelectionColor(new Color(33, 66, 131));
+        textPane.setSelectionColor(ColorManager.EDITOR_SELECTION);
     }
 
     private void insertSuggestion(String suggestion) {

@@ -1,5 +1,9 @@
 package com.eyecode.ui;
 
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.SpacingSystem;
+import com.eyecode.ui.designsystem.TypographyManager;
+import com.eyecode.ui.designsystem.UIConstants;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
@@ -15,12 +19,12 @@ public class StatusBar extends JPanel {
 
     public StatusBar() {
         setLayout(new BorderLayout());
-        setPreferredSize(new Dimension(0, 30));
-        setBackground(new Color(24, 25, 28));
-        setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(48, 51, 57)));
+        setPreferredSize(new Dimension(0, UIConstants.STATUSBAR_HEIGHT));
+        setBackground(ColorManager.WINDOW_BG);
+        setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, ColorManager.BORDER_DIVIDER));
 
         pathLabel = createLabel("");
-        pathLabel.setForeground(new Color(145, 150, 160));
+        pathLabel.setForeground(ColorManager.TEXT_MUTED);
 
         projectLabel = createLabel("EyeCode");
         fileLabel = createLabel("No file");
@@ -28,11 +32,11 @@ public class StatusBar extends JPanel {
         positionLabel = createLabel("Ln 1, Col 1");
         statusLabel = createLabel("Ready");
 
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, SpacingSystem.LG, 5));
         left.setOpaque(false);
         left.add(pathLabel);
 
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, SpacingSystem.LG, 5));
         right.setOpaque(false);
         right.add(projectLabel);
         right.add(fileLabel);
@@ -67,13 +71,13 @@ public class StatusBar extends JPanel {
     }
 
     public void updateStatus(String status) {
-        statusLabel.setForeground(new Color(187, 187, 187));
+        statusLabel.setForeground(ColorManager.TEXT_SECONDARY);
         statusLabel.setText(status == null || status.isBlank() ? "Ready" : status);
     }
 
     public void setRunning(boolean running) {
         statusLabel.setText(running ? "Running" : "Ready");
-        statusLabel.setForeground(running ? new Color(87, 166, 74) : new Color(187, 187, 187));
+        statusLabel.setForeground(running ? ColorManager.RUNNING_GREEN : ColorManager.TEXT_SECONDARY);
     }
 
     private void updateLanguage(String fileName) {
@@ -94,8 +98,8 @@ public class StatusBar extends JPanel {
 
     private JLabel createLabel(String text) {
         JLabel label = new JLabel(text);
-        label.setForeground(new Color(187, 187, 187));
-        label.setFont(new Font("JetBrains Mono", Font.PLAIN, 12));
+        label.setForeground(ColorManager.TEXT_SECONDARY);
+        label.setFont(TypographyManager.UI_STATUS());
         return label;
     }
 }

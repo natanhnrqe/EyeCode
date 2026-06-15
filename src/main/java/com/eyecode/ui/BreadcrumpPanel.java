@@ -1,5 +1,8 @@
 package com.eyecode.ui;
 
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.SpacingSystem;
+import com.eyecode.ui.designsystem.TypographyManager;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
@@ -10,13 +13,13 @@ public class BreadcrumpPanel extends JPanel {
 
     public BreadcrumpPanel() {
 
-        setLayout(new FlowLayout(FlowLayout.LEFT, 8, 6));
-        setBackground(new Color(43, 45, 48));
+        setLayout(new FlowLayout(FlowLayout.LEFT, SpacingSystem.MD, 6));
+        setBackground(ColorManager.BREADCRUMB_BG);
 
         pathLabel = new JLabel();
 
-        pathLabel.setForeground(new Color(187, 187, 187));
-        pathLabel.setFont(new Font("JetBrains Mono", Font.PLAIN, 12));
+        pathLabel.setForeground(ColorManager.TEXT_SECONDARY);
+        pathLabel.setFont(TypographyManager.UI_PATH());
 
         add(pathLabel);
     }

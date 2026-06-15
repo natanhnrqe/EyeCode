@@ -1,5 +1,6 @@
 package com.eyecode.ui;
 
+import com.eyecode.ui.designsystem.ColorManager;
 import javax.swing.*;
 import java.awt.*;
 
@@ -9,11 +10,11 @@ public class RoundedPanel extends JPanel {
     private final Color borderColor;
 
     public RoundedPanel() {
-        this(new BorderLayout(), new Color(25, 26, 28), new Color(54, 57, 63), 14);
+        this(new BorderLayout(), ColorManager.EDITOR_BG, ColorManager.BORDER_EDITOR, 14);
     }
 
     public RoundedPanel(LayoutManager layout) {
-        this(layout, new Color(35, 37, 41), new Color(54, 57, 63), 14);
+        this(layout, ColorManager.PANEL_BG, ColorManager.BORDER_EDITOR, 14);
     }
 
     public RoundedPanel(LayoutManager layout, Color background, Color borderColor, int arc) {

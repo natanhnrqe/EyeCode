@@ -1,5 +1,9 @@
 package com.eyecode.ui;
 
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.SpacingSystem;
+import com.eyecode.ui.designsystem.TypographyManager;
+import com.eyecode.ui.designsystem.UIConstants;
 import com.eyecode.ui.scroll.ModernScrollBarUI;
 
 import javax.swing.*;
@@ -42,7 +46,7 @@ public class FileExplorerPanel extends RoundedPanel {
 
     public FileExplorerPanel(File rootDirectory) {
         setLayout(new BorderLayout());
-        setBackground(new Color(25, 26, 28));
+        setBackground(ColorManager.EDITOR_BG);
 
         // Guarda o estado atual da raiz
         this.currentRoot = rootDirectory;
@@ -53,14 +57,14 @@ public class FileExplorerPanel extends RoundedPanel {
         treeModel = new DefaultTreeModel(rootNode);
         this.jTree = new JTree(treeModel);
 
-        jTree.setRowHeight(28);
+        jTree.setRowHeight(UIConstants.EXPLORER_ROW_HEIGHT);
         jTree.setShowsRootHandles(true);
 
         jTree.setToggleClickCount(1);
         jTree.setOpaque(false);
 
-        jTree.setBackground(new Color(25, 26, 28));
-        jTree.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+        jTree.setBackground(ColorManager.EDITOR_BG);
+        jTree.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XS, SpacingSystem.MD, SpacingSystem.XS, SpacingSystem.MD));
 
 
 
@@ -68,11 +72,11 @@ public class FileExplorerPanel extends RoundedPanel {
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        header.setBorder(BorderFactory.createEmptyBorder(8, 8, 4, 8));
+        header.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.MD, SpacingSystem.MD, SpacingSystem.XS, SpacingSystem.MD));
 
         JLabel title = new JLabel("Project");
-        title.setForeground(new Color(187, 187, 187));
-        title.setFont(new Font("JetBrains Mono", Font.BOLD, 14));
+        title.setForeground(ColorManager.TEXT_SECONDARY);
+        title.setFont(TypographyManager.UI_TITLE());
         header.add(title, BorderLayout.WEST);
 
         JScrollPane scrollPane = new JScrollPane(jTree);
@@ -87,7 +91,7 @@ public class FileExplorerPanel extends RoundedPanel {
         add(scrollPane, BorderLayout.CENTER);
 
         jTree.setOpaque(false);
-        jTree.setForeground(new Color(169, 183, 198));
+        jTree.setForeground(ColorManager.TEXT_FILE_TREE);
 
 
         // Evento de duplo clique para abrir arquivos

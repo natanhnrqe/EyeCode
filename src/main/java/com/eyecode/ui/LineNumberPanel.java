@@ -1,5 +1,7 @@
 package com.eyecode.ui;
 
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.SpacingSystem;
 import javax.swing.*;
 import javax.swing.text.Element;
 import java.awt.*;
@@ -23,9 +25,9 @@ public class LineNumberPanel extends JPanel {
         this.textPane = textPane;
 
         setFont(textPane.getFont());
-        setBackground(new Color(39,41,42));
-        setForeground(new Color(128,128,128));
-        setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+        setBackground(ColorManager.LINE_NUMBER_BG);
+        setForeground(ColorManager.LINE_NUMBER_FG);
+        setBorder(BorderFactory.createEmptyBorder(0, SpacingSystem.MD, 0, SpacingSystem.MD));
         setBorder(null);
 
         addMouseListener(new MouseAdapter() {
@@ -72,18 +74,18 @@ public class LineNumberPanel extends JPanel {
             try {
                 Rectangle r = textPane.modelToView2D(line.getStartOffset()).getBounds();
                 // 1. FUNDO BASE (sempre)
-                g.setColor(new Color(30, 30, 30));
+                g.setColor(ColorManager.LINE_NUMBER_ROW_BG);
                 g.fillRect(0, r.y, getWidth(), r.height);
 
                 // fundo breakpoint
                 if (breakpoints.contains(i)){
-                    g.setColor(new Color(30, 30, 30));
+                    g.setColor(ColorManager.LINE_NUMBER_ROW_BG);
                     g.fillRect(0, r.y, getWidth(), r.height);
                 }
 
                 // linha atual
                 if (i == currentLine){
-                    g.setColor(new Color(39,41,42));
+                    g.setColor(ColorManager.LINE_NUMBER_BG);
                     g.fillRect(0, r.y, getWidth(), r.height);
                 }
 
@@ -102,7 +104,7 @@ public class LineNumberPanel extends JPanel {
                 }
 
                 if (breakpoints.contains(i)){
-                    g.setColor(new Color(255, 85, 85));
+                    g.setColor(ColorManager.BREAKPOINT_RED);
 
                     int size = 8;
                     int xCircle = 4;

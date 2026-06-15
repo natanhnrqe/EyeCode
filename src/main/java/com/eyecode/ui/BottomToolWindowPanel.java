@@ -1,6 +1,10 @@
 package com.eyecode.ui;
 
 import com.eyecode.terminal.TerminalPanel;
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.IconManager;
+import com.eyecode.ui.designsystem.SpacingSystem;
+import com.eyecode.ui.designsystem.TypographyManager;
 import com.eyecode.ui.scroll.ModernScrollBarUI;
 
 import javax.swing.*;
@@ -16,7 +20,7 @@ public class BottomToolWindowPanel extends RoundedPanel {
 
     public BottomToolWindowPanel() {
         setLayout(new BorderLayout());
-        setBackground(new Color(25, 26, 28));
+        setBackground(ColorManager.EDITOR_BG);
 
         tabs = new JTabbedPane();
         tabs.putClientProperty("JTabbedPane.tabHeight", 32);
@@ -28,22 +32,22 @@ public class BottomToolWindowPanel extends RoundedPanel {
         tabs.addTab("Terminal", terminalPanel);
         tabs.addTab("Run", createRunPanel());
 
-        setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XS, SpacingSystem.XS, SpacingSystem.XS, SpacingSystem.XS));
         add(tabs, BorderLayout.CENTER);
     }
 
     private JPanel createRunPanel() {
         JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(new Color(25, 26, 28));
-        header.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 6));
+        header.setBackground(ColorManager.EDITOR_BG);
+        header.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XS, SpacingSystem.MD, SpacingSystem.XS, SpacingSystem.SM));
 
         runStatusLabel = new JLabel("Run");
-        runStatusLabel.setForeground(new Color(187, 187, 187));
-        runStatusLabel.setFont(new Font("JetBrains Mono", Font.PLAIN, 12));
+        runStatusLabel.setForeground(ColorManager.TEXT_SECONDARY);
+        runStatusLabel.setFont(TypographyManager.UI_LABEL());
 
-        JButton clearButton = new JButton(UiIcons.clear());
+        JButton clearButton = new JButton(IconManager.clear());
         clearButton.setToolTipText("Clear output");
-        clearButton.setForeground(new Color(187, 187, 187));
+        clearButton.setForeground(ColorManager.TEXT_SECONDARY);
         clearButton.setFocusPainted(false);
         clearButton.setBorderPainted(false);
         clearButton.setContentAreaFilled(false);
@@ -55,13 +59,13 @@ public class BottomToolWindowPanel extends RoundedPanel {
 
         runOutputArea = new JTextArea();
         runOutputArea.setEditable(false);
-        runOutputArea.setBackground(new Color(25, 26, 28));
-        runOutputArea.setForeground(new Color(187, 187, 187));
-        runOutputArea.setFont(new Font("JetBrains Mono", Font.PLAIN, 13));
-        runOutputArea.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        runOutputArea.setBackground(ColorManager.EDITOR_BG);
+        runOutputArea.setForeground(ColorManager.TEXT_SECONDARY);
+        runOutputArea.setFont(TypographyManager.UI_RUN_OUTPUT());
+        runOutputArea.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.MD, SpacingSystem.LG, SpacingSystem.MD, SpacingSystem.LG));
 
         JScrollPane scrollPane = new JScrollPane(runOutputArea);
-        scrollPane.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(48, 51, 57)));
+        scrollPane.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, ColorManager.BORDER_DIVIDER));
         scrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
         scrollPane.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
 

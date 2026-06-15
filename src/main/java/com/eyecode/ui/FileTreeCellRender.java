@@ -1,5 +1,8 @@
 package com.eyecode.ui;
 
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.SpacingSystem;
+import com.eyecode.ui.designsystem.TypographyManager;
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
@@ -17,13 +20,13 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
 
     public FileTreeCellRender() {
 
-        folderIcon = loadIcon("/icons/pasta.png", 18);
-        fileIcon   = loadIcon("/icons/arquivo.png", 18);
-        javaIcon   = loadIcon("/icons/javaico.png", 18);
+        folderIcon = loadIcon("/icons/pasta.png", SpacingSystem.TREE_ICON_SIZE);
+        fileIcon   = loadIcon("/icons/arquivo.png", SpacingSystem.TREE_ICON_SIZE);
+        javaIcon   = loadIcon("/icons/javaico.png", SpacingSystem.TREE_ICON_SIZE);
 
-        setBackgroundNonSelectionColor(new Color(30,30,30));
-        setTextNonSelectionColor(new Color(169, 183,198));
-        setBackgroundSelectionColor(new Color(68,71,74));
+        setBackgroundNonSelectionColor(ColorManager.PANEL_BG);
+        setTextNonSelectionColor(ColorManager.TEXT_FILE_TREE);
+        setBackgroundSelectionColor(ColorManager.ACCENT_SELECTION);
         setTextSelectionColor(Color.WHITE);
     }
 
@@ -32,7 +35,7 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
 
     @Override
     public Color getBackgroundSelectionColor() {
-        return painting ? null : new Color(40, 94, 184);
+        return painting ? null : ColorManager.ACCENT_BLUE;
     }
 
     @Override
@@ -40,7 +43,7 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
         if (selected) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(new Color(40, 94, 184));
+            g2.setColor(ColorManager.ACCENT_BLUE);
             g2.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
             g2.dispose();
         }
@@ -66,8 +69,8 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
 
         this.selected = selected;
 
-        setIconTextGap(6);
-        setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
+        setIconTextGap(SpacingSystem.SM);
+        setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XXS, SpacingSystem.XXS, SpacingSystem.XXS, SpacingSystem.XXS));
 
         DefaultMutableTreeNode node = (DefaultMutableTreeNode) value;
 
@@ -89,8 +92,8 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
 
         setOpaque(false);
 
-        setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
-        setFont(new Font("JetBrains Mono", Font.PLAIN, 13));
+        setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XS, SpacingSystem.MD, SpacingSystem.XS, SpacingSystem.MD));
+        setFont(TypographyManager.UI_TREE());
 
 
 
