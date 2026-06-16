@@ -74,7 +74,7 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
                     if (name.equalsIgnoreCase("assets") || name.equalsIgnoreCase("resources")) {
                         setIcon(IconManager.assets());
                     } else {
-                        setIcon(IconManager.folder());
+                        setIcon(IconManager.folders());
                     }
                 }
             } else {

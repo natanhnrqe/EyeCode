@@ -11,6 +11,7 @@ public final class IconManager {
     private IconManager() {}
 
     public static Icon folder()      { return load("folder"); }
+    public static Icon folders() {return load("folders");}
     public static Icon projectDirectory() { return load("projectDirectory"); }
     public static Icon assets()      { return load("assets"); }
     public static Icon save()        { return load("save"); }
