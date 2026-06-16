@@ -5,7 +5,7 @@ import javax.swing.*;
 
 public final class IconManager {
 
-    private static final String ICONS_PATH = "/icons/";
+    private static final String ICONS_PATH = "icons/";
     private static final int ICON_SIZE = SpacingSystem.ICON_SIZE;
 
     private IconManager() {}
