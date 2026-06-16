@@ -413,7 +413,8 @@ public class MainWindow extends JFrame {
 
         int index = tabbedPane.indexOfComponent(editor);
         String filename = document.getFile() != null ? document.getFile().getName() : title;
-        TabComponent tab = new TabComponent(title, filename, () -> closeTabAt(editor));
+        String tooltipPath = document.getFile() != null ? document.getFile().getAbsolutePath() : null;
+        TabComponent tab = new TabComponent(title, filename, tooltipPath, () -> closeTabAt(editor));
         tabbedPane.setTabComponentAt(index, tab);
 
         tabbedPane.setSelectedComponent(editor);

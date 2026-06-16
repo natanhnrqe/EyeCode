@@ -22,8 +22,9 @@ public class TabComponent extends JPanel {
     private boolean hovered;
     private boolean modified;
 
-    public TabComponent(String title, String filename, Runnable onClose) {
+    public TabComponent(String title, String filename, String tooltipPath, Runnable onClose) {
         setOpaque(false);
+        setRequestFocusEnabled(false);
         setLayout(new FlowLayout(FlowLayout.LEFT, 0, 0));
         setBorder(BorderFactory.createEmptyBorder(0, SpacingSystem.MD, 0, SpacingSystem.SM));
 
@@ -66,7 +67,7 @@ public class TabComponent extends JPanel {
             if (onClose != null) onClose.run();
         });
 
-        MouseAdapter tabHover = new MouseAdapter() {
+        addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
                 hovered = true;
@@ -78,11 +79,32 @@ public class TabComponent extends JPanel {
                 hovered = false;
                 repaint();
             }
-        };
-        addMouseListener(tabHover);
-        titleLabel.addMouseListener(tabHover);
-        iconLabel.addMouseListener(tabHover);
-        modifiedLabel.addMouseListener(tabHover);
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (closeButton.isVisible() && closeButton.getBounds().contains(e.getPoint())) {
+                    return;
+                }
+                Container parent = getParent();
+                while (parent != null && !(parent instanceof JTabbedPane)) {
+                    parent = parent.getParent();
+                }
+                if (parent instanceof JTabbedPane tabbedPane) {
+                    for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+                        if (tabbedPane.getTabComponentAt(i) == TabComponent.this) {
+                            tabbedPane.setSelectedIndex(i);
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+
+        String tabTooltip = (tooltipPath != null) ? tooltipPath : title;
+        setToolTipText(tabTooltip);
+        titleLabel.setToolTipText(tabTooltip);
+        iconLabel.setToolTipText(tabTooltip);
+        modifiedLabel.setToolTipText(tabTooltip);
 
         add(iconLabel);
         add(titleLabel);
@@ -119,8 +141,8 @@ public class TabComponent extends JPanel {
             g2.setColor(ColorManager.ACCENT_BLUE_LIGHT);
             g2.fillRect(0, h - ACCENT_LINE_HEIGHT, w, ACCENT_LINE_HEIGHT);
         } else if (hovered) {
-            g2.setColor(ColorManager.SURFACE_BG);
-            g2.fillRect(0, 0, w, h);
+            g2.setColor(ColorManager.ACCENT_HOVER_BG);
+            g2.fillRoundRect(3, 1, w - 6, h - 2, 6, 6);
         }
 
         g2.dispose();
