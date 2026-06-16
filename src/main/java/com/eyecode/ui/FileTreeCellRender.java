@@ -66,7 +66,17 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
             setText(file.getName().isEmpty() ? file.getAbsolutePath() : file.getName());
 
             if (file.isDirectory()) {
-                setIcon(IconManager.folder());
+                boolean isRoot = (jTree.getModel().getRoot() == value);
+                if (isRoot) {
+                    setIcon(IconManager.projectDirectory());
+                } else {
+                    String name = file.getName();
+                    if (name.equalsIgnoreCase("assets") || name.equalsIgnoreCase("resources")) {
+                        setIcon(IconManager.assets());
+                    } else {
+                        setIcon(IconManager.folder());
+                    }
+                }
             } else {
                 setIcon(IconManager.forFile(file.getName()));
             }

@@ -11,6 +11,8 @@ public final class IconManager {
     private IconManager() {}
 
     public static Icon folder()      { return load("folder"); }
+    public static Icon projectDirectory() { return load("projectDirectory"); }
+    public static Icon assets()      { return load("assets"); }
     public static Icon save()        { return load("save"); }
     public static Icon run()         { return load("run"); }
     public static Icon close()       { return load("close"); }
@@ -34,9 +36,37 @@ public final class IconManager {
     public static Icon modifiedDot() { return load("modifiedDot"); }
 
     public static Icon forFile(String filename) {
-        if (filename == null) return textFile();
+
+        if (filename == null) {
+            return textFile();
+        }
+
         String lower = filename.toLowerCase();
-        if (lower.endsWith(".java")) return javaFile();
+
+        if (lower.endsWith(".java")) {
+            return javaFile();
+        }
+
+        if (lower.endsWith(".xml")) {
+            return load("xml");
+        }
+
+        if (lower.endsWith(".json")) {
+            return load("json");
+        }
+
+        if (lower.endsWith(".md")) {
+            return load("markdown");
+        }
+
+        if (lower.equals("pom.xml")) {
+            return load("maven");
+        }
+
+        if (lower.equals(".gitignore")) {
+            return load("git");
+        }
+
         return textFile();
     }
 
