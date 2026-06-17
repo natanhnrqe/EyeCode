@@ -79,6 +79,7 @@ public class FileTreeCellRender extends DefaultTreeCellRenderer {
                 }
             } else {
                 setIcon(IconManager.forFile(file.getName()));
+
             }
         }
 

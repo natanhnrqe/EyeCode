@@ -4,6 +4,7 @@ import com.eyecode.editor.Document;
 import com.eyecode.filesystem.FileManager;
 import com.eyecode.run.RunManager;
 import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.IconManager;
 import com.eyecode.ui.designsystem.SpacingSystem;
 import com.eyecode.ui.designsystem.TypographyManager;
 import com.eyecode.ui.designsystem.UIConstants;
@@ -16,6 +17,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.util.function.IntConsumer;
 
 public class MainWindow extends JFrame {
 
@@ -51,6 +53,7 @@ public class MainWindow extends JFrame {
         fileManager = new FileManager();
         runManager = new RunManager();
 
+        UIManager.put("TabbedPane.cardTabArc", 14);
         tabbedPane = new JTabbedPane();
         explorerPanel = new FileExplorerPanel(new File("."));
         bottomTool = new BottomToolWindowPanel();
@@ -201,21 +204,21 @@ public class MainWindow extends JFrame {
     }
 
     private void configureTabs() {
+        tabbedPane.putClientProperty("JTabbedPane.tabType", "card");
         tabbedPane.putClientProperty("JTabbedPane.tabHeight", UIConstants.TAB_HEIGHT);
         tabbedPane.putClientProperty("JTabbedPane.showTabsSeparators", true);
         tabbedPane.putClientProperty("JTabbedPane.tabInsets", new Insets(SpacingSystem.MD, SpacingSystem.XXL, SpacingSystem.MD, SpacingSystem.XXL));
+        tabbedPane.putClientProperty("JTabbedPane.tabClosable", true);
+        tabbedPane.putClientProperty("JTabbedPane.tabCloseCallback", (IntConsumer) index -> {
+            Component comp = tabbedPane.getComponentAt(index);
+            if (comp instanceof EditorPanel editor) {
+                closeTabAt(editor);
+            }
+        });
         tabbedPane.setBackground(ColorManager.EDITOR_BG);
         tabbedPane.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XXS, SpacingSystem.XXS, SpacingSystem.XXS, SpacingSystem.XXS));
 
         tabbedPane.addChangeListener(e -> {
-            for (int i = 0; i < tabbedPane.getTabCount(); i++) {
-                Component component = tabbedPane.getTabComponentAt(i);
-
-                if (component instanceof TabComponent tab) {
-                    tab.setSelected(i == tabbedPane.getSelectedIndex());
-                }
-            }
-
             updateBreadcrump();
             updateSelectedFileUi();
         });
@@ -413,9 +416,7 @@ public class MainWindow extends JFrame {
 
         int index = tabbedPane.indexOfComponent(editor);
         String filename = document.getFile() != null ? document.getFile().getName() : title;
-        String tooltipPath = document.getFile() != null ? document.getFile().getAbsolutePath() : null;
-        TabComponent tab = new TabComponent(title, filename, tooltipPath, () -> closeTabAt(editor));
-        tabbedPane.setTabComponentAt(index, tab);
+        tabbedPane.setIconAt(index, IconManager.forFile(filename));
 
         tabbedPane.setSelectedComponent(editor);
         editorCards.show(editorStack, EDITOR_VIEW);
@@ -434,13 +435,9 @@ public class MainWindow extends JFrame {
         if (index == -1) return;
 
         String title = doc.getFile() != null ? doc.getFile().getName() : "Untitled";
-
         tabbedPane.setTitleAt(index, title);
-
-        Component component = tabbedPane.getTabComponentAt(index);
-        if (component instanceof TabComponent tab) {
-            tab.setTitle(title);
-            tab.setModified(doc.getModified());
+        if (doc.getFile() != null) {
+            tabbedPane.setIconAt(index, IconManager.forFile(doc.getFile().getName()));
         }
 
         updateSelectedFileUi();
