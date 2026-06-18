@@ -46,6 +46,7 @@ public class MainWindow extends JFrame {
     private Point dragStart;
     private final List<File> recentFiles = new ArrayList<>();
     private JMenu recentFilesMenu;
+    private volatile boolean processRunning;
 
     public MainWindow() {
 
@@ -100,6 +101,8 @@ public class MainWindow extends JFrame {
 
     private void configureActions() {
         topBar.setOnRun(this::runCode);
+        topBar.setOnStop(this::stopCode);
+        topBar.setOnDebug(this::debugCode);
         topBar.setOnSave(this::saveFile);
         topBar.setOnOpenProject(this::openFolder);
         topBar.setOnOpenFile(this::openFile);
@@ -158,8 +161,9 @@ public class MainWindow extends JFrame {
 
         JMenu runMenu = new JMenu("Run");
         addItem(runMenu, "Run Project", e -> runCode());
+        addItem(runMenu, "Debug", e -> debugCode());
         runMenu.addSeparator();
-        addItem(runMenu, "Stop", e -> statusBar.updateStatus("Stop not implemented"));
+        addItem(runMenu, "Stop", e -> stopCode());
         JMenuItem buildItem = new JMenuItem("Build");
         buildItem.setEnabled(false);
         runMenu.add(buildItem);
@@ -385,9 +389,10 @@ public class MainWindow extends JFrame {
         bottomTool.clearRunOutput();
         bottomTool.setRunStatus("Running");
         bottomTool.printRunOutput("Running...");
-        topBar.setRunActive(true);
+        topBar.setProjectRunning(true);
         statusBar.setRunning(true);
         showBottomPanel();
+        processRunning = true;
 
         File projectRoot = explorerPanel.getCurrentRoot();
 
@@ -395,13 +400,32 @@ public class MainWindow extends JFrame {
             String output = runManager.runProject(projectRoot);
 
             SwingUtilities.invokeLater(() -> {
+                boolean wasStopped = !processRunning;
+                processRunning = false;
                 bottomTool.printRunOutput(output);
-                bottomTool.setRunStatus("Finished");
-                topBar.setRunActive(false);
+                if (wasStopped) {
+                    bottomTool.setRunStatus("Stopped");
+                    bottomTool.printRunOutput("\n--- Process terminated ---");
+                } else {
+                    bottomTool.setRunStatus("Finished");
+                }
+                topBar.setProjectRunning(false);
                 statusBar.setRunning(false);
-                statusBar.updateStatus("Run finished");
+                statusBar.updateStatus(wasStopped ? "Stopped" : "Run finished");
             });
         }).start();
+    }
+
+    private void stopCode() {
+        if (!processRunning) return;
+        processRunning = false;
+        runManager.stop();
+    }
+
+    private void debugCode() {
+        JOptionPane.showMessageDialog(this,
+                "Debug mode not yet implemented.",
+                "Debug", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void openFile() {

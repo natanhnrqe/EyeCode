@@ -21,6 +21,15 @@ import java.util.List;
  */
 public class JavaRunner implements ProjectRunner {
 
+    private volatile Process currentProcess;
+
+    @Override
+    public void stop() {
+        Process p = currentProcess;
+        if (p != null && p.isAlive()) {
+            p.destroyForcibly();
+        }
+    }
 
     @Override
     public String run(File projectRoot) {
@@ -163,6 +172,7 @@ public class JavaRunner implements ProjectRunner {
                     compileBuilder.directory(projectRoot);
 
                     Process compileProcess = compileBuilder.start();
+                    currentProcess = compileProcess;
 
                     /**
                      * Captura erros de compilação.
@@ -240,6 +250,7 @@ public class JavaRunner implements ProjectRunner {
                     runBuilder.directory(projectRoot);
 
                     Process runProcess = runBuilder.start();
+                    currentProcess = runProcess;
 
                     /**
                      * Captura saída normal.

@@ -37,6 +37,12 @@ public final class IconManager {
     public static Icon textFile()    { return load("file"); }
     public static Icon modifiedDot() { return load("modifiedDot"); }
 
+    // Sprint 9.2 – Run Controls
+    public static Icon reload()      { return load("reload"); }
+    public static Icon play()        { return load("play"); }
+    public static Icon stop()        { return load("stop"); }
+    public static Icon debug()       { return load("debug"); }
+
     public static Icon forFile(String filename) {
 
         if (filename == null) {

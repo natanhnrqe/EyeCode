@@ -6,7 +6,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 
-public class MavenRunner implements ProjectRunner{
+public class MavenRunner implements ProjectRunner {
+
+    private volatile Process currentProcess;
+
     @Override
     public String run(File projectRoot) {
 
@@ -33,6 +36,7 @@ public class MavenRunner implements ProjectRunner{
             builder.directory(projectRoot);
 
             Process process = builder.start();
+            currentProcess = process;
 
             BufferedReader reader =
                     new BufferedReader(
@@ -55,5 +59,13 @@ public class MavenRunner implements ProjectRunner{
         }
 
         return output.toString();
+    }
+
+    @Override
+    public void stop() {
+        Process p = currentProcess;
+        if (p != null && p.isAlive()) {
+            p.destroyForcibly();
+        }
     }
 }

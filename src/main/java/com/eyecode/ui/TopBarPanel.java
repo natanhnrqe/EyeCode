@@ -20,11 +20,15 @@ public class TopBarPanel extends JPanel {
     private Runnable onMinimize;
     private Runnable onMaximize;
     private Runnable onClose;
+    private Runnable onStop;
+    private Runnable onDebug;
 
     private JPopupMenu hamburgerPopup;
     private JLabel projectLabel;
+
     private JButton runButton;
-    private boolean runActive;
+    private JButton stopButton;
+    private boolean running;
 
     public TopBarPanel() {
         setLayout(new BorderLayout());
@@ -68,23 +72,40 @@ public class TopBarPanel extends JPanel {
         JPanel titleSpace = new JPanel(new BorderLayout());
         titleSpace.setOpaque(false);
 
+        // ── Right side: grouped action buttons ────────────────
         JPanel ideActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, SpacingSystem.XXS, 3));
         ideActions.setOpaque(false);
 
-        JButton searchButton   = createToolbarButton(IconManager.search(), "Search (Ctrl+Shift+F)");
+        // Execution group
+        runButton   = createToolbarButton(IconManager.run(), "Run project");
+        stopButton  = createToolbarButton(IconManager.stop(), "Stop");
+        JButton debugButton = createToolbarButton(IconManager.debug(), "Debug");
+
+        stopButton.setVisible(false);
+        stopButton.setContentAreaFilled(true);
+        stopButton.setBackground(ColorManager.ERROR_RED);
+        stopButton.setForeground(Color.WHITE);
+
+        ideActions.add(runButton);
+        ideActions.add(stopButton);
+        ideActions.add(debugButton);
+        ideActions.add(createSeparator());
+
+        // File operations group
         JButton openProjectBtn = createToolbarButton(IconManager.folder(), "Open project");
         JButton openFileButton = createToolbarButton(IconManager.newFile(), "Open file");
         JButton saveButton     = createToolbarButton(IconManager.save(), "Save file");
-        runButton              = createToolbarButton(IconManager.run(), "Run project");
-        JButton settingsButton = createToolbarButton(IconManager.settings(), "Settings");
 
-        ideActions.add(searchButton);
-        ideActions.add(createSeparator());
         ideActions.add(openProjectBtn);
         ideActions.add(openFileButton);
         ideActions.add(saveButton);
-        ideActions.add(runButton);
         ideActions.add(createSeparator());
+
+        // Utilities group
+        JButton searchButton   = createToolbarButton(IconManager.search(), "Search (Ctrl+Shift+F)");
+        JButton settingsButton = createToolbarButton(IconManager.settings(), "Settings");
+
+        ideActions.add(searchButton);
         ideActions.add(settingsButton);
 
         JPanel windowControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
@@ -102,11 +123,14 @@ public class TopBarPanel extends JPanel {
         add(titleSpace, BorderLayout.CENTER);
         add(right, BorderLayout.EAST);
 
-        searchButton.addActionListener(e -> run(onSearch));
+        // Wire actions
+        runButton.addActionListener(e -> run(onRun));
+        stopButton.addActionListener(e -> run(onStop));
+        debugButton.addActionListener(e -> run(onDebug));
         openProjectBtn.addActionListener(e -> run(onOpenProject));
         openFileButton.addActionListener(e -> run(onOpenFile));
         saveButton.addActionListener(e -> run(onSave));
-        runButton.addActionListener(e -> run(onRun));
+        searchButton.addActionListener(e -> run(onSearch));
         settingsButton.addActionListener(e -> run(onSettings));
     }
 
@@ -166,11 +190,13 @@ public class TopBarPanel extends JPanel {
     }
 
     private void updateToolbarButtonState(JButton button) {
-        boolean activeRunButton = button == runButton && runActive;
+        if (button == stopButton) {
+            return;
+        }
 
-        if (activeRunButton) {
+        if (button == runButton && running) {
             button.setContentAreaFilled(true);
-            button.setBackground(ColorManager.SUCCESS_GREEN);
+            button.setBackground(ColorManager.RUNNING_GREEN);
             button.setForeground(Color.WHITE);
             return;
         }
@@ -194,9 +220,12 @@ public class TopBarPanel extends JPanel {
         projectLabel.setText(projectName == null || projectName.isBlank() ? "No project" : projectName);
     }
 
-    public void setRunActive(boolean runActive) {
-        this.runActive = runActive;
-        if (runButton != null) updateToolbarButtonState(runButton);
+    public void setProjectRunning(boolean running) {
+        this.running = running;
+        stopButton.setVisible(running);
+        runButton.setIcon(running ? IconManager.reload() : IconManager.run());
+        runButton.setToolTipText(running ? "Running..." : "Run project");
+        updateToolbarButtonState(runButton);
     }
 
     public void setOnRun(Runnable onRun) { this.onRun = onRun; }
@@ -210,4 +239,6 @@ public class TopBarPanel extends JPanel {
     public void setOnMinimize(Runnable onMinimize) { this.onMinimize = onMinimize; }
     public void setOnMaximize(Runnable onMaximize) { this.onMaximize = onMaximize; }
     public void setOnClose(Runnable onClose) { this.onClose = onClose; }
+    public void setOnStop(Runnable onStop) { this.onStop = onStop; }
+    public void setOnDebug(Runnable onDebug) { this.onDebug = onDebug; }
 }

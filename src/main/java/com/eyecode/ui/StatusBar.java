@@ -132,7 +132,7 @@ public class StatusBar extends JPanel {
             statusItem.setText("Running");
             statusItem.setIcon(new DotIcon(ColorManager.STATUS_BUSY));
         } else {
-            statusItem.setText("Ready");
+            statusItem.setText("Idle");
             statusItem.setIcon(new DotIcon(ColorManager.STATUS_READY));
         }
     }

@@ -41,4 +41,9 @@ public class RunManager {
 
     }
 
+    public void stop() {
+        javaRunner.stop();
+        mavenRunner.stop();
+    }
+
 }
