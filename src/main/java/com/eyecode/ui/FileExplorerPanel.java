@@ -316,13 +316,27 @@ public class FileExplorerPanel extends RoundedPanel {
     }
 
     public File getCurrentRoot() {
-        System.out.println(
-                "CURRENT ROOT = " +
-                        currentRoot.getAbsolutePath()
-        );
         return currentRoot;
+    }
 
+    public void selectFile(File file) {
+        DefaultMutableTreeNode root = (DefaultMutableTreeNode) treeModel.getRoot();
+        DefaultMutableTreeNode node = findNode(root, file);
+        if (node != null) {
+            jTree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
+            jTree.scrollPathToVisible(new javax.swing.tree.TreePath(node.getPath()));
+        }
+    }
 
+    private DefaultMutableTreeNode findNode(DefaultMutableTreeNode parent, File target) {
+        File parentFile = (File) parent.getUserObject();
+        if (parentFile.equals(target)) return parent;
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            DefaultMutableTreeNode child = (DefaultMutableTreeNode) parent.getChildAt(i);
+            DefaultMutableTreeNode found = findNode(child, target);
+            if (found != null) return found;
+        }
+        return null;
     }
 
 }

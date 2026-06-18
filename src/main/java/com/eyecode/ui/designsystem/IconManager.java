@@ -31,6 +31,7 @@ public final class IconManager {
     public static Icon problem()     { return load("problem"); }
     public static Icon git()         { return load("git"); }
 
+    public static Icon menu()        { return load("hamburger"); }
     public static Icon newFile()     { return load("newFile"); }
     public static Icon javaFile()    { return load("java"); }
     public static Icon textFile()    { return load("file"); }

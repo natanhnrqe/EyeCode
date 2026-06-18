@@ -21,6 +21,7 @@ public class TopBarPanel extends JPanel {
     private Runnable onMaximize;
     private Runnable onClose;
 
+    private JPopupMenu hamburgerPopup;
     private JLabel projectLabel;
     private JButton runButton;
     private boolean runActive;
@@ -37,6 +38,20 @@ public class TopBarPanel extends JPanel {
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, SpacingSystem.XS));
         left.setOpaque(false);
 
+        JButton hamburger = new JButton(IconManager.menu());
+        hamburger.setFocusPainted(false);
+        hamburger.setBorderPainted(false);
+        hamburger.setContentAreaFilled(false);
+        hamburger.setForeground(ColorManager.TEXT_PRIMARY);
+        hamburger.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        hamburger.setPreferredSize(new Dimension(SpacingSystem.TOOLBAR_BTN_W, SpacingSystem.TOOLBAR_BTN_H));
+        hamburger.setToolTipText("Menu");
+        hamburger.addActionListener(e -> {
+            if (hamburgerPopup != null) {
+                hamburgerPopup.show(hamburger, 0, hamburger.getHeight());
+            }
+        });
+
         JLabel logo = new JLabel("EyeCode");
         logo.setFont(TypographyManager.UI_LOGO());
         logo.setForeground(ColorManager.TEXT_PRIMARY);
@@ -46,7 +61,9 @@ public class TopBarPanel extends JPanel {
         projectLabel.setFont(TypographyManager.UI_LABEL());
         projectLabel.setForeground(ColorManager.TEXT_TERTIARY);
 
+        left.add(hamburger);
         left.add(logo);
+        left.add(projectLabel);
 
         JPanel titleSpace = new JPanel(new BorderLayout());
         titleSpace.setOpaque(false);
@@ -91,6 +108,10 @@ public class TopBarPanel extends JPanel {
         saveButton.addActionListener(e -> run(onSave));
         runButton.addActionListener(e -> run(onRun));
         settingsButton.addActionListener(e -> run(onSettings));
+    }
+
+    public void setHamburgerPopup(JPopupMenu popup) {
+        this.hamburgerPopup = popup;
     }
 
     private JComponent createSeparator() {
@@ -185,6 +206,7 @@ public class TopBarPanel extends JPanel {
     public void setOnSearch(Runnable onSearch) { this.onSearch = onSearch; }
     public void setOnNewFile(Runnable onNewFile) { this.onNewFile = onNewFile; }
     public void setOnSettings(Runnable onSettings) { this.onSettings = onSettings; }
+    public Runnable getOnSettings() { return onSettings; }
     public void setOnMinimize(Runnable onMinimize) { this.onMinimize = onMinimize; }
     public void setOnMaximize(Runnable onMaximize) { this.onMaximize = onMaximize; }
     public void setOnClose(Runnable onClose) { this.onClose = onClose; }

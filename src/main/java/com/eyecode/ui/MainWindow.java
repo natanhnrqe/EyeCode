@@ -13,10 +13,15 @@ import com.eyecode.ui.editor.ToolWindowBar;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.IntConsumer;
 
 public class MainWindow extends JFrame {
@@ -32,7 +37,6 @@ public class MainWindow extends JFrame {
     private final TopBarPanel topBar;
     private final StatusBar statusBar;
     private final ToolWindowBar toolWindowBar;
-    private final BreadcrumpPanel breadcrumpPanel;
     private final JPanel editorStack;
     private final CardLayout editorCards;
 
@@ -40,6 +44,8 @@ public class MainWindow extends JFrame {
     private int lastBottomHeight = 300;
     private boolean bottomVisible = true;
     private Point dragStart;
+    private final List<File> recentFiles = new ArrayList<>();
+    private JMenu recentFilesMenu;
 
     public MainWindow() {
 
@@ -60,7 +66,6 @@ public class MainWindow extends JFrame {
         topBar = new TopBarPanel();
         statusBar = new StatusBar();
         toolWindowBar = new ToolWindowBar();
-        breadcrumpPanel = new BreadcrumpPanel();
 
         editorCards = new CardLayout();
         editorStack = new JPanel(editorCards);
@@ -73,6 +78,14 @@ public class MainWindow extends JFrame {
         configureTabs();
         configureExplorer();
         configureWindowChrome();
+
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_P, InputEvent.CTRL_DOWN_MASK), "quickFileSearch");
+        getRootPane().getActionMap().put("quickFileSearch", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) {
+                showQuickFileSearch();
+            }
+        });
 
         updateProjectUi(new File("."));
         showWelcomeIfNeeded();
@@ -111,6 +124,9 @@ public class MainWindow extends JFrame {
         topBar.setOnMaximize(this::toggleMaximize);
         topBar.setOnClose(() -> dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
 
+        JPopupMenu hamburger = buildHamburgerMenu();
+        topBar.setHamburgerPopup(hamburger);
+
         toolWindowBar.setActionListener(action -> {
             switch (action) {
                 case "PROJECT" -> explorerPanel.setVisible(!explorerPanel.isVisible());
@@ -121,6 +137,74 @@ public class MainWindow extends JFrame {
             revalidate();
             repaint();
         });
+    }
+
+    private JPopupMenu buildHamburgerMenu() {
+        JPopupMenu popup = new JPopupMenu();
+        popup.setBorder(BorderFactory.createLineBorder(ColorManager.BORDER));
+
+        JMenu fileMenu = new JMenu("File");
+        addItem(fileMenu, "New File", e -> newFile());
+        addItem(fileMenu, "Save", e -> saveFile());
+        fileMenu.addSeparator();
+        addItem(fileMenu, "Open Project", e -> openFolder());
+        fileMenu.addSeparator();
+            recentFilesMenu = new JMenu("Recent Files");
+            updateRecentMenu(recentFilesMenu);
+            fileMenu.add(recentFilesMenu);
+        fileMenu.addSeparator();
+        addItem(fileMenu, "Exit", e -> dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
+        popup.add(fileMenu);
+
+        JMenu runMenu = new JMenu("Run");
+        addItem(runMenu, "Run Project", e -> runCode());
+        runMenu.addSeparator();
+        addItem(runMenu, "Stop", e -> statusBar.updateStatus("Stop not implemented"));
+        JMenuItem buildItem = new JMenuItem("Build");
+        buildItem.setEnabled(false);
+        runMenu.add(buildItem);
+        popup.add(runMenu);
+
+        JMenu gitMenu = new JMenu("Git");
+        JMenuItem commitItem = new JMenuItem("Commit");
+        commitItem.setEnabled(false);
+        gitMenu.add(commitItem);
+        JMenuItem pushItem = new JMenuItem("Push");
+        pushItem.setEnabled(false);
+        gitMenu.add(pushItem);
+        JMenuItem pullItem = new JMenuItem("Pull");
+        pullItem.setEnabled(false);
+        gitMenu.add(pullItem);
+        popup.add(gitMenu);
+
+        JMenu toolsMenu = new JMenu("Tools");
+        addItem(toolsMenu, "Terminal", e -> { showBottomPanel(); bottomTool.showTerminal(); });
+        addItem(toolsMenu, "Settings", e -> {
+            topBar.getOnSettings().run();
+        });
+        JMenuItem extItem = new JMenuItem("Extensions");
+        extItem.setEnabled(false);
+        toolsMenu.add(extItem);
+        popup.add(toolsMenu);
+
+        JMenu helpMenu = new JMenu("Help");
+        JMenuItem docItem = new JMenuItem("Documentation");
+        docItem.setEnabled(false);
+        helpMenu.add(docItem);
+        JMenuItem aboutItem = new JMenuItem("About EyeCode");
+        aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(this,
+                "EyeCode - A modern Java IDE\nVersion 1.0",
+                "About EyeCode", JOptionPane.INFORMATION_MESSAGE));
+        helpMenu.add(aboutItem);
+        popup.add(helpMenu);
+
+        return popup;
+    }
+
+    private void addItem(JMenu menu, String text, java.awt.event.ActionListener action) {
+        JMenuItem item = new JMenuItem(text);
+        item.addActionListener(action);
+        menu.add(item);
     }
 
     private void configureWindowChrome() {
@@ -221,15 +305,16 @@ public class MainWindow extends JFrame {
         tabbedPane.addChangeListener(e -> {
             updateBreadcrump();
             updateSelectedFileUi();
+            EditorPanel editor = getCurrentEditor();
+            if (editor != null && editor.getDocument() != null && editor.getDocument().getFile() != null) {
+                explorerPanel.selectFile(editor.getDocument().getFile());
+            }
         });
     }
 
     private void configureExplorer() {
         explorerPanel.setFileOpenCallBack(file -> {
-            String content = fileManager.openFile(file);
-            Document doc = new Document(file, content);
-            addNewTab(doc, file.getName());
-            statusBar.updateStatus("Opened " + file.getName());
+            openFile(file);
         });
     }
 
@@ -250,44 +335,32 @@ public class MainWindow extends JFrame {
         }
     }
 
-    private void createMenu() {
-        JMenuBar menuBar = new JMenuBar();
+    private void updateRecentMenu(JMenu recentMenu) {
+        recentMenu.removeAll();
+        if (recentFiles.isEmpty()) {
+            JMenuItem empty = new JMenuItem("(No recent files)");
+            empty.setEnabled(false);
+            recentMenu.add(empty);
+            return;
+        }
+        for (File f : recentFiles) {
+            JMenuItem item = new JMenuItem(f.getName());
+            item.setToolTipText(f.getAbsolutePath());
+            item.addActionListener(e -> openFile(f));
+            recentMenu.add(item);
+        }
+    }
 
-        JMenu runMenu = new JMenu("Run");
-        JMenuItem runItem = new JMenuItem("Run");
-        runItem.addActionListener(e -> runCode());
-        runMenu.add(runItem);
-        menuBar.add(runMenu);
-
-        JMenu fileMenu = new JMenu("File");
-
-        JMenuItem newItem = new JMenuItem("New");
-        newItem.addActionListener(e -> newFile());
-        fileMenu.add(newItem);
-
-        JMenuItem saveItem = new JMenuItem("Save");
-        saveItem.addActionListener(e -> saveFile());
-        fileMenu.add(saveItem);
-
-        JMenuItem openItem = new JMenuItem("Open");
-        openItem.addActionListener(e -> openFile());
-
-        JMenuItem closeItem = new JMenuItem("Close");
-        closeItem.addActionListener(e -> closeCurrentTab());
-
-        JMenuItem openFolder = new JMenuItem("Open Folder");
-        openFolder.addActionListener(e -> openFolder());
-        fileMenu.add(openFolder);
-
-        JMenuItem refresh = new JMenuItem("Refresh");
-        refresh.addActionListener(e -> refreshExplorer());
-        fileMenu.add(refresh);
-
-        fileMenu.add(closeItem);
-        fileMenu.add(openItem);
-        menuBar.add(fileMenu);
-
-        setJMenuBar(menuBar);
+    private void addRecentFile(File file) {
+        if (file == null) return;
+        recentFiles.remove(file);
+        recentFiles.add(0, file);
+        if (recentFiles.size() > 10) {
+            recentFiles.remove(recentFiles.size() - 1);
+        }
+        if (recentFilesMenu != null) {
+            updateRecentMenu(recentFilesMenu);
+        }
     }
 
     private void runCode() {
@@ -337,12 +410,8 @@ public class MainWindow extends JFrame {
 
         if (result == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
-            String content = fileManager.openFile(file);
-            Document document = new Document(file, content);
-
-            addNewTab(document, file.getName());
+            openFile(file);
             bottomTool.printRunOutput("Opened " + file.getName());
-            statusBar.updateStatus("Opened " + file.getName());
         }
     }
 
@@ -418,6 +487,10 @@ public class MainWindow extends JFrame {
         String filename = document.getFile() != null ? document.getFile().getName() : title;
         tabbedPane.setIconAt(index, IconManager.forFile(filename));
 
+        if (document.getFile() != null) {
+            addRecentFile(document.getFile());
+        }
+
         tabbedPane.setSelectedComponent(editor);
         editorCards.show(editorStack, EDITOR_VIEW);
         updateBreadcrump();
@@ -434,7 +507,8 @@ public class MainWindow extends JFrame {
 
         if (index == -1) return;
 
-        String title = doc.getFile() != null ? doc.getFile().getName() : "Untitled";
+        String name = doc.getFile() != null ? doc.getFile().getName() : "Untitled";
+        String title = doc.getModified() ? name + " *" : name;
         tabbedPane.setTitleAt(index, title);
         if (doc.getFile() != null) {
             tabbedPane.setIconAt(index, IconManager.forFile(doc.getFile().getName()));
@@ -504,11 +578,8 @@ public class MainWindow extends JFrame {
 
     private void openDefaultFile() {
         File mainFile = new File("src/main/java/com/eyecode/Main.java");
-
         if (mainFile.exists()) {
-            String content = fileManager.openFile(mainFile);
-            Document doc = new Document(mainFile, content);
-            addNewTab(doc, mainFile.getName());
+            openFile(mainFile);
         }
     }
 
@@ -570,20 +641,17 @@ public class MainWindow extends JFrame {
         EditorPanel editor = getCurrentEditor();
 
         if (editor == null || editor.getDocument() == null) {
-            breadcrumpPanel.updatePath(null);
             statusBar.updatePath(null);
             return;
         }
 
         File file = editor.getDocument().getFile();
-        breadcrumpPanel.updatePath(file);
         statusBar.updatePath(file);
     }
 
     private void showWelcomeIfNeeded() {
         if (tabbedPane.getTabCount() == 0) {
             editorCards.show(editorStack, WELCOME_VIEW);
-            breadcrumpPanel.updatePath(null);
             statusBar.updateFile(null);
             statusBar.updatePath(null);
             return;
@@ -614,5 +682,118 @@ public class MainWindow extends JFrame {
         topBar.setProjectName(name);
         statusBar.setProjectRoot(root);
         statusBar.updateProject(name);
+    }
+
+    private void showQuickFileSearch() {
+        File root = explorerPanel.getCurrentRoot();
+        if (root == null) return;
+
+        java.util.List<File> allFiles = new ArrayList<>();
+        collectFiles(root, allFiles);
+
+        JDialog dialog = new JDialog(this, "Quick File Search", false);
+        dialog.setUndecorated(true);
+        dialog.getRootPane().setBorder(BorderFactory.createLineBorder(ColorManager.BORDER));
+
+        JTextField searchField = new JTextField();
+        searchField.setFont(TypographyManager.UI_TAB());
+        searchField.setBackground(ColorManager.INPUT_BG);
+        searchField.setForeground(ColorManager.TEXT_PRIMARY);
+        searchField.setCaretColor(ColorManager.EDITOR_CARET);
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, ColorManager.BORDER_DIVIDER),
+                BorderFactory.createEmptyBorder(SpacingSystem.SM, SpacingSystem.MD, SpacingSystem.SM, SpacingSystem.MD)));
+
+        DefaultListModel<File> listModel = new DefaultListModel<>();
+        JList<File> fileList = new JList<>(listModel);
+        fileList.setFont(TypographyManager.UI_STATUS());
+        fileList.setBackground(ColorManager.WINDOW_BG);
+        fileList.setForeground(ColorManager.TEXT_PRIMARY);
+        fileList.setSelectionBackground(ColorManager.ACCENT_SELECTION);
+        fileList.setSelectionForeground(ColorManager.TEXT_PRIMARY);
+        fileList.setFixedCellHeight(24);
+        fileList.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XS, 0, SpacingSystem.XS, 0));
+
+        fileList.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    File selected = fileList.getSelectedValue();
+                    if (selected != null) {
+                        dialog.dispose();
+                        openFile(selected);
+                    }
+                }
+            }
+        });
+
+        searchField.addActionListener(e -> {
+            File selected = fileList.getSelectedValue();
+            if (selected != null) {
+                dialog.dispose();
+                openFile(selected);
+            }
+        });
+
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            void update() {
+                String query = searchField.getText().trim().toLowerCase();
+                listModel.clear();
+                if (query.isEmpty()) return;
+                for (File f : allFiles) {
+                    if (f.getName().toLowerCase().contains(query)) {
+                        listModel.addElement(f);
+                    }
+                }
+                if (listModel.size() > 0) fileList.setSelectedIndex(0);
+            }
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
+        });
+
+        fileList.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override public void keyPressed(java.awt.event.KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    File selected = fileList.getSelectedValue();
+                    if (selected != null) {
+                        dialog.dispose();
+                        openFile(selected);
+                    }
+                }
+                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    dialog.dispose();
+                }
+            }
+        });
+
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, searchField, new JScrollPane(fileList));
+        split.setBorder(null);
+        split.setDividerSize(0);
+        dialog.add(split);
+
+        dialog.setSize(500, 350);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+        searchField.requestFocusInWindow();
+    }
+
+    private void collectFiles(File dir, java.util.List<File> files) {
+        File[] list = dir.listFiles();
+        if (list == null) return;
+        for (File f : list) {
+            if (f.isDirectory()) {
+                if (!f.getName().startsWith(".")) collectFiles(f, files);
+            } else {
+                files.add(f);
+            }
+        }
+    }
+
+    private void openFile(File file) {
+        String content = fileManager.openFile(file);
+        Document doc = new Document(file, content);
+        addNewTab(doc, file.getName());
+        explorerPanel.selectFile(file);
+        statusBar.updateStatus("Opened " + file.getName());
     }
 }

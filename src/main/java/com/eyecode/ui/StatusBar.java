@@ -48,7 +48,7 @@ public class StatusBar extends JPanel {
         leftPanel.add(createSeparator());
         leftPanel.add(statusItem);
 
-        // ── center (path) ────────────────────────────────────
+        // ── center (file path breadcrumb) ────────────────────
         pathLabel = new JLabel();
         pathLabel.setFont(TypographyManager.UI_STATUS());
         pathLabel.setForeground(ColorManager.TEXT_MUTED);
@@ -172,19 +172,10 @@ public class StatusBar extends JPanel {
     private static class DotIcon implements Icon {
         private final Color color;
 
-        DotIcon(Color color) {
-            this.color = color;
-        }
+        DotIcon(Color color) { this.color = color; }
 
-        @Override
-        public int getIconWidth() {
-            return DOT_SIZE;
-        }
-
-        @Override
-        public int getIconHeight() {
-            return DOT_SIZE;
-        }
+        @Override public int getIconWidth() { return DOT_SIZE; }
+        @Override public int getIconHeight() { return DOT_SIZE; }
 
         @Override
         public void paintIcon(Component c, Graphics g, int x, int y) {

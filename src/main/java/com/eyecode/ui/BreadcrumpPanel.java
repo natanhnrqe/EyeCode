@@ -25,17 +25,11 @@ public class BreadcrumpPanel extends JPanel {
     }
 
     public void updatePath(File file) {
-
         if (file == null) {
-
             pathLabel.setText("");
-
             return;
         }
-
-        String path = file.getPath();
-        path = path.replace("\\", "> ");
-
+        String path = file.getPath().replace("\\", " > ");
         pathLabel.setText(path);
     }
 
