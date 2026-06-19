@@ -39,12 +39,14 @@ public class MainWindow extends JFrame {
     private final ToolWindowBar toolWindowBar;
     private final JPanel editorStack;
     private final CardLayout editorCards;
+    private final WelcomePanel welcomePanel;
 
     private JSplitPane rootSplit;
     private int lastBottomHeight = 300;
     private boolean bottomVisible = true;
     private Point dragStart;
     private final List<File> recentFiles = new ArrayList<>();
+    private final List<File> recentProjectDirs = new ArrayList<>();
     private JMenu recentFilesMenu;
     private volatile boolean processRunning;
 
@@ -71,7 +73,8 @@ public class MainWindow extends JFrame {
         editorCards = new CardLayout();
         editorStack = new JPanel(editorCards);
         editorStack.setOpaque(false);
-        editorStack.add(new WelcomePanel(this::newFile, this::openFolder, this::runCode), WELCOME_VIEW);
+        welcomePanel = new WelcomePanel(this::openFolder, this::newProject, this::openRecentProject);
+        editorStack.add(welcomePanel, WELCOME_VIEW);
         editorStack.add(tabbedPane, EDITOR_VIEW);
 
         configureActions();
@@ -88,7 +91,10 @@ public class MainWindow extends JFrame {
             }
         });
 
-        updateProjectUi(new File("."));
+        File initialRoot = new File(".").getAbsoluteFile();
+        recentProjectDirs.add(initialRoot);
+        updateProjectUi(initialRoot);
+        updateWelcomeRecent();
         showWelcomeIfNeeded();
 
         setMaximizedBounds(GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds());
@@ -586,12 +592,84 @@ public class MainWindow extends JFrame {
         int result = chooser.showOpenDialog(this);
 
         if (result == JFileChooser.APPROVE_OPTION) {
-            File folder = chooser.getSelectedFile();
-            explorerPanel.setRootDirectory(folder);
-            updateProjectUi(folder);
-            bottomTool.printRunOutput("Opened Folder: " + folder.getAbsolutePath());
-            statusBar.updateStatus("Opened folder " + folder.getName());
+            openProjectDir(chooser.getSelectedFile());
         }
+    }
+
+    private void openProjectDir(File folder) {
+        explorerPanel.setRootDirectory(folder);
+        updateProjectUi(folder);
+
+        recentProjectDirs.remove(folder);
+        recentProjectDirs.add(0, folder);
+        if (recentProjectDirs.size() > 10) {
+            recentProjectDirs.remove(recentProjectDirs.size() - 1);
+        }
+        updateWelcomeRecent();
+
+        editorCards.show(editorStack, EDITOR_VIEW);
+        bottomTool.printRunOutput("Opened Project: " + folder.getAbsolutePath());
+        statusBar.updateStatus("Opened project " + folder.getName());
+
+        tryOpenDefaultFile(folder);
+    }
+
+    private void openRecentProject(String projectName) {
+        for (File f : recentProjectDirs) {
+            if (f.getName().equals(projectName) || f.getAbsolutePath().contains(projectName)) {
+                openProjectDir(f);
+                return;
+            }
+        }
+    }
+
+    private void newProject() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setDialogTitle("New Project – choose or create a folder");
+
+        int result = chooser.showSaveDialog(this);
+
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File folder = chooser.getSelectedFile();
+
+            if (!folder.exists()) {
+                folder.mkdirs();
+            }
+
+            File srcDir = new File(folder, "src/main/java/com/eyecode");
+            srcDir.mkdirs();
+
+            File mainFile = new File(srcDir, "Main.java");
+            try {
+                java.nio.file.Files.writeString(mainFile.toPath(), """
+                        package com.eyecode;
+                        
+                        public class Main {
+                            public static void main(String[] args) {
+                                System.out.println("Hello from EyeCode!");
+                            }
+                        }
+                        """);
+            } catch (Exception ignored) {}
+
+            openProjectDir(folder);
+        }
+    }
+
+    private void tryOpenDefaultFile(File projectRoot) {
+        File defaultFile = new File(projectRoot, "src/main/java/com/eyecode/Main.java");
+        if (defaultFile.exists()) {
+            openFile(defaultFile);
+        }
+    }
+
+    private void updateWelcomeRecent() {
+        java.util.List<String> names = new java.util.ArrayList<>();
+        for (File f : recentProjectDirs) {
+            names.add(f.getName());
+        }
+        welcomePanel.setRecentProjects(names);
     }
 
     private void refreshExplorer() {
@@ -601,10 +679,7 @@ public class MainWindow extends JFrame {
     }
 
     private void openDefaultFile() {
-        File mainFile = new File("src/main/java/com/eyecode/Main.java");
-        if (mainFile.exists()) {
-            openFile(mainFile);
-        }
+        tryOpenDefaultFile(new File("."));
     }
 
     private void showSearchDialog() {

@@ -43,6 +43,9 @@ public final class IconManager {
     public static Icon stop()        { return load("stop"); }
     public static Icon debug()       { return load("debug"); }
 
+    public static Icon folderOpen()  { return load("folderOpen"); }
+    public static Icon newProject()  { return load("newProject"); }
+
     public static Icon forFile(String filename) {
 
         if (filename == null) {
@@ -80,5 +83,9 @@ public final class IconManager {
 
     private static Icon load(String name) {
         return new FlatSVGIcon(ICONS_PATH + name + ".svg", ICON_SIZE, ICON_SIZE);
+    }
+
+    public static Icon welcomeIcon(String name) {
+        return new FlatSVGIcon(ICONS_PATH + name + ".svg", 22, 22);
     }
 }

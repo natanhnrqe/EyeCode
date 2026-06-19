@@ -30,6 +30,7 @@ public final class TypographyManager {
     public static Font UI_TITLE()       { return monoBold(14); }
     public static Font UI_LOGO()        { return monoBold(14); }
     public static Font UI_WELCOME()     { return monoBold(34); }
+    public static Font UI_WELCOME_TITLE() { return monoBold(38); }
     public static Font UI_WELCOME_SUB() { return monoRegular(14); }
     public static Font UI_TAB()         { return monoRegular(13); }
     public static Font UI_BUTTON()      { return monoRegular(13); }
