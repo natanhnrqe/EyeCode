@@ -61,12 +61,13 @@ public class MavenTemplate implements ProjectTemplate {
                 <artifactId>%s</artifactId>
                 <version>1.0-SNAPSHOT</version>
                 <properties>
-                    <maven.compiler.source>21</maven.compiler.source>
-                    <maven.compiler.target>21</maven.compiler.target>
+                    <maven.compiler.source>%s</maven.compiler.source>
+                    <maven.compiler.target>%s</maven.compiler.target>
                     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
                 </properties>
             </project>
-            """, config.getPackageBase(), config.getName()));
+            """, config.getPackageBase(), config.getName(),
+                    config.getJdkVersion(), config.getJdkVersion()));
 
         File mainFile = new File(mainJava, "Main.java");
         Files.writeString(mainFile.toPath(), String.format("""

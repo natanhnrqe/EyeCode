@@ -640,7 +640,7 @@ public class MainWindow extends JFrame {
     }
 
     private void newProject() {
-        new NewProjectDialog(this, templateService, this::openProjectDir).setVisible(true);
+        new NewProjectWizard(this, templateService, this::openProjectDir).setVisible(true);
     }
 
     private void tryOpenDefaultFile(File projectRoot) {

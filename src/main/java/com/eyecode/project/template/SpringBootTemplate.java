@@ -67,7 +67,7 @@ public class SpringBootTemplate implements ProjectTemplate {
                 <artifactId>%s</artifactId>
                 <version>1.0-SNAPSHOT</version>
                 <properties>
-                    <java.version>21</java.version>
+                    <java.version>%s</java.version>
                 </properties>
                 <dependencies>
                     <dependency>
@@ -76,7 +76,8 @@ public class SpringBootTemplate implements ProjectTemplate {
                     </dependency>
                 </dependencies>
             </project>
-            """, config.getPackageBase(), config.getName()));
+            """, config.getPackageBase(), config.getName(),
+                    config.getJdkVersion()));
 
         File app = new File(mainJava, "Application.java");
         Files.writeString(app.toPath(), String.format("""

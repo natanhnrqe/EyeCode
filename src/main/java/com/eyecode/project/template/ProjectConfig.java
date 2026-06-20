@@ -7,10 +7,19 @@ public class ProjectConfig {
     private File location;
     private String packageBase;
     private ProjectTemplate template;
+    private String jdkVersion;
+    private String description;
+    private boolean initGit;
+    private boolean generateReadme;
 
-    public ProjectConfig() {}
+    public ProjectConfig() {
+        this.jdkVersion = "21";
+        this.initGit = true;
+        this.generateReadme = true;
+    }
 
     public ProjectConfig(String name, File location, String packageBase, ProjectTemplate template) {
+        this();
         this.name = name;
         this.location = location;
         this.packageBase = packageBase;
@@ -28,6 +37,18 @@ public class ProjectConfig {
 
     public ProjectTemplate getTemplate() { return template; }
     public void setTemplate(ProjectTemplate template) { this.template = template; }
+
+    public String getJdkVersion() { return jdkVersion; }
+    public void setJdkVersion(String v) { this.jdkVersion = v; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String d) { this.description = d; }
+
+    public boolean isInitGit() { return initGit; }
+    public void setInitGit(boolean b) { this.initGit = b; }
+
+    public boolean isGenerateReadme() { return generateReadme; }
+    public void setGenerateReadme(boolean b) { this.generateReadme = b; }
 
     public String getPackagePath() {
         return packageBase == null ? "" : packageBase.replace('.', File.separatorChar);
