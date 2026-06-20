@@ -21,7 +21,7 @@ public class WelcomePanel extends JPanel {
     private static final int BUTTON_ARC = 10;
     private static final int CARD_ARC = 10;
     private static final int ROW_HEIGHT = 42;
-    private static final int MAX_VISIBLE_ROWS = 6;
+    private static final int MAX_VISIBLE_ROWS = 10;
 
     private final JPanel cardBody;
     private final JScrollPane cardScroll;
@@ -151,6 +151,8 @@ public class WelcomePanel extends JPanel {
         cardScroll.setOpaque(false);
         cardScroll.getViewport().setOpaque(false);
         cardScroll.setBorder(null);
+        cardScroll.getVerticalScrollBar().setUnitIncrement(24);
+        cardScroll.getVerticalScrollBar().setBlockIncrement(120);
         cardScroll.setMaximumSize(new Dimension(COLUMN_WIDTH - SpacingSystem.HUGE, ROW_HEIGHT * MAX_VISIBLE_ROWS + SpacingSystem.SM));
 
         cardInner.add(cardScroll);
@@ -326,7 +328,7 @@ public class WelcomePanel extends JPanel {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 int arc = 8;
-                g2.setColor(ColorManager.ACCENT_HOVER_BG);
+                g2.setColor(new Color(52, 56, 66));
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
                 g2.setColor(ColorManager.ACCENT_BLUE);
                 g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
