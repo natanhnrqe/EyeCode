@@ -1,5 +1,6 @@
 package com.eyecode.ui.designsystem;
 
+import com.eyecode.project.ProjectType;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import javax.swing.*;
 
@@ -85,7 +86,15 @@ public final class IconManager {
         return new FlatSVGIcon(ICONS_PATH + name + ".svg", ICON_SIZE, ICON_SIZE);
     }
 
+    public static Icon forProjectType(ProjectType type) {
+        return load(type.getIconName());
+    }
+
     public static Icon welcomeIcon(String name) {
         return new FlatSVGIcon(ICONS_PATH + name + ".svg", 22, 22);
+    }
+
+    public static Icon projectTypeIcon(String name) {
+        return new FlatSVGIcon(ICONS_PATH + name + ".svg", 24, 24);
     }
 }

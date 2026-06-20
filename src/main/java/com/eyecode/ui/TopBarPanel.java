@@ -13,7 +13,6 @@ public class TopBarPanel extends JPanel {
     private Runnable onRun;
     private Runnable onSave;
     private Runnable onOpenProject;
-    private Runnable onOpenFile;
     private Runnable onSearch;
     private Runnable onNewFile;
     private Runnable onSettings;
@@ -93,11 +92,9 @@ public class TopBarPanel extends JPanel {
 
         // File operations group
         JButton openProjectBtn = createToolbarButton(IconManager.folder(), "Open project");
-        JButton openFileButton = createToolbarButton(IconManager.newFile(), "Open file");
         JButton saveButton     = createToolbarButton(IconManager.save(), "Save file");
 
         ideActions.add(openProjectBtn);
-        ideActions.add(openFileButton);
         ideActions.add(saveButton);
         ideActions.add(createSeparator());
 
@@ -128,7 +125,6 @@ public class TopBarPanel extends JPanel {
         stopButton.addActionListener(e -> run(onStop));
         debugButton.addActionListener(e -> run(onDebug));
         openProjectBtn.addActionListener(e -> run(onOpenProject));
-        openFileButton.addActionListener(e -> run(onOpenFile));
         saveButton.addActionListener(e -> run(onSave));
         searchButton.addActionListener(e -> run(onSearch));
         settingsButton.addActionListener(e -> run(onSettings));
@@ -231,7 +227,6 @@ public class TopBarPanel extends JPanel {
     public void setOnRun(Runnable onRun) { this.onRun = onRun; }
     public void setOnSave(Runnable onSave) { this.onSave = onSave; }
     public void setOnOpenProject(Runnable onOpenProject) { this.onOpenProject = onOpenProject; }
-    public void setOnOpenFile(Runnable onOpenFile) { this.onOpenFile = onOpenFile; }
     public void setOnSearch(Runnable onSearch) { this.onSearch = onSearch; }
     public void setOnNewFile(Runnable onNewFile) { this.onNewFile = onNewFile; }
     public void setOnSettings(Runnable onSettings) { this.onSettings = onSettings; }

@@ -1,5 +1,6 @@
 package com.eyecode.ui;
 
+import com.eyecode.project.ProjectInfo;
 import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.IconManager;
 import com.eyecode.ui.designsystem.SpacingSystem;
@@ -15,7 +16,7 @@ import java.util.function.Consumer;
 
 public class WelcomePanel extends JPanel {
 
-    private static final int COLUMN_WIDTH = 540;
+    private static final int COLUMN_WIDTH = 580;
     private static final int BUTTON_HEIGHT = 44;
     private static final int BUTTON_ARC = 10;
     private static final int CARD_ARC = 10;
@@ -25,9 +26,7 @@ public class WelcomePanel extends JPanel {
     private final JPanel cardBody;
     private final JScrollPane cardScroll;
     private final JLabel emptyHint;
-    private Consumer<String> onOpenRecentProject;
-
-    private static final int LEFT_ACCENT_W = 3;
+    private Consumer<ProjectInfo> onOpenRecentProject;
 
     private static final Color
         CARD_BORDER_SUBTLE = new Color(55, 58, 64),
@@ -44,7 +43,7 @@ public class WelcomePanel extends JPanel {
         BTN_SEC_PRESSED  = ColorManager.ACCENT_SELECTION,
         BTN_SEC_PRESSED_BORDER = ColorManager.ACCENT_SELECTION;
 
-    public WelcomePanel(Runnable onOpenProject, Runnable onNewProject, Consumer<String> onOpenRecentProject) {
+    public WelcomePanel(Runnable onOpenProject, Runnable onNewProject, Consumer<ProjectInfo> onOpenRecentProject) {
         this.onOpenRecentProject = onOpenRecentProject;
 
         setLayout(new GridBagLayout());
@@ -171,19 +170,22 @@ public class WelcomePanel extends JPanel {
         centerColumn.add(card);
         centerColumn.add(Box.createVerticalGlue());
 
-        add(centerColumn);
+        add(centerColumn, new GridBagConstraints(0, 0, 1, 1, 1.0, 0.0,
+                GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+                new Insets(0, 0, 0, 0), 0, 0));
+        
     }
 
-    public void setRecentProjects(List<String> names) {
+    public void setRecentProjects(List<ProjectInfo> projects) {
         cardBody.removeAll();
-        boolean empty = (names == null || names.isEmpty());
+        boolean empty = (projects == null || projects.isEmpty());
         emptyHint.setVisible(empty);
         cardScroll.setVisible(!empty);
 
         if (!empty) {
-            for (int i = 0; i < names.size(); i++) {
-                boolean last = (i == names.size() - 1);
-                cardBody.add(new ProjectRow(names.get(i), last));
+            for (int i = 0; i < projects.size(); i++) {
+                boolean last = (i == projects.size() - 1);
+                cardBody.add(new ProjectRow(projects.get(i), last));
             }
             cardBody.add(Box.createVerticalGlue());
         }
@@ -207,7 +209,7 @@ public class WelcomePanel extends JPanel {
         btn.setForeground(fg);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setIconTextGap(SpacingSystem.XL);
-        btn.setBorder(BorderFactory.createEmptyBorder(0, SpacingSystem.HUGE, 0, SpacingSystem.HUGE));
+        btn.setBorder(BorderFactory.createEmptyBorder(0, SpacingSystem.XXL + SpacingSystem.XXS, 0, SpacingSystem.XXL + SpacingSystem.XXS));
 
         btn.addChangeListener(e -> {
             ButtonModel m = btn.getModel();
@@ -243,6 +245,13 @@ public class WelcomePanel extends JPanel {
         }
 
         @Override
+        public Dimension getPreferredSize() {
+            Dimension d = super.getPreferredSize();
+            d.height = Math.max(d.height, BUTTON_HEIGHT);
+            return d;
+        }
+
+        @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -258,11 +267,11 @@ public class WelcomePanel extends JPanel {
     // ── Recent project row with hover ────────────────────────
     private class ProjectRow extends JPanel {
 
-        private final String projectName;
+        private final ProjectInfo projectInfo;
         private boolean hovered;
 
-        ProjectRow(String name, boolean last) {
-            this.projectName = name;
+        ProjectRow(ProjectInfo info, boolean last) {
+            this.projectInfo = info;
             setLayout(new BorderLayout());
             setOpaque(false);
             setMaximumSize(new Dimension(Short.MAX_VALUE, ROW_HEIGHT));
@@ -275,14 +284,14 @@ public class WelcomePanel extends JPanel {
                 setBorder(new EmptyBorder(0, 0, 0, 0));
             }
 
-            JLabel iconLabel = new JLabel(IconManager.welcomeIcon("projectDirectory"));
+            JLabel iconLabel = new JLabel(IconManager.welcomeIcon(info.getType().getIconName()));
             iconLabel.setBorder(new EmptyBorder(0, SpacingSystem.SM, 0, SpacingSystem.XL));
 
-            JLabel nameLabel = new JLabel(name);
+            JLabel nameLabel = new JLabel(info.getName());
             nameLabel.setFont(TypographyManager.UI_BODY());
             nameLabel.setForeground(ColorManager.TEXT_PRIMARY);
 
-            JLabel typeLabel = new JLabel("Project");
+            JLabel typeLabel = new JLabel(info.getType().getDisplayName());
             typeLabel.setFont(TypographyManager.UI_SMALL());
             typeLabel.setForeground(ColorManager.TEXT_MUTED);
             typeLabel.setBorder(new EmptyBorder(0, SpacingSystem.XL, 0, SpacingSystem.XL));
@@ -299,7 +308,7 @@ public class WelcomePanel extends JPanel {
                 @Override
                 public void mouseClicked(MouseEvent e) {
                     if (onOpenRecentProject != null) {
-                        onOpenRecentProject.accept(projectName);
+                        onOpenRecentProject.accept(projectInfo);
                     }
                 }
             });
@@ -316,10 +325,11 @@ public class WelcomePanel extends JPanel {
             if (hovered) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int arc = 8;
                 g2.setColor(ColorManager.ACCENT_HOVER_BG);
-                g2.fillRect(0, 0, getWidth(), getHeight());
-                g2.setColor(ColorManager.ACCENT_BLUE_LIGHT);
-                g2.fillRect(0, 0, LEFT_ACCENT_W, getHeight());
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
+                g2.setColor(ColorManager.ACCENT_BLUE);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
                 g2.dispose();
             }
         }
