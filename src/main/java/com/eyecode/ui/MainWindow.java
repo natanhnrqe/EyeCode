@@ -1,6 +1,10 @@
 package com.eyecode.ui;
 
+import com.eyecode.command.CommandContext;
 import com.eyecode.editor.Document;
+import com.eyecode.editor.EditorContext;
+import com.eyecode.eventbus.EventBus;
+import com.eyecode.explorer.integration.ExplorerIntegrationController;
 import com.eyecode.filesystem.FileManager;
 import com.eyecode.project.ProjectDetector;
 import com.eyecode.project.ProjectInfo;
@@ -48,6 +52,10 @@ public class MainWindow extends JFrame {
 
     private final ProjectService projectService;
     private final ProjectTemplateService templateService;
+    private final EventBus eventBus;
+    private final EditorContext editorContext;
+    private final CommandContext commandContext;
+    private final ExplorerIntegrationController explorerController;
     private JSplitPane rootSplit;
     private int lastBottomHeight = 300;
     private boolean bottomVisible = true;
@@ -69,6 +77,10 @@ public class MainWindow extends JFrame {
         runManager = new RunManager();
         projectService = new ProjectService();
         templateService = new ProjectTemplateService();
+        eventBus = new EventBus();
+        editorContext = new EditorContext();
+        commandContext = new CommandContext(eventBus, editorContext, null);
+        explorerController = new ExplorerIntegrationController(eventBus, editorContext, commandContext);
 
         UIManager.put("TabbedPane.cardTabArc", 14);
         tabbedPane = new JTabbedPane();
