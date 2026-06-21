@@ -30,8 +30,8 @@ public class SaveFileCommand implements Command {
         EditorTab activeTab = editorContext.getActiveTab();
         if (activeTab == null) return;
 
-        // TODO: persist content through FileSystemService once available
-        // context.getFileSystemService().write(activeTab.getFile(), activeTab.getContent());
+        // TODO: persist content through FileSystemService in the integration sprint.
+        // context.getFileSystemService().writeFile(activeTab.getFile().toPath(), activeTab.getContent());
 
         editorContext.markClean(editorContext.getActiveTabIndex());
 
