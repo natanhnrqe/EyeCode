@@ -13,6 +13,7 @@ public class DefaultRuntimeEngine implements RuntimeEngine {
     private final EventBus eventBus;
     private final RunManager runManager;
     private volatile boolean running;
+    private volatile boolean stopRequested;
     private volatile ProcessResult lastResult;
     private volatile Thread workerThread;
 
@@ -20,6 +21,7 @@ public class DefaultRuntimeEngine implements RuntimeEngine {
         this.eventBus = eventBus;
         this.runManager = runManager;
         this.running = false;
+        this.stopRequested = false;
         this.lastResult = new ProcessResult(-1, "", "Not started", 0);
     }
 
@@ -33,6 +35,7 @@ public class DefaultRuntimeEngine implements RuntimeEngine {
         }
 
         running = true;
+        stopRequested = false;
         publishStatus(true, "Running...");
 
         File projectRoot = model.getRootDir().toFile();
@@ -45,6 +48,9 @@ public class DefaultRuntimeEngine implements RuntimeEngine {
 
     @Override
     public void stop() {
+        if (!running && workerThread == null) return;
+
+        stopRequested = true;
         runManager.stop();
         Thread thread = workerThread;
         if (thread != null) {
@@ -72,12 +78,16 @@ public class DefaultRuntimeEngine implements RuntimeEngine {
         try {
             output = runManager.runProject(projectRoot);
             publishOutput(output);
-            publishStatus(false, "Finished");
+            if (!stopRequested) {
+                publishStatus(false, "Finished");
+            }
         } catch (Exception ex) {
             error = ex.getMessage() == null ? ex.toString() : ex.getMessage();
             exitCode = -1;
             publishOutput(error);
-            publishStatus(false, "Execution failed");
+            if (!stopRequested) {
+                publishStatus(false, "Execution failed");
+            }
         } finally {
             long durationMs = System.currentTimeMillis() - startedAt;
             lastResult = new ProcessResult(exitCode, output, error, durationMs);
@@ -87,6 +97,7 @@ public class DefaultRuntimeEngine implements RuntimeEngine {
     }
 
     private void publishOutput(String output) {
+        // TODO: stream output in real time after RunManager exposes a line callback API.
         if (eventBus == null || output == null || output.isEmpty()) return;
         for (String line : output.split("\\R")) {
             if (!line.isEmpty()) {
