@@ -5,6 +5,7 @@ import com.eyecode.editor.v2.syntax.DocumentStyleRegistry;
 import com.eyecode.editor.v2.syntax.JavaSyntaxAnalyzer;
 import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
 import com.eyecode.editor.v2.syntax.swing.SwingSyntaxRenderer;
+import com.eyecode.editor.v2.ui.gutter.GutterPanel;
 
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -21,6 +22,7 @@ public final class RichEditorView extends JPanel {
     private final JTextPane textPane;
     private final StyledDocument styledDocument;
     private final JScrollPane scrollPane;
+    private final GutterPanel gutterPanel;
     private final JavaSyntaxAnalyzer analyzer;
     private final SwingSyntaxRenderer renderer;
     private final DocumentStyleRegistry registry;
@@ -32,6 +34,7 @@ public final class RichEditorView extends JPanel {
         this.textPane = new JTextPane();
         this.styledDocument = textPane.getStyledDocument();
         this.scrollPane = new JScrollPane(textPane);
+        this.gutterPanel = new GutterPanel(textPane);
         this.analyzer = new JavaSyntaxAnalyzer();
         this.registry = new DocumentStyleRegistry();
         this.renderer = new SwingSyntaxRenderer(styledDocument, registry);
@@ -50,11 +53,13 @@ public final class RichEditorView extends JPanel {
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                syncToDocument();
+                // Attribute-only changes are produced by syntax rendering, not text edits.
             }
         });
 
         add(scrollPane, BorderLayout.CENTER);
+        scrollPane.setRowHeaderView(gutterPanel);
+        textPane.addCaretListener(event -> gutterPanel.refresh());
         renderSyntax();
     }
 
@@ -64,6 +69,7 @@ public final class RichEditorView extends JPanel {
             styledDocument.remove(0, styledDocument.getLength());
             insertDocumentText(buffer.getDocument().getText());
             renderSyntax();
+            gutterPanel.refresh();
         } catch (BadLocationException ex) {
             throw new IllegalStateException("Failed to refresh editor document", ex);
         } finally {
@@ -88,6 +94,7 @@ public final class RichEditorView extends JPanel {
         try {
             buffer.getDocument().setText(styledDocument.getText(0, styledDocument.getLength()));
             renderSyntax();
+            gutterPanel.refresh();
         } catch (BadLocationException ex) {
             throw new IllegalStateException("Failed to sync editor document", ex);
         }
