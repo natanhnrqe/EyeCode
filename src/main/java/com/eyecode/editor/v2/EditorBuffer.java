@@ -1,9 +1,12 @@
 package com.eyecode.editor.v2;
 
 import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
+import com.eyecode.editor.v2.language.LanguageContext;
+import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
+
+import java.util.List;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public final class EditorBuffer {
 
@@ -11,6 +14,7 @@ public final class EditorBuffer {
     private EditorPosition caret;
     private EditorSelection selection;
     private DiagnosticSnapshot diagnostics;
+    private LanguageContext languageContext;
     private final List<CaretChangeListener> caretListeners;
     private final List<SelectionChangeListener> selectionListeners;
 
@@ -19,6 +23,13 @@ public final class EditorBuffer {
         this.caret = new EditorPosition(0, 0);
         this.selection = new EditorSelection(caret, caret);
         this.diagnostics = DiagnosticSnapshot.empty();
+        this.languageContext = new LanguageContext(
+                document,
+                caret,
+                selection,
+                new SyntaxSnapshot(List.of()),
+                diagnostics
+        );
         this.caretListeners = new ArrayList<>();
         this.selectionListeners = new ArrayList<>();
     }
@@ -56,6 +67,14 @@ public final class EditorBuffer {
 
     public void setDiagnostics(DiagnosticSnapshot diagnostics) {
         this.diagnostics = diagnostics == null ? DiagnosticSnapshot.empty() : diagnostics;
+    }
+
+    public LanguageContext getLanguageContext() { return languageContext; }
+
+    public void setLanguageContext(LanguageContext languageContext) {
+        if (languageContext != null) {
+            this.languageContext = languageContext;
+        }
     }
 
     public void addCaretChangeListener(CaretChangeListener listener) {
