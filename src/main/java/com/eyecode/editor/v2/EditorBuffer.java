@@ -1,5 +1,7 @@
 package com.eyecode.editor.v2;
 
+import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,6 +10,7 @@ public final class EditorBuffer {
     private final EditorDocument document;
     private EditorPosition caret;
     private EditorSelection selection;
+    private DiagnosticSnapshot diagnostics;
     private final List<CaretChangeListener> caretListeners;
     private final List<SelectionChangeListener> selectionListeners;
 
@@ -15,6 +18,7 @@ public final class EditorBuffer {
         this.document = document;
         this.caret = new EditorPosition(0, 0);
         this.selection = new EditorSelection(caret, caret);
+        this.diagnostics = DiagnosticSnapshot.empty();
         this.caretListeners = new ArrayList<>();
         this.selectionListeners = new ArrayList<>();
     }
@@ -47,6 +51,12 @@ public final class EditorBuffer {
     public EditorPosition getCaret() { return caret; }
 
     public EditorSelection getSelection() { return selection; }
+
+    public DiagnosticSnapshot getDiagnostics() { return diagnostics; }
+
+    public void setDiagnostics(DiagnosticSnapshot diagnostics) {
+        this.diagnostics = diagnostics == null ? DiagnosticSnapshot.empty() : diagnostics;
+    }
 
     public void addCaretChangeListener(CaretChangeListener listener) {
         if (listener != null && !caretListeners.contains(listener)) {

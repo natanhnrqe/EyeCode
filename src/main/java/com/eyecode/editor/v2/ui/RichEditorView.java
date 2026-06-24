@@ -2,6 +2,8 @@ package com.eyecode.editor.v2.ui;
 
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.caret.CaretSynchronizationManager;
+import com.eyecode.editor.v2.diagnostics.DiagnosticManager;
+import com.eyecode.editor.v2.diagnostics.EmptyDiagnosticEngine;
 import com.eyecode.editor.v2.syntax.DocumentStyleRegistry;
 import com.eyecode.editor.v2.syntax.JavaSyntaxAnalyzer;
 import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
@@ -28,6 +30,7 @@ public final class RichEditorView extends JPanel {
     private final SwingSyntaxRenderer renderer;
     private final DocumentStyleRegistry registry;
     private final CaretSynchronizationManager caretSync;
+    private final DiagnosticManager diagnosticManager;
     private boolean refreshing;
 
     public RichEditorView(EditorBuffer buffer) {
@@ -41,6 +44,7 @@ public final class RichEditorView extends JPanel {
         this.registry = new DocumentStyleRegistry();
         this.renderer = new SwingSyntaxRenderer(styledDocument, registry);
         this.caretSync = new CaretSynchronizationManager(textPane, buffer);
+        this.diagnosticManager = new DiagnosticManager(new EmptyDiagnosticEngine());
 
         insertDocumentText(buffer.getDocument().getText());
         styledDocument.addDocumentListener(new DocumentListener() {
@@ -64,6 +68,7 @@ public final class RichEditorView extends JPanel {
         scrollPane.setRowHeaderView(gutterPanel);
         textPane.addCaretListener(event -> gutterPanel.refresh());
         renderSyntax();
+        refreshDiagnostics();
     }
 
     public void refreshFromDocument() {
@@ -72,6 +77,7 @@ public final class RichEditorView extends JPanel {
             styledDocument.remove(0, styledDocument.getLength());
             insertDocumentText(buffer.getDocument().getText());
             renderSyntax();
+            refreshDiagnostics();
             gutterPanel.refresh();
         } catch (BadLocationException ex) {
             throw new IllegalStateException("Failed to refresh editor document", ex);
@@ -97,6 +103,7 @@ public final class RichEditorView extends JPanel {
         try {
             buffer.getDocument().setText(styledDocument.getText(0, styledDocument.getLength()));
             renderSyntax();
+            refreshDiagnostics();
             gutterPanel.refresh();
         } catch (BadLocationException ex) {
             throw new IllegalStateException("Failed to sync editor document", ex);
@@ -114,5 +121,10 @@ public final class RichEditorView extends JPanel {
     private void renderSyntax() {
         SyntaxSnapshot snapshot = analyzer.analyze(buffer.getDocument());
         renderer.render(snapshot);
+    }
+
+    private void refreshDiagnostics() {
+        diagnosticManager.refresh(buffer.getDocument());
+        buffer.setDiagnostics(diagnosticManager.getSnapshot());
     }
 }
