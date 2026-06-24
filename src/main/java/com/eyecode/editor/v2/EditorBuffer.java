@@ -1,5 +1,6 @@
 package com.eyecode.editor.v2;
 
+import com.eyecode.editor.v2.completion.CompletionSnapshot;
 import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
 import com.eyecode.editor.v2.language.LanguageContext;
 import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
@@ -15,6 +16,7 @@ public final class EditorBuffer {
     private EditorSelection selection;
     private DiagnosticSnapshot diagnostics;
     private LanguageContext languageContext;
+    private CompletionSnapshot completionSnapshot;
     private final List<CaretChangeListener> caretListeners;
     private final List<SelectionChangeListener> selectionListeners;
 
@@ -23,6 +25,7 @@ public final class EditorBuffer {
         this.caret = new EditorPosition(0, 0);
         this.selection = new EditorSelection(caret, caret);
         this.diagnostics = DiagnosticSnapshot.empty();
+        this.completionSnapshot = CompletionSnapshot.empty();
         this.languageContext = new LanguageContext(
                 document,
                 caret,
@@ -75,6 +78,14 @@ public final class EditorBuffer {
         if (languageContext != null) {
             this.languageContext = languageContext;
         }
+    }
+
+    public CompletionSnapshot getCompletionSnapshot() { return completionSnapshot; }
+
+    public void setCompletionSnapshot(CompletionSnapshot completionSnapshot) {
+        this.completionSnapshot = completionSnapshot == null
+                ? CompletionSnapshot.empty()
+                : completionSnapshot;
     }
 
     public void addCaretChangeListener(CaretChangeListener listener) {
