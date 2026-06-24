@@ -1,6 +1,7 @@
 package com.eyecode.editor.v2.ui;
 
 import com.eyecode.editor.v2.EditorBuffer;
+import com.eyecode.editor.v2.caret.CaretSynchronizationManager;
 import com.eyecode.editor.v2.syntax.DocumentStyleRegistry;
 import com.eyecode.editor.v2.syntax.JavaSyntaxAnalyzer;
 import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
@@ -26,6 +27,7 @@ public final class RichEditorView extends JPanel {
     private final JavaSyntaxAnalyzer analyzer;
     private final SwingSyntaxRenderer renderer;
     private final DocumentStyleRegistry registry;
+    private final CaretSynchronizationManager caretSync;
     private boolean refreshing;
 
     public RichEditorView(EditorBuffer buffer) {
@@ -38,6 +40,7 @@ public final class RichEditorView extends JPanel {
         this.analyzer = new JavaSyntaxAnalyzer();
         this.registry = new DocumentStyleRegistry();
         this.renderer = new SwingSyntaxRenderer(styledDocument, registry);
+        this.caretSync = new CaretSynchronizationManager(textPane, buffer);
 
         insertDocumentText(buffer.getDocument().getText());
         styledDocument.addDocumentListener(new DocumentListener() {
