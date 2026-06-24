@@ -68,6 +68,7 @@ public final class RichEditorView extends JPanel {
                 )
         ));
         this.completionPopup = new CompletionPopup();
+        this.completionPopup.setOnSelect(event -> buffer.setCompletionSelection(event.getSelectedItem()));
 
         insertDocumentText(buffer.getDocument().getText());
         styledDocument.addDocumentListener(new DocumentListener() {
