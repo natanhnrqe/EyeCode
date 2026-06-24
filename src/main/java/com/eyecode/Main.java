@@ -36,6 +36,7 @@ public class Main {
 
         UIManager.put("SplitPaneDivider.style", "plain");
         UIManager.put("SplitPaneDivider.gripColor", ColorManager.DIVIDER_COLOR);
+        
 
 
 

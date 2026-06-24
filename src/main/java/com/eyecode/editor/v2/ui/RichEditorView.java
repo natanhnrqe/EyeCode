@@ -15,6 +15,7 @@ import com.eyecode.editor.v2.syntax.DocumentStyleRegistry;
 import com.eyecode.editor.v2.syntax.JavaSyntaxAnalyzer;
 import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
 import com.eyecode.editor.v2.syntax.swing.SwingSyntaxRenderer;
+import com.eyecode.editor.v2.ui.completion.CompletionPopup;
 import com.eyecode.editor.v2.ui.gutter.GutterPanel;
 
 import javax.swing.JPanel;
@@ -25,6 +26,8 @@ import javax.swing.event.DocumentListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.StyledDocument;
 import java.awt.BorderLayout;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.util.List;
 
 public final class RichEditorView extends JPanel {
@@ -41,6 +44,7 @@ public final class RichEditorView extends JPanel {
     private final DiagnosticManager diagnosticManager;
     private final LanguageManager languageManager;
     private final CompletionManager completionManager;
+    private final CompletionPopup completionPopup;
     private SyntaxSnapshot latestSyntaxSnapshot;
     private boolean refreshing;
 
@@ -63,6 +67,7 @@ public final class RichEditorView extends JPanel {
                         new SemanticCompletionProvider(new SemanticSymbolRegistry())
                 )
         ));
+        this.completionPopup = new CompletionPopup();
 
         insertDocumentText(buffer.getDocument().getText());
         styledDocument.addDocumentListener(new DocumentListener() {
@@ -85,6 +90,12 @@ public final class RichEditorView extends JPanel {
         add(scrollPane, BorderLayout.CENTER);
         scrollPane.setRowHeaderView(gutterPanel);
         textPane.addCaretListener(event -> gutterPanel.refresh());
+        textPane.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                completionPopup.hide();
+            }
+        });
         renderSyntax();
         refreshDiagnostics();
         refreshLanguageContext();
@@ -160,5 +171,10 @@ public final class RichEditorView extends JPanel {
     private void refreshCompletions() {
         completionManager.refresh(buffer.getLanguageContext());
         buffer.setCompletionSnapshot(completionManager.getSnapshot());
+        if (buffer.getCompletionSnapshot().isEmpty()) {
+            completionPopup.hide();
+        } else {
+            completionPopup.show(textPane, buffer.getCompletionSnapshot(), textPane.getCaretPosition());
+        }
     }
 }
