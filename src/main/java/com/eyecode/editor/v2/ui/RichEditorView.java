@@ -5,6 +5,8 @@ import com.eyecode.editor.v2.caret.CaretSynchronizationManager;
 import com.eyecode.editor.v2.completion.CompletionEngine;
 import com.eyecode.editor.v2.completion.CompletionManager;
 import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
+import com.eyecode.editor.v2.completion.semantic.SemanticCompletionProvider;
+import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
 import com.eyecode.editor.v2.diagnostics.DiagnosticManager;
 import com.eyecode.editor.v2.diagnostics.EmptyDiagnosticEngine;
 import com.eyecode.editor.v2.language.DefaultLanguageService;
@@ -56,7 +58,10 @@ public final class RichEditorView extends JPanel {
         this.diagnosticManager = new DiagnosticManager(new EmptyDiagnosticEngine());
         this.languageManager = new LanguageManager(new DefaultLanguageService());
         this.completionManager = new CompletionManager(new CompletionEngine(
-                List.of(new JavaKeywordCompletionProvider())
+                List.of(
+                        new JavaKeywordCompletionProvider(),
+                        new SemanticCompletionProvider(new SemanticSymbolRegistry())
+                )
         ));
 
         insertDocumentText(buffer.getDocument().getText());
