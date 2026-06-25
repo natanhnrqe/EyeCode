@@ -5,6 +5,9 @@ import com.eyecode.editor.v2.caret.CaretSynchronizationManager;
 import com.eyecode.editor.v2.completion.CompletionEngine;
 import com.eyecode.editor.v2.completion.CompletionManager;
 import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
+import com.eyecode.editor.v2.completion.insert.CompletionInsertionContext;
+import com.eyecode.editor.v2.completion.insert.CompletionInsertionEngine;
+import com.eyecode.editor.v2.completion.insert.CompletionPrefixResolver;
 import com.eyecode.editor.v2.completion.semantic.SemanticCompletionProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
 import com.eyecode.editor.v2.diagnostics.DiagnosticManager;
@@ -45,6 +48,8 @@ public final class RichEditorView extends JPanel {
     private final LanguageManager languageManager;
     private final CompletionManager completionManager;
     private final CompletionPopup completionPopup;
+    private final CompletionInsertionEngine completionInsertionEngine;
+    private final CompletionPrefixResolver completionPrefixResolver;
     private SyntaxSnapshot latestSyntaxSnapshot;
     private boolean refreshing;
 
@@ -68,7 +73,27 @@ public final class RichEditorView extends JPanel {
                 )
         ));
         this.completionPopup = new CompletionPopup();
-        this.completionPopup.setOnSelect(event -> buffer.setCompletionSelection(event.getSelectedItem()));
+        this.completionInsertionEngine = new CompletionInsertionEngine();
+        this.completionPrefixResolver = new CompletionPrefixResolver();
+        this.completionPopup.setOnSelect(event -> {
+            buffer.setCompletionSelection(event.getSelectedItem());
+            if (event.getSelectedItem() != null) {
+                String currentPrefix = completionPrefixResolver.resolve(buffer.getLanguageContext());
+                int caretOffset = toOffset(buffer.getDocument().getText(), buffer.getCaret());
+                CompletionInsertionContext insertionContext = new CompletionInsertionContext(
+                        buffer.getDocument(),
+                        buffer.getCaret(),
+                        event.getSelectedItem(),
+                        currentPrefix
+                );
+                completionInsertionEngine.insert(insertionContext);
+                refreshFromDocument();
+                int newCaretOffset = Math.max(0, caretOffset - currentPrefix.length()
+                        + event.getSelectedItem().getInsertText().length());
+                buffer.setCaretPosition(toPosition(buffer.getDocument().getText(), newCaretOffset));
+            }
+            completionPopup.hide();
+        });
 
         insertDocumentText(buffer.getDocument().getText());
         styledDocument.addDocumentListener(new DocumentListener() {
@@ -177,5 +202,38 @@ public final class RichEditorView extends JPanel {
         } else {
             completionPopup.show(textPane, buffer.getCompletionSnapshot(), textPane.getCaretPosition());
         }
+    }
+
+    private int toOffset(String text, com.eyecode.editor.v2.EditorPosition position) {
+        int line = 0;
+        int column = 0;
+        for (int offset = 0; offset < text.length(); offset++) {
+            if (line == position.line() && column == position.column()) {
+                return offset;
+            }
+            char current = text.charAt(offset);
+            if (current == '\n') {
+                line++;
+                column = 0;
+            } else {
+                column++;
+            }
+        }
+        return text.length();
+    }
+
+    private com.eyecode.editor.v2.EditorPosition toPosition(String text, int offset) {
+        int safeOffset = Math.max(0, Math.min(offset, text.length()));
+        int line = 0;
+        int column = 0;
+        for (int i = 0; i < safeOffset; i++) {
+            if (text.charAt(i) == '\n') {
+                line++;
+                column = 0;
+            } else {
+                column++;
+            }
+        }
+        return new com.eyecode.editor.v2.EditorPosition(line, column);
     }
 }
