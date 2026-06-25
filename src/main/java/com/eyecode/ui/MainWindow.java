@@ -3,9 +3,13 @@ package com.eyecode.ui;
 import com.eyecode.command.CommandContext;
 import com.eyecode.editor.Document;
 import com.eyecode.editor.EditorContext;
+import com.eyecode.editor.v2.integration.EditorHostPanel;
+import com.eyecode.editor.v2.ui.RichEditorView;
 import com.eyecode.eventbus.EventBus;
 import com.eyecode.explorer.integration.ExplorerIntegrationController;
+import com.eyecode.filesystem.DefaultFileSystemService;
 import com.eyecode.filesystem.FileManager;
+import com.eyecode.filesystem.FileSystemService;
 import com.eyecode.project.ProjectDetector;
 import com.eyecode.project.ProjectInfo;
 import com.eyecode.project.ProjectService;
@@ -38,8 +42,9 @@ public class MainWindow extends JFrame {
     private static final String WELCOME_VIEW = "WELCOME";
     private static final String EDITOR_VIEW = "EDITOR";
 
-    private final JTabbedPane tabbedPane;
+    private final EditorHostPanel tabbedPane;
     private final FileManager fileManager;
+    private final FileSystemService fileSystemService;
     private final RunManager runManager;
     private final FileExplorerPanel explorerPanel;
     private final BottomToolWindowPanel bottomTool;
@@ -74,6 +79,7 @@ public class MainWindow extends JFrame {
         getContentPane().setBackground(ColorManager.WINDOW_BG);
 
         fileManager = new FileManager();
+        fileSystemService = new DefaultFileSystemService();
         runManager = new RunManager();
         projectService = new ProjectService();
         templateService = new ProjectTemplateService();
@@ -83,7 +89,7 @@ public class MainWindow extends JFrame {
         explorerController = new ExplorerIntegrationController(eventBus, editorContext, commandContext);
 
         UIManager.put("TabbedPane.cardTabArc", 14);
-        tabbedPane = new JTabbedPane();
+        tabbedPane = new EditorHostPanel(fileSystemService);
         explorerPanel = new FileExplorerPanel(new File("."));
         bottomTool = new BottomToolWindowPanel();
         topBar = new TopBarPanel();
@@ -130,15 +136,15 @@ public class MainWindow extends JFrame {
         topBar.setOnNewFile(this::newFile);
         topBar.setOnSettings(() -> {
             Font currentFont = TypographyManager.UI_TITLE();
-            EditorPanel editor = getCurrentEditor();
-            if (editor != null && editor.getDocument() != null) {
-                currentFont = editor.getEditorFont();
+            RichEditorView view = tabbedPane.getActiveView();
+            if (view != null) {
+                currentFont = view.getTextPane().getFont();
             }
             new SettingsDialog(MainWindow.this, currentFont, newFont -> {
                 for (int i = 0; i < tabbedPane.getTabCount(); i++) {
                     Component c = tabbedPane.getComponentAt(i);
-                    if (c instanceof EditorPanel ep) {
-                        ep.setEditorFont(newFont);
+                    if (c instanceof RichEditorView rev) {
+                        rev.getTextPane().setFont(newFont);
                     }
                 }
             });
@@ -318,10 +324,8 @@ public class MainWindow extends JFrame {
         tabbedPane.putClientProperty("JTabbedPane.tabInsets", new Insets(SpacingSystem.MD, SpacingSystem.XXL, SpacingSystem.MD, SpacingSystem.XXL));
         tabbedPane.putClientProperty("JTabbedPane.tabClosable", true);
         tabbedPane.putClientProperty("JTabbedPane.tabCloseCallback", (IntConsumer) index -> {
-            Component comp = tabbedPane.getComponentAt(index);
-            if (comp instanceof EditorPanel editor) {
-                closeTabAt(editor);
-            }
+            tabbedPane.setSelectedIndex(index);
+            closeCurrentTab();
         });
         tabbedPane.setBackground(ColorManager.EDITOR_BG);
         tabbedPane.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XXS, SpacingSystem.XXS, SpacingSystem.XXS, SpacingSystem.XXS));
@@ -329,9 +333,9 @@ public class MainWindow extends JFrame {
         tabbedPane.addChangeListener(e -> {
             updateBreadcrump();
             updateSelectedFileUi();
-            EditorPanel editor = getCurrentEditor();
-            if (editor != null && editor.getDocument() != null && editor.getDocument().getFile() != null) {
-                explorerPanel.selectFile(editor.getDocument().getFile());
+            File file = tabbedPane.getActiveFile();
+            if (file != null) {
+                explorerPanel.selectFile(file);
             }
         });
     }
@@ -388,21 +392,13 @@ public class MainWindow extends JFrame {
     }
 
     private void runCode() {
-        EditorPanel editor = getCurrentEditor();
-
-        if (editor != null) {
-            Document doc = editor.getDocument();
-
-            if (doc == null) return;
-
-            if (doc.getFile() == null) {
-                saveFileAs();
-                doc = editor.getDocument();
-            }
-
-            if (doc.getModified()) {
-                saveFile();
-            }
+        File activeFile = tabbedPane.getActiveFile();
+        if (activeFile == null) {
+            saveFileAs();
+            activeFile = tabbedPane.getActiveFile();
+        }
+        if (activeFile != null && tabbedPane.isDirty()) {
+            saveFile();
         }
 
         bottomTool.showRun();
@@ -449,121 +445,63 @@ public class MainWindow extends JFrame {
     }
 
     private void saveFile() {
-        EditorPanel editor = getCurrentEditor();
-
-        if (editor == null) return;
-
-        Document doc = editor.getDocument();
-
-        if (doc == null) return;
-
-        File file = doc.getFile();
+        File file = tabbedPane.getActiveFile();
 
         if (file == null) {
             saveFileAs();
             return;
         }
 
-        fileManager.saveFile(file, doc.getContent());
-        doc.setModified(false);
-
+        tabbedPane.saveActive(file);
         bottomTool.printRunOutput("File Saved: " + file.getName());
         statusBar.updateStatus("Saved " + file.getName());
-        updateTabTitle(editor);
+        updateTabTitle();
     }
 
     private void saveFileAs() {
-        EditorPanel editor = getCurrentEditor();
-
-        if (editor == null) return;
-
-        Document doc = editor.getDocument();
-
-        if (doc == null) return;
-
         JFileChooser chooser = new JFileChooser();
         int result = chooser.showSaveDialog(this);
 
         if (result == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
-            fileManager.saveFile(file, doc.getContent());
-
-            doc.setModified(false);
-            doc = new Document(file, doc.getContent());
-            editor.setDocument(doc);
-
+            tabbedPane.saveActive(file);
             tabbedPane.setTitleAt(tabbedPane.getSelectedIndex(), file.getName());
+            tabbedPane.setIconAt(tabbedPane.getSelectedIndex(), IconManager.forFile(file.getName()));
 
             bottomTool.printRunOutput("File Saved As " + file.getName());
             statusBar.updateStatus("Saved " + file.getName());
-            updateTabTitle(editor);
+            updateTabTitle();
             updateSelectedFileUi();
         }
     }
 
     private void newFile() {
-        Document doc = new Document(null, "");
-        addNewTab(doc, "Untitled");
+        tabbedPane.newUntitled();
+        int index = tabbedPane.getSelectedIndex();
+        tabbedPane.setIconAt(index, IconManager.forFile("Untitled"));
+        editorCards.show(editorStack, EDITOR_VIEW);
         bottomTool.printRunOutput("New File Created");
         statusBar.updateStatus("New file created");
-    }
-
-    private void addNewTab(Document document, String title) {
-        EditorPanel editor = new EditorPanel();
-        editor.setDocument(document);
-        editor.setCaretPositionListener(statusBar::updateCaretPosition);
-        editor.setOnChangeCallback(() -> updateTabTitle(editor));
-
-        tabbedPane.addTab(title, editor);
-
-        int index = tabbedPane.indexOfComponent(editor);
-        String filename = document.getFile() != null ? document.getFile().getName() : title;
-        tabbedPane.setIconAt(index, IconManager.forFile(filename));
-
-        if (document.getFile() != null) {
-            addRecentFile(document.getFile());
-        }
-
-        tabbedPane.setSelectedComponent(editor);
-        editorCards.show(editorStack, EDITOR_VIEW);
         updateBreadcrump();
         updateSelectedFileUi();
     }
 
-    private EditorPanel getCurrentEditor() {
-        return (EditorPanel) tabbedPane.getSelectedComponent();
-    }
-
-    private void updateTabTitle(EditorPanel editor) {
-        Document doc = editor.getDocument();
-        int index = tabbedPane.indexOfComponent(editor);
-
+    private void updateTabTitle() {
+        int index = tabbedPane.getSelectedIndex();
         if (index == -1) return;
 
-        String name = doc.getFile() != null ? doc.getFile().getName() : "Untitled";
-        String title = doc.getModified() ? name + " *" : name;
+        File file = tabbedPane.getActiveFile();
+        String name = file != null ? file.getName() : "Untitled";
+        String title = tabbedPane.isDirty() ? name + " *" : name;
         tabbedPane.setTitleAt(index, title);
-        if (doc.getFile() != null) {
-            tabbedPane.setIconAt(index, IconManager.forFile(doc.getFile().getName()));
+        if (file != null) {
+            tabbedPane.setIconAt(index, IconManager.forFile(file.getName()));
         }
-
         updateSelectedFileUi();
     }
 
     private void closeCurrentTab() {
-        EditorPanel editor = getCurrentEditor();
-
-        if (editor != null) {
-            closeTabAt(editor);
-        }
-    }
-
-    private boolean closeTabAt(EditorPanel editor) {
-        Document doc = editor.getDocument();
-
-        if (doc != null && doc.getModified()) {
-            tabbedPane.setSelectedComponent(editor);
-
+        if (tabbedPane.isDirty()) {
             int opt = JOptionPane.showConfirmDialog(
                     this,
                     "File has unsaved changes. Save before closing?",
@@ -571,21 +509,16 @@ public class MainWindow extends JFrame {
                     JOptionPane.YES_NO_CANCEL_OPTION
             );
 
-            if (opt == JOptionPane.CANCEL_OPTION) return false;
-
+            if (opt == JOptionPane.CANCEL_OPTION) return;
             if (opt == JOptionPane.YES_OPTION) {
                 saveFile();
-
-                if (doc.getModified()) {
-                    return false;
-                }
+                if (tabbedPane.isDirty()) return;
             }
         }
 
-        tabbedPane.remove(editor);
+        tabbedPane.closeActive();
         showWelcomeIfNeeded();
         statusBar.updateStatus("Tab closed");
-        return true;
     }
 
     private void openProject() {
@@ -742,14 +675,7 @@ public class MainWindow extends JFrame {
     }
 
     private void updateBreadcrump() {
-        EditorPanel editor = getCurrentEditor();
-
-        if (editor == null || editor.getDocument() == null) {
-            statusBar.updatePath(null);
-            return;
-        }
-
-        File file = editor.getDocument().getFile();
+        File file = tabbedPane.getActiveFile();
         statusBar.updatePath(file);
     }
 
@@ -765,15 +691,14 @@ public class MainWindow extends JFrame {
     }
 
     private void updateSelectedFileUi() {
-        EditorPanel editor = getCurrentEditor();
-
-        if (editor == null || editor.getDocument() == null) {
+        File file = tabbedPane.getActiveFile();
+        if (file == null && tabbedPane.getTabCount() > 0) {
+            statusBar.updateFile("Untitled");
+        } else if (file == null) {
             statusBar.updateFile(null);
-            return;
+        } else {
+            statusBar.updateFile(file.getName());
         }
-
-        File file = editor.getDocument().getFile();
-        statusBar.updateFile(file == null ? "Untitled" : file.getName());
     }
 
     private void updateProjectUi(File root) {
@@ -894,9 +819,11 @@ public class MainWindow extends JFrame {
     }
 
     private void openFile(File file) {
-        String content = fileManager.openFile(file);
-        Document doc = new Document(file, content);
-        addNewTab(doc, file.getName());
+        tabbedPane.openFile(file);
+        int index = tabbedPane.getSelectedIndex();
+        tabbedPane.setIconAt(index, IconManager.forFile(file.getName()));
+        editorCards.show(editorStack, EDITOR_VIEW);
+        addRecentFile(file);
         explorerPanel.selectFile(file);
         statusBar.updateStatus("Opened " + file.getName());
     }
