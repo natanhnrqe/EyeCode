@@ -52,6 +52,7 @@ public final class RichEditorView extends JPanel {
     private final CompletionPrefixResolver completionPrefixResolver;
     private SyntaxSnapshot latestSyntaxSnapshot;
     private boolean refreshing;
+    private boolean suppressPopup;
 
     public RichEditorView(EditorBuffer buffer) {
         super(new BorderLayout());
@@ -78,6 +79,7 @@ public final class RichEditorView extends JPanel {
         this.completionPopup.setOnSelect(event -> {
             buffer.setCompletionSelection(event.getSelectedItem());
             if (event.getSelectedItem() != null) {
+                suppressPopup = true;
                 String currentPrefix = completionPrefixResolver.resolve(buffer.getLanguageContext());
                 int caretOffset = toOffset(buffer.getDocument().getText(), buffer.getCaret());
                 CompletionInsertionContext insertionContext = new CompletionInsertionContext(
@@ -91,6 +93,7 @@ public final class RichEditorView extends JPanel {
                 int newCaretOffset = Math.max(0, caretOffset - currentPrefix.length()
                         + event.getSelectedItem().getInsertText().length());
                 buffer.setCaretPosition(toPosition(buffer.getDocument().getText(), newCaretOffset));
+                suppressPopup = false;
             }
             completionPopup.hide();
         });
@@ -115,7 +118,16 @@ public final class RichEditorView extends JPanel {
 
         add(scrollPane, BorderLayout.CENTER);
         scrollPane.setRowHeaderView(gutterPanel);
-        textPane.addCaretListener(event -> gutterPanel.refresh());
+        textPane.addCaretListener(event -> {
+            gutterPanel.refresh();
+            if (completionPopup.isVisible()) {
+                if (isCompletionContextValid()) {
+                    completionPopup.move(textPane, textPane.getCaretPosition());
+                } else {
+                    completionPopup.hide();
+                }
+            }
+        });
         textPane.addFocusListener(new FocusAdapter() {
             @Override
             public void focusLost(FocusEvent e) {
@@ -197,11 +209,31 @@ public final class RichEditorView extends JPanel {
     private void refreshCompletions() {
         completionManager.refresh(buffer.getLanguageContext());
         buffer.setCompletionSnapshot(completionManager.getSnapshot());
-        if (buffer.getCompletionSnapshot().isEmpty()) {
+
+        if (suppressPopup) return;
+
+        if (!isCompletionContextValid() || buffer.getCompletionSnapshot().isEmpty()) {
             completionPopup.hide();
+            return;
+        }
+
+        if (completionPopup.isVisible()) {
+            completionPopup.update(buffer.getCompletionSnapshot());
+            completionPopup.move(textPane, textPane.getCaretPosition());
         } else {
             completionPopup.show(textPane, buffer.getCompletionSnapshot(), textPane.getCaretPosition());
         }
+    }
+
+    private boolean isCompletionContextValid() {
+        String prefix = completionPrefixResolver.resolve(buffer.getLanguageContext());
+        if (prefix.length() < 1) return false;
+
+        String text = buffer.getDocument().getText();
+        int offset = toOffset(text, buffer.getCaret());
+        if (offset == 0) return false;
+        char charBefore = text.charAt(offset - 1);
+        return Character.isJavaIdentifierPart(charBefore);
     }
 
     private int toOffset(String text, com.eyecode.editor.v2.EditorPosition position) {

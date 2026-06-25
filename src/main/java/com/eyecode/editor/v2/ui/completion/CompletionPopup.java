@@ -3,6 +3,8 @@ package com.eyecode.editor.v2.ui.completion;
 import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionSnapshot;
 
+import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
 import javax.swing.DefaultListModel;
 import javax.swing.InputMap;
 import javax.swing.JList;
@@ -10,8 +12,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.JWindow;
 import javax.swing.KeyStroke;
-import javax.swing.AbstractAction;
-import javax.swing.ActionMap;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Point;
@@ -30,6 +30,7 @@ public final class CompletionPopup {
     private JList<CompletionItem> list;
     private int selectedIndex = 0;
     private int caretPosition;
+    private String selectedLabel;
     private Consumer<CompletionSelectionEvent> onSelect;
 
     public CompletionPopup() {
@@ -43,14 +44,7 @@ public final class CompletionPopup {
         }
 
         ensureWindow(editor);
-        DefaultListModel<CompletionItem> model = new DefaultListModel<>();
-        for (CompletionItem item : snapshot.getItems()) {
-            model.addElement(item);
-        }
-        list.setModel(model);
-        list.setVisibleRowCount(Math.min(MAX_VISIBLE_ROWS, snapshot.size()));
-        selectedIndex = 0;
-        updateSelection();
+        populateModel(snapshot);
         this.caretPosition = caretPosition;
 
         Point position = positioner.positionFor(editor, caretPosition);
@@ -60,7 +54,24 @@ public final class CompletionPopup {
         window.setVisible(true);
     }
 
+    public void update(CompletionSnapshot snapshot) {
+        if (snapshot == null || snapshot.isEmpty()) {
+            hide();
+            return;
+        }
+        if (window == null || !window.isVisible()) return;
+        populateModel(snapshot);
+    }
+
+    public void move(JTextPane editor, int caretPosition) {
+        if (window == null || !window.isVisible()) return;
+        this.caretPosition = caretPosition;
+        Point position = positioner.positionFor(editor, caretPosition);
+        window.setLocation(position);
+    }
+
     public void hide() {
+        selectedLabel = null;
         if (window != null) {
             window.setVisible(false);
         }
@@ -68,6 +79,20 @@ public final class CompletionPopup {
 
     public boolean isVisible() {
         return window != null && window.isVisible();
+    }
+
+    public void selectNext() {
+        moveSelection(1);
+    }
+
+    public void selectPrevious() {
+        moveSelection(-1);
+    }
+
+    public CompletionItem getSelectedItem() {
+        if (list == null || list.getModel().getSize() == 0) return null;
+        if (selectedIndex < 0 || selectedIndex >= list.getModel().getSize()) return null;
+        return list.getModel().getElementAt(selectedIndex);
     }
 
     public void setOnSelect(Consumer<CompletionSelectionEvent> onSelect) {
@@ -104,6 +129,28 @@ public final class CompletionPopup {
         window.getContentPane().add(scrollPane, BorderLayout.CENTER);
     }
 
+    private void populateModel(CompletionSnapshot snapshot) {
+        DefaultListModel<CompletionItem> model = new DefaultListModel<>();
+        for (CompletionItem item : snapshot.getItems()) {
+            model.addElement(item);
+        }
+
+        int newSelectedIndex = 0;
+        if (selectedLabel != null) {
+            for (int i = 0; i < model.getSize(); i++) {
+                if (model.getElementAt(i).getLabel().equals(selectedLabel)) {
+                    newSelectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        list.setModel(model);
+        list.setVisibleRowCount(Math.min(MAX_VISIBLE_ROWS, snapshot.size()));
+        selectedIndex = newSelectedIndex;
+        updateSelection();
+    }
+
     private void installNavigationActions() {
         InputMap inputMap = list.getInputMap(JList.WHEN_IN_FOCUSED_WINDOW);
         ActionMap actionMap = list.getActionMap();
@@ -112,7 +159,7 @@ public final class CompletionPopup {
         actionMap.put("completionUp", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                moveSelection(-1);
+                selectPrevious();
             }
         });
 
@@ -120,7 +167,7 @@ public final class CompletionPopup {
         actionMap.put("completionDown", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                moveSelection(1);
+                selectNext();
             }
         });
 
@@ -152,6 +199,8 @@ public final class CompletionPopup {
         selectedIndex = Math.max(0, Math.min(selectedIndex, list.getModel().getSize() - 1));
         list.setSelectedIndex(selectedIndex);
         list.ensureIndexIsVisible(selectedIndex);
+        CompletionItem item = list.getModel().getElementAt(selectedIndex);
+        selectedLabel = item != null ? item.getLabel() : null;
     }
 
     private void emitSelection() {
