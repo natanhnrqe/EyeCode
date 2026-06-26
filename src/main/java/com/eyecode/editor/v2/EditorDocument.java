@@ -8,6 +8,7 @@ public final class EditorDocument {
 
     private final StringBuilder content;
     private final List<EditorLine> lines;
+    private final List<DirtyChangeListener> dirtyListeners;
     private Path sourceFile;
     private boolean dirty;
 
@@ -18,6 +19,7 @@ public final class EditorDocument {
     public EditorDocument(Path sourceFile, String text) {
         this.content = new StringBuilder();
         this.lines = new ArrayList<>();
+        this.dirtyListeners = new ArrayList<>();
         this.sourceFile = sourceFile;
         setText(text);
         this.dirty = false;
@@ -31,7 +33,7 @@ public final class EditorDocument {
         content.setLength(0);
         content.append(text == null ? "" : text);
         rebuildLines();
-        dirty = true;
+        setDirty(true);
     }
 
     public void insert(int offset, String text) {
@@ -39,7 +41,7 @@ public final class EditorDocument {
         if (text == null || text.isEmpty()) return;
         content.insert(offset, text);
         rebuildLines();
-        dirty = true;
+        setDirty(true);
     }
 
     public void delete(int start, int end) {
@@ -47,7 +49,7 @@ public final class EditorDocument {
         if (start == end) return;
         content.delete(start, end);
         rebuildLines();
-        dirty = true;
+        setDirty(true);
     }
 
     public int getLineCount() {
@@ -67,7 +69,28 @@ public final class EditorDocument {
 
     public boolean isDirty() { return dirty; }
 
-    public void markClean() { this.dirty = false; }
+    public void markClean() { setDirty(false); }
+
+    public void addDirtyChangeListener(DirtyChangeListener listener) {
+        if (listener != null && !dirtyListeners.contains(listener)) {
+            dirtyListeners.add(listener);
+        }
+    }
+
+    public void removeDirtyChangeListener(DirtyChangeListener listener) {
+        dirtyListeners.remove(listener);
+    }
+
+    private void setDirty(boolean dirty) {
+        if (this.dirty == dirty) {
+            return;
+        }
+
+        this.dirty = dirty;
+        for (DirtyChangeListener listener : List.copyOf(dirtyListeners)) {
+            listener.onDirtyChanged(dirty);
+        }
+    }
 
     private void rebuildLines() {
         lines.clear();
@@ -87,5 +110,9 @@ public final class EditorDocument {
         if (start < 0 || end < start || end > content.length()) {
             throw new IndexOutOfBoundsException("Invalid range: " + start + ".." + end);
         }
+    }
+
+    public interface DirtyChangeListener {
+        void onDirtyChanged(boolean dirty);
     }
 }

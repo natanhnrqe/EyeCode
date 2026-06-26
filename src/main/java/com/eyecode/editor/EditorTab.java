@@ -13,11 +13,12 @@ public class EditorTab {
         this.file = file;
         this.content = null;
         this.dirty = false;
-        this.lastModified = file.lastModified();
+        this.lastModified = file != null ? file.lastModified() : 0L;
     }
 
     public String getDisplayName() {
-        return file.getName() + (dirty ? "*" : "");
+        String baseName = file != null ? file.getName() : "Untitled";
+        return baseName + (dirty ? "*" : "");
     }
 
     public File getFile() { return file; }

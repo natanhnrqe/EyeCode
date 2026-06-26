@@ -6,6 +6,7 @@ import com.eyecode.editor.v2.EditorSelection;
 
 import javax.swing.JTextPane;
 import javax.swing.event.CaretEvent;
+import javax.swing.event.CaretListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.Element;
@@ -14,13 +15,22 @@ public final class CaretSynchronizationManager {
 
     private final JTextPane textPane;
     private final EditorBuffer buffer;
+    private final CaretListener caretListener;
+    private final EditorBuffer.CaretChangeListener bufferCaretListener;
     private boolean internalUpdate;
 
     public CaretSynchronizationManager(JTextPane textPane, EditorBuffer buffer) {
         this.textPane = textPane;
         this.buffer = buffer;
-        this.textPane.addCaretListener(this::syncFromSwing);
-        this.buffer.addCaretChangeListener(this::syncCaretToSwing);
+        this.caretListener = this::syncFromSwing;
+        this.bufferCaretListener = this::syncCaretToSwing;
+        this.textPane.addCaretListener(caretListener);
+        this.buffer.addCaretChangeListener(bufferCaretListener);
+    }
+
+    public void dispose() {
+        textPane.removeCaretListener(caretListener);
+        buffer.removeCaretChangeListener(bufferCaretListener);
     }
 
     private void syncFromSwing(CaretEvent event) {

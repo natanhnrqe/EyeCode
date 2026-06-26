@@ -21,4 +21,18 @@ public final class EditorSelection {
     public EditorPosition getStart() { return start; }
 
     public EditorPosition getEnd() { return end; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof EditorSelection that)) return false;
+        return start.equals(that.start) && end.equals(that.end);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = start.hashCode();
+        result = 31 * result + end.hashCode();
+        return result;
+    }
 }

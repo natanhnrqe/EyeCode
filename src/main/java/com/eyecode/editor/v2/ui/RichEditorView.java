@@ -26,6 +26,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.event.CaretListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.StyledDocument;
 import java.awt.BorderLayout;
@@ -50,6 +51,9 @@ public final class RichEditorView extends JPanel {
     private final CompletionPopup completionPopup;
     private final CompletionInsertionEngine completionInsertionEngine;
     private final CompletionPrefixResolver completionPrefixResolver;
+    private final DocumentListener documentListener;
+    private final CaretListener caretListener;
+    private final FocusAdapter focusListener;
     private SyntaxSnapshot latestSyntaxSnapshot;
     private boolean refreshing;
     private boolean suppressPopup;
@@ -99,7 +103,7 @@ public final class RichEditorView extends JPanel {
         });
 
         insertDocumentText(buffer.getDocument().getText());
-        styledDocument.addDocumentListener(new DocumentListener() {
+        this.documentListener = new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
                 syncToDocument();
@@ -114,11 +118,12 @@ public final class RichEditorView extends JPanel {
             public void changedUpdate(DocumentEvent e) {
                 // Attribute-only changes are produced by syntax rendering, not text edits.
             }
-        });
+        };
+        styledDocument.addDocumentListener(documentListener);
 
         add(scrollPane, BorderLayout.CENTER);
         scrollPane.setRowHeaderView(gutterPanel);
-        textPane.addCaretListener(event -> {
+        this.caretListener = event -> {
             gutterPanel.refresh();
             if (completionPopup.isVisible()) {
                 if (isCompletionContextValid()) {
@@ -127,20 +132,34 @@ public final class RichEditorView extends JPanel {
                     completionPopup.hide();
                 }
             }
-        });
-        textPane.addFocusListener(new FocusAdapter() {
+        };
+        textPane.addCaretListener(caretListener);
+        this.focusListener = new FocusAdapter() {
             @Override
             public void focusLost(FocusEvent e) {
                 completionPopup.hide();
             }
-        });
+        };
+        textPane.addFocusListener(focusListener);
         renderSyntax();
         refreshDiagnostics();
         refreshLanguageContext();
         refreshCompletions();
     }
 
+    public void dispose() {
+        styledDocument.removeDocumentListener(documentListener);
+        textPane.removeCaretListener(caretListener);
+        textPane.removeFocusListener(focusListener);
+        caretSync.dispose();
+        buffer.clearListeners();
+        completionPopup.hide();
+    }
+
     public void refreshFromDocument() {
+        if (buffer.getDocument().getText().contentEquals(getCurrentText())) {
+            return;
+        }
         refreshing = true;
         try {
             styledDocument.remove(0, styledDocument.getLength());
@@ -171,8 +190,13 @@ public final class RichEditorView extends JPanel {
 
     private void syncToDocument() {
         if (refreshing) return;
+        String text;
         try {
-            buffer.getDocument().setText(styledDocument.getText(0, styledDocument.getLength()));
+            text = styledDocument.getText(0, styledDocument.getLength());
+            if (text.contentEquals(buffer.getDocument().getText())) {
+                return;
+            }
+            buffer.getDocument().setText(text);
             renderSyntax();
             refreshDiagnostics();
             refreshLanguageContext();
@@ -184,10 +208,21 @@ public final class RichEditorView extends JPanel {
     }
 
     private void insertDocumentText(String text) {
+        if ((text == null ? "" : text).contentEquals(getCurrentText())) {
+            return;
+        }
         try {
             styledDocument.insertString(0, text == null ? "" : text, null);
         } catch (BadLocationException ex) {
             throw new IllegalStateException("Failed to initialize editor document", ex);
+        }
+    }
+
+    private String getCurrentText() {
+        try {
+            return styledDocument.getText(0, styledDocument.getLength());
+        } catch (BadLocationException ex) {
+            throw new IllegalStateException("Failed to read editor document", ex);
         }
     }
 

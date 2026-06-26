@@ -46,6 +46,7 @@ public final class EditorBuffer {
 
     public void setCaretPosition(EditorPosition position) {
         if (position == null) return;
+        if (position.equals(this.caret)) return;
         this.caret = position;
         for (CaretChangeListener listener : List.copyOf(caretListeners)) {
             listener.onCaretChanged(position);
@@ -54,10 +55,16 @@ public final class EditorBuffer {
 
     public void setSelection(EditorSelection selection) {
         if (selection == null) return;
+        if (selection.equals(this.selection)) return;
         this.selection = selection;
         for (SelectionChangeListener listener : List.copyOf(selectionListeners)) {
             listener.onSelectionChanged(selection);
         }
+    }
+
+    public void clearListeners() {
+        caretListeners.clear();
+        selectionListeners.clear();
     }
 
     public EditorDocument getDocument() {
