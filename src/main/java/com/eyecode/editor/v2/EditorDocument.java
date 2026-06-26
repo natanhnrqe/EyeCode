@@ -9,6 +9,7 @@ public final class EditorDocument {
     private final StringBuilder content;
     private final List<EditorLine> lines;
     private final List<DirtyChangeListener> dirtyListeners;
+    private final List<TextChangeListener> textListeners;
     private Path sourceFile;
     private boolean dirty;
 
@@ -20,6 +21,7 @@ public final class EditorDocument {
         this.content = new StringBuilder();
         this.lines = new ArrayList<>();
         this.dirtyListeners = new ArrayList<>();
+        this.textListeners = new ArrayList<>();
         this.sourceFile = sourceFile;
         setText(text);
         this.dirty = false;
@@ -32,25 +34,31 @@ public final class EditorDocument {
     public void setText(String text) {
         String newText = text == null ? "" : text;
         if (newText.contentEquals(content)) return;
+        String oldText = content.toString();
         content.setLength(0);
         content.append(newText);
         rebuildLines();
+        notifyTextChanged(oldText, newText);
         setDirty(true);
     }
 
     public void insert(int offset, String text) {
         validateOffset(offset);
         if (text == null || text.isEmpty()) return;
+        String oldText = content.toString();
         content.insert(offset, text);
         rebuildLines();
+        notifyTextChanged(oldText, content.toString());
         setDirty(true);
     }
 
     public void delete(int start, int end) {
         validateRange(start, end);
         if (start == end) return;
+        String oldText = content.toString();
         content.delete(start, end);
         rebuildLines();
+        notifyTextChanged(oldText, content.toString());
         setDirty(true);
     }
 
@@ -83,6 +91,16 @@ public final class EditorDocument {
         dirtyListeners.remove(listener);
     }
 
+    public void addTextChangeListener(TextChangeListener listener) {
+        if (listener != null && !textListeners.contains(listener)) {
+            textListeners.add(listener);
+        }
+    }
+
+    public void removeTextChangeListener(TextChangeListener listener) {
+        textListeners.remove(listener);
+    }
+
     private void setDirty(boolean dirty) {
         if (this.dirty == dirty) {
             return;
@@ -91,6 +109,12 @@ public final class EditorDocument {
         this.dirty = dirty;
         for (DirtyChangeListener listener : List.copyOf(dirtyListeners)) {
             listener.onDirtyChanged(dirty);
+        }
+    }
+
+    private void notifyTextChanged(String oldText, String newText) {
+        for (TextChangeListener listener : List.copyOf(textListeners)) {
+            listener.onTextChanged(oldText, newText);
         }
     }
 
@@ -116,5 +140,9 @@ public final class EditorDocument {
 
     public interface DirtyChangeListener {
         void onDirtyChanged(boolean dirty);
+    }
+
+    public interface TextChangeListener {
+        void onTextChanged(String oldText, String newText);
     }
 }

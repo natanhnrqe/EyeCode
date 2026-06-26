@@ -6,9 +6,10 @@ import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
 import com.eyecode.editor.v2.language.LanguageContext;
 import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
 
-import java.util.List;
-
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 
 public final class EditorBuffer {
 
@@ -21,6 +22,9 @@ public final class EditorBuffer {
     private CompletionItem completionSelection;
     private final List<CaretChangeListener> caretListeners;
     private final List<SelectionChangeListener> selectionListeners;
+    private final Deque<String> undoStack;
+    private final Deque<String> redoStack;
+    private boolean applyingHistory;
 
     public EditorBuffer(EditorDocument document) {
         this.document = document;
@@ -37,6 +41,9 @@ public final class EditorBuffer {
         );
         this.caretListeners = new ArrayList<>();
         this.selectionListeners = new ArrayList<>();
+        this.undoStack = new ArrayDeque<>();
+        this.redoStack = new ArrayDeque<>();
+        this.document.addTextChangeListener(this::trackTextChange);
     }
 
     public void moveCaret(EditorPosition position) {
@@ -69,6 +76,26 @@ public final class EditorBuffer {
 
     public EditorDocument getDocument() {
         return document;
+    }
+
+    public boolean canUndo() { return !undoStack.isEmpty(); }
+
+    public boolean canRedo() { return !redoStack.isEmpty(); }
+
+    public void undo() {
+        if (!canUndo()) return;
+        String currentText = document.getText();
+        String previousText = undoStack.pop();
+        redoStack.push(currentText);
+        applyHistoryText(previousText);
+    }
+
+    public void redo() {
+        if (!canRedo()) return;
+        String currentText = document.getText();
+        String nextText = redoStack.pop();
+        undoStack.push(currentText);
+        applyHistoryText(nextText);
     }
 
     public EditorPosition getCaret() { return caret; }
@@ -121,6 +148,23 @@ public final class EditorBuffer {
 
     public void removeSelectionChangeListener(SelectionChangeListener listener) {
         selectionListeners.remove(listener);
+    }
+
+    private void trackTextChange(String oldText, String newText) {
+        if (applyingHistory || oldText.equals(newText)) return;
+        if (undoStack.isEmpty() || !undoStack.peek().equals(oldText)) {
+            undoStack.push(oldText);
+        }
+        redoStack.clear();
+    }
+
+    private void applyHistoryText(String text) {
+        applyingHistory = true;
+        try {
+            document.setText(text);
+        } finally {
+            applyingHistory = false;
+        }
     }
 
     public interface CaretChangeListener {
