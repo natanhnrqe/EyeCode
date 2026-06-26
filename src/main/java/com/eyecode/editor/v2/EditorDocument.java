@@ -30,8 +30,10 @@ public final class EditorDocument {
     }
 
     public void setText(String text) {
+        String newText = text == null ? "" : text;
+        if (newText.contentEquals(content)) return;
         content.setLength(0);
-        content.append(text == null ? "" : text);
+        content.append(newText);
         rebuildLines();
         setDirty(true);
     }

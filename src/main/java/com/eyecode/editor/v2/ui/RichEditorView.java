@@ -57,6 +57,7 @@ public final class RichEditorView extends JPanel {
     private SyntaxSnapshot latestSyntaxSnapshot;
     private boolean refreshing;
     private boolean suppressPopup;
+    private boolean disposed;
 
     public RichEditorView(EditorBuffer buffer) {
         super(new BorderLayout());
@@ -81,6 +82,7 @@ public final class RichEditorView extends JPanel {
         this.completionInsertionEngine = new CompletionInsertionEngine();
         this.completionPrefixResolver = new CompletionPrefixResolver();
         this.completionPopup.setOnSelect(event -> {
+            if (disposed) return;
             buffer.setCompletionSelection(event.getSelectedItem());
             if (event.getSelectedItem() != null) {
                 suppressPopup = true;
@@ -148,6 +150,8 @@ public final class RichEditorView extends JPanel {
     }
 
     public void dispose() {
+        if (disposed) return;
+        disposed = true;
         styledDocument.removeDocumentListener(documentListener);
         textPane.removeCaretListener(caretListener);
         textPane.removeFocusListener(focusListener);
@@ -157,6 +161,7 @@ public final class RichEditorView extends JPanel {
     }
 
     public void refreshFromDocument() {
+        if (disposed) return;
         if (buffer.getDocument().getText().contentEquals(getCurrentText())) {
             return;
         }
@@ -189,7 +194,7 @@ public final class RichEditorView extends JPanel {
     }
 
     private void syncToDocument() {
-        if (refreshing) return;
+        if (disposed || refreshing) return;
         String text;
         try {
             text = styledDocument.getText(0, styledDocument.getLength());
@@ -242,6 +247,7 @@ public final class RichEditorView extends JPanel {
     }
 
     private void refreshCompletions() {
+        if (disposed) return;
         completionManager.refresh(buffer.getLanguageContext());
         buffer.setCompletionSnapshot(completionManager.getSnapshot());
 

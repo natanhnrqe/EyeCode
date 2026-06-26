@@ -18,6 +18,7 @@ public final class EditorHostPanel extends JTabbedPane {
 
     private final Map<File, EditorSession> sessions = new HashMap<>();
     private final Map<EditorSession, File> sessionKeys = new HashMap<>();
+    private final Map<Component, EditorSession> componentSessions = new HashMap<>();
     private final FileSystemService fileSystemService;
     private EditorSession activeSession;
 
@@ -31,6 +32,7 @@ public final class EditorHostPanel extends JTabbedPane {
         File canonicalFile = canonicalize(file);
         EditorSession existing = sessions.get(canonicalFile);
         if (existing != null) {
+            existing.restoreViewState();
             activateSession(existing);
             return existing;
         }
@@ -85,19 +87,18 @@ public final class EditorHostPanel extends JTabbedPane {
     }
 
     public EditorSession getActiveSession() {
-        if (activeSession != null && activeSession.getView().getParent() == this) {
+        Component selected = getSelectedComponent();
+        if (selected == null) {
+            activeSession = null;
+            return null;
+        }
+
+        if (activeSession != null && activeSession.getView() == selected) {
             return activeSession;
         }
 
-        Component selected = getSelectedComponent();
-        if (selected == null) return null;
-        for (EditorSession session : sessionKeys.keySet()) {
-            if (session.getView() == selected) {
-                activeSession = session;
-                return session;
-            }
-        }
-        return null;
+        activeSession = componentSessions.get(selected);
+        return activeSession;
     }
 
     public RichEditorView getActiveView() {
@@ -134,11 +135,15 @@ public final class EditorHostPanel extends JTabbedPane {
         if (session != null && file != null) {
             File canonicalFile = canonicalize(file);
             session.getBuffer().getDocument().setSourceFile(canonicalFile.toPath());
+            File previousKey = sessionKeys.put(session, canonicalFile);
+            if (previousKey != null && !previousKey.equals(canonicalFile)) {
+                sessions.remove(previousKey, session);
+            }
             EditorSession previous = sessions.put(canonicalFile, session);
-            sessionKeys.put(session, canonicalFile);
             if (previous != null && previous != session) {
                 removeSession(previous);
             }
+            activeSession = session;
         }
     }
 
@@ -163,6 +168,7 @@ public final class EditorHostPanel extends JTabbedPane {
 
     @Override
     public void removeTabAt(int index) {
+        if (index < 0 || index >= getTabCount()) return;
         Component component = getComponentAt(index);
         EditorSession session = findSession(component);
         if (session != null) {
@@ -174,6 +180,10 @@ public final class EditorHostPanel extends JTabbedPane {
 
     @Override
     public void setSelectedIndex(int index) {
+        if (index < 0 || index >= getTabCount()) {
+            activeSession = null;
+            return;
+        }
         super.setSelectedIndex(index);
         updateActiveSessionFromSelection();
     }
@@ -187,10 +197,14 @@ public final class EditorHostPanel extends JTabbedPane {
     private void registerSession(File file, EditorSession session) {
         File previousKey = sessionKeys.put(session, file);
         if (previousKey != null && !previousKey.equals(file)) {
-            sessions.remove(previousKey);
+            sessions.remove(previousKey, session);
         }
+        componentSessions.put(session.getView(), session);
         if (file != null) {
-            sessions.put(file, session);
+            EditorSession previous = sessions.put(file, session);
+            if (previous != null && previous != session) {
+                removeSession(previous);
+            }
         }
         activeSession = session;
     }
@@ -204,26 +218,25 @@ public final class EditorHostPanel extends JTabbedPane {
     private void removeSession(EditorSession session) {
         if (session == null) return;
         File key = sessionKeys.remove(session);
+        componentSessions.remove(session.getView());
         if (key != null) {
             sessions.remove(key, session);
         } else {
             sessions.values().removeIf(candidate -> candidate == session);
         }
+        boolean wasSelected = session.getView() == getSelectedComponent();
         if (activeSession == session) {
             activeSession = null;
         }
         session.dispose();
-        remove(session.getView());
+        super.remove(session.getView());
+        if (wasSelected) {
+            updateActiveSessionFromSelection();
+        }
     }
 
     private EditorSession findSession(Component component) {
-        if (component == null) return null;
-        for (EditorSession session : sessionKeys.keySet()) {
-            if (session.getView() == component) {
-                return session;
-            }
-        }
-        return null;
+        return component != null ? componentSessions.get(component) : null;
     }
 
     private void updateActiveSessionFromSelection() {

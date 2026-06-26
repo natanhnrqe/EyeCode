@@ -3,6 +3,8 @@ package com.eyecode.editor.v2.integration;
 import com.eyecode.editor.EditorTab;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.editor.v2.EditorPosition;
+import com.eyecode.editor.v2.EditorSelection;
 import com.eyecode.editor.v2.ui.RichEditorView;
 
 import java.io.File;
@@ -15,6 +17,7 @@ public final class EditorSession {
     private final RichEditorView view;
     private final File fileKey;
     private final EditorDocument.DirtyChangeListener dirtyListener;
+    private boolean disposed;
 
     public EditorSession(EditorTab tab, EditorBuffer buffer, RichEditorView view, File fileKey, Consumer<Boolean> dirtyStateListener) {
         this.tab = tab;
@@ -39,7 +42,22 @@ public final class EditorSession {
 
     public File getFileKey() { return fileKey; }
 
+    public boolean isDisposed() { return disposed; }
+
+    public void restoreViewState() {
+        if (disposed) return;
+        view.refreshFromDocument();
+        EditorPosition caret = buffer.getCaret();
+        EditorSelection selection = buffer.getSelection();
+        buffer.setCaretPosition(caret);
+        buffer.setSelection(selection);
+        tab.setDirty(buffer.getDocument().isDirty());
+    }
+
     public void dispose() {
+        if (disposed) return;
+        disposed = true;
+        view.dispose();
         buffer.getDocument().removeDirtyChangeListener(dirtyListener);
     }
 }
