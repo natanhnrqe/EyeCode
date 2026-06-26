@@ -25,6 +25,7 @@ public final class EditorBuffer {
     private final Deque<String> undoStack;
     private final Deque<String> redoStack;
     private boolean applyingHistory;
+    private boolean programmaticUpdate;
 
     public EditorBuffer(EditorDocument document) {
         this.document = document;
@@ -83,19 +84,33 @@ public final class EditorBuffer {
     public boolean canRedo() { return !redoStack.isEmpty(); }
 
     public void undo() {
-        if (!canUndo()) return;
+        if (applyingHistory || programmaticUpdate || !canUndo()) return;
         String currentText = document.getText();
         String previousText = undoStack.pop();
-        redoStack.push(currentText);
+        pushState(redoStack, currentText);
         applyHistoryText(previousText);
+        validateHistoryState();
     }
 
     public void redo() {
-        if (!canRedo()) return;
+        if (applyingHistory || programmaticUpdate || !canRedo()) return;
         String currentText = document.getText();
         String nextText = redoStack.pop();
-        undoStack.push(currentText);
+        pushState(undoStack, currentText);
         applyHistoryText(nextText);
+        validateHistoryState();
+    }
+
+    public void runProgrammaticUpdate(Runnable update) {
+        if (update == null) return;
+        boolean wasProgrammaticUpdate = programmaticUpdate;
+        programmaticUpdate = true;
+        try {
+            update.run();
+        } finally {
+            programmaticUpdate = wasProgrammaticUpdate;
+            validateHistoryState();
+        }
     }
 
     public EditorPosition getCaret() { return caret; }
@@ -151,11 +166,10 @@ public final class EditorBuffer {
     }
 
     private void trackTextChange(String oldText, String newText) {
-        if (applyingHistory || oldText.equals(newText)) return;
-        if (undoStack.isEmpty() || !undoStack.peek().equals(oldText)) {
-            undoStack.push(oldText);
-        }
+        if (applyingHistory || programmaticUpdate || oldText.equals(newText)) return;
+        pushState(undoStack, oldText);
         redoStack.clear();
+        validateHistoryState();
     }
 
     private void applyHistoryText(String text) {
@@ -164,6 +178,33 @@ public final class EditorBuffer {
             document.setText(text);
         } finally {
             applyingHistory = false;
+        }
+    }
+
+    private void pushState(Deque<String> stack, String text) {
+        if (text == null) text = "";
+        if (stack.isEmpty() || !stack.peek().equals(text)) {
+            stack.push(text);
+        }
+    }
+
+    private void validateHistoryState() {
+        assertNoConsecutiveDuplicates(undoStack, "undo");
+        assertNoConsecutiveDuplicates(redoStack, "redo");
+        if (!undoStack.isEmpty() && undoStack.peek().equals(document.getText())) {
+            throw new IllegalStateException("Undo history top matches current document text");
+        }
+    }
+
+    private void assertNoConsecutiveDuplicates(Deque<String> stack, String name) {
+        String previous = null;
+        boolean hasPrevious = false;
+        for (String state : stack) {
+            if (hasPrevious && previous.equals(state)) {
+                throw new IllegalStateException("Duplicate consecutive " + name + " history state");
+            }
+            previous = state;
+            hasPrevious = true;
         }
     }
 
