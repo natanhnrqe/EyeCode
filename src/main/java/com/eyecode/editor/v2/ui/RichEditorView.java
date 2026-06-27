@@ -256,6 +256,39 @@ public final class RichEditorView extends JPanel {
             }
         });
 
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK), "editorDuplicateLine");
+        actionMap.put("editorDuplicateLine", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                duplicateLineOrSelection();
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+                "editorDeleteLine");
+        actionMap.put("editorDeleteLine", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                deleteCurrentLine();
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, InputEvent.ALT_DOWN_MASK), "editorMoveLineUp");
+        actionMap.put("editorMoveLineUp", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                moveCurrentLineUp();
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, InputEvent.ALT_DOWN_MASK), "editorMoveLineDown");
+        actionMap.put("editorMoveLineDown", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                moveCurrentLineDown();
+            }
+        });
+
         installPopupAction(inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0),
                 "completionUp", () -> completionPopup.selectPrevious());
         installPopupAction(inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0),
@@ -405,6 +438,93 @@ public final class RichEditorView extends JPanel {
         }
     }
 
+    private void duplicateLineOrSelection() {
+        String text = buffer.getDocument().getText();
+        int selectionStart = textPane.getSelectionStart();
+        int selectionEnd = textPane.getSelectionEnd();
+        if (selectionStart != selectionEnd) {
+            int blockStart = Math.min(selectionStart, selectionEnd);
+            int blockEnd = Math.max(selectionStart, selectionEnd);
+            String selectedText = text.substring(blockStart, blockEnd);
+            String insertion = selectedText.endsWith("\n") || blockEnd >= text.length()
+                    ? selectedText
+                    : selectedText + "\n";
+            executeInsert(blockEnd, insertion, blockEnd + insertion.length());
+            return;
+        }
+
+        int caretOffset = textPane.getCaretPosition();
+        LineRange line = currentLineRange(text, caretOffset);
+        String lineText = text.substring(line.contentStart, line.contentEnd);
+        String duplicate = "\n" + lineText;
+        int insertOffset = line.contentEnd;
+        executeInsert(insertOffset, duplicate, insertOffset + duplicate.length());
+    }
+
+    private void deleteCurrentLine() {
+        String text = buffer.getDocument().getText();
+        if (text.isEmpty()) {
+            return;
+        }
+
+        int caretOffset = textPane.getCaretPosition();
+        LineRange line = currentLineRange(text, caretOffset);
+        int deleteStart = line.contentStart;
+        int deleteEnd = line.nextLineStart;
+        int caretAfterDelete = deleteStart;
+
+        if (deleteEnd > text.length() && line.contentStart > 0) {
+            deleteStart = line.contentStart - 1;
+            deleteEnd = text.length();
+            caretAfterDelete = deleteStart;
+        } else if (deleteEnd > text.length()) {
+            deleteEnd = text.length();
+            caretAfterDelete = 0;
+        }
+
+        executeDelete(deleteStart, deleteEnd, Math.min(caretAfterDelete, buffer.getDocument().getText().length()));
+    }
+
+    private void moveCurrentLineUp() {
+        String text = buffer.getDocument().getText();
+        int caretOffset = textPane.getCaretPosition();
+        LineRange current = currentLineRange(text, caretOffset);
+        if (current.contentStart == 0) {
+            return;
+        }
+
+        LineRange previous = currentLineRange(text, current.contentStart - 1);
+        String previousText = text.substring(previous.contentStart, previous.contentEnd);
+        String currentText = text.substring(current.contentStart, current.contentEnd);
+        String newText = text.substring(0, previous.contentStart)
+                + currentText
+                + "\n"
+                + previousText
+                + text.substring(current.contentEnd);
+        int caretAfterMove = previous.contentStart + (caretOffset - current.contentStart);
+        replaceDocumentText(newText, caretAfterMove);
+    }
+
+    private void moveCurrentLineDown() {
+        String text = buffer.getDocument().getText();
+        int caretOffset = textPane.getCaretPosition();
+        LineRange current = currentLineRange(text, caretOffset);
+        if (current.fullEnd >= text.length()) {
+            return;
+        }
+
+        LineRange next = currentLineRange(text, current.fullEnd);
+        String currentText = text.substring(current.contentStart, current.contentEnd);
+        String nextText = text.substring(next.contentStart, next.contentEnd);
+        String newText = text.substring(0, current.contentStart)
+                + nextText
+                + "\n"
+                + currentText
+                + text.substring(next.contentEnd);
+        int caretAfterMove = current.contentStart + nextText.length() + 1 + (caretOffset - current.contentStart);
+        replaceDocumentText(newText, caretAfterMove);
+    }
+
     private void handleEnterIndentation() {
         int caretOffset = textPane.getCaretPosition();
         String text = buffer.getDocument().getText();
@@ -475,6 +595,22 @@ public final class RichEditorView extends JPanel {
         updateAutoPairsForDelete(start, end);
         refreshFromDocument();
         buffer.moveCaret(toPosition(buffer.getDocument().getText(), caretAfterDelete));
+    }
+
+    private void replaceDocumentText(String newText, int caretOffset) {
+        buffer.replaceText(newText);
+        autoPairs.clear();
+        refreshFromDocument();
+        buffer.moveCaret(toPosition(buffer.getDocument().getText(), caretOffset));
+    }
+
+    private LineRange currentLineRange(String text, int offset) {
+        int safeOffset = Math.max(0, Math.min(offset, text.length()));
+        int contentStart = findLineStart(text, safeOffset);
+        int newline = text.indexOf('\n', contentStart);
+        int contentEnd = newline < 0 ? text.length() : newline;
+        int nextLineStart = newline < 0 ? text.length() : newline + 1;
+        return new LineRange(contentStart, contentEnd, nextLineStart);
     }
 
     private int findLineStart(String text, int offset) {
@@ -623,6 +759,20 @@ public final class RichEditorView extends JPanel {
                     && closeOffset < text.length()
                     && text.charAt(openOffset) == opening
                     && text.charAt(closeOffset) == closing;
+        }
+    }
+
+    private static final class LineRange {
+        private final int contentStart;
+        private final int contentEnd;
+        private final int nextLineStart;
+        private final int fullEnd;
+
+        private LineRange(int contentStart, int contentEnd, int nextLineStart) {
+            this.contentStart = contentStart;
+            this.contentEnd = contentEnd;
+            this.nextLineStart = nextLineStart;
+            this.fullEnd = nextLineStart;
         }
     }
 
