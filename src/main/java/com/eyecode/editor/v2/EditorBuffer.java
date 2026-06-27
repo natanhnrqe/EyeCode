@@ -1,5 +1,9 @@
 package com.eyecode.editor.v2;
 
+import com.eyecode.editor.v2.command.DeleteTextCommand;
+import com.eyecode.editor.v2.command.EditCommand;
+import com.eyecode.editor.v2.command.InsertTextCommand;
+import com.eyecode.editor.v2.command.ReplaceTextCommand;
 import com.eyecode.editor.v2.completion.CompletionSnapshot;
 import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
@@ -22,8 +26,8 @@ public final class EditorBuffer {
     private CompletionItem completionSelection;
     private final List<CaretChangeListener> caretListeners;
     private final List<SelectionChangeListener> selectionListeners;
-    private final Deque<String> undoStack;
-    private final Deque<String> redoStack;
+    private final Deque<EditCommand> undoStack;
+    private final Deque<EditCommand> redoStack;
     private boolean applyingHistory;
     private boolean programmaticUpdate;
 
@@ -85,20 +89,48 @@ public final class EditorBuffer {
 
     public void undo() {
         if (applyingHistory || programmaticUpdate || !canUndo()) return;
-        String currentText = document.getText();
-        String previousText = undoStack.pop();
-        pushState(redoStack, currentText);
-        applyHistoryText(previousText);
+        EditCommand command = undoStack.pop();
+        pushState(redoStack, command);
+        applyHistoryCommand(command, true);
         validateHistoryState();
     }
 
     public void redo() {
         if (applyingHistory || programmaticUpdate || !canRedo()) return;
-        String currentText = document.getText();
-        String nextText = redoStack.pop();
-        pushState(undoStack, currentText);
-        applyHistoryText(nextText);
+        EditCommand command = redoStack.pop();
+        pushState(undoStack, command);
+        applyHistoryCommand(command, false);
         validateHistoryState();
+    }
+
+    public void executeCommand(EditCommand command) {
+        if (command == null || applyingHistory || programmaticUpdate) return;
+        applyingHistory = true;
+        try {
+            command.execute(document);
+        } finally {
+            applyingHistory = false;
+        }
+        pushState(undoStack, command);
+        redoStack.clear();
+        validateHistoryState();
+    }
+
+    public void insertText(int offset, String text) {
+        if (text == null || text.isEmpty()) return;
+        executeCommand(new InsertTextCommand(offset, text));
+    }
+
+    public void deleteText(int start, int end) {
+        if (start >= end) return;
+        String removed = document.getText().substring(start, end);
+        executeCommand(new DeleteTextCommand(start, removed));
+    }
+
+    public void replaceText(String newText) {
+        if (newText == null) newText = "";
+        if (newText.equals(document.getText())) return;
+        executeCommand(new ReplaceTextCommand(document.getText(), newText));
     }
 
     public void runProgrammaticUpdate(Runnable update) {
@@ -167,43 +199,44 @@ public final class EditorBuffer {
 
     private void trackTextChange(String oldText, String newText) {
         if (applyingHistory || programmaticUpdate || oldText.equals(newText)) return;
-        pushState(undoStack, oldText);
+        pushState(undoStack, new ReplaceTextCommand(oldText, newText));
         redoStack.clear();
         validateHistoryState();
     }
 
-    private void applyHistoryText(String text) {
+    private void applyHistoryCommand(EditCommand command, boolean isUndo) {
         applyingHistory = true;
         try {
-            document.setText(text);
+            if (isUndo) {
+                command.undo(document);
+            } else {
+                command.execute(document);
+            }
         } finally {
             applyingHistory = false;
         }
     }
 
-    private void pushState(Deque<String> stack, String text) {
-        if (text == null) text = "";
-        if (stack.isEmpty() || !stack.peek().equals(text)) {
-            stack.push(text);
+    private void pushState(Deque<EditCommand> stack, EditCommand command) {
+        if (command == null) return;
+        if (stack.isEmpty() || !stack.peek().equals(command)) {
+            stack.push(command);
         }
     }
 
     private void validateHistoryState() {
         assertNoConsecutiveDuplicates(undoStack, "undo");
         assertNoConsecutiveDuplicates(redoStack, "redo");
-        if (!undoStack.isEmpty() && undoStack.peek().equals(document.getText())) {
-            throw new IllegalStateException("Undo history top matches current document text");
-        }
     }
 
-    private void assertNoConsecutiveDuplicates(Deque<String> stack, String name) {
-        String previous = null;
+    private void assertNoConsecutiveDuplicates(Deque<EditCommand> stack, String name) {
+        EditCommand previous = null;
         boolean hasPrevious = false;
-        for (String state : stack) {
-            if (hasPrevious && previous.equals(state)) {
-                throw new IllegalStateException("Duplicate consecutive " + name + " history state");
+        for (EditCommand command : stack) {
+            if (hasPrevious && previous.equals(command)) {
+                throw new IllegalStateException("Duplicate consecutive " + name + " history command");
             }
-            previous = state;
+            previous = command;
             hasPrevious = true;
         }
     }
