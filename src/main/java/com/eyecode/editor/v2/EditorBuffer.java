@@ -1,5 +1,6 @@
 package com.eyecode.editor.v2;
 
+import com.eyecode.editor.v2.command.CommandManager;
 import com.eyecode.editor.v2.command.DeleteTextCommand;
 import com.eyecode.editor.v2.command.EditCommand;
 import com.eyecode.editor.v2.command.InsertTextCommand;
@@ -10,9 +11,7 @@ import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
 import com.eyecode.editor.v2.language.LanguageContext;
 import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 
 public final class EditorBuffer {
@@ -26,10 +25,7 @@ public final class EditorBuffer {
     private CompletionItem completionSelection;
     private final List<CaretChangeListener> caretListeners;
     private final List<SelectionChangeListener> selectionListeners;
-    private final Deque<EditCommand> undoStack;
-    private final Deque<EditCommand> redoStack;
-    private boolean applyingHistory;
-    private boolean programmaticUpdate;
+    private final CommandManager commandManager;
 
     public EditorBuffer(EditorDocument document) {
         this.document = document;
@@ -46,8 +42,7 @@ public final class EditorBuffer {
         );
         this.caretListeners = new ArrayList<>();
         this.selectionListeners = new ArrayList<>();
-        this.undoStack = new ArrayDeque<>();
-        this.redoStack = new ArrayDeque<>();
+        this.commandManager = new CommandManager();
         this.document.addTextChangeListener(this::trackTextChange);
     }
 
@@ -83,37 +78,20 @@ public final class EditorBuffer {
         return document;
     }
 
-    public boolean canUndo() { return !undoStack.isEmpty(); }
+    public boolean canUndo() { return commandManager.canUndo(); }
 
-    public boolean canRedo() { return !redoStack.isEmpty(); }
+    public boolean canRedo() { return commandManager.canRedo(); }
 
     public void undo() {
-        if (applyingHistory || programmaticUpdate || !canUndo()) return;
-        EditCommand command = undoStack.pop();
-        pushState(redoStack, command);
-        applyHistoryCommand(command, true);
-        validateHistoryState();
+        commandManager.undo(document);
     }
 
     public void redo() {
-        if (applyingHistory || programmaticUpdate || !canRedo()) return;
-        EditCommand command = redoStack.pop();
-        pushState(undoStack, command);
-        applyHistoryCommand(command, false);
-        validateHistoryState();
+        commandManager.redo(document);
     }
 
     public void executeCommand(EditCommand command) {
-        if (command == null || applyingHistory || programmaticUpdate) return;
-        applyingHistory = true;
-        try {
-            command.execute(document);
-        } finally {
-            applyingHistory = false;
-        }
-        pushState(undoStack, command);
-        redoStack.clear();
-        validateHistoryState();
+        commandManager.execute(command, document);
     }
 
     public void insertText(int offset, String text) {
@@ -134,15 +112,7 @@ public final class EditorBuffer {
     }
 
     public void runProgrammaticUpdate(Runnable update) {
-        if (update == null) return;
-        boolean wasProgrammaticUpdate = programmaticUpdate;
-        programmaticUpdate = true;
-        try {
-            update.run();
-        } finally {
-            programmaticUpdate = wasProgrammaticUpdate;
-            validateHistoryState();
-        }
+        commandManager.runProgrammaticUpdate(update);
     }
 
     public EditorPosition getCaret() { return caret; }
@@ -198,47 +168,7 @@ public final class EditorBuffer {
     }
 
     private void trackTextChange(String oldText, String newText) {
-        if (applyingHistory || programmaticUpdate || oldText.equals(newText)) return;
-        pushState(undoStack, new ReplaceTextCommand(oldText, newText));
-        redoStack.clear();
-        validateHistoryState();
-    }
-
-    private void applyHistoryCommand(EditCommand command, boolean isUndo) {
-        applyingHistory = true;
-        try {
-            if (isUndo) {
-                command.undo(document);
-            } else {
-                command.execute(document);
-            }
-        } finally {
-            applyingHistory = false;
-        }
-    }
-
-    private void pushState(Deque<EditCommand> stack, EditCommand command) {
-        if (command == null) return;
-        if (stack.isEmpty() || !stack.peek().equals(command)) {
-            stack.push(command);
-        }
-    }
-
-    private void validateHistoryState() {
-        assertNoConsecutiveDuplicates(undoStack, "undo");
-        assertNoConsecutiveDuplicates(redoStack, "redo");
-    }
-
-    private void assertNoConsecutiveDuplicates(Deque<EditCommand> stack, String name) {
-        EditCommand previous = null;
-        boolean hasPrevious = false;
-        for (EditCommand command : stack) {
-            if (hasPrevious && previous.equals(command)) {
-                throw new IllegalStateException("Duplicate consecutive " + name + " history command");
-            }
-            previous = command;
-            hasPrevious = true;
-        }
+        commandManager.recordTextChange(oldText, newText);
     }
 
     public interface CaretChangeListener {
