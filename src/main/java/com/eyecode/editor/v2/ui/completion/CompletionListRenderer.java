@@ -1,14 +1,16 @@
 package com.eyecode.editor.v2.ui.completion;
 
 import com.eyecode.editor.v2.completion.CompletionItem;
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.TypographyManager;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.ListCellRenderer;
+import javax.swing.BorderFactory;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
 
@@ -19,16 +21,16 @@ public final class CompletionListRenderer implements ListCellRenderer<Completion
                                                   int index, boolean isSelected, boolean cellHasFocus) {
         JPanel panel = new JPanel(new BorderLayout(8, 0));
         panel.setOpaque(true);
-        panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(4, 8, 4, 8));
-        panel.setBackground(isSelected ? list.getSelectionBackground() : list.getBackground());
+        panel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        panel.setBackground(isSelected ? ColorManager.AUTOCOMPLETE_SELECTION_BG : ColorManager.AUTOCOMPLETE_BG);
 
         JLabel label = new JLabel(value.getLabel());
-        label.setFont(list.getFont());
-        label.setForeground(isSelected ? list.getSelectionForeground() : list.getForeground());
+        label.setFont(TypographyManager.UI_CODE());
+        label.setForeground(isSelected ? ColorManager.TEXT_PRIMARY : ColorManager.AUTOCOMPLETE_FG);
 
         JLabel detail = new JLabel(value.getDetail());
-        detail.setFont(list.getFont().deriveFont(Font.PLAIN, Math.max(10f, list.getFont().getSize2D() - 2f)));
-        detail.setForeground(isSelected ? list.getSelectionForeground() : Color.GRAY);
+        detail.setFont(TypographyManager.UI_CODE().deriveFont(Font.PLAIN, Math.max(10f, TypographyManager.UI_CODE().getSize2D() - 2f)));
+        detail.setForeground(isSelected ? ColorManager.TEXT_SECONDARY : ColorManager.TEXT_TERTIARY);
 
         panel.add(label, BorderLayout.WEST);
         panel.add(detail, BorderLayout.EAST);

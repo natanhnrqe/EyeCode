@@ -9,7 +9,7 @@ public final class DocumentStyleRegistry {
     private final Map<TokenType, String> tokenStyles = new HashMap<>();
 
     public DocumentStyleRegistry() {
-        registerDefault(TokenType.KEYWORD, new StyleDefinition("keyword", true, false, "keyword"));
+        registerDefault(TokenType.KEYWORD, new StyleDefinition("keyword", false, false, "keyword"));
         registerDefault(TokenType.IDENTIFIER, new StyleDefinition("identifier", false, false, "identifier"));
         registerDefault(TokenType.UNKNOWN, new StyleDefinition("unknown", false, false, "unknown"));
         registerDefault(TokenType.WHITESPACE, new StyleDefinition("whitespace", false, false, "whitespace"));

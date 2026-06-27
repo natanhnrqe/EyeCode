@@ -2,6 +2,8 @@ package com.eyecode.editor.v2.ui.completion;
 
 import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionSnapshot;
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.TypographyManager;
 
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
@@ -12,6 +14,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.JWindow;
 import javax.swing.KeyStroke;
+import javax.swing.BorderFactory;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Point;
@@ -105,8 +108,14 @@ public final class CompletionPopup {
         Window owner = javax.swing.SwingUtilities.getWindowAncestor(editor);
         window = new JWindow(owner);
         window.setFocusableWindowState(false);
+        window.setBackground(ColorManager.AUTOCOMPLETE_BG);
 
         list = new JList<>();
+        list.setFont(TypographyManager.UI_CODE());
+        list.setBackground(ColorManager.AUTOCOMPLETE_BG);
+        list.setForeground(ColorManager.AUTOCOMPLETE_FG);
+        list.setSelectionBackground(ColorManager.AUTOCOMPLETE_SELECTION_BG);
+        list.setSelectionForeground(ColorManager.TEXT_PRIMARY);
         list.setCellRenderer(new CompletionListRenderer());
         installNavigationActions();
         list.addMouseListener(new MouseAdapter() {
@@ -125,7 +134,11 @@ public final class CompletionPopup {
 
         JScrollPane scrollPane = new JScrollPane(list);
         scrollPane.setPreferredSize(new Dimension(320, 180));
+        scrollPane.setBackground(ColorManager.AUTOCOMPLETE_BG);
+        scrollPane.getViewport().setBackground(ColorManager.AUTOCOMPLETE_BG);
+        scrollPane.setBorder(BorderFactory.createLineBorder(ColorManager.BORDER));
         window.getContentPane().setLayout(new BorderLayout());
+        window.getContentPane().setBackground(ColorManager.AUTOCOMPLETE_BG);
         window.getContentPane().add(scrollPane, BorderLayout.CENTER);
     }
 

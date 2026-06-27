@@ -15,8 +15,8 @@ public final class ColorManager {
     public static final Color CARD_BG           = new Color(49, 51, 56);
     public static final Color INPUT_BG          = new Color(45, 45, 45);
     public static final Color BREADCRUMB_BG     = new Color(43, 45, 48);
-    public static final Color LINE_NUMBER_BG    = new Color(39, 41, 42);
-    public static final Color LINE_NUMBER_ROW_BG = new Color(30, 30, 30);
+    public static final Color LINE_NUMBER_BG    = new Color(25, 26, 28);
+    public static final Color LINE_NUMBER_ROW_BG = new Color(25, 26, 28);
     public static final Color SELECTED_TAB_BG   = new Color(45, 45, 48);
 
     // ── Borders ─────────────────────────────────────────────
@@ -55,16 +55,19 @@ public final class ColorManager {
     public static final Color EDITOR_CARET      = Color.WHITE;
     public static final Color LINE_NUMBER_FG    = new Color(128, 128, 128);
 
-    // ── Syntax highlighting ─────────────────────────────────
+    // ── Syntax highlighting (IntelliJ Darcula palette) ──────
     public static final Color SYNTAX_TYPE       = new Color(78, 201, 176);
     public static final Color SYNTAX_CLASS      = new Color(78, 201, 176);
-    public static final Color SYNTAX_ANNOTATION = new Color(187, 181, 41);
+    public static final Color SYNTAX_ANNOTATION = new Color(179, 174, 96);
     public static final Color SYNTAX_CONSTANT   = new Color(199, 125, 187);
-    public static final Color SYNTAX_KEYWORD    = new Color(207, 109, 100);
+    public static final Color SYNTAX_KEYWORD    = new Color(207, 142, 109);
     public static final Color SYNTAX_STRING     = new Color(106, 171, 115);
     public static final Color SYNTAX_COMMENT    = new Color(122, 126, 133);
     public static final Color SYNTAX_NUMBER     = new Color(42, 172, 184);
     public static final Color SYNTAX_METHOD     = new Color(86, 168, 245);
+    public static final Color SYNTAX_IDENTIFIER = new Color(188, 190, 196);
+    public static final Color SYNTAX_OPERATOR   = new Color(188, 190, 196);
+    public static final Color SYNTAX_SEPARATOR  = new Color(169, 183, 198);
 
     // ── Autocomplete ────────────────────────────────────────
     public static final Color AUTOCOMPLETE_BG            = new Color(43, 43, 43);

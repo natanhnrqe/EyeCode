@@ -18,6 +18,7 @@ public final class CaretSynchronizationManager {
     private final CaretListener caretListener;
     private final EditorBuffer.CaretChangeListener bufferCaretListener;
     private boolean internalUpdate;
+    private boolean refreshing;
 
     public CaretSynchronizationManager(JTextPane textPane, EditorBuffer buffer) {
         this.textPane = textPane;
@@ -33,8 +34,12 @@ public final class CaretSynchronizationManager {
         buffer.removeCaretChangeListener(bufferCaretListener);
     }
 
+    public void setRefreshing(boolean refreshing) {
+        this.refreshing = refreshing;
+    }
+
     private void syncFromSwing(CaretEvent event) {
-        if (internalUpdate) return;
+        if (internalUpdate || refreshing) return;
 
         int caretOffset = event.getDot();
         int selectionStart = Math.min(event.getDot(), event.getMark());
