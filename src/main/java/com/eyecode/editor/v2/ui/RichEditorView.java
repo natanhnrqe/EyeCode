@@ -19,6 +19,8 @@ import com.eyecode.editor.v2.language.LanguageManager;
 import com.eyecode.editor.v2.syntax.DocumentStyleRegistry;
 import com.eyecode.editor.v2.syntax.JavaSyntaxAnalyzer;
 import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
+import com.eyecode.editor.v2.syntax.SyntaxToken;
+import com.eyecode.editor.v2.syntax.TokenType;
 import com.eyecode.editor.v2.syntax.swing.SwingSyntaxRenderer;
 import com.eyecode.editor.v2.ui.completion.CompletionPopup;
 import com.eyecode.editor.v2.ui.gutter.GutterPanel;
@@ -51,6 +53,8 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public final class RichEditorView extends JPanel {
@@ -76,6 +80,7 @@ public final class RichEditorView extends JPanel {
     private final CaretListener caretListener;
     private final FocusAdapter focusListener;
     private final EditorDocument.TextChangeListener textChangeListener;
+    private final List<AutoPair> autoPairs;
     private SyntaxSnapshot latestSyntaxSnapshot;
     private boolean refreshing;
     private boolean suppressPopup;
@@ -123,6 +128,7 @@ public final class RichEditorView extends JPanel {
         this.completionPopup = new CompletionPopup();
         this.completionInsertionEngine = new CompletionInsertionEngine();
         this.completionPrefixResolver = new CompletionPrefixResolver();
+        this.autoPairs = new ArrayList<>();
         installCompletionActions();
         this.completionPopup.setOnSelect(event -> {
             if (disposed) return;
@@ -138,6 +144,7 @@ public final class RichEditorView extends JPanel {
                         currentPrefix
                 );
                 completionInsertionEngine.insert(insertionContext);
+                autoPairs.clear();
                 refreshFromDocument();
                 int newCaretOffset = Math.max(0, caretOffset - currentPrefix.length()
                         + event.getSelectedItem().getInsertText().length());
@@ -241,6 +248,14 @@ public final class RichEditorView extends JPanel {
             }
         });
 
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "editorSmartBackspace");
+        actionMap.put("editorSmartBackspace", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleBackspace();
+            }
+        });
+
         installPopupAction(inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0),
                 "completionUp", () -> completionPopup.selectPrevious());
         installPopupAction(inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0),
@@ -267,8 +282,18 @@ public final class RichEditorView extends JPanel {
             @Override
             public void actionPerformed(ActionEvent e) {
                 forceOpenCompletions();
+
             }
         });
+    
+        installPairAction(inputMap, actionMap, '(', ')', "editorPairParentheses");
+        installPairAction(inputMap, actionMap, '{', '}', "editorPairBraces");
+        installPairAction(inputMap, actionMap, '[', ']', "editorPairBrackets");
+        installPairAction(inputMap, actionMap, '"', '"', "editorPairDoubleQuotes");
+        installPairAction(inputMap, actionMap, '\'', '\'', "editorPairSingleQuotes");
+        installClosingDelimiterAction(inputMap, actionMap, ')', "editorCloseParentheses");
+        installClosingDelimiterAction(inputMap, actionMap, '}', "editorCloseBraces");
+        installClosingDelimiterAction(inputMap, actionMap, ']', "editorCloseBrackets");
     }
 
     private void installPopupAction(InputMap inputMap, ActionMap actionMap, KeyStroke keyStroke,
@@ -289,6 +314,27 @@ public final class RichEditorView extends JPanel {
         });
     }
 
+    private void installPairAction(InputMap inputMap, ActionMap actionMap, char opening, char closing,
+                                   String actionName) {
+        inputMap.put(KeyStroke.getKeyStroke(opening), actionName);
+        actionMap.put(actionName, new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleDelimiterInsertion(opening, closing);
+            }
+        });
+    }
+
+    private void installClosingDelimiterAction(InputMap inputMap, ActionMap actionMap, char closing,
+                                               String actionName) {
+        inputMap.put(KeyStroke.getKeyStroke(closing), actionName);
+        actionMap.put(actionName, new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleClosingDelimiter(closing);
+            }
+        });
+    }
 
     private boolean acceptCompletion() {
         if (!completionPopup.isVisible()) {
@@ -308,6 +354,55 @@ public final class RichEditorView extends JPanel {
 
     private void handleTabIndentation() {
         insertIndentationUnit();
+    }
+
+    private void handleDelimiterInsertion(char opening, char closing) {
+        int caretOffset = textPane.getCaretPosition();
+        String text = buffer.getDocument().getText();
+        int safeOffset = Math.max(0, Math.min(caretOffset, text.length()));
+
+        if (isQuote(opening) && skipClosingDelimiter(opening, safeOffset, text)) {
+            return;
+        }
+
+        if (isQuote(opening) && isImmediatelyBeforeQuote(opening, safeOffset, text)) {
+            buffer.moveCaret(toPosition(text, safeOffset + 1));
+            return;
+        }
+
+        if (isQuote(opening) && shouldInsertSingleQuoteOnly(opening, safeOffset, text)) {
+            executeInsert(safeOffset, String.valueOf(opening), safeOffset + 1);
+            return;
+        }
+
+        executePairInsert(safeOffset, opening, closing);
+    }
+
+    private void handleClosingDelimiter(char closing) {
+        int caretOffset = textPane.getCaretPosition();
+        String text = buffer.getDocument().getText();
+        int safeOffset = Math.max(0, Math.min(caretOffset, text.length()));
+        if (!skipClosingDelimiter(closing, safeOffset, text)) {
+            executeInsert(safeOffset, String.valueOf(closing), safeOffset + 1);
+        }
+    }
+
+    private void handleBackspace() {
+        if (deleteAutoPair()) {
+            return;
+        }
+
+        int selectionStart = textPane.getSelectionStart();
+        int selectionEnd = textPane.getSelectionEnd();
+        if (selectionStart != selectionEnd) {
+            executeDelete(selectionStart, selectionEnd, selectionStart);
+            return;
+        }
+
+        int caretOffset = textPane.getCaretPosition();
+        if (caretOffset > 0) {
+            executeDelete(caretOffset - 1, caretOffset, caretOffset - 1);
+        }
     }
 
     private void handleEnterIndentation() {
@@ -347,10 +442,8 @@ public final class RichEditorView extends JPanel {
             return;
         }
 
-        buffer.deleteText(lineStart, lineStart + INDENTATION_UNIT.length());
-        refreshFromDocument();
         int caretAfterDelete = Math.max(lineStart, safeOffset - INDENTATION_UNIT.length());
-        buffer.moveCaret(toPosition(buffer.getDocument().getText(), caretAfterDelete));
+        executeDelete(lineStart, lineStart + INDENTATION_UNIT.length(), caretAfterDelete);
     }
 
     private void insertIndentationUnit() {
@@ -360,8 +453,28 @@ public final class RichEditorView extends JPanel {
 
     private void executeInsert(int offset, String text, int caretAfterInsert) {
         buffer.insertText(offset, text);
+        updateAutoPairsForInsert(offset, text.length());
         refreshFromDocument();
         buffer.moveCaret(toPosition(buffer.getDocument().getText(), caretAfterInsert));
+    }
+
+    private void executePairInsert(int offset, char opening, char closing) {
+        buffer.insertText(offset, "" + opening + closing);
+        updateAutoPairsForInsert(offset, 2);
+        autoPairs.add(new AutoPair(offset, offset + 1, opening, closing));
+        refreshFromDocument();
+        buffer.moveCaret(toPosition(buffer.getDocument().getText(), offset + 1));
+    }
+
+    private void executeDelete(int start, int end, int caretAfterDelete) {
+        if (start >= end) {
+            return;
+        }
+
+        buffer.deleteText(start, end);
+        updateAutoPairsForDelete(start, end);
+        refreshFromDocument();
+        buffer.moveCaret(toPosition(buffer.getDocument().getText(), caretAfterDelete));
     }
 
     private int findLineStart(String text, int offset) {
@@ -380,6 +493,137 @@ public final class RichEditorView extends JPanel {
             offset++;
         }
         return text.substring(lineStart, offset);
+    }
+
+    private boolean shouldInsertSingleQuoteOnly(char quote, int offset, String text) {
+        return isInsideStringToken(offset);
+    }
+
+    private boolean skipClosingDelimiter(char closing, int offset, String text) {
+        AutoPair pair = findAutoPairClosingAt(offset, closing, text);
+        if (pair == null) {
+            return false;
+        }
+
+        buffer.moveCaret(toPosition(text, offset + 1));
+        return true;
+    }
+
+    private boolean deleteAutoPair() {
+        int caretOffset = textPane.getCaretPosition();
+        String text = buffer.getDocument().getText();
+        AutoPair pair = findAutoPairAroundCaret(caretOffset, text);
+        if (pair == null) {
+            return false;
+        }
+
+        executeDelete(pair.openOffset, pair.closeOffset + 1, pair.openOffset);
+        return true;
+    }
+
+    private AutoPair findAutoPairClosingAt(int offset, char closing, String text) {
+        for (AutoPair pair : autoPairs) {
+            if (pair.closeOffset == offset
+                    && pair.closing == closing
+                    && pair.matches(text)) {
+                return pair;
+            }
+        }
+        return null;
+    }
+
+    private AutoPair findAutoPairAroundCaret(int offset, String text) {
+        for (AutoPair pair : autoPairs) {
+            if (pair.openOffset == offset - 1
+                    && pair.closeOffset == offset
+                    && pair.matches(text)) {
+                return pair;
+            }
+        }
+        return null;
+    }
+
+    private void updateAutoPairsForInsert(int offset, int length) {
+        if (length <= 0 || autoPairs.isEmpty()) {
+            return;
+        }
+
+        for (AutoPair pair : autoPairs) {
+            if (offset <= pair.openOffset) {
+                pair.openOffset += length;
+                pair.closeOffset += length;
+            } else if (offset <= pair.closeOffset) {
+                pair.closeOffset += length;
+            }
+        }
+    }
+
+    private void updateAutoPairsForDelete(int start, int end) {
+        if (start >= end || autoPairs.isEmpty()) {
+            return;
+        }
+
+        int length = end - start;
+        Iterator<AutoPair> iterator = autoPairs.iterator();
+        while (iterator.hasNext()) {
+            AutoPair pair = iterator.next();
+            boolean deletesOpening = start <= pair.openOffset && pair.openOffset < end;
+            boolean deletesClosing = start <= pair.closeOffset && pair.closeOffset < end;
+            if (deletesOpening || deletesClosing) {
+                iterator.remove();
+            } else if (end <= pair.openOffset) {
+                pair.openOffset -= length;
+                pair.closeOffset -= length;
+            } else if (pair.openOffset < start && end <= pair.closeOffset) {
+                pair.closeOffset -= length;
+            }
+        }
+    }
+
+    private boolean isImmediatelyBeforeQuote(char quote, int offset, String text) {
+        return offset < text.length() && text.charAt(offset) == quote;
+    }
+
+    private boolean isInsideStringToken(int offset) {
+        if (latestSyntaxSnapshot == null || latestSyntaxSnapshot.isEmpty()) {
+            return false;
+        }
+
+        for (SyntaxToken token : latestSyntaxSnapshot.getTokens()) {
+            if (token.type() == TokenType.STRING
+                    && offset > token.startOffset()
+                    && offset < token.endOffset()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isQuote(char ch) {
+        return ch == '"' || ch == '\'';
+    }
+
+    private static final class AutoPair {
+        private int openOffset;
+        private int closeOffset;
+        private final char opening;
+        private final char closing;
+
+        private AutoPair(int openOffset, int closeOffset, char opening, char closing) {
+            this.openOffset = openOffset;
+            this.closeOffset = closeOffset;
+            this.opening = opening;
+            this.closing = closing;
+        }
+
+        private boolean matches(String text) {
+            return openOffset >= 0
+                    && closeOffset >= 0
+                    && openOffset < text.length()
+                    && closeOffset < text.length()
+                    && text.charAt(openOffset) == opening
+                    && text.charAt(closeOffset) == closing;
+        }
     }
 
     public void dispose() {
@@ -436,6 +680,7 @@ public final class RichEditorView extends JPanel {
             syncingFromSwing = true;
             try {
                 buffer.getDocument().insert(offset, insertedText);
+                updateAutoPairsForInsert(offset, insertedText.length());
             } finally {
                 syncingFromSwing = false;
             }
@@ -450,6 +695,7 @@ public final class RichEditorView extends JPanel {
         syncingFromSwing = true;
         try {
             buffer.getDocument().delete(offset, offset + length);
+            updateAutoPairsForDelete(offset, offset + length);
         } finally {
             syncingFromSwing = false;
         }
