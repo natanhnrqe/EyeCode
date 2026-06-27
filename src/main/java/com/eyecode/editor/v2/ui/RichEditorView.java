@@ -3,6 +3,7 @@ package com.eyecode.editor.v2.ui;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.editor.v2.EditorPosition;
+import com.eyecode.editor.v2.EditorSelection;
 import com.eyecode.editor.v2.caret.CaretSynchronizationManager;
 import com.eyecode.editor.v2.completion.CompletionEngine;
 import com.eyecode.editor.v2.completion.CompletionManager;
@@ -272,6 +273,14 @@ public final class RichEditorView extends JPanel {
             }
         });
 
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_SLASH, InputEvent.CTRL_DOWN_MASK), "editorToggleLineComment");
+        actionMap.put("editorToggleLineComment", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                toggleLineComments();
+            }
+        });
+
         inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK), "editorDuplicateLine");
         actionMap.put("editorDuplicateLine", new AbstractAction() {
             @Override
@@ -454,6 +463,42 @@ public final class RichEditorView extends JPanel {
         }
     }
 
+    private void toggleLineComments() {
+        String text = buffer.getDocument().getText();
+        int selectionStart = textPane.getSelectionStart();
+        int selectionEnd = textPane.getSelectionEnd();
+        boolean hasSelection = selectionStart != selectionEnd;
+        int blockStart = Math.min(selectionStart, selectionEnd);
+        int blockEnd = Math.max(selectionStart, selectionEnd);
+        int effectiveEnd = hasSelection && blockEnd > blockStart && text.charAt(blockEnd - 1) == '\n'
+                ? blockEnd - 1
+                : blockEnd;
+
+        List<LineCommentEdit> edits = collectLineCommentEdits(text, blockStart, effectiveEnd);
+        if (edits.isEmpty()) {
+            return;
+        }
+
+        StringBuilder updated = new StringBuilder(text);
+        for (int i = edits.size() - 1; i >= 0; i--) {
+            LineCommentEdit edit = edits.get(i);
+            if (edit.removeLength > 0) {
+                updated.delete(edit.offset, edit.offset + edit.removeLength);
+            }
+            if (!edit.insertText.isEmpty()) {
+                updated.insert(edit.offset, edit.insertText);
+            }
+        }
+
+        int newSelectionStart = mapOffsetThroughCommentEdits(selectionStart, edits);
+        int newSelectionEnd = mapOffsetThroughCommentEdits(selectionEnd, edits);
+        if (hasSelection) {
+            replaceDocumentText(updated.toString(), newSelectionStart, newSelectionEnd);
+        } else {
+            replaceDocumentText(updated.toString(), newSelectionStart);
+        }
+    }
+
     private void duplicateLineOrSelection() {
         String text = buffer.getDocument().getText();
         int selectionStart = textPane.getSelectionStart();
@@ -618,6 +663,69 @@ public final class RichEditorView extends JPanel {
         autoPairs.clear();
         refreshFromDocument();
         buffer.moveCaret(toPosition(buffer.getDocument().getText(), caretOffset));
+    }
+
+    private void replaceDocumentText(String newText, int selectionStart, int selectionEnd) {
+        buffer.replaceText(newText);
+        autoPairs.clear();
+        refreshFromDocument();
+        int safeStart = Math.max(0, Math.min(selectionStart, newText.length()));
+        int safeEnd = Math.max(0, Math.min(selectionEnd, newText.length()));
+        textPane.setCaretPosition(safeStart);
+        textPane.moveCaretPosition(safeEnd);
+        buffer.setCaretPosition(toPosition(newText, safeEnd));
+        buffer.setSelection(new EditorSelection(toPosition(newText, safeStart), toPosition(newText, safeEnd)));
+    }
+
+    private List<LineCommentEdit> collectLineCommentEdits(String text, int startOffset, int endOffset) {
+        List<LineCommentEdit> edits = new ArrayList<>();
+        int lineStart = findLineStart(text, startOffset);
+        int safeEnd = Math.max(0, Math.min(endOffset, text.length()));
+
+        while (lineStart <= safeEnd && lineStart <= text.length()) {
+            LineRange line = currentLineRange(text, lineStart);
+            int indentEnd = findIndentEnd(text, line.contentStart, line.contentEnd);
+            if (text.startsWith("//", indentEnd)) {
+                int removeLength = indentEnd + 2 < line.contentEnd && text.charAt(indentEnd + 2) == ' '
+                        ? 3
+                        : 2;
+                edits.add(LineCommentEdit.remove(indentEnd, removeLength));
+            } else {
+                edits.add(LineCommentEdit.insert(indentEnd, "// "));
+            }
+
+            if (line.nextLineStart >= text.length()) {
+                break;
+            }
+            lineStart = line.nextLineStart;
+        }
+
+        return edits;
+    }
+
+    private int findIndentEnd(String text, int lineStart, int lineEnd) {
+        int offset = lineStart;
+        while (offset < lineEnd) {
+            char current = text.charAt(offset);
+            if (current != ' ' && current != '\t') {
+                break;
+            }
+            offset++;
+        }
+        return offset;
+    }
+
+    private int mapOffsetThroughCommentEdits(int offset, List<LineCommentEdit> edits) {
+        int mapped = offset;
+        for (LineCommentEdit edit : edits) {
+            int delta = edit.insertText.length() - edit.removeLength;
+            if (edit.offset < offset) {
+                mapped += delta;
+            } else if (edit.offset == offset && delta > 0) {
+                mapped += delta;
+            }
+        }
+        return mapped;
     }
 
     private LineRange currentLineRange(String text, int offset) {
@@ -789,6 +897,26 @@ public final class RichEditorView extends JPanel {
             this.contentEnd = contentEnd;
             this.nextLineStart = nextLineStart;
             this.fullEnd = nextLineStart;
+        }
+    }
+
+    private static final class LineCommentEdit {
+        private final int offset;
+        private final int removeLength;
+        private final String insertText;
+
+        private LineCommentEdit(int offset, int removeLength, String insertText) {
+            this.offset = offset;
+            this.removeLength = removeLength;
+            this.insertText = insertText;
+        }
+
+        private static LineCommentEdit insert(int offset, String text) {
+            return new LineCommentEdit(offset, 0, text);
+        }
+
+        private static LineCommentEdit remove(int offset, int length) {
+            return new LineCommentEdit(offset, length, "");
         }
     }
 
