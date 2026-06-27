@@ -24,14 +24,21 @@ import com.eyecode.editor.v2.ui.gutter.GutterPanel;
 import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.TypographyManager;
 
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.event.CaretListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultEditorKit;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import java.awt.BorderLayout;
@@ -39,11 +46,16 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Insets;
 import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.util.List;
 
 public final class RichEditorView extends JPanel {
+
+    private static final String INDENTATION_UNIT = "    ";
 
     private final EditorBuffer buffer;
     private final JTextPane textPane;
@@ -111,6 +123,7 @@ public final class RichEditorView extends JPanel {
         this.completionPopup = new CompletionPopup();
         this.completionInsertionEngine = new CompletionInsertionEngine();
         this.completionPrefixResolver = new CompletionPrefixResolver();
+        installCompletionActions();
         this.completionPopup.setOnSelect(event -> {
             if (disposed) return;
             buffer.setCompletionSelection(event.getSelectedItem());
@@ -166,6 +179,7 @@ public final class RichEditorView extends JPanel {
         this.caretListener = event -> {
             gutterPanel.refresh();
             if (completionPopup.isVisible()) {
+                refreshLanguageContext();
                 if (isCompletionContextValid()) {
                     completionPopup.move(textPane, textPane.getCaretPosition());
                 } else {
@@ -193,6 +207,105 @@ public final class RichEditorView extends JPanel {
         StyleConstants.setFontFamily(style, TypographyManager.UI_CODE().getFamily());
         StyleConstants.setFontSize(style, TypographyManager.UI_CODE().getSize());
         return style;
+    }
+
+    private void installCompletionActions() {
+        InputMap inputMap = textPane.getInputMap(JComponent.WHEN_FOCUSED);
+        ActionMap actionMap = textPane.getActionMap();
+
+        Action defaultEnter = actionMap.get(DefaultEditorKit.insertBreakAction);
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "completionAcceptOrEnter");
+        actionMap.put("completionAcceptOrEnter", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (!acceptCompletion()) {
+                    runDefaultAction(defaultEnter, e);
+                }
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0), "completionAcceptOrTab");
+        actionMap.put("completionAcceptOrTab", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (!acceptCompletion()) {
+                    handleTabIndentation();
+                }
+            }
+        });
+
+        installPopupAction(inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0),
+                "completionUp", () -> completionPopup.selectPrevious());
+        installPopupAction(inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0),
+                "completionDown", () -> completionPopup.selectNext());
+        installPopupAction(inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP, 0),
+                "completionPageUp", () -> completionPopup.selectPageUp());
+        installPopupAction(inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN, 0),
+                "completionPageDown", () -> completionPopup.selectPageDown());
+        installPopupAction(inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_HOME, 0),
+                "completionHome", () -> completionPopup.selectFirst());
+        installPopupAction(inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_END, 0),
+                "completionEnd", () -> completionPopup.selectLast());
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "completionHide");
+        actionMap.put("completionHide", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                completionPopup.hide();
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, InputEvent.CTRL_DOWN_MASK), "completionForceOpen");
+        actionMap.put("completionForceOpen", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                forceOpenCompletions();
+            }
+        });
+    }
+
+    private void installPopupAction(InputMap inputMap, ActionMap actionMap, KeyStroke keyStroke,
+                                    String actionName, Runnable popupAction) {
+        Object defaultActionKey = inputMap.get(keyStroke);
+        Action defaultAction = defaultActionKey == null ? null : actionMap.get(defaultActionKey);
+
+        inputMap.put(keyStroke, actionName);
+        actionMap.put(actionName, new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (completionPopup.isVisible()) {
+                    popupAction.run();
+                } else {
+                    runDefaultAction(defaultAction, e);
+                }
+            }
+        });
+    }
+
+
+    private boolean acceptCompletion() {
+        if (!completionPopup.isVisible()) {
+            return false;
+        }
+
+        completionPopup.acceptSelected();
+        return true;
+    }
+
+    private void runDefaultAction(Action action, ActionEvent event) {
+        if (action != null) {
+            action.actionPerformed(new ActionEvent(textPane, event.getID(), event.getActionCommand(),
+                    event.getWhen(), event.getModifiers()));
+        }
+    }
+
+    private void handleTabIndentation() {
+        insertIndentationUnit();
+    }
+
+    private void insertIndentationUnit() {
+        textPane.replaceSelection(INDENTATION_UNIT);
     }
 
     public void dispose() {
@@ -318,13 +431,25 @@ public final class RichEditorView extends JPanel {
     }
 
     private void refreshCompletions() {
+        refreshCompletions(false);
+    }
+
+    private void forceOpenCompletions() {
+        if (disposed) return;
+        renderSyntax();
+        refreshDiagnostics();
+        refreshLanguageContext();
+        refreshCompletions(true);
+    }
+
+    private void refreshCompletions(boolean forceOpen) {
         if (disposed) return;
         completionManager.refresh(buffer.getLanguageContext());
         buffer.setCompletionSnapshot(completionManager.getSnapshot());
 
         if (suppressPopup) return;
 
-        if (!isCompletionContextValid() || buffer.getCompletionSnapshot().isEmpty()) {
+        if ((!forceOpen && !isCompletionContextValid()) || buffer.getCompletionSnapshot().isEmpty()) {
             completionPopup.hide();
             return;
         }

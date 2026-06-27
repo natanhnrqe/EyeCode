@@ -5,21 +5,16 @@ import com.eyecode.editor.v2.completion.CompletionSnapshot;
 import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.TypographyManager;
 
-import javax.swing.AbstractAction;
-import javax.swing.ActionMap;
 import javax.swing.DefaultListModel;
-import javax.swing.InputMap;
 import javax.swing.JList;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.JWindow;
-import javax.swing.KeyStroke;
 import javax.swing.BorderFactory;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Window;
-import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
@@ -31,6 +26,7 @@ public final class CompletionPopup {
     private final CompletionPopupPositioner positioner;
     private JWindow window;
     private JList<CompletionItem> list;
+    private JScrollPane scrollPane;
     private int selectedIndex = 0;
     private int caretPosition;
     private String selectedLabel;
@@ -92,6 +88,27 @@ public final class CompletionPopup {
         moveSelection(-1);
     }
 
+    public void selectPageDown() {
+        moveSelection(MAX_VISIBLE_ROWS);
+    }
+
+    public void selectPageUp() {
+        moveSelection(-MAX_VISIBLE_ROWS);
+    }
+
+    public void selectFirst() {
+        moveSelectionTo(0);
+    }
+
+    public void selectLast() {
+        if (list == null || list.getModel().getSize() == 0) return;
+        moveSelectionTo(list.getModel().getSize() - 1);
+    }
+
+    public void acceptSelected() {
+        emitSelection();
+    }
+
     public CompletionItem getSelectedItem() {
         if (list == null || list.getModel().getSize() == 0) return null;
         if (selectedIndex < 0 || selectedIndex >= list.getModel().getSize()) return null;
@@ -117,7 +134,6 @@ public final class CompletionPopup {
         list.setSelectionBackground(ColorManager.AUTOCOMPLETE_SELECTION_BG);
         list.setSelectionForeground(ColorManager.TEXT_PRIMARY);
         list.setCellRenderer(new CompletionListRenderer());
-        installNavigationActions();
         list.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -132,7 +148,7 @@ public final class CompletionPopup {
             }
         });
 
-        JScrollPane scrollPane = new JScrollPane(list);
+        scrollPane = new JScrollPane(list);
         scrollPane.setPreferredSize(new Dimension(320, 180));
         scrollPane.setBackground(ColorManager.AUTOCOMPLETE_BG);
         scrollPane.getViewport().setBackground(ColorManager.AUTOCOMPLETE_BG);
@@ -148,11 +164,17 @@ public final class CompletionPopup {
             model.addElement(item);
         }
 
+        int previousSelectedIndex = selectedIndex;
+        Point previousViewPosition = scrollPane == null
+                ? null
+                : scrollPane.getViewport().getViewPosition();
         int newSelectedIndex = 0;
+        boolean foundSelectedLabel = false;
         if (selectedLabel != null) {
             for (int i = 0; i < model.getSize(); i++) {
                 if (model.getElementAt(i).getLabel().equals(selectedLabel)) {
                     newSelectedIndex = i;
+                    foundSelectedLabel = true;
                     break;
                 }
             }
@@ -162,48 +184,19 @@ public final class CompletionPopup {
         list.setVisibleRowCount(Math.min(MAX_VISIBLE_ROWS, snapshot.size()));
         selectedIndex = newSelectedIndex;
         updateSelection();
-    }
-
-    private void installNavigationActions() {
-        InputMap inputMap = list.getInputMap(JList.WHEN_IN_FOCUSED_WINDOW);
-        ActionMap actionMap = list.getActionMap();
-
-        inputMap.put(KeyStroke.getKeyStroke("UP"), "completionUp");
-        actionMap.put("completionUp", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                selectPrevious();
-            }
-        });
-
-        inputMap.put(KeyStroke.getKeyStroke("DOWN"), "completionDown");
-        actionMap.put("completionDown", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                selectNext();
-            }
-        });
-
-        inputMap.put(KeyStroke.getKeyStroke("ESCAPE"), "completionHide");
-        actionMap.put("completionHide", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                hide();
-            }
-        });
-
-        inputMap.put(KeyStroke.getKeyStroke("ENTER"), "completionSelect");
-        actionMap.put("completionSelect", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                emitSelection();
-            }
-        });
+        if (foundSelectedLabel && previousSelectedIndex == selectedIndex && previousViewPosition != null) {
+            scrollPane.getViewport().setViewPosition(previousViewPosition);
+        }
     }
 
     private void moveSelection(int delta) {
         if (list == null || list.getModel().getSize() == 0) return;
-        selectedIndex = Math.max(0, Math.min(selectedIndex + delta, list.getModel().getSize() - 1));
+        moveSelectionTo(selectedIndex + delta);
+    }
+
+    private void moveSelectionTo(int index) {
+        if (list == null || list.getModel().getSize() == 0) return;
+        selectedIndex = Math.max(0, Math.min(index, list.getModel().getSize() - 1));
         updateSelection();
     }
 
