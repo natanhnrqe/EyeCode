@@ -256,6 +256,22 @@ public final class RichEditorView extends JPanel {
             }
         });
 
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK), "editorUndo");
+        actionMap.put("editorUndo", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                undo();
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK), "editorRedo");
+        actionMap.put("editorRedo", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                redo();
+            }
+        });
+
         inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK), "editorDuplicateLine");
         actionMap.put("editorDuplicateLine", new AbstractAction() {
             @Override
@@ -788,6 +804,14 @@ public final class RichEditorView extends JPanel {
         completionPopup.hide();
     }
 
+    public void undo() {
+        applyHistoryAction(true);
+    }
+
+    public void redo() {
+        applyHistoryAction(false);
+    }
+
     public void refreshFromDocument() {
         if (disposed) return;
         if (buffer.getDocument().getText().contentEquals(getCurrentText())) {
@@ -821,6 +845,27 @@ public final class RichEditorView extends JPanel {
 
     public StyledDocument getStyledDocument() {
         return styledDocument;
+    }
+
+    private void applyHistoryAction(boolean undo) {
+        if (disposed) return;
+        if (undo && !buffer.canUndo()) return;
+        if (!undo && !buffer.canRedo()) return;
+
+        String beforeText = buffer.getDocument().getText();
+        int beforeCaret = textPane.getCaretPosition();
+        if (undo) {
+            buffer.undo();
+        } else {
+            buffer.redo();
+        }
+
+        autoPairs.clear();
+        completionPopup.hide();
+        String afterText = buffer.getDocument().getText();
+        int afterCaret = mapCaretAfterTextChange(beforeText, afterText, beforeCaret);
+        refreshFromDocument();
+        buffer.moveCaret(toPosition(afterText, afterCaret));
     }
 
     private void syncInsert(int offset, int length) {
@@ -959,6 +1004,41 @@ public final class RichEditorView extends JPanel {
             }
         }
         return text.length();
+    }
+
+    private int mapCaretAfterTextChange(String before, String after, int caretOffset) {
+        int safeCaret = Math.max(0, Math.min(caretOffset, before.length()));
+        int prefix = 0;
+        int maxPrefix = Math.min(before.length(), after.length());
+        while (prefix < maxPrefix && before.charAt(prefix) == after.charAt(prefix)) {
+            prefix++;
+        }
+
+        int suffix = 0;
+        int beforeRemaining = before.length() - prefix;
+        int afterRemaining = after.length() - prefix;
+        while (suffix < beforeRemaining
+                && suffix < afterRemaining
+                && before.charAt(before.length() - 1 - suffix) == after.charAt(after.length() - 1 - suffix)) {
+            suffix++;
+        }
+
+        int oldChangeEnd = before.length() - suffix;
+        int newChangeEnd = after.length() - suffix;
+        int oldChangeLength = oldChangeEnd - prefix;
+        int newChangeLength = newChangeEnd - prefix;
+
+        if (safeCaret > oldChangeEnd) {
+            return Math.max(0, Math.min(after.length(), safeCaret - oldChangeLength + newChangeLength));
+        }
+        if (safeCaret >= prefix) {
+            int offsetIntoChange = safeCaret - prefix;
+            if (oldChangeLength == 0 && offsetIntoChange == 0) {
+                return newChangeEnd;
+            }
+            return Math.max(0, Math.min(after.length(), prefix + Math.min(offsetIntoChange, newChangeLength)));
+        }
+        return Math.max(0, Math.min(after.length(), safeCaret));
     }
 
     private EditorPosition toPosition(String text, int offset) {
