@@ -2,6 +2,7 @@ package com.eyecode.editor.v2.ui;
 
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.editor.v2.EditorPosition;
 import com.eyecode.editor.v2.caret.CaretSynchronizationManager;
 import com.eyecode.editor.v2.completion.CompletionEngine;
 import com.eyecode.editor.v2.completion.CompletionManager;
@@ -38,7 +39,6 @@ import javax.swing.event.CaretListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.BadLocationException;
-import javax.swing.text.DefaultEditorKit;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import java.awt.BorderLayout;
@@ -213,14 +213,12 @@ public final class RichEditorView extends JPanel {
         InputMap inputMap = textPane.getInputMap(JComponent.WHEN_FOCUSED);
         ActionMap actionMap = textPane.getActionMap();
 
-        Action defaultEnter = actionMap.get(DefaultEditorKit.insertBreakAction);
-
         inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "completionAcceptOrEnter");
         actionMap.put("completionAcceptOrEnter", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (!acceptCompletion()) {
-                    runDefaultAction(defaultEnter, e);
+                    handleEnterIndentation();
                 }
             }
         });
@@ -232,6 +230,14 @@ public final class RichEditorView extends JPanel {
                 if (!acceptCompletion()) {
                     handleTabIndentation();
                 }
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK), "editorOutdentLine");
+        actionMap.put("editorOutdentLine", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                handleShiftTabOutdent();
             }
         });
 
@@ -304,8 +310,76 @@ public final class RichEditorView extends JPanel {
         insertIndentationUnit();
     }
 
+    private void handleEnterIndentation() {
+        int caretOffset = textPane.getCaretPosition();
+        String text = buffer.getDocument().getText();
+        int safeOffset = Math.max(0, Math.min(caretOffset, text.length()));
+        int lineStart = findLineStart(text, safeOffset);
+        String baseIndent = leadingIndent(text, lineStart);
+
+        boolean betweenBraces = safeOffset > 0
+                && safeOffset < text.length()
+                && text.charAt(safeOffset - 1) == '{'
+                && text.charAt(safeOffset) == '}';
+        boolean afterOpeningBrace = !betweenBraces
+                && text.substring(lineStart, safeOffset).stripTrailing().endsWith("{");
+
+        String insertText;
+        int caretAfterInsert;
+        if (betweenBraces) {
+            insertText = "\n" + baseIndent + INDENTATION_UNIT + "\n" + baseIndent;
+            caretAfterInsert = safeOffset + 1 + baseIndent.length() + INDENTATION_UNIT.length();
+        } else {
+            String nextIndent = baseIndent + (afterOpeningBrace ? INDENTATION_UNIT : "");
+            insertText = "\n" + nextIndent;
+            caretAfterInsert = safeOffset + insertText.length();
+        }
+
+        executeInsert(safeOffset, insertText, caretAfterInsert);
+    }
+
+    private void handleShiftTabOutdent() {
+        int caretOffset = textPane.getCaretPosition();
+        String text = buffer.getDocument().getText();
+        int safeOffset = Math.max(0, Math.min(caretOffset, text.length()));
+        int lineStart = findLineStart(text, safeOffset);
+        if (!text.startsWith(INDENTATION_UNIT, lineStart)) {
+            return;
+        }
+
+        buffer.deleteText(lineStart, lineStart + INDENTATION_UNIT.length());
+        refreshFromDocument();
+        int caretAfterDelete = Math.max(lineStart, safeOffset - INDENTATION_UNIT.length());
+        buffer.moveCaret(toPosition(buffer.getDocument().getText(), caretAfterDelete));
+    }
+
     private void insertIndentationUnit() {
-        textPane.replaceSelection(INDENTATION_UNIT);
+        int caretOffset = textPane.getCaretPosition();
+        executeInsert(caretOffset, INDENTATION_UNIT, caretOffset + INDENTATION_UNIT.length());
+    }
+
+    private void executeInsert(int offset, String text, int caretAfterInsert) {
+        buffer.insertText(offset, text);
+        refreshFromDocument();
+        buffer.moveCaret(toPosition(buffer.getDocument().getText(), caretAfterInsert));
+    }
+
+    private int findLineStart(String text, int offset) {
+        int safeOffset = Math.max(0, Math.min(offset, text.length()));
+        int lineStart = text.lastIndexOf('\n', Math.max(0, safeOffset - 1));
+        return lineStart < 0 ? 0 : lineStart + 1;
+    }
+
+    private String leadingIndent(String text, int lineStart) {
+        int offset = lineStart;
+        while (offset < text.length()) {
+            char current = text.charAt(offset);
+            if (current != ' ' && current != '\t') {
+                break;
+            }
+            offset++;
+        }
+        return text.substring(lineStart, offset);
     }
 
     public void dispose() {
@@ -491,7 +565,7 @@ public final class RichEditorView extends JPanel {
         return text.length();
     }
 
-    private com.eyecode.editor.v2.EditorPosition toPosition(String text, int offset) {
+    private EditorPosition toPosition(String text, int offset) {
         int safeOffset = Math.max(0, Math.min(offset, text.length()));
         int line = 0;
         int column = 0;
@@ -503,6 +577,6 @@ public final class RichEditorView extends JPanel {
                 column++;
             }
         }
-        return new com.eyecode.editor.v2.EditorPosition(line, column);
+        return new EditorPosition(line, column);
     }
 }
