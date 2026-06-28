@@ -106,7 +106,7 @@ public final class JavaKnowledgeBase {
         };
 
         for (String[] entry : types) {
-            register(CompletionItem.builder(entry[0], entry[0], CompletionItemKind.KEYWORD)
+            register(CompletionItem.builder(entry[0], entry[0], CompletionItemKind.VARIABLE)
                     .detail("Primitive type")
                     .owner("java.lang")
                     .category("Primitive")
@@ -124,7 +124,7 @@ public final class JavaKnowledgeBase {
         };
 
         for (String[] entry : literals) {
-            register(CompletionItem.builder(entry[0], entry[0], CompletionItemKind.KEYWORD)
+            register(CompletionItem.builder(entry[0], entry[0], CompletionItemKind.VARIABLE)
                     .detail("Literal")
                     .owner("java.lang")
                     .category("Literal")

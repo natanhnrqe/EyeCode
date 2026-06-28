@@ -3,11 +3,12 @@ package com.eyecode.editor.v2.ui.completion;
 import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionItemKind;
 import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.IconManager;
 import com.eyecode.ui.designsystem.TypographyManager;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
+import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -24,6 +25,7 @@ import java.awt.RenderingHints;
 public final class CompletionListRenderer implements ListCellRenderer<CompletionItem> {
 
     private static final int ICON_COLUMN_WIDTH = 24;
+    private static final int COMPLETION_ICON_SIZE = 16;
     private static final int ROW_ARC = 8;
     private static final int ROW_PAD_H = 10;
     private static final int ROW_PAD_V = 5;
@@ -75,9 +77,9 @@ public final class CompletionListRenderer implements ListCellRenderer<Completion
         panel.setOpaque(false);
         panel.setBorder(BorderFactory.createEmptyBorder(ROW_PAD_V, ROW_PAD_H, ROW_PAD_V, ROW_PAD_H));
 
-        ImageIcon icon = CompletionIconManager.getIcon(value.getKind());
+        Icon icon = IconManager.completion(value.getKind());
         JLabel iconLabel = new JLabel(icon);
-        iconLabel.setPreferredSize(new Dimension(ICON_COLUMN_WIDTH, icon.getIconHeight()));
+        iconLabel.setPreferredSize(new Dimension(ICON_COLUMN_WIDTH, COMPLETION_ICON_SIZE));
         panel.add(iconLabel, BorderLayout.WEST);
 
         JPanel content = new JPanel();
@@ -93,14 +95,14 @@ public final class CompletionListRenderer implements ListCellRenderer<Completion
         nameLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
         topRow.add(nameLabel);
 
-        String signature = value.getSignature();
-        if (signature != null && !signature.isEmpty()) {
+        String detail = value.getDetail();
+        if (detail != null && !detail.isEmpty()) {
             topRow.add(javax.swing.Box.createHorizontalStrut(8));
-            JLabel sigLabel = new JLabel(signature);
-            sigLabel.setFont(SIG_FONT);
-            sigLabel.setForeground(sigFg);
-            sigLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
-            topRow.add(sigLabel);
+            JLabel detailLabel = new JLabel(detail);
+            detailLabel.setFont(SIG_FONT);
+            detailLabel.setForeground(sigFg);
+            detailLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
+            topRow.add(detailLabel);
         }
 
         topRow.add(javax.swing.Box.createHorizontalGlue());

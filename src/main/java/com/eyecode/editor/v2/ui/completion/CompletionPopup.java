@@ -19,10 +19,14 @@ import javax.swing.UIManager;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.Window;
+import java.awt.geom.RoundRectangle2D;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -67,7 +71,8 @@ public final class CompletionPopup {
 
         Point position = positioner.positionFor(editor, caretPosition);
         window.pack();
-        window.setMinimumSize(new Dimension(460, 0));
+        window.setMinimumSize(new Dimension(600, 0));
+        window.setShape(new RoundRectangle2D.Double(0, 0, window.getWidth(), window.getHeight(), 10, 10));
         window.setLocation(position);
         window.setVisible(true);
     }
@@ -149,7 +154,7 @@ public final class CompletionPopup {
         Window owner = javax.swing.SwingUtilities.getWindowAncestor(editor);
         window = new JWindow(owner);
         window.setFocusableWindowState(false);
-        window.setBackground(ColorManager.AUTOCOMPLETE_BG);
+        window.setBackground(new Color(0, 0, 0, 0));
 
         list = new JList<>();
         list.setFont(TypographyManager.UI_CODE());
@@ -211,7 +216,7 @@ public final class CompletionPopup {
         detailPane.setBackground(ColorManager.PANEL_BG);
         detailPane.setForeground(ColorManager.TEXT_SECONDARY);
         detailPane.setFont(TypographyManager.UI_SMALL());
-        detailPane.setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+        detailPane.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
         detailPane.setMargin(new Insets(0, 0, 0, 0));
 
         detailContainer = new JPanel(new BorderLayout());
@@ -220,8 +225,20 @@ public final class CompletionPopup {
         detailContainer.add(detailPane, BorderLayout.CENTER);
         detailContainer.setVisible(false);
 
-        JPanel content = new JPanel(new BorderLayout());
-        content.setBackground(ColorManager.AUTOCOMPLETE_BG);
+        JPanel content = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(ColorManager.AUTOCOMPLETE_BG);
+                g2.fill(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 10, 10));
+                g2.setColor(ColorManager.BORDER);
+                g2.draw(new RoundRectangle2D.Double(0.5, 0.5, getWidth() - 1, getHeight() - 1, 10, 10));
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        content.setOpaque(false);
         content.setBorder(BorderFactory.createEmptyBorder());
         content.add(scrollPane, BorderLayout.CENTER);
         content.add(detailContainer, BorderLayout.SOUTH);

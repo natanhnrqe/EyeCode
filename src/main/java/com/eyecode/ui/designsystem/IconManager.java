@@ -1,13 +1,23 @@
 package com.eyecode.ui.designsystem;
 
+import com.eyecode.editor.v2.completion.CompletionItemKind;
 import com.eyecode.project.ProjectType;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import javax.swing.*;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class IconManager {
 
     private static final String ICONS_PATH = "icons/";
+    private static final String COMPLETION_ICONS_PATH = "icons/completion/";
     private static final int ICON_SIZE = SpacingSystem.ICON_SIZE;
+    private static final int COMPLETION_ICON_SIZE = 16;
+
+    private static final Map<String, Icon> CACHE = new HashMap<>();
+    private static final Map<CompletionItemKind, Icon> COMPLETION_CACHE = new HashMap<>();
 
     private IconManager() {}
 
@@ -82,8 +92,62 @@ public final class IconManager {
         return textFile();
     }
 
+    public static Icon completion(CompletionItemKind kind) {
+        if (kind == null) return completionPlaceholder(ColorManager.TEXT_MUTED);
+        return COMPLETION_CACHE.computeIfAbsent(kind, IconManager::loadCompletionIcon);
+    }
+
+    private static Icon loadCompletionIcon(CompletionItemKind kind) {
+        String name = kind.name().toLowerCase();
+        String resourcePath = "/" + COMPLETION_ICONS_PATH + name + ".svg";
+
+        java.net.URL svgUrl = IconManager.class.getResource(resourcePath);
+        if (svgUrl != null) {
+            FlatSVGIcon svg = new FlatSVGIcon(COMPLETION_ICONS_PATH + name + ".svg", COMPLETION_ICON_SIZE, COMPLETION_ICON_SIZE);
+            return svg;
+        }
+
+        java.net.URL pngUrl = IconManager.class.getResource("/" + COMPLETION_ICONS_PATH + name + ".png");
+        if (pngUrl != null) {
+            ImageIcon raw = new ImageIcon(pngUrl);
+            Image scaled = raw.getImage().getScaledInstance(COMPLETION_ICON_SIZE, COMPLETION_ICON_SIZE, Image.SCALE_SMOOTH);
+            return new ImageIcon(scaled);
+        }
+
+        return completionPlaceholder(completionKindColor(kind));
+    }
+
+    private static Icon completionPlaceholder(Color color) {
+        BufferedImage img = new BufferedImage(COMPLETION_ICON_SIZE, COMPLETION_ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = img.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 30));
+        g.fillRoundRect(1, 1, COMPLETION_ICON_SIZE - 2, COMPLETION_ICON_SIZE - 2, 4, 4);
+        g.setColor(color);
+        g.drawRoundRect(1, 1, COMPLETION_ICON_SIZE - 2, COMPLETION_ICON_SIZE - 2, 4, 4);
+        g.dispose();
+        return new ImageIcon(img);
+    }
+
+    private static Color completionKindColor(CompletionItemKind kind) {
+        return switch (kind) {
+            case KEYWORD -> ColorManager.SYNTAX_KEYWORD;
+            case CLASS -> ColorManager.SYNTAX_CLASS;
+            case INTERFACE -> ColorManager.SYNTAX_TYPE;
+            case ENUM -> ColorManager.SYNTAX_CONSTANT;
+            case RECORD -> ColorManager.SYNTAX_METHOD;
+            case METHOD -> ColorManager.SYNTAX_METHOD;
+            case FIELD -> ColorManager.SYNTAX_CONSTANT;
+            case VARIABLE -> ColorManager.AUTOCOMPLETE_FG;
+            case PACKAGE -> ColorManager.SYNTAX_TYPE;
+            case SNIPPET -> ColorManager.SYNTAX_ANNOTATION;
+            case CONSTRUCTOR -> ColorManager.SYNTAX_CLASS;
+
+        };
+    }
+
     private static Icon load(String name) {
-        return new FlatSVGIcon(ICONS_PATH + name + ".svg", ICON_SIZE, ICON_SIZE);
+        return CACHE.computeIfAbsent(name, n -> new FlatSVGIcon(ICONS_PATH + n + ".svg", ICON_SIZE, ICON_SIZE));
     }
 
     public static Icon forProjectType(ProjectType type) {

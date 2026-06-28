@@ -31,6 +31,7 @@ public final class Diagnostic {
 
     public int getLength() { return length; }
 
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

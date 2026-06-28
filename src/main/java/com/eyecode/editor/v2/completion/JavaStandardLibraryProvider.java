@@ -163,6 +163,71 @@ public final class JavaStandardLibraryProvider implements CompletionProvider {
                 .example("Optional<String> opt = Optional.of(\"value\");\nopt.ifPresent(System.out::println);")
                 .build());
 
+        // ── Fields ───────────────────────────────────────────────
+
+        items.add(CompletionItem.builder("out", "out", CompletionItemKind.FIELD)
+                .detail("System.out")
+                .signature("System.out")
+                .returnType("PrintStream")
+                .owner("java.lang.System")
+                .category("Field")
+                .documentation("The standard output stream, typically used for console output.")
+                .build());
+
+        items.add(CompletionItem.builder("in", "in", CompletionItemKind.FIELD)
+                .detail("System.in")
+                .signature("System.in")
+                .returnType("InputStream")
+                .owner("java.lang.System")
+                .category("Field")
+                .documentation("The standard input stream, typically used for reading keyboard input.")
+                .build());
+
+        items.add(CompletionItem.builder("err", "err", CompletionItemKind.FIELD)
+                .detail("System.err")
+                .signature("System.err")
+                .returnType("PrintStream")
+                .owner("java.lang.System")
+                .category("Field")
+                .documentation("The standard error output stream, used for printing error messages.")
+                .build());
+
+        items.add(CompletionItem.builder("PI", "PI", CompletionItemKind.FIELD)
+                .detail("Math.PI")
+                .signature("Math.PI")
+                .returnType("double")
+                .owner("java.lang.Math")
+                .category("Field")
+                .documentation("The ratio of the circumference of a circle to its diameter, approximately 3.14159.")
+                .build());
+
+        items.add(CompletionItem.builder("E", "E", CompletionItemKind.FIELD)
+                .detail("Math.E")
+                .signature("Math.E")
+                .returnType("double")
+                .owner("java.lang.Math")
+                .category("Field")
+                .documentation("The base of the natural logarithms, approximately 2.71828.")
+                .build());
+
+        items.add(CompletionItem.builder("MAX_VALUE", "MAX_VALUE", CompletionItemKind.FIELD)
+                .detail("Integer.MAX_VALUE")
+                .signature("Integer.MAX_VALUE")
+                .returnType("int")
+                .owner("java.lang.Integer")
+                .category("Field")
+                .documentation("A constant holding the maximum value an int can have: 2^31 - 1 = 2147483647.")
+                .build());
+
+        items.add(CompletionItem.builder("MIN_VALUE", "MIN_VALUE", CompletionItemKind.FIELD)
+                .detail("Integer.MIN_VALUE")
+                .signature("Integer.MIN_VALUE")
+                .returnType("int")
+                .owner("java.lang.Integer")
+                .category("Field")
+                .documentation("A constant holding the minimum value an int can have: -2^31 = -2147483648.")
+                .build());
+
         // ── Methods ──────────────────────────────────────────────
 
         // System methods
