@@ -8,7 +8,7 @@ import java.util.List;
 public final class JavaSnippetProvider implements CompletionProvider {
 
     private static final List<CompletionItem> SNIPPETS = List.of(
-            CompletionItem.builder("psvm", "public static void main(String[] args) {\n    \n}", CompletionItemKind.SNIPPET)
+            CompletionItem.builder("psvm", "public static void main(String[] args) {\n    ${0}\n}", CompletionItemKind.SNIPPET)
                     .detail("public static void main")
                     .category("Snippet")
                     .documentation("Generates the main method signature.")
@@ -16,7 +16,15 @@ public final class JavaSnippetProvider implements CompletionProvider {
                     .priority(100)
                     .build(),
 
-            CompletionItem.builder("sout", "System.out.println();", CompletionItemKind.SNIPPET)
+            CompletionItem.builder("main", "public static void main(String[] args) {\n    ${0}\n}", CompletionItemKind.SNIPPET)
+                    .detail("public static void main")
+                    .category("Snippet")
+                    .documentation("Generates the main method signature.")
+                    .example("public static void main(String[] args) {\n    \n}")
+                    .priority(100)
+                    .build(),
+
+            CompletionItem.builder("sout", "System.out.println(${0});", CompletionItemKind.SNIPPET)
                     .detail("System.out.println")
                     .category("Snippet")
                     .documentation("Prints a line to standard output.")
@@ -24,7 +32,7 @@ public final class JavaSnippetProvider implements CompletionProvider {
                     .priority(100)
                     .build(),
 
-            CompletionItem.builder("if", "if (condition) {\n    \n}", CompletionItemKind.SNIPPET)
+            CompletionItem.builder("if", "if (condition) {\n    ${0}\n}", CompletionItemKind.SNIPPET)
                     .detail("if statement")
                     .category("Snippet")
                     .documentation("Generates an if statement block.")
@@ -32,7 +40,7 @@ public final class JavaSnippetProvider implements CompletionProvider {
                     .priority(90)
                     .build(),
 
-            CompletionItem.builder("ifelse", "if (condition) {\n    \n} else {\n    \n}", CompletionItemKind.SNIPPET)
+            CompletionItem.builder("ifelse", "if (condition) {\n    ${0}\n} else {\n    \n}", CompletionItemKind.SNIPPET)
                     .detail("if-else statement")
                     .category("Snippet")
                     .documentation("Generates an if-else statement block.")
@@ -40,7 +48,7 @@ public final class JavaSnippetProvider implements CompletionProvider {
                     .priority(90)
                     .build(),
 
-            CompletionItem.builder("for", "for (int i = 0; i < ; i++) {\n    \n}", CompletionItemKind.SNIPPET)
+            CompletionItem.builder("for", "for (int i = 0; i < ${0}; i++) {\n    \n}", CompletionItemKind.SNIPPET)
                     .detail("for loop")
                     .category("Snippet")
                     .documentation("Generates a classic for loop.")
@@ -48,7 +56,7 @@ public final class JavaSnippetProvider implements CompletionProvider {
                     .priority(90)
                     .build(),
 
-            CompletionItem.builder("foreach", "for (var item : collection) {\n    \n}", CompletionItemKind.SNIPPET)
+            CompletionItem.builder("foreach", "for (var item : collection) {\n    ${0}\n}", CompletionItemKind.SNIPPET)
                     .detail("enhanced for loop")
                     .category("Snippet")
                     .documentation("Generates an enhanced for-each loop.")
@@ -56,7 +64,7 @@ public final class JavaSnippetProvider implements CompletionProvider {
                     .priority(90)
                     .build(),
 
-            CompletionItem.builder("while", "while (condition) {\n    \n}", CompletionItemKind.SNIPPET)
+            CompletionItem.builder("while", "while (condition) {\n    ${0}\n}", CompletionItemKind.SNIPPET)
                     .detail("while loop")
                     .category("Snippet")
                     .documentation("Generates a while loop block.")
@@ -64,7 +72,15 @@ public final class JavaSnippetProvider implements CompletionProvider {
                     .priority(90)
                     .build(),
 
-            CompletionItem.builder("switch", "switch (variable) {\n    case :\n        break;\n    default:\n        break;\n}", CompletionItemKind.SNIPPET)
+            CompletionItem.builder("do", "do {\n    ${0}\n} while (condition);", CompletionItemKind.SNIPPET)
+                    .detail("do-while loop")
+                    .category("Snippet")
+                    .documentation("Generates a do-while loop block.")
+                    .example("do {\n    \n} while (x > 0);")
+                    .priority(90)
+                    .build(),
+
+            CompletionItem.builder("switch", "switch (variable) {\n    case value:\n        ${0}\n        break;\n    default:\n        break;\n}", CompletionItemKind.SNIPPET)
                     .detail("switch statement")
                     .category("Snippet")
                     .documentation("Generates a switch statement with a default case.")
@@ -72,7 +88,7 @@ public final class JavaSnippetProvider implements CompletionProvider {
                     .priority(90)
                     .build(),
 
-            CompletionItem.builder("try", "try {\n    \n}", CompletionItemKind.SNIPPET)
+            CompletionItem.builder("try", "try {\n    ${0}\n}", CompletionItemKind.SNIPPET)
                     .detail("try block")
                     .category("Snippet")
                     .documentation("Generates a try block.")
@@ -80,12 +96,20 @@ public final class JavaSnippetProvider implements CompletionProvider {
                     .priority(80)
                     .build(),
 
-            CompletionItem.builder("trycatch", "try {\n    \n} catch (Exception e) {\n    \n}", CompletionItemKind.SNIPPET)
+            CompletionItem.builder("trycatch", "try {\n    ${0}\n} catch (Exception e) {\n    \n}", CompletionItemKind.SNIPPET)
                     .detail("try-catch block")
                     .category("Snippet")
                     .documentation("Generates a try-catch block.")
                     .example("try {\n    \n} catch (Exception e) {\n    e.printStackTrace();\n}")
                     .priority(90)
+                    .build(),
+
+            CompletionItem.builder("tryfinally", "try {\n    ${0}\n} finally {\n    \n}", CompletionItemKind.SNIPPET)
+                    .detail("try-finally block")
+                    .category("Snippet")
+                    .documentation("Generates a try-finally block.")
+                    .example("try {\n    \n} finally {\n    \n}")
+                    .priority(85)
                     .build()
     );
 

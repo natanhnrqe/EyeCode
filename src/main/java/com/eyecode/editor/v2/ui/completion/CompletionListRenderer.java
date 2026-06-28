@@ -7,46 +7,77 @@ import com.eyecode.ui.designsystem.TypographyManager;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.ListCellRenderer;
-import javax.swing.SwingConstants;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 
 public final class CompletionListRenderer implements ListCellRenderer<CompletionItem> {
 
-    private static final int ICON_COLUMN_WIDTH = 28;
+    private static final int ICON_COLUMN_WIDTH = 24;
+    private static final int ROW_ARC = 8;
+    private static final int ROW_PAD_H = 10;
+    private static final int ROW_PAD_V = 5;
 
     private static final Font MAIN_FONT = TypographyManager.UI_CODE();
     private static final Font SMALL_FONT = MAIN_FONT.deriveFont(Font.PLAIN, Math.max(10f, MAIN_FONT.getSize2D() - 2f));
     private static final Font SIG_FONT = MAIN_FONT.deriveFont(Font.ITALIC, Math.max(10f, MAIN_FONT.getSize2D() - 2f));
-    private static final Font ICON_FONT = MAIN_FONT.deriveFont(Font.BOLD, Math.max(10f, MAIN_FONT.getSize2D() - 2f));
+    private static final Font BOLD_FONT = MAIN_FONT.deriveFont(Font.BOLD);
+
+    private int hoverIndex = -1;
+    private String matchPrefix = "";
+
+    public void setHoverIndex(int index) {
+        this.hoverIndex = index;
+    }
+
+    public int getHoverIndexValue() {
+        return hoverIndex;
+    }
+
+    public void setMatchPrefix(String prefix) {
+        this.matchPrefix = prefix == null ? "" : prefix;
+    }
 
     @Override
     public Component getListCellRendererComponent(JList<? extends CompletionItem> list, CompletionItem value,
                                                   int index, boolean isSelected, boolean cellHasFocus) {
-        Color bg = isSelected ? ColorManager.AUTOCOMPLETE_SELECTION_BG : ColorManager.AUTOCOMPLETE_BG;
+        boolean isHovered = index == hoverIndex && !isSelected;
+        Color bg = isSelected ? ColorManager.AUTOCOMPLETE_SELECTION_BG
+                : isHovered ? ColorManager.ACCENT_HOVER_BG
+                : ColorManager.AUTOCOMPLETE_BG;
         Color fg = isSelected ? ColorManager.TEXT_PRIMARY : ColorManager.AUTOCOMPLETE_FG;
         Color mutedFg = isSelected ? ColorManager.TEXT_TERTIARY : ColorManager.TEXT_MUTED;
         Color typeFg = isSelected ? ColorManager.TEXT_SECONDARY : ColorManager.SYNTAX_TYPE;
         Color sigFg = isSelected ? ColorManager.TEXT_SECONDARY : ColorManager.TEXT_TERTIARY;
+        Color highlightFg = isSelected ? ColorManager.TEXT_PRIMARY : ColorManager.ACCENT_BLUE_LIGHT;
 
-        JPanel panel = new JPanel(new BorderLayout(0, 0));
-        panel.setOpaque(true);
-        panel.setBackground(bg);
-        panel.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+        JPanel panel = new JPanel(new BorderLayout(0, 0)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(bg);
+                g2.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, ROW_ARC, ROW_ARC);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(ROW_PAD_V, ROW_PAD_H, ROW_PAD_V, ROW_PAD_H));
 
-        JLabel iconLabel = new JLabel(kindIcon(value.getKind()));
-        iconLabel.setFont(ICON_FONT);
-        iconLabel.setForeground(isSelected ? ColorManager.TEXT_PRIMARY : kindColor(value.getKind()));
-        iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        iconLabel.setPreferredSize(new Dimension(ICON_COLUMN_WIDTH, MAIN_FONT.getSize() + 4));
+        ImageIcon icon = CompletionIconManager.getIcon(value.getKind());
+        JLabel iconLabel = new JLabel(icon);
+        iconLabel.setPreferredSize(new Dimension(ICON_COLUMN_WIDTH, icon.getIconHeight()));
         panel.add(iconLabel, BorderLayout.WEST);
 
         JPanel content = new JPanel();
@@ -57,9 +88,8 @@ public final class CompletionListRenderer implements ListCellRenderer<Completion
         topRow.setLayout(new BoxLayout(topRow, BoxLayout.X_AXIS));
         topRow.setOpaque(false);
 
-        JLabel nameLabel = new JLabel(value.getLabel());
+        JLabel nameLabel = createHighlightedLabel(value.getLabel(), highlightFg, fg);
         nameLabel.setFont(MAIN_FONT);
-        nameLabel.setForeground(fg);
         nameLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
         topRow.add(nameLabel);
 
@@ -101,31 +131,34 @@ public final class CompletionListRenderer implements ListCellRenderer<Completion
         return panel;
     }
 
-    private String kindIcon(CompletionItemKind kind) {
-        if (kind == null) return "?";
-        return switch (kind) {
-            case KEYWORD -> "K";
-            case CLASS -> "C";
-            case INTERFACE -> "I";
-            case METHOD -> "M";
-            case FIELD -> "F";
-            case VARIABLE -> "V";
-            case PACKAGE -> "P";
-            case SNIPPET -> "S";
-        };
+    private JLabel createHighlightedLabel(String text, Color highlightColor, Color normalColor) {
+        if (matchPrefix.isEmpty() || !text.toLowerCase().startsWith(matchPrefix.toLowerCase())) {
+            JLabel label = new JLabel(text);
+            label.setForeground(normalColor);
+            return label;
+        }
+
+        int prefixLen = matchPrefix.length();
+        String prefixPart = text.substring(0, prefixLen);
+        String restPart = text.substring(prefixLen);
+
+        JLabel label = new JLabel("<html><b style='color:" + toHex(highlightColor) + "'>"
+                + escapeHtml(prefixPart) + "</b><span style='color:" + toHex(normalColor) + "'>"
+                + escapeHtml(restPart) + "</span></html>");
+        label.setForeground(normalColor);
+        return label;
     }
 
-    private Color kindColor(CompletionItemKind kind) {
-        if (kind == null) return ColorManager.AUTOCOMPLETE_FG;
-        return switch (kind) {
-            case KEYWORD -> ColorManager.SYNTAX_KEYWORD;
-            case CLASS -> ColorManager.SYNTAX_CLASS;
-            case INTERFACE -> ColorManager.SYNTAX_TYPE;
-            case METHOD -> ColorManager.SYNTAX_METHOD;
-            case FIELD -> ColorManager.SYNTAX_CONSTANT;
-            case VARIABLE -> ColorManager.AUTOCOMPLETE_FG;
-            case PACKAGE -> ColorManager.SYNTAX_TYPE;
-            case SNIPPET -> ColorManager.SYNTAX_ANNOTATION;
-        };
+    private String escapeHtml(String text) {
+        if (text == null) return "";
+        return text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("'", "&#39;")
+                .replace("\"", "&quot;");
+    }
+
+    private String toHex(Color c) {
+        return String.format("#%02x%02x%02x", c.getRed(), c.getGreen(), c.getBlue());
     }
 }

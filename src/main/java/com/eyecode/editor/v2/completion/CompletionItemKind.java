@@ -4,9 +4,12 @@ public enum CompletionItemKind {
     KEYWORD,
     CLASS,
     INTERFACE,
+    ENUM,
+    RECORD,
     METHOD,
     FIELD,
     VARIABLE,
     PACKAGE,
-    SNIPPET
+    SNIPPET,
+    CONSTRUCTOR
 }

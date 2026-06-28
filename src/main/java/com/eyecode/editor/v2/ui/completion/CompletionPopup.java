@@ -14,21 +14,27 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.JWindow;
 import javax.swing.ListSelectionModel;
-import javax.swing.border.MatteBorder;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.UIManager;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Insets;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.util.function.Consumer;
 
 public final class CompletionPopup {
 
     private static final int MAX_VISIBLE_ROWS = 10;
+    private static final int OUTER_PADDING = 8;
 
     private final CompletionPopupPositioner positioner;
+    private final CompletionListRenderer renderer;
     private JWindow window;
     private JList<CompletionItem> list;
     private JScrollPane scrollPane;
@@ -41,34 +47,42 @@ public final class CompletionPopup {
 
     public CompletionPopup() {
         this.positioner = new CompletionPopupPositioner();
+        this.renderer = new CompletionListRenderer();
     }
 
     public void show(JTextPane editor, CompletionSnapshot snapshot, int caretPosition) {
+        show(editor, snapshot, caretPosition, "");
+    }
+
+    public void show(JTextPane editor, CompletionSnapshot snapshot, int caretPosition, String prefix) {
         if (snapshot == null || snapshot.isEmpty()) {
             hide();
             return;
         }
 
-
         ensureWindow(editor);
+        renderer.setMatchPrefix(prefix);
         populateModel(snapshot);
         this.caretPosition = caretPosition;
 
         Point position = positioner.positionFor(editor, caretPosition);
         window.pack();
-        window.setMinimumSize(new Dimension(600, 0));
+        window.setMinimumSize(new Dimension(460, 0));
         window.setLocation(position);
         window.setVisible(true);
-
-
     }
 
     public void update(CompletionSnapshot snapshot) {
+        update(snapshot, "");
+    }
+
+    public void update(CompletionSnapshot snapshot, String prefix) {
         if (snapshot == null || snapshot.isEmpty()) {
             hide();
             return;
         }
         if (window == null || !window.isVisible()) return;
+        renderer.setMatchPrefix(prefix);
         populateModel(snapshot);
     }
 
@@ -141,10 +155,12 @@ public final class CompletionPopup {
         list.setFont(TypographyManager.UI_CODE());
         list.setBackground(ColorManager.AUTOCOMPLETE_BG);
         list.setForeground(ColorManager.AUTOCOMPLETE_FG);
-        list.setSelectionBackground(ColorManager.AUTOCOMPLETE_SELECTION_BG);
+        list.setSelectionBackground(ColorManager.AUTOCOMPLETE_BG);
         list.setSelectionForeground(ColorManager.TEXT_PRIMARY);
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        list.setCellRenderer(new CompletionListRenderer());
+        list.setCellRenderer(renderer);
+        list.setFixedCellHeight(-1);
+        list.setOpaque(false);
         list.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -158,13 +174,36 @@ public final class CompletionPopup {
                 }
             }
         });
+        list.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int index = list.locationToIndex(e.getPoint());
+                if (index != renderer.getHoverIndexValue()) {
+                    renderer.setHoverIndex(index);
+                    list.repaint();
+                }
+            }
+        });
+        list.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseExited(MouseEvent e) {
+                renderer.setHoverIndex(-1);
+                list.repaint();
+            }
+        });
 
         scrollPane = new JScrollPane(list);
-        scrollPane.setPreferredSize(new Dimension(450, 240));
+        scrollPane.setPreferredSize(new Dimension(460, 240));
         scrollPane.setBackground(ColorManager.AUTOCOMPLETE_BG);
         scrollPane.getViewport().setBackground(ColorManager.AUTOCOMPLETE_BG);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder(OUTER_PADDING, OUTER_PADDING, OUTER_PADDING, OUTER_PADDING));
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+
+        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(6, 0));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        UIManager.put("ScrollBar.thumb", ColorManager.SURFACE_BG);
+        UIManager.put("ScrollBar.track", ColorManager.AUTOCOMPLETE_BG);
+        UIManager.put("ScrollBar.width", 6);
 
         detailPane = new JEditorPane();
         detailPane.setContentType("text/html");
@@ -172,17 +211,18 @@ public final class CompletionPopup {
         detailPane.setBackground(ColorManager.PANEL_BG);
         detailPane.setForeground(ColorManager.TEXT_SECONDARY);
         detailPane.setFont(TypographyManager.UI_SMALL());
-        detailPane.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        detailPane.setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+        detailPane.setMargin(new Insets(0, 0, 0, 0));
 
         detailContainer = new JPanel(new BorderLayout());
         detailContainer.setBackground(ColorManager.PANEL_BG);
-        detailContainer.setBorder(new MatteBorder(1, 0, 0, 0, ColorManager.BORDER_DIVIDER));
+        detailContainer.setBorder(BorderFactory.createEmptyBorder());
         detailContainer.add(detailPane, BorderLayout.CENTER);
         detailContainer.setVisible(false);
 
         JPanel content = new JPanel(new BorderLayout());
         content.setBackground(ColorManager.AUTOCOMPLETE_BG);
-        content.setBorder(BorderFactory.createLineBorder(ColorManager.BORDER));
+        content.setBorder(BorderFactory.createEmptyBorder());
         content.add(scrollPane, BorderLayout.CENTER);
         content.add(detailContainer, BorderLayout.SOUTH);
 
@@ -237,10 +277,37 @@ public final class CompletionPopup {
         if (list == null || list.getModel().getSize() == 0) return;
         selectedIndex = Math.max(0, Math.min(selectedIndex, list.getModel().getSize() - 1));
         list.setSelectedIndex(selectedIndex);
-        list.ensureIndexIsVisible(selectedIndex);
+        centerSelectionInViewport();
         CompletionItem item = list.getModel().getElementAt(selectedIndex);
         selectedLabel = item != null ? item.getLabel() : null;
         updateDetailPanel(item);
+    }
+
+    private void centerSelectionInViewport() {
+        if (list == null || scrollPane == null) return;
+        int total = list.getModel().getSize();
+        if (total == 0) return;
+
+        int visibleRows = Math.min(MAX_VISIBLE_ROWS, total);
+        int halfVisible = visibleRows / 2;
+        int target = Math.max(0, Math.min(selectedIndex - halfVisible, total - visibleRows));
+        if (target < 0) target = 0;
+
+        int cellHeight = list.getFixedCellHeight();
+        if (cellHeight <= 0) {
+            try {
+                Rectangle cellBounds = list.getCellBounds(selectedIndex, selectedIndex);
+                if (cellBounds != null) {
+                    cellHeight = cellBounds.height;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        if (cellHeight > 0) {
+            int viewportY = target * cellHeight;
+            scrollPane.getViewport().setViewPosition(new Point(0, viewportY));
+        }
+        list.ensureIndexIsVisible(selectedIndex);
     }
 
     private void updateDetailPanel(CompletionItem item) {
@@ -266,17 +333,18 @@ public final class CompletionPopup {
             return;
         }
 
-        StringBuilder html = new StringBuilder("<html><body style='font-family:monospaced;font-size:11px;color:#BBB;'>");
+        StringBuilder html = new StringBuilder("<html><body style='font-family:monospaced;font-size:11px;color:#BBB;margin:0;'>");
 
         if (hasSig) {
-            html.append("<b style='color:#DDD;'>").append(escapeHtml(signature)).append("</b><br>");
+            html.append("<b style='color:#DDD;font-size:11px;'>").append(escapeHtml(signature)).append("</b>");
+            if (hasDoc || hasExample) html.append("<br><br>");
         }
         if (hasDoc) {
             html.append(escapeHtml(doc));
             if (hasExample) html.append("<br><br>");
         }
         if (hasExample) {
-            html.append("<i style='color:#999;'>Example:</i><br>")
+            html.append("<i style='color:#888;'>Example:</i><br>")
                     .append("<code style='color:#6A8759;'>")
                     .append(escapeHtml(example))
                     .append("</code>");
@@ -286,7 +354,7 @@ public final class CompletionPopup {
         detailPane.setText(html.toString());
         detailPane.setCaretPosition(0);
         detailContainer.setVisible(true);
-        detailContainer.setPreferredSize(new Dimension(450, 70));
+        detailContainer.setPreferredSize(new Dimension(460, 72));
         if (window != null) window.pack();
     }
 
