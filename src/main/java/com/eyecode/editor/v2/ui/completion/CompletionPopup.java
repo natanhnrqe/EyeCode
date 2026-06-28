@@ -26,7 +26,6 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Window;
-import java.awt.geom.RoundRectangle2D;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -72,7 +71,6 @@ public final class CompletionPopup {
         Point position = positioner.positionFor(editor, caretPosition);
         window.pack();
         window.setMinimumSize(new Dimension(600, 0));
-        window.setShape(new RoundRectangle2D.Double(0, 0, window.getWidth(), window.getHeight(), 10, 10));
         window.setLocation(position);
         window.setVisible(true);
     }
@@ -158,9 +156,9 @@ public final class CompletionPopup {
 
         list = new JList<>();
         list.setFont(TypographyManager.UI_CODE());
-        list.setBackground(ColorManager.AUTOCOMPLETE_BG);
+        list.setBackground(new Color(0, 0, 0, 0));
         list.setForeground(ColorManager.AUTOCOMPLETE_FG);
-        list.setSelectionBackground(ColorManager.AUTOCOMPLETE_BG);
+        list.setSelectionBackground(new Color(0, 0, 0, 0));
         list.setSelectionForeground(ColorManager.TEXT_PRIMARY);
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         list.setCellRenderer(renderer);
@@ -199,29 +197,53 @@ public final class CompletionPopup {
 
         scrollPane = new JScrollPane(list);
         scrollPane.setPreferredSize(new Dimension(460, 240));
-        scrollPane.setBackground(ColorManager.AUTOCOMPLETE_BG);
-        scrollPane.getViewport().setBackground(ColorManager.AUTOCOMPLETE_BG);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setBackground(new Color(0, 0, 0, 0));
+        scrollPane.getViewport().setBackground(new Color(0, 0, 0, 0));
         scrollPane.setBorder(BorderFactory.createEmptyBorder(OUTER_PADDING, OUTER_PADDING, OUTER_PADDING, OUTER_PADDING));
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
         scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(6, 0));
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        scrollPane.getVerticalScrollBar().setOpaque(false);
         UIManager.put("ScrollBar.thumb", ColorManager.SURFACE_BG);
-        UIManager.put("ScrollBar.track", ColorManager.AUTOCOMPLETE_BG);
+        UIManager.put("ScrollBar.track", new Color(0, 0, 0, 0));
         UIManager.put("ScrollBar.width", 6);
 
-        detailPane = new JEditorPane();
+        detailPane = new JEditorPane() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+                super.paintComponent(g2);
+                g2.dispose();
+            }
+        };
         detailPane.setContentType("text/html");
         detailPane.setEditable(false);
-        detailPane.setBackground(ColorManager.PANEL_BG);
+        detailPane.setOpaque(false);
+        detailPane.setBackground(new Color(0, 0, 0, 0));
         detailPane.setForeground(ColorManager.TEXT_SECONDARY);
         detailPane.setFont(TypographyManager.UI_SMALL());
-        detailPane.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
+        detailPane.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
         detailPane.setMargin(new Insets(0, 0, 0, 0));
 
-        detailContainer = new JPanel(new BorderLayout());
+        detailContainer = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(ColorManager.PANEL_BG);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 0, 0);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        detailContainer.setOpaque(false);
         detailContainer.setBackground(ColorManager.PANEL_BG);
-        detailContainer.setBorder(BorderFactory.createEmptyBorder());
+        detailContainer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, ColorManager.BORDER_DIVIDER));
         detailContainer.add(detailPane, BorderLayout.CENTER);
         detailContainer.setVisible(false);
 
@@ -231,9 +253,9 @@ public final class CompletionPopup {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(ColorManager.AUTOCOMPLETE_BG);
-                g2.fill(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 10, 10));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
                 g2.setColor(ColorManager.BORDER);
-                g2.draw(new RoundRectangle2D.Double(0.5, 0.5, getWidth() - 1, getHeight() - 1, 10, 10));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
                 g2.dispose();
                 super.paintComponent(g);
             }

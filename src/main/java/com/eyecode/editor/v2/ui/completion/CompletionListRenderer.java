@@ -17,6 +17,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -33,7 +34,6 @@ public final class CompletionListRenderer implements ListCellRenderer<Completion
     private static final Font MAIN_FONT = TypographyManager.UI_CODE();
     private static final Font SMALL_FONT = MAIN_FONT.deriveFont(Font.PLAIN, Math.max(10f, MAIN_FONT.getSize2D() - 2f));
     private static final Font SIG_FONT = MAIN_FONT.deriveFont(Font.ITALIC, Math.max(10f, MAIN_FONT.getSize2D() - 2f));
-    private static final Font BOLD_FONT = MAIN_FONT.deriveFont(Font.BOLD);
 
     private int hoverIndex = -1;
     private String matchPrefix = "";
@@ -95,9 +95,19 @@ public final class CompletionListRenderer implements ListCellRenderer<Completion
         nameLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
         topRow.add(nameLabel);
 
+        String signature = value.getSignature();
+        if (signature != null && !signature.isEmpty()) {
+            topRow.add(javax.swing.Box.createHorizontalStrut(6));
+            JLabel sigLabel = new JLabel(signature);
+            sigLabel.setFont(SIG_FONT);
+            sigLabel.setForeground(sigFg);
+            sigLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
+            topRow.add(sigLabel);
+        }
+
         String detail = value.getDetail();
-        if (detail != null && !detail.isEmpty()) {
-            topRow.add(javax.swing.Box.createHorizontalStrut(8));
+        if (detail != null && !detail.isEmpty() && (signature == null || signature.isEmpty())) {
+            topRow.add(javax.swing.Box.createHorizontalStrut(6));
             JLabel detailLabel = new JLabel(detail);
             detailLabel.setFont(SIG_FONT);
             detailLabel.setForeground(sigFg);
