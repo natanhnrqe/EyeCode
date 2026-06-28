@@ -8,9 +8,12 @@ import com.eyecode.editor.v2.caret.CaretSynchronizationManager;
 import com.eyecode.editor.v2.completion.CompletionEngine;
 import com.eyecode.editor.v2.completion.CompletionManager;
 import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
+import com.eyecode.editor.v2.completion.JavaSnippetProvider;
+import com.eyecode.editor.v2.completion.JavaStandardLibraryProvider;
 import com.eyecode.editor.v2.completion.insert.CompletionInsertionContext;
 import com.eyecode.editor.v2.completion.insert.CompletionInsertionEngine;
 import com.eyecode.editor.v2.completion.insert.CompletionPrefixResolver;
+import com.eyecode.editor.v2.completion.knowledge.JavaKnowledgeBaseProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticCompletionProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
 import com.eyecode.editor.v2.diagnostics.DiagnosticManager;
@@ -31,10 +34,14 @@ import com.eyecode.ui.designsystem.TypographyManager;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ActionMap;
+import javax.swing.BorderFactory;
 import javax.swing.InputMap;
+import javax.swing.JButton;
 import javax.swing.JComponent;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
@@ -42,9 +49,12 @@ import javax.swing.event.CaretListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultHighlighter;
+import javax.swing.text.Highlighter;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Insets;
@@ -82,12 +92,22 @@ public final class RichEditorView extends JPanel {
     private final FocusAdapter focusListener;
     private final EditorDocument.TextChangeListener textChangeListener;
     private final List<AutoPair> autoPairs;
+    private final JPanel searchPanel;
+    private final JTextField searchField;
+    private final JTextField replaceField;
+    private final JLabel searchStatusLabel;
+    private final List<SearchMatch> searchMatches;
+    private final List<Object> searchHighlightTags;
+    private final Highlighter.HighlightPainter searchHighlightPainter;
+    private final Highlighter.HighlightPainter currentSearchHighlightPainter;
     private SyntaxSnapshot latestSyntaxSnapshot;
     private boolean refreshing;
     private boolean suppressPopup;
     private boolean disposed;
     private boolean syncingFromSwing;
     private boolean renderPending;
+    private int currentSearchIndex = -1;
+    private boolean replaceMode;
 
     public RichEditorView(EditorBuffer buffer) {
         super(new BorderLayout());
@@ -122,7 +142,9 @@ public final class RichEditorView extends JPanel {
         this.languageManager = new LanguageManager(new DefaultLanguageService());
         this.completionManager = new CompletionManager(new CompletionEngine(
                 List.of(
-                        new JavaKeywordCompletionProvider(),
+                        new JavaKnowledgeBaseProvider(),
+                        new JavaStandardLibraryProvider(),
+                        new JavaSnippetProvider(),
                         new SemanticCompletionProvider(new SemanticSymbolRegistry())
                 )
         ));
@@ -130,6 +152,14 @@ public final class RichEditorView extends JPanel {
         this.completionInsertionEngine = new CompletionInsertionEngine();
         this.completionPrefixResolver = new CompletionPrefixResolver();
         this.autoPairs = new ArrayList<>();
+        this.searchMatches = new ArrayList<>();
+        this.searchHighlightTags = new ArrayList<>();
+        this.searchHighlightPainter = new DefaultHighlighter.DefaultHighlightPainter(ColorManager.ACCENT_HOVER_BG);
+        this.currentSearchHighlightPainter = new DefaultHighlighter.DefaultHighlightPainter(ColorManager.AUTOCOMPLETE_SELECTION_BG);
+        this.searchField = new JTextField(24);
+        this.replaceField = new JTextField(24);
+        this.searchStatusLabel = new JLabel("0/0");
+        this.searchPanel = createSearchPanel();
         installCompletionActions();
         this.completionPopup.setOnSelect(event -> {
             if (disposed) return;
@@ -182,6 +212,7 @@ public final class RichEditorView extends JPanel {
         };
         buffer.getDocument().addTextChangeListener(textChangeListener);
 
+        add(searchPanel, BorderLayout.NORTH);
         add(scrollPane, BorderLayout.CENTER);
         scrollPane.setRowHeaderView(gutterPanel);
         this.caretListener = event -> {
@@ -215,6 +246,128 @@ public final class RichEditorView extends JPanel {
         StyleConstants.setFontFamily(style, TypographyManager.UI_CODE().getFamily());
         StyleConstants.setFontSize(style, TypographyManager.UI_CODE().getSize());
         return style;
+    }
+
+    private JPanel createSearchPanel() {
+        JPanel panel = new JPanel(new BorderLayout(6, 4));
+        panel.setBackground(ColorManager.TOOLBAR_BG);
+        panel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, ColorManager.BORDER_DIVIDER));
+        panel.setVisible(false);
+
+        JLabel findLabel = new JLabel("Find");
+        findLabel.setForeground(ColorManager.TEXT_SECONDARY);
+        findLabel.setFont(TypographyManager.UI_SMALL());
+
+        JLabel replaceLabel = new JLabel("Replace");
+        replaceLabel.setForeground(ColorManager.TEXT_SECONDARY);
+        replaceLabel.setFont(TypographyManager.UI_SMALL());
+
+        searchField.setFont(TypographyManager.UI_CODE());
+        searchField.setBackground(ColorManager.INPUT_BG);
+        searchField.setForeground(ColorManager.TEXT_PRIMARY);
+        searchField.setCaretColor(ColorManager.EDITOR_CARET);
+        searchField.setSelectionColor(ColorManager.EDITOR_SELECTION);
+        searchField.setSelectedTextColor(ColorManager.TEXT_PRIMARY);
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ColorManager.BORDER),
+                BorderFactory.createEmptyBorder(3, 6, 3, 6)
+        ));
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) { refreshSearchHighlights(); }
+            @Override
+            public void removeUpdate(DocumentEvent e) { refreshSearchHighlights(); }
+            @Override
+            public void changedUpdate(DocumentEvent e) { refreshSearchHighlights(); }
+        });
+
+        replaceField.setFont(TypographyManager.UI_CODE());
+        replaceField.setBackground(ColorManager.INPUT_BG);
+        replaceField.setForeground(ColorManager.TEXT_PRIMARY);
+        replaceField.setCaretColor(ColorManager.EDITOR_CARET);
+        replaceField.setSelectionColor(ColorManager.EDITOR_SELECTION);
+        replaceField.setSelectedTextColor(ColorManager.TEXT_PRIMARY);
+        replaceField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ColorManager.BORDER),
+                BorderFactory.createEmptyBorder(3, 6, 3, 6)
+        ));
+
+        InputMap searchInputMap = searchField.getInputMap(JComponent.WHEN_FOCUSED);
+        ActionMap searchActionMap = searchField.getActionMap();
+        searchInputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "searchNext");
+        searchActionMap.put("searchNext", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) { navigateSearch(1); }
+        });
+        searchInputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK), "searchPrevious");
+        searchActionMap.put("searchPrevious", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) { navigateSearch(-1); }
+        });
+        searchInputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "searchClose");
+        searchActionMap.put("searchClose", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) { closeSearch(); }
+        });
+
+        InputMap replaceInputMap = replaceField.getInputMap(JComponent.WHEN_FOCUSED);
+        ActionMap replaceActionMap = replaceField.getActionMap();
+        replaceInputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "replaceNext");
+        replaceActionMap.put("replaceNext", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) { replaceNext(); }
+        });
+        replaceInputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "searchClose");
+        replaceActionMap.put("searchClose", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) { closeSearch(); }
+        });
+
+        searchStatusLabel.setForeground(ColorManager.TEXT_TERTIARY);
+        searchStatusLabel.setFont(TypographyManager.UI_SMALL());
+
+        JButton closeButton = new JButton("x");
+        closeButton.setFocusable(false);
+        closeButton.setBackground(ColorManager.TOOLBAR_BG);
+        closeButton.setForeground(ColorManager.TEXT_SECONDARY);
+        closeButton.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 8));
+        closeButton.addActionListener(e -> closeSearch());
+
+        JButton replaceButton = createSmallButton("Replace");
+        replaceButton.addActionListener(e -> replaceNext());
+        JButton replaceAllButton = createSmallButton("Replace All");
+        replaceAllButton.addActionListener(e -> replaceAll());
+
+        JPanel findRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
+        findRow.setOpaque(false);
+        findRow.add(findLabel);
+        findRow.add(searchField);
+        findRow.add(searchStatusLabel);
+        findRow.add(closeButton);
+
+        JPanel replaceRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
+        replaceRow.setOpaque(false);
+        replaceRow.add(replaceLabel);
+        replaceRow.add(replaceField);
+        replaceRow.add(replaceButton);
+        replaceRow.add(replaceAllButton);
+
+        panel.add(findRow, BorderLayout.NORTH);
+        panel.add(replaceRow, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private JButton createSmallButton(String text) {
+        JButton button = new JButton(text);
+        button.setFocusable(false);
+        button.setFont(TypographyManager.UI_SMALL());
+        button.setBackground(ColorManager.SURFACE_BG);
+        button.setForeground(ColorManager.TEXT_SECONDARY);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ColorManager.BORDER),
+                BorderFactory.createEmptyBorder(2, 8, 2, 8)
+        ));
+        return button;
     }
 
     private void installCompletionActions() {
@@ -270,6 +423,22 @@ public final class RichEditorView extends JPanel {
             @Override
             public void actionPerformed(ActionEvent e) {
                 redo();
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK), "editorOpenSearch");
+        actionMap.put("editorOpenSearch", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                openSearch();
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_H, InputEvent.CTRL_DOWN_MASK), "editorOpenReplace");
+        actionMap.put("editorOpenReplace", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                openReplace();
             }
         });
 
@@ -412,6 +581,219 @@ public final class RichEditorView extends JPanel {
 
     private void handleTabIndentation() {
         insertIndentationUnit();
+    }
+
+    private void openSearch() {
+        openSearch(false);
+    }
+
+    private void openReplace() {
+        openSearch(true);
+    }
+
+    private void openSearch(boolean replace) {
+        completionPopup.hide();
+        replaceMode = replace;
+        if (!searchPanel.isVisible()) {
+            searchPanel.setVisible(true);
+            revalidate();
+            repaint();
+        }
+
+        String selectedText = textPane.getSelectedText();
+        if (selectedText != null && !selectedText.contains("\n") && !selectedText.isEmpty()) {
+            searchField.setText(selectedText);
+        }
+        searchField.requestFocusInWindow();
+        searchField.selectAll();
+        refreshSearchHighlights();
+    }
+
+    private void closeSearch() {
+        clearSearchHighlights();
+        searchMatches.clear();
+        currentSearchIndex = -1;
+        searchStatusLabel.setText("0/0");
+        searchPanel.setVisible(false);
+        revalidate();
+        repaint();
+        textPane.requestFocusInWindow();
+    }
+
+    private void refreshSearchHighlights() {
+        if (disposed || !searchPanel.isVisible()) {
+            return;
+        }
+
+        clearSearchHighlights();
+        searchMatches.clear();
+        String query = searchField.getText();
+        if (query == null || query.isEmpty()) {
+            currentSearchIndex = -1;
+            searchStatusLabel.setText("0/0");
+            return;
+        }
+
+        String text = buffer.getDocument().getText();
+        String lowerText = text.toLowerCase();
+        String lowerQuery = query.toLowerCase();
+        int offset = 0;
+        while (offset <= lowerText.length() - lowerQuery.length()) {
+            int matchStart = lowerText.indexOf(lowerQuery, offset);
+            if (matchStart < 0) {
+                break;
+            }
+            int matchEnd = matchStart + query.length();
+            searchMatches.add(new SearchMatch(matchStart, matchEnd));
+            offset = matchEnd;
+        }
+
+        if (searchMatches.isEmpty()) {
+            currentSearchIndex = -1;
+            searchStatusLabel.setText("0/0");
+            return;
+        }
+
+        currentSearchIndex = Math.max(0, Math.min(currentSearchIndex, searchMatches.size() - 1));
+        applySearchHighlights();
+        updateSearchStatus();
+    }
+
+    private void navigateSearch(int direction) {
+        if (searchMatches.isEmpty()) {
+            refreshSearchHighlights();
+        }
+        if (searchMatches.isEmpty()) {
+            return;
+        }
+
+        int count = searchMatches.size();
+        currentSearchIndex = (currentSearchIndex + direction + count) % count;
+        applySearchHighlights();
+        updateSearchStatus();
+        SearchMatch match = searchMatches.get(currentSearchIndex);
+        textPane.setCaretPosition(match.start);
+        textPane.moveCaretPosition(match.end);
+    }
+
+    private void applySearchHighlights() {
+        clearSearchHighlights();
+        Highlighter highlighter = textPane.getHighlighter();
+        for (int i = 0; i < searchMatches.size(); i++) {
+            SearchMatch match = searchMatches.get(i);
+            try {
+                Object tag = highlighter.addHighlight(
+                        match.start,
+                        match.end,
+                        i == currentSearchIndex ? currentSearchHighlightPainter : searchHighlightPainter
+                );
+                searchHighlightTags.add(tag);
+            } catch (BadLocationException ignored) {
+            }
+        }
+    }
+
+    private void clearSearchHighlights() {
+        Highlighter highlighter = textPane.getHighlighter();
+        for (Object tag : searchHighlightTags) {
+            highlighter.removeHighlight(tag);
+        }
+        searchHighlightTags.clear();
+    }
+
+    private void updateSearchStatus() {
+        if (searchMatches.isEmpty()) {
+            searchStatusLabel.setText("0/0");
+        } else {
+            searchStatusLabel.setText((currentSearchIndex + 1) + "/" + searchMatches.size());
+        }
+    }
+
+    private void replaceNext() {
+        String query = searchField.getText();
+        String replacement = replaceField.getText();
+        if (query == null || query.isEmpty()) return;
+
+        if (searchMatches.isEmpty()) {
+            refreshSearchHighlights();
+        }
+        if (searchMatches.isEmpty()) return;
+
+        if (currentSearchIndex < 0 || currentSearchIndex >= searchMatches.size()) {
+            currentSearchIndex = 0;
+        }
+
+        SearchMatch match = searchMatches.get(currentSearchIndex);
+        buffer.deleteText(match.start, match.end);
+        if (replacement != null && !replacement.isEmpty()) {
+            buffer.insertText(match.start, replacement);
+        }
+        autoPairs.clear();
+        refreshFromDocument();
+
+        int newCaret = match.start + (replacement == null ? 0 : replacement.length());
+        buffer.moveCaret(toPosition(buffer.getDocument().getText(), newCaret));
+
+        refreshSearchHighlights();
+        if (!searchMatches.isEmpty()) {
+            int count = searchMatches.size();
+            currentSearchIndex = (currentSearchIndex + 1 + count) % count;
+            if (currentSearchIndex >= searchMatches.size()) {
+                currentSearchIndex = 0;
+            }
+            applySearchHighlights();
+            updateSearchStatus();
+            SearchMatch nextMatch = searchMatches.get(currentSearchIndex);
+            textPane.setCaretPosition(nextMatch.start);
+            textPane.moveCaretPosition(nextMatch.end);
+        }
+    }
+
+    private void replaceAll() {
+        String query = searchField.getText();
+        String replacement = replaceField.getText();
+        if (query == null || query.isEmpty()) return;
+
+        refreshSearchHighlights();
+        if (searchMatches.isEmpty()) return;
+
+        String text = buffer.getDocument().getText();
+        String lowerText = text.toLowerCase();
+        String lowerQuery = query.toLowerCase();
+        int replacementLength = replacement == null ? 0 : replacement.length();
+
+        StringBuilder builder = new StringBuilder();
+        int offset = 0;
+        int count = 0;
+        while (offset <= lowerText.length() - lowerQuery.length()) {
+            int matchStart = lowerText.indexOf(lowerQuery, offset);
+            if (matchStart < 0) {
+                builder.append(text, offset, text.length());
+                break;
+            }
+            builder.append(text, offset, matchStart);
+            if (replacement != null) {
+                builder.append(replacement);
+            }
+            offset = matchStart + query.length();
+            count++;
+        }
+        if (offset < text.length() && lowerText.indexOf(lowerQuery, offset) < 0) {
+            builder.append(text, offset, text.length());
+        }
+
+        buffer.replaceText(builder.toString());
+        autoPairs.clear();
+        refreshFromDocument();
+
+        String finalText = buffer.getDocument().getText();
+        buffer.moveCaret(toPosition(finalText, Math.min(finalText.length(), 0)));
+
+        refreshSearchHighlights();
+        if (searchMatches.isEmpty()) {
+            currentSearchIndex = -1;
+        }
+        updateSearchStatus();
     }
 
     private void handleDelimiterInsertion(char opening, char closing) {
@@ -920,6 +1302,16 @@ public final class RichEditorView extends JPanel {
         }
     }
 
+    private static final class SearchMatch {
+        private final int start;
+        private final int end;
+
+        private SearchMatch(int start, int end) {
+            this.start = start;
+            this.end = end;
+        }
+    }
+
     public void dispose() {
         if (disposed) return;
         disposed = true;
@@ -930,6 +1322,7 @@ public final class RichEditorView extends JPanel {
         caretSync.dispose();
         buffer.clearListeners();
         completionPopup.hide();
+        clearSearchHighlights();
     }
 
     public void undo() {
@@ -955,6 +1348,7 @@ public final class RichEditorView extends JPanel {
             refreshLanguageContext();
             refreshCompletions();
             gutterPanel.refresh();
+            refreshSearchHighlights();
         } catch (BadLocationException ex) {
             throw new IllegalStateException("Failed to refresh editor document", ex);
         } finally {
@@ -1036,6 +1430,7 @@ public final class RichEditorView extends JPanel {
             refreshLanguageContext();
             refreshCompletions();
             gutterPanel.refresh();
+            refreshSearchHighlights();
         });
     }
 

@@ -5,13 +5,18 @@ import com.eyecode.editor.v2.completion.CompletionSnapshot;
 import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.TypographyManager;
 
+import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
+import javax.swing.JEditorPane;
 import javax.swing.JList;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.JWindow;
-import javax.swing.BorderFactory;
+import javax.swing.ListSelectionModel;
+import javax.swing.border.MatteBorder;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Window;
@@ -27,6 +32,8 @@ public final class CompletionPopup {
     private JWindow window;
     private JList<CompletionItem> list;
     private JScrollPane scrollPane;
+    private JEditorPane detailPane;
+    private JPanel detailContainer;
     private int selectedIndex = 0;
     private int caretPosition;
     private String selectedLabel;
@@ -48,7 +55,7 @@ public final class CompletionPopup {
 
         Point position = positioner.positionFor(editor, caretPosition);
         window.pack();
-        window.setMinimumSize(new Dimension(260, 0));
+        window.setMinimumSize(new Dimension(300, 0));
         window.setLocation(position);
         window.setVisible(true);
     }
@@ -133,6 +140,7 @@ public final class CompletionPopup {
         list.setForeground(ColorManager.AUTOCOMPLETE_FG);
         list.setSelectionBackground(ColorManager.AUTOCOMPLETE_SELECTION_BG);
         list.setSelectionForeground(ColorManager.TEXT_PRIMARY);
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         list.setCellRenderer(new CompletionListRenderer());
         list.addMouseListener(new MouseAdapter() {
             @Override
@@ -149,13 +157,35 @@ public final class CompletionPopup {
         });
 
         scrollPane = new JScrollPane(list);
-        scrollPane.setPreferredSize(new Dimension(320, 180));
+        scrollPane.setPreferredSize(new Dimension(340, 180));
         scrollPane.setBackground(ColorManager.AUTOCOMPLETE_BG);
         scrollPane.getViewport().setBackground(ColorManager.AUTOCOMPLETE_BG);
-        scrollPane.setBorder(BorderFactory.createLineBorder(ColorManager.BORDER));
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        detailPane = new JEditorPane();
+        detailPane.setContentType("text/html");
+        detailPane.setEditable(false);
+        detailPane.setBackground(ColorManager.PANEL_BG);
+        detailPane.setForeground(ColorManager.TEXT_SECONDARY);
+        detailPane.setFont(TypographyManager.UI_SMALL());
+        detailPane.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+
+        detailContainer = new JPanel(new BorderLayout());
+        detailContainer.setBackground(ColorManager.PANEL_BG);
+        detailContainer.setBorder(new MatteBorder(1, 0, 0, 0, ColorManager.BORDER_DIVIDER));
+        detailContainer.add(detailPane, BorderLayout.CENTER);
+        detailContainer.setVisible(false);
+
+        JPanel content = new JPanel(new BorderLayout());
+        content.setBackground(ColorManager.AUTOCOMPLETE_BG);
+        content.setBorder(BorderFactory.createLineBorder(ColorManager.BORDER));
+        content.add(scrollPane, BorderLayout.CENTER);
+        content.add(detailContainer, BorderLayout.SOUTH);
+
         window.getContentPane().setLayout(new BorderLayout());
         window.getContentPane().setBackground(ColorManager.AUTOCOMPLETE_BG);
-        window.getContentPane().add(scrollPane, BorderLayout.CENTER);
+        window.getContentPane().add(content, BorderLayout.CENTER);
     }
 
     private void populateModel(CompletionSnapshot snapshot) {
@@ -207,6 +237,63 @@ public final class CompletionPopup {
         list.ensureIndexIsVisible(selectedIndex);
         CompletionItem item = list.getModel().getElementAt(selectedIndex);
         selectedLabel = item != null ? item.getLabel() : null;
+        updateDetailPanel(item);
+    }
+
+    private void updateDetailPanel(CompletionItem item) {
+        if (detailContainer == null) return;
+
+        if (item == null) {
+            detailContainer.setVisible(false);
+            if (window != null) window.pack();
+            return;
+        }
+
+        String doc = item.getDocumentation();
+        String example = item.getExample();
+        String signature = item.getSignature();
+
+        boolean hasDoc = doc != null && !doc.isEmpty();
+        boolean hasExample = example != null && !example.isEmpty();
+        boolean hasSig = signature != null && !signature.isEmpty();
+
+        if (!hasDoc && !hasExample && !hasSig) {
+            detailContainer.setVisible(false);
+            if (window != null) window.pack();
+            return;
+        }
+
+        StringBuilder html = new StringBuilder("<html><body style='font-family:monospaced;font-size:11px;color:#BBB;'>");
+
+        if (hasSig) {
+            html.append("<b style='color:#DDD;'>").append(escapeHtml(signature)).append("</b><br>");
+        }
+        if (hasDoc) {
+            html.append(escapeHtml(doc));
+            if (hasExample) html.append("<br><br>");
+        }
+        if (hasExample) {
+            html.append("<i style='color:#999;'>Example:</i><br>")
+                    .append("<code style='color:#6A8759;'>")
+                    .append(escapeHtml(example))
+                    .append("</code>");
+        }
+        html.append("</body></html>");
+
+        detailPane.setText(html.toString());
+        detailPane.setCaretPosition(0);
+        detailContainer.setVisible(true);
+        detailContainer.setPreferredSize(new Dimension(340, 60));
+        if (window != null) window.pack();
+    }
+
+    private String escapeHtml(String text) {
+        if (text == null) return "";
+        return text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("'", "&#39;")
+                .replace("\"", "&quot;");
     }
 
     private void emitSelection() {

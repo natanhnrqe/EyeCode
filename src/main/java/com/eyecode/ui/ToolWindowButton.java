@@ -14,6 +14,7 @@ public class ToolWindowButton extends JButton {
     public ToolWindowButton(Icon icon, String text) {
         super(text, icon);
 
+
         setVerticalTextPosition(SwingConstants.BOTTOM);
         setHorizontalTextPosition(SwingConstants.CENTER);
         setHorizontalAlignment(SwingConstants.CENTER);

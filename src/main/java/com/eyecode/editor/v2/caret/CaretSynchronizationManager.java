@@ -27,6 +27,7 @@ public final class CaretSynchronizationManager {
         this.bufferCaretListener = this::syncCaretToSwing;
         this.textPane.addCaretListener(caretListener);
         this.buffer.addCaretChangeListener(bufferCaretListener);
+
     }
 
     public void dispose() {

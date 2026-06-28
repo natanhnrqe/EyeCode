@@ -1063,6 +1063,7 @@ public class EditorPanel extends JPanel {
     private void addPrimitiveSuggestions(List<Suggestion> list, String prefix){
 
         // Tipos primitivos
+
         addIfMatch(list, prefix, "int", "TYPE",
                 "primitive", "32-bit integer", 95);
 
@@ -1413,6 +1414,7 @@ public class EditorPanel extends JPanel {
         Integer.compare(b.getPriority(), a.getPriority())
         );
 
+
     }
 
 
@@ -1437,6 +1439,7 @@ class FullLineHighlightPaint implements Highlighter.HighlightPainter{
             g.fillRect(0, r.y, c.getWidth(), r.height);
         }catch (Exception e){
             e.printStackTrace();
+
         }
     }
 
