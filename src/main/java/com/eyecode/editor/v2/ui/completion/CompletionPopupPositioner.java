@@ -13,6 +13,7 @@ public final class CompletionPopupPositioner {
             Rectangle caretBounds = editor.modelToView2D(caretPosition).getBounds();
             Point point = new Point(caretBounds.x, caretBounds.y + caretBounds.height);
             SwingUtilities.convertPointToScreen(point, editor);
+            point.x -= 8;
             return point;
         } catch (BadLocationException ex) {
             Point fallback = new Point(0, editor.getFontMetrics(editor.getFont()).getHeight());

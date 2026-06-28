@@ -13,11 +13,11 @@ import java.awt.*;
 public class Main {
     public static void main(String[] args) {
         FlatDarkLaf.setup();
-
         UIManager.put("defaultFont", TypographyManager.UI_DEFAULT());
         UIManager.put("Tree.rowHeight", UIConstants.TREE_ROW_HEIGHT);
         UIManager.put("TabbedPane.tabInsets", new Insets(5,10,5,10));
         UIManager.put("Tree.paintLines", false);
+        
 
 
 

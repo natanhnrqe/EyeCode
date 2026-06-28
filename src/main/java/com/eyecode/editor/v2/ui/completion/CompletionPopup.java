@@ -26,7 +26,7 @@ import java.util.function.Consumer;
 
 public final class CompletionPopup {
 
-    private static final int MAX_VISIBLE_ROWS = 8;
+    private static final int MAX_VISIBLE_ROWS = 10;
 
     private final CompletionPopupPositioner positioner;
     private JWindow window;
@@ -49,15 +49,18 @@ public final class CompletionPopup {
             return;
         }
 
+
         ensureWindow(editor);
         populateModel(snapshot);
         this.caretPosition = caretPosition;
 
         Point position = positioner.positionFor(editor, caretPosition);
         window.pack();
-        window.setMinimumSize(new Dimension(300, 0));
+        window.setMinimumSize(new Dimension(600, 0));
         window.setLocation(position);
         window.setVisible(true);
+
+
     }
 
     public void update(CompletionSnapshot snapshot) {
@@ -157,7 +160,7 @@ public final class CompletionPopup {
         });
 
         scrollPane = new JScrollPane(list);
-        scrollPane.setPreferredSize(new Dimension(340, 180));
+        scrollPane.setPreferredSize(new Dimension(450, 240));
         scrollPane.setBackground(ColorManager.AUTOCOMPLETE_BG);
         scrollPane.getViewport().setBackground(ColorManager.AUTOCOMPLETE_BG);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
@@ -169,7 +172,7 @@ public final class CompletionPopup {
         detailPane.setBackground(ColorManager.PANEL_BG);
         detailPane.setForeground(ColorManager.TEXT_SECONDARY);
         detailPane.setFont(TypographyManager.UI_SMALL());
-        detailPane.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+        detailPane.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
 
         detailContainer = new JPanel(new BorderLayout());
         detailContainer.setBackground(ColorManager.PANEL_BG);
@@ -283,7 +286,7 @@ public final class CompletionPopup {
         detailPane.setText(html.toString());
         detailPane.setCaretPosition(0);
         detailContainer.setVisible(true);
-        detailContainer.setPreferredSize(new Dimension(340, 60));
+        detailContainer.setPreferredSize(new Dimension(450, 70));
         if (window != null) window.pack();
     }
 
