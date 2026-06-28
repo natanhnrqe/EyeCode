@@ -6,6 +6,8 @@ import com.eyecode.editor.v2.EditorPosition;
 import com.eyecode.editor.v2.EditorSelection;
 import com.eyecode.editor.v2.caret.CaretSynchronizationManager;
 import com.eyecode.editor.v2.completion.CompletionEngine;
+import com.eyecode.editor.v2.completion.CompletionItem;
+import com.eyecode.editor.v2.completion.CompletionItemKind;
 import com.eyecode.editor.v2.completion.CompletionManager;
 import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
 import com.eyecode.editor.v2.completion.JavaSnippetProvider;
@@ -13,6 +15,7 @@ import com.eyecode.editor.v2.completion.JavaStandardLibraryProvider;
 import com.eyecode.editor.v2.completion.insert.CompletionInsertionContext;
 import com.eyecode.editor.v2.completion.insert.CompletionInsertionEngine;
 import com.eyecode.editor.v2.completion.insert.CompletionPrefixResolver;
+import com.eyecode.editor.v2.completion.insert.SnippetInsertionEngine;
 import com.eyecode.editor.v2.completion.knowledge.JavaKnowledgeBaseProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticCompletionProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
@@ -86,6 +89,7 @@ public final class RichEditorView extends JPanel {
     private final CompletionManager completionManager;
     private final CompletionPopup completionPopup;
     private final CompletionInsertionEngine completionInsertionEngine;
+    private final SnippetInsertionEngine snippetInsertionEngine;
     private final CompletionPrefixResolver completionPrefixResolver;
     private final DocumentListener documentListener;
     private final CaretListener caretListener;
@@ -150,6 +154,7 @@ public final class RichEditorView extends JPanel {
         ));
         this.completionPopup = new CompletionPopup();
         this.completionInsertionEngine = new CompletionInsertionEngine();
+        this.snippetInsertionEngine = new SnippetInsertionEngine();
         this.completionPrefixResolver = new CompletionPrefixResolver();
         this.autoPairs = new ArrayList<>();
         this.searchMatches = new ArrayList<>();
@@ -167,19 +172,45 @@ public final class RichEditorView extends JPanel {
             if (event.getSelectedItem() != null) {
                 suppressPopup = true;
                 String currentPrefix = completionPrefixResolver.resolve(buffer.getLanguageContext());
-                int caretOffset = toOffset(buffer.getDocument().getText(), buffer.getCaret());
-                CompletionInsertionContext insertionContext = new CompletionInsertionContext(
-                        buffer.getDocument(),
-                        buffer.getCaret(),
-                        event.getSelectedItem(),
-                        currentPrefix
-                );
-                completionInsertionEngine.insert(insertionContext);
-                autoPairs.clear();
-                refreshFromDocument();
-                int newCaretOffset = Math.max(0, caretOffset - currentPrefix.length()
-                        + event.getSelectedItem().getInsertText().length());
-                buffer.setCaretPosition(toPosition(buffer.getDocument().getText(), newCaretOffset));
+                CompletionItem selectedItem = event.getSelectedItem();
+                String insertText = selectedItem.getInsertText();
+
+                if (selectedItem.getKind() == CompletionItemKind.SNIPPET) {
+                    SnippetInsertionEngine.SnippetResult result =
+                            snippetInsertionEngine.insert(buffer.getDocument(), buffer.getCaret(), currentPrefix, insertText);
+                    autoPairs.clear();
+                    refreshFromDocument();
+                    buffer.moveCaret(toPosition(buffer.getDocument().getText(), result.caretOffset()));
+                } else {
+                    int caretOffset = toOffset(buffer.getDocument().getText(), buffer.getCaret());
+                    CompletionInsertionContext insertionContext = new CompletionInsertionContext(
+                            buffer.getDocument(),
+                            buffer.getCaret(),
+                            selectedItem,
+                            currentPrefix
+                    );
+                    completionInsertionEngine.insert(insertionContext);
+                    autoPairs.clear();
+                    refreshFromDocument();
+
+                    int insertEnd = caretOffset - currentPrefix.length() + insertText.length();
+
+                    boolean needsParens = shouldInsertParens(selectedItem, insertText);
+                    if (needsParens) {
+                        int insertPos = insertEnd;
+                        String afterText = buffer.getDocument().getText();
+                        boolean alreadyHasParens = insertPos < afterText.length() && afterText.charAt(insertPos) == '(';
+                        if (!alreadyHasParens) {
+                            buffer.insertText(insertPos, "()");
+                            refreshFromDocument();
+                            buffer.moveCaret(toPosition(buffer.getDocument().getText(), insertPos + 1));
+                        } else {
+                            buffer.moveCaret(toPosition(buffer.getDocument().getText(), insertPos + 1));
+                        }
+                    } else {
+                        buffer.setCaretPosition(toPosition(buffer.getDocument().getText(), insertEnd));
+                    }
+                }
                 suppressPopup = false;
             }
             completionPopup.hide();
@@ -1245,6 +1276,16 @@ public final class RichEditorView extends JPanel {
         return ch == '"' || ch == '\'';
     }
 
+    private boolean shouldInsertParens(CompletionItem item, String insertText) {
+        if (item.getKind() == CompletionItemKind.METHOD || item.getKind() == CompletionItemKind.CONSTRUCTOR) {
+            return !insertText.endsWith(")") && !insertText.endsWith("(");
+        }
+        if (item.getSignature() != null && item.getSignature().contains("(")) {
+            return !insertText.endsWith(")") && !insertText.endsWith("(");
+        }
+        return false;
+    }
+
     private static final class AutoPair {
         private int openOffset;
         private int closeOffset;
@@ -1492,11 +1533,13 @@ public final class RichEditorView extends JPanel {
             return;
         }
 
+        String currentPrefix = completionPrefixResolver.resolve(buffer.getLanguageContext());
+
         if (completionPopup.isVisible()) {
-            completionPopup.update(buffer.getCompletionSnapshot());
+            completionPopup.update(buffer.getCompletionSnapshot(), currentPrefix);
             completionPopup.move(textPane, textPane.getCaretPosition());
         } else {
-            completionPopup.show(textPane, buffer.getCompletionSnapshot(), textPane.getCaretPosition());
+            completionPopup.show(textPane, buffer.getCompletionSnapshot(), textPane.getCaretPosition(), currentPrefix);
         }
     }
 
