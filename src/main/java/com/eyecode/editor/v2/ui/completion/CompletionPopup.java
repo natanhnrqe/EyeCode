@@ -5,17 +5,7 @@ import com.eyecode.editor.v2.completion.CompletionSnapshot;
 import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.TypographyManager;
 
-import javax.swing.BorderFactory;
-import javax.swing.DefaultListModel;
-import javax.swing.JEditorPane;
-import javax.swing.JList;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextPane;
-import javax.swing.JWindow;
-import javax.swing.ListSelectionModel;
-import javax.swing.ScrollPaneConstants;
-import javax.swing.UIManager;
+import javax.swing.*;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -41,8 +31,14 @@ public final class CompletionPopup {
     private JWindow window;
     private JList<CompletionItem> list;
     private JScrollPane scrollPane;
-    private JEditorPane detailPane;
     private JPanel detailContainer;
+
+    private JPanel documentationPanel;
+    private JPanel headerPanel;
+    private JLabel signatureLabel;
+    private JLabel returnTypeLabel;
+    private JTextArea descriptionArea;
+    private JTextArea exampleArea;
     private int selectedIndex = 0;
     private int caretPosition;
     private String selectedLabel;
@@ -207,47 +203,118 @@ public final class CompletionPopup {
         scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(6, 0));
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.getVerticalScrollBar().setOpaque(false);
+
         UIManager.put("ScrollBar.thumb", ColorManager.SURFACE_BG);
         UIManager.put("ScrollBar.track", new Color(0, 0, 0, 0));
         UIManager.put("ScrollBar.width", 6);
 
-        detailPane = new JEditorPane() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-                g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-                super.paintComponent(g2);
-                g2.dispose();
-            }
-        };
-        detailPane.setContentType("text/html");
-        detailPane.setEditable(false);
-        detailPane.setOpaque(false);
-        detailPane.setBackground(new Color(0, 0, 0, 0));
-        detailPane.setForeground(ColorManager.TEXT_SECONDARY);
-        detailPane.setFont(TypographyManager.UI_SMALL());
-        detailPane.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
-        detailPane.setMargin(new Insets(0, 0, 0, 0));
 
-        detailContainer = new JPanel(new BorderLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(ColorManager.PANEL_BG);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 0, 0);
-                g2.dispose();
-                super.paintComponent(g);
-            }
-        };
+        headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setOpaque(false);
+
+        signatureLabel = new JLabel();
+        signatureLabel.setFont(TypographyManager.UI_CODE());
+        signatureLabel.setForeground(ColorManager.TEXT_PRIMARY);
+
+        returnTypeLabel = new JLabel();
+        returnTypeLabel.setFont(TypographyManager.UI_CODE());
+        returnTypeLabel.setForeground(ColorManager.TEXT_MUTED);
+
+        headerPanel.add(signatureLabel, BorderLayout.WEST);
+        headerPanel.add(returnTypeLabel, BorderLayout.EAST);
+
+        descriptionArea = new JTextArea();
+
+        descriptionArea.setEditable(false);
+        descriptionArea.setFocusable(false);
+
+        descriptionArea.setOpaque(false);
+
+        descriptionArea.setBorder(null);
+
+        descriptionArea.setLineWrap(true);
+        descriptionArea.setWrapStyleWord(true);
+
+        descriptionArea.setFont(TypographyManager.UI_SMALL());
+        descriptionArea.setForeground(ColorManager.TEXT_SECONDARY);
+
+        exampleArea = new JTextArea();
+
+        exampleArea.setEditable(false);
+        exampleArea.setFocusable(false);
+
+        exampleArea.setOpaque(false);
+
+        exampleArea.setBorder(null);
+
+        exampleArea.setLineWrap(true);
+        exampleArea.setWrapStyleWord(true);
+
+        exampleArea.setFont(TypographyManager.UI_CODE());
+        exampleArea.setForeground(ColorManager.SYNTAX_STRING);
+
+        documentationPanel = new JPanel();
+        documentationPanel.setOpaque(false);
+
+        documentationPanel.setLayout(new BoxLayout(documentationPanel, BoxLayout.Y_AXIS));
+
+        documentationPanel.setBorder(
+                BorderFactory.createEmptyBorder(12,16,12,16)
+        );
+
+        documentationPanel.add(headerPanel);
+
+        documentationPanel.add(Box.createVerticalStrut(10));
+
+        documentationPanel.add(descriptionArea);
+
+        documentationPanel.add(Box.createVerticalStrut(10));
+
+        documentationPanel.add(exampleArea);
+
+        detailContainer = new JPanel(new BorderLayout());
+
         detailContainer.setOpaque(false);
-        detailContainer.setBackground(ColorManager.PANEL_BG);
-        detailContainer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, ColorManager.BORDER_DIVIDER));
-        detailContainer.add(detailPane, BorderLayout.CENTER);
+
+        detailContainer.setBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(
+                                1,
+                                0,
+                                0,
+                                0,
+                                ColorManager.BORDER_DIVIDER
+                        ),
+                        BorderFactory.createEmptyBorder(4,0,0,0)
+                )
+        );
+
+        detailContainer.add(documentationPanel);
+
         detailContainer.setVisible(false);
 
-        JPanel content = new JPanel(new BorderLayout()) {
+        detailContainer = new JPanel(new BorderLayout());
+
+        detailContainer.setOpaque(false);
+
+        detailContainer.setBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(
+                                1,
+                                0,
+                                0,
+                                0,
+                                ColorManager.BORDER_DIVIDER
+                        ),
+                        BorderFactory.createEmptyBorder(4,0,0,0)
+                )
+        );
+
+        detailContainer.add(documentationPanel);
+
+        detailContainer.setVisible(false);
+
+         JPanel content = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -350,52 +417,85 @@ public final class CompletionPopup {
     }
 
     private void updateDetailPanel(CompletionItem item) {
-        if (detailContainer == null) return;
 
-        if (item == null) {
-            detailContainer.setVisible(false);
-            if (window != null) window.pack();
-            return;
-        }
-
-        String doc = item.getDocumentation();
-        String example = item.getExample();
-        String signature = item.getSignature();
-
-        boolean hasDoc = doc != null && !doc.isEmpty();
-        boolean hasExample = example != null && !example.isEmpty();
-        boolean hasSig = signature != null && !signature.isEmpty();
-
-        if (!hasDoc && !hasExample && !hasSig) {
-            detailContainer.setVisible(false);
-            if (window != null) window.pack();
-            return;
-        }
-
-        StringBuilder html = new StringBuilder("<html><body style='font-family:monospaced;font-size:11px;color:#BBB;margin:0;'>");
-
-        if (hasSig) {
-            html.append("<b style='color:#DDD;font-size:11px;'>").append(escapeHtml(signature)).append("</b>");
-            if (hasDoc || hasExample) html.append("<br><br>");
-        }
-        if (hasDoc) {
-            html.append(escapeHtml(doc));
-            if (hasExample) html.append("<br><br>");
-        }
-        if (hasExample) {
-            html.append("<i style='color:#888;'>Example:</i><br>")
-                    .append("<code style='color:#6A8759;'>")
-                    .append(escapeHtml(example))
-                    .append("</code>");
-        }
-        html.append("</body></html>");
-
-        detailPane.setText(html.toString());
-        detailPane.setCaretPosition(0);
-        detailContainer.setVisible(true);
-        detailContainer.setPreferredSize(new Dimension(460, 72));
-        if (window != null) window.pack();
+    if (detailContainer == null) {
+        return;
     }
+
+    if (item == null) {
+        detailContainer.setVisible(false);
+
+        if (window != null) {
+            window.pack();
+        }
+        return;
+    }
+
+    boolean hasSignature =
+            item.getSignature() != null && !item.getSignature().isBlank();
+
+    boolean hasReturnType =
+            item.getReturnType() != null && !item.getReturnType().isBlank();
+
+    boolean hasDescription =
+            item.getDocumentation() != null && !item.getDocumentation().isBlank();
+
+    boolean hasExample =
+            item.getExample() != null && !item.getExample().isBlank();
+
+    boolean hasContent =
+            hasSignature || hasReturnType || hasDescription || hasExample;
+
+    if (!hasContent) {
+        detailContainer.setVisible(false);
+
+        if (window != null) {
+            window.pack();
+        }
+        return;
+    }
+
+    // Header
+
+    signatureLabel.setVisible(hasSignature);
+    signatureLabel.setText(hasSignature ? item.getSignature() : "");
+
+    returnTypeLabel.setVisible(hasReturnType);
+    returnTypeLabel.setText(hasReturnType ? item.getReturnType() : "");
+
+    // Description
+
+    descriptionArea.setVisible(hasDescription);
+    descriptionArea.setText(hasDescription
+            ? item.getDocumentation()
+            : "");
+
+    descriptionArea.setCaretPosition(0);
+
+    // Example
+
+    exampleArea.setVisible(hasExample);
+    exampleArea.setText(hasExample
+            ? item.getExample()
+            : "");
+
+    exampleArea.setCaretPosition(0);
+
+    detailContainer.setVisible(true);
+
+    documentationPanel.revalidate();
+    documentationPanel.doLayout();
+
+    Dimension pref = documentationPanel.getPreferredSize();
+
+    detailContainer.setPreferredSize(
+            new Dimension(460, pref.height + 8)
+    );
+
+    if (window != null) {
+        window.pack();
+    }
+}
 
     private String escapeHtml(String text) {
         if (text == null) return "";
