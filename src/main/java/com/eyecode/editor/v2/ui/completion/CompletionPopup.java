@@ -3,44 +3,37 @@ package com.eyecode.editor.v2.ui.completion;
 import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionSnapshot;
 import com.eyecode.ui.designsystem.ColorManager;
-import com.eyecode.ui.designsystem.TypographyManager;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
+import javax.swing.JTextPane;
+import javax.swing.JWindow;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Insets;
 import java.awt.Point;
-import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Window;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
 import java.util.function.Consumer;
 
 public final class CompletionPopup {
 
-    private static final int MAX_VISIBLE_ROWS = 10;
-    private static final int OUTER_PADDING = 8;
-
     private final CompletionPopupPositioner positioner;
-    private final CompletionListRenderer renderer;
+    private final CompletionList completionList;
+    private final DocumentationPanel documentationPanel;
     private JWindow window;
-    private JList<CompletionItem> list;
-    private JScrollPane scrollPane;
-    private JEditorPane detailPane;
-    private JPanel detailContainer;
-    private int selectedIndex = 0;
     private int caretPosition;
-    private String selectedLabel;
     private Consumer<CompletionSelectionEvent> onSelect;
 
     public CompletionPopup() {
         this.positioner = new CompletionPopupPositioner();
-        this.renderer = new CompletionListRenderer();
+        this.documentationPanel = new DocumentationPanel();
+        this.completionList = new CompletionList(
+                this::onSelectionChanged,
+                this::emitSelection
+        );
     }
 
     public void show(JTextPane editor, CompletionSnapshot snapshot, int caretPosition) {
@@ -54,9 +47,11 @@ public final class CompletionPopup {
         }
 
         ensureWindow(editor);
-        renderer.setMatchPrefix(prefix);
-        populateModel(snapshot);
+        completionList.setMatchPrefix(prefix);
+        completionList.update(snapshot);
         this.caretPosition = caretPosition;
+
+        updateDocumentation();
 
         Point position = positioner.positionFor(editor, caretPosition);
         window.pack();
@@ -75,8 +70,10 @@ public final class CompletionPopup {
             return;
         }
         if (window == null || !window.isVisible()) return;
-        renderer.setMatchPrefix(prefix);
-        populateModel(snapshot);
+        completionList.setMatchPrefix(prefix);
+        completionList.update(snapshot);
+        updateDocumentation();
+        window.pack();
     }
 
     public void move(JTextPane editor, int caretPosition) {
@@ -87,7 +84,7 @@ public final class CompletionPopup {
     }
 
     public void hide() {
-        selectedLabel = null;
+        completionList.setSelectedLabel(null);
         if (window != null) {
             window.setVisible(false);
         }
@@ -98,28 +95,39 @@ public final class CompletionPopup {
     }
 
     public void selectNext() {
-        moveSelection(1);
+        completionList.moveSelection(1);
+        updateDocumentation();
+        window.pack();
     }
 
     public void selectPrevious() {
-        moveSelection(-1);
+        completionList.moveSelection(-1);
+        updateDocumentation();
+        window.pack();
     }
 
     public void selectPageDown() {
-        moveSelection(MAX_VISIBLE_ROWS);
+        completionList.moveSelection(10);
+        updateDocumentation();
+        window.pack();
     }
 
     public void selectPageUp() {
-        moveSelection(-MAX_VISIBLE_ROWS);
+        completionList.moveSelection(-10);
+        updateDocumentation();
+        window.pack();
     }
 
     public void selectFirst() {
-        moveSelectionTo(0);
+        completionList.moveToFirst();
+        updateDocumentation();
+        window.pack();
     }
 
     public void selectLast() {
-        if (list == null || list.getModel().getSize() == 0) return;
-        moveSelectionTo(list.getModel().getSize() - 1);
+        completionList.moveToLast();
+        updateDocumentation();
+        window.pack();
     }
 
     public void acceptSelected() {
@@ -127,9 +135,7 @@ public final class CompletionPopup {
     }
 
     public CompletionItem getSelectedItem() {
-        if (list == null || list.getModel().getSize() == 0) return null;
-        if (selectedIndex < 0 || selectedIndex >= list.getModel().getSize()) return null;
-        return list.getModel().getElementAt(selectedIndex);
+        return completionList.getSelectedItem();
     }
 
     public void setOnSelect(Consumer<CompletionSelectionEvent> onSelect) {
@@ -144,94 +150,7 @@ public final class CompletionPopup {
         window.setFocusableWindowState(false);
         window.setBackground(new Color(0, 0, 0, 0));
 
-        list = new JList<>();
-        list.setFont(TypographyManager.UI_CODE());
-        list.setBackground(new Color(0, 0, 0, 0));
-        list.setForeground(ColorManager.AUTOCOMPLETE_FG);
-        list.setSelectionBackground(new Color(0, 0, 0, 0));
-        list.setSelectionForeground(ColorManager.TEXT_PRIMARY);
-        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        list.setCellRenderer(renderer);
-        list.setFixedCellHeight(-1);
-        list.setOpaque(false);
-        list.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                int index = list.locationToIndex(e.getPoint());
-                if (index >= 0) {
-                    selectedIndex = index;
-                    updateSelection();
-                    if (e.getClickCount() == 2) {
-                        emitSelection();
-                    }
-                }
-            }
-        });
-        list.addMouseMotionListener(new MouseMotionAdapter() {
-            @Override
-            public void mouseMoved(MouseEvent e) {
-                int index = list.locationToIndex(e.getPoint());
-                if (index != renderer.getHoverIndexValue()) {
-                    renderer.setHoverIndex(index);
-                    list.repaint();
-                }
-            }
-        });
-        list.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseExited(MouseEvent e) {
-                renderer.setHoverIndex(-1);
-                list.repaint();
-            }
-        });
-
-        scrollPane = new JScrollPane(list);
-        scrollPane.setPreferredSize(new Dimension(460, 240));
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-        scrollPane.setBackground(new Color(0, 0, 0, 0));
-        scrollPane.getViewport().setBackground(new Color(0, 0, 0, 0));
-        scrollPane.setBorder(BorderFactory.createEmptyBorder(OUTER_PADDING, OUTER_PADDING, OUTER_PADDING, OUTER_PADDING));
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(6, 0));
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.getVerticalScrollBar().setOpaque(false);
-
-        UIManager.put("ScrollBar.thumb", ColorManager.SURFACE_BG);
-        UIManager.put("ScrollBar.track", new Color(0, 0, 0, 0));
-        UIManager.put("ScrollBar.width", 6);
-
-
-        detailPane = new JEditorPane() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-                g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-                super.paintComponent(g2);
-                g2.dispose();
-            }
-        };
-        detailPane.setContentType("text/html");
-        detailPane.setEditable(false);
-        detailPane.setOpaque(false);
-        detailPane.setBackground(new Color(0, 0, 0, 0));
-        detailPane.setForeground(ColorManager.TEXT_SECONDARY);
-        detailPane.setFont(TypographyManager.UI_SMALL());
-        detailPane.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        detailPane.setMargin(new Insets(0, 0, 0, 0));
-
-        detailContainer = new JPanel(new BorderLayout());
-        detailContainer.setOpaque(false);
-        detailContainer.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, ColorManager.BORDER_DIVIDER),
-                BorderFactory.createEmptyBorder(10, 14, 10, 14)
-        ));
-        detailContainer.add(detailPane, BorderLayout.CENTER);
-        detailContainer.setVisible(false);
-
-         JPanel content = new JPanel(new BorderLayout()) {
+        JPanel content = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -246,193 +165,27 @@ public final class CompletionPopup {
         };
         content.setOpaque(false);
         content.setBorder(BorderFactory.createEmptyBorder());
-        content.add(scrollPane, BorderLayout.CENTER);
-        content.add(detailContainer, BorderLayout.SOUTH);
+        content.add(completionList.getScrollPane(), BorderLayout.CENTER);
+        content.add(documentationPanel, BorderLayout.SOUTH);
 
         window.getContentPane().setLayout(new BorderLayout());
         window.getContentPane().setBackground(ColorManager.AUTOCOMPLETE_BG);
         window.getContentPane().add(content, BorderLayout.CENTER);
     }
 
-    private void populateModel(CompletionSnapshot snapshot) {
-        DefaultListModel<CompletionItem> model = new DefaultListModel<>();
-        for (CompletionItem item : snapshot.getItems()) {
-            model.addElement(item);
-        }
-
-        int previousSelectedIndex = selectedIndex;
-        Point previousViewPosition = scrollPane == null
-                ? null
-                : scrollPane.getViewport().getViewPosition();
-        int newSelectedIndex = 0;
-        boolean foundSelectedLabel = false;
-        if (selectedLabel != null) {
-            for (int i = 0; i < model.getSize(); i++) {
-                if (model.getElementAt(i).getLabel().equals(selectedLabel)) {
-                    newSelectedIndex = i;
-                    foundSelectedLabel = true;
-                    break;
-                }
-            }
-        }
-
-        list.setModel(model);
-        list.setVisibleRowCount(Math.min(MAX_VISIBLE_ROWS, snapshot.size()));
-        selectedIndex = newSelectedIndex;
-        updateSelection();
-        if (foundSelectedLabel && previousSelectedIndex == selectedIndex && previousViewPosition != null) {
-            scrollPane.getViewport().setViewPosition(previousViewPosition);
-        }
-    }
-
-    private void moveSelection(int delta) {
-        if (list == null || list.getModel().getSize() == 0) return;
-        moveSelectionTo(selectedIndex + delta);
-    }
-
-    private void moveSelectionTo(int index) {
-        if (list == null || list.getModel().getSize() == 0) return;
-        selectedIndex = Math.max(0, Math.min(index, list.getModel().getSize() - 1));
-        updateSelection();
-    }
-
-    private void updateSelection() {
-        if (list == null || list.getModel().getSize() == 0) return;
-        selectedIndex = Math.max(0, Math.min(selectedIndex, list.getModel().getSize() - 1));
-        list.setSelectedIndex(selectedIndex);
-        centerSelectionInViewport();
-        CompletionItem item = list.getModel().getElementAt(selectedIndex);
-        selectedLabel = item != null ? item.getLabel() : null;
-        updateDetailPanel(item);
-    }
-
-    private void centerSelectionInViewport() {
-        if (list == null || scrollPane == null) return;
-        int total = list.getModel().getSize();
-        if (total == 0) return;
-
-        int visibleRows = Math.min(MAX_VISIBLE_ROWS, total);
-        int halfVisible = visibleRows / 2;
-        int target = Math.max(0, Math.min(selectedIndex - halfVisible, total - visibleRows));
-        if (target < 0) target = 0;
-
-        int cellHeight = list.getFixedCellHeight();
-        if (cellHeight <= 0) {
-            try {
-                Rectangle cellBounds = list.getCellBounds(selectedIndex, selectedIndex);
-                if (cellBounds != null) {
-                    cellHeight = cellBounds.height;
-                }
-            } catch (Exception ignored) {
-            }
-        }
-        if (cellHeight > 0) {
-            int viewportY = target * cellHeight;
-            scrollPane.getViewport().setViewPosition(new Point(0, viewportY));
-        }
-        list.ensureIndexIsVisible(selectedIndex);
-    }
-
-    private void updateDetailPanel(CompletionItem item) {
-        if (detailContainer == null) return;
-
-        if (item == null) {
-            detailContainer.setVisible(false);
-            if (window != null) window.pack();
-            return;
-        }
-
-        String label = item.getLabel();
-        String signature = item.getSignature();
-        String returnType = item.getReturnType();
-        String owner = item.getOwner();
-        String doc = item.getDocumentation();
-        String example = item.getExample();
-        String category = item.getCategory();
-        String detail = item.getDetail();
-
-        boolean hasLabel = label != null && !label.isBlank();
-        boolean hasSig = signature != null && !signature.isBlank();
-        boolean hasReturn = returnType != null && !returnType.isBlank();
-        boolean hasOwner = owner != null && !owner.isBlank();
-        boolean hasDoc = doc != null && !doc.isBlank();
-        boolean hasExample = example != null && !example.isBlank();
-        boolean hasCategory = category != null && !category.isBlank();
-        boolean hasDetail = detail != null && !detail.isBlank();
-
-        if (!hasLabel && !hasSig && !hasReturn && !hasOwner && !hasDoc && !hasExample && !hasCategory && !hasDetail) {
-            detailContainer.setVisible(false);
-            if (window != null) window.pack();
-            return;
-        }
-
-        StringBuilder html = new StringBuilder();
-        html.append("<html><body style='font-family:monospaced;font-size:11px;color:#BBB;margin:0;padding:0;'>");
-
-        // Name
-        if (hasLabel) {
-            html.append("<b style='font-size:12px;color:#DCDCDC;'>").append(escapeHtml(label)).append("</b>");
-        }
-
-        // Owner
-        if (hasOwner) {
-            html.append("<br><span style='color:#7A7E85;'>").append(escapeHtml(owner)).append("</span>");
-        }
-
-        // Category badge
-        if (hasCategory) {
-            html.append(" <span style='color:#7897BB;'>[").append(escapeHtml(category)).append("]</span>");
-        }
-
-        html.append("<br>");
-
-        // Signature
-        if (hasSig) {
-            html.append("<br><b style='color:#CCCCCC;'>").append(escapeHtml(signature)).append("</b>");
-        }
-
-        // Return type
-        if (hasReturn) {
-            html.append("<br><span style='color:#7897BB;'>Returns: </span><span style='color:#BCC4D0;'>").append(escapeHtml(returnType)).append("</span>");
-        }
-
-        // Description
-        if (hasDoc) {
-            html.append("<br><br>").append(escapeHtml(doc));
-        }
-
-        // Example
-        if (hasExample) {
-            html.append("<br><br><span style='color:#888;'>Example:</span><br>")
-                    .append("<code style='color:#6A8759;'>")
-                    .append(escapeHtml(example).replace("\n", "<br>"))
-                    .append("</code>");
-        }
-
-        html.append("</body></html>");
-
-        detailPane.setText(html.toString());
-        detailPane.setCaretPosition(0);
-
-        detailContainer.setVisible(true);
-
-        int contentHeight = detailPane.getPreferredSize().height + 28;
-        detailContainer.setPreferredSize(new Dimension(460, Math.min(contentHeight, 200)));
+    private void onSelectionChanged(int index) {
+        updateDocumentation();
         if (window != null) window.pack();
     }
 
-    private String escapeHtml(String text) {
-        if (text == null) return "";
-        return text.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("'", "&#39;")
-                .replace("\"", "&quot;");
+    private void updateDocumentation() {
+        CompletionItem item = completionList.getSelectedItem();
+        documentationPanel.update(item);
     }
 
     private void emitSelection() {
-        if (list == null || list.getModel().getSize() == 0 || onSelect == null) return;
-        CompletionItem item = list.getModel().getElementAt(selectedIndex);
-        onSelect.accept(new CompletionSelectionEvent(item, selectedIndex, caretPosition));
+        CompletionItem item = completionList.getSelectedItem();
+        if (item == null || onSelect == null) return;
+        onSelect.accept(new CompletionSelectionEvent(item, completionList.getSelectedIndex(), caretPosition));
     }
 }
