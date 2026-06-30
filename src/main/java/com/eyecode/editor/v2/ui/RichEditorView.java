@@ -10,6 +10,7 @@ import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionItemKind;
 import com.eyecode.editor.v2.completion.CompletionManager;
 import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
+import com.eyecode.editor.v2.completion.ContextAwareCompletionProvider;
 import com.eyecode.editor.v2.completion.JavaSnippetProvider;
 import com.eyecode.editor.v2.completion.JavaStandardLibraryProvider;
 import com.eyecode.editor.v2.completion.insert.CompletionInsertionContext;
@@ -147,6 +148,7 @@ public final class RichEditorView extends JPanel {
         this.languageManager = new LanguageManager(new DefaultLanguageService());
         this.completionManager = new CompletionManager(new CompletionEngine(
                 List.of(
+                        new ContextAwareCompletionProvider(),
                         new JavaKnowledgeBaseProvider(),
                         new JavaStandardLibraryProvider(),
                         new JavaSnippetProvider(),
