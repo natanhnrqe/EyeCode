@@ -4,140 +4,181 @@ import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.TypographyManager;
 
-import javax.swing.BorderFactory;
-import javax.swing.JEditorPane;
-import javax.swing.JPanel;
+import javax.swing.*;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.MatteBorder;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Insets;
-import java.awt.RenderingHints;
+import javax.swing.text.html.HTMLEditorKit;
+import javax.swing.text.html.StyleSheet;
+import java.awt.*;
 
-public final class DocumentationPanel extends JPanel {
+public final class DocumentationPanel extends JTextPane {
 
-    private static final int MAX_HEIGHT = 200;
-    private static final int PADDING_V = 10;
-    private static final int PADDING_H = 14;
+    private static final int H_PADDING = 14;
+    private static final int V_PADDING = 10;
 
-    private final JEditorPane htmlPane;
+    public DocumentationPanel() {
 
-    DocumentationPanel() {
-        super(new BorderLayout());
+        setEditorKit(new HTMLEditorKit());
+        setContentType("text/html");
+
+        setEditable(false);
         setOpaque(false);
+
         setBorder(new CompoundBorder(
                 new MatteBorder(1, 0, 0, 0, ColorManager.BORDER_DIVIDER),
-                BorderFactory.createEmptyBorder(PADDING_V, PADDING_H, PADDING_V, PADDING_H)
+                BorderFactory.createEmptyBorder(
+                        V_PADDING,
+                        H_PADDING,
+                        V_PADDING,
+                        H_PADDING
+                )
         ));
 
-        htmlPane = new JEditorPane() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-                g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-                super.paintComponent(g2);
-                g2.dispose();
-            }
-        };
-        htmlPane.setContentType("text/html");
-        htmlPane.setEditable(false);
-        htmlPane.setOpaque(false);
-        htmlPane.setBackground(new Color(0, 0, 0, 0));
-        htmlPane.setForeground(ColorManager.TEXT_SECONDARY);
-        htmlPane.setFont(TypographyManager.UI_SMALL());
-        htmlPane.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        htmlPane.setMargin(new Insets(0, 0, 0, 0));
+        setFont(TypographyManager.UI_SMALL());
 
-        add(htmlPane, BorderLayout.CENTER);
-        setVisible(false);
+        HTMLEditorKit kit = (HTMLEditorKit) getEditorKit();
+        StyleSheet css = kit.getStyleSheet();
+
+        css.addRule("""
+body{
+    font-family:Segoe UI;
+    font-size:12px;
+    color:#BBBBBB;
+    margin:0;
+    padding:0;
+    line-height:1.45;
+}
+""");
+
+        css.addRule("""
+.signature{
+    font-size:13px;
+    font-weight:bold;
+    color:#DDDDDD;
+    margin-bottom:6px;
+}
+""");
+
+        css.addRule("""
+.return{
+    color:#7FA9FF;
+    margin-bottom:8px;
+}
+""");
+
+        css.addRule("""
+.doc{
+    margin-bottom:12px;
+}
+""");
+
+        css.addRule("""
+.title{
+    color:#A0A0A0;
+    font-weight:bold;
+    margin-top:8px;
+    margin-bottom:4px;
+}
+""");
+
+        css.addRule("""
+.owner{
+    color:#808080;
+    font-size:11px;
+    margin-top:8px;
+}
+""");
+
+        css.addRule("""
+pre{
+    background:#2B2B2B;
+    border:1px solid #3C3F41;
+    padding:8px;
+    color:#6A8759;
+    font-family:Consolas;
+    font-size:12px;
+}
+""");
     }
 
-    void update(CompletionItem item) {
-        if (item == null || !hasAnyContent(item)) {
-            setVisible(false);
+    public void update(CompletionItem item) {
+
+        if (item == null) {
+            setText("");
             return;
         }
 
-        String html = buildHtml(item);
-        htmlPane.setText(html);
-        htmlPane.setCaretPosition(0);
+        setText(buildHtml(item));
 
-        setVisible(true);
-
-        int contentHeight = htmlPane.getPreferredSize().height + (PADDING_V * 2);
-        setPreferredSize(new Dimension(460, Math.min(contentHeight, MAX_HEIGHT)));
+        setCaretPosition(0);
     }
 
-    private boolean hasAnyContent(CompletionItem item) {
-        return (item.getLabel() != null && !item.getLabel().isBlank())
-                || (item.getSignature() != null && !item.getSignature().isBlank())
-                || (item.getReturnType() != null && !item.getReturnType().isBlank())
-                || (item.getOwner() != null && !item.getOwner().isBlank())
-                || (item.getDocumentation() != null && !item.getDocumentation().isBlank())
-                || (item.getExample() != null && !item.getExample().isBlank())
-                || (item.getCategory() != null && !item.getCategory().isBlank())
-                || (item.getDetail() != null && !item.getDetail().isBlank());
+    public int preferredHeight(int width) {
+
+        setSize(width, Integer.MAX_VALUE);
+
+        return getPreferredSize().height;
     }
 
     private String buildHtml(CompletionItem item) {
+
         StringBuilder html = new StringBuilder();
-        html.append("<html><body style='font-family:monospaced;font-size:11px;color:#BBB;margin:0;padding:0;'>");
 
-        String label = item.getLabel();
-        if (label != null && !label.isBlank()) {
-            html.append("<b style='font-size:12px;color:#DCDCDC;'>").append(escape(label)).append("</b>");
+        html.append("<html><body>");
+
+        if (notBlank(item.getSignature())) {
+
+            html.append("<div class='signature'>")
+                    .append(escape(item.getSignature()))
+                    .append("</div>");
         }
 
-        String owner = item.getOwner();
-        if (owner != null && !owner.isBlank()) {
-            html.append("<br><span style='color:#7A7E85;'>").append(escape(owner)).append("</span>");
+        if (notBlank(item.getReturnType())) {
+
+            html.append("<div class='return'>Returns: ")
+                    .append(escape(item.getReturnType()))
+                    .append("</div>");
         }
 
-        String category = item.getCategory();
-        if (category != null && !category.isBlank()) {
-            html.append(" <span style='color:#7897BB;'>[").append(escape(category)).append("]</span>");
+        if (notBlank(item.getDocumentation())) {
+
+            html.append("<div class='doc'>")
+                    .append(escape(item.getDocumentation()).replace("\n","<br>"))
+                    .append("</div>");
         }
 
-        html.append("<br>");
+        if (notBlank(item.getExample())) {
 
-        String signature = item.getSignature();
-        if (signature != null && !signature.isBlank()) {
-            html.append("<br><b style='color:#CCCCCC;'>").append(escape(signature)).append("</b>");
+            html.append("<div class='title'>Example</div>");
+
+            html.append("<pre>")
+                    .append(escape(item.getExample()))
+                    .append("</pre>");
         }
 
-        String returnType = item.getReturnType();
-        if (returnType != null && !returnType.isBlank()) {
-            html.append("<br><span style='color:#7897BB;'>Returns: </span><span style='color:#BCC4D0;'>")
-                    .append(escape(returnType)).append("</span>");
-        }
+        if (notBlank(item.getOwner())) {
 
-        String doc = item.getDocumentation();
-        if (doc != null && !doc.isBlank()) {
-            html.append("<br><br>").append(escape(doc));
-        }
-
-        String example = item.getExample();
-        if (example != null && !example.isBlank()) {
-            html.append("<br><br><span style='color:#888;'>Example:</span><br>")
-                    .append("<code style='color:#6A8759;'>")
-                    .append(escape(example).replace("\n", "<br>"))
-                    .append("</code>");
+            html.append("<div class='owner'>Owner<br>")
+                    .append(escape(item.getOwner()))
+                    .append("</div>");
         }
 
         html.append("</body></html>");
+
         return html.toString();
     }
 
+    private boolean notBlank(String text) {
+        return text != null && !text.isBlank();
+    }
+
     private String escape(String text) {
-        if (text == null) return "";
-        return text.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("'", "&#39;")
-                .replace("\"", "&quot;");
+
+        return text
+                .replace("&","&amp;")
+                .replace("<","&lt;")
+                .replace(">","&gt;")
+                .replace("\"","&quot;")
+                .replace("'","&#39;");
     }
 }

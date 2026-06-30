@@ -18,7 +18,13 @@ public final class SemanticCompletionProvider implements CompletionProvider {
 
     @Override
     public CompletionSnapshot complete(LanguageContext context) {
+        String prefix = LanguageContextQueries.getCurrentWordPrefix(context);
+        if (prefix.isEmpty()) {
+            return CompletionSnapshot.empty();
+        }
+
         List<CompletionItem> items = registry.getSymbols().stream()
+                .filter(symbol -> symbol.getName().startsWith(prefix))
                 .map(symbol -> new CompletionItem(
                         symbol.getName(),
                         symbol.getName(),

@@ -27,7 +27,7 @@ public final class CompletionRanking {
     private static final int CONTIGUOUS_BONUS = 40;
     private static final int EXACT_CASE_BONUS = 10;
     private static final int GAP_PENALTY      = 5;
-    private static final int AUTO_MIN_SCORE   = 120;
+    private static final int AUTO_MIN_SCORE   = 90;
 
     // ── Public API ────────────────────────────────────────────────────────────
 

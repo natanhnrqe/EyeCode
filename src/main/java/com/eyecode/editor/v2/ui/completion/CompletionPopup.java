@@ -4,10 +4,7 @@ import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionSnapshot;
 import com.eyecode.ui.designsystem.ColorManager;
 
-import javax.swing.BorderFactory;
-import javax.swing.JPanel;
-import javax.swing.JTextPane;
-import javax.swing.JWindow;
+import javax.swing.*;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -23,13 +20,26 @@ public final class CompletionPopup {
     private final CompletionPopupPositioner positioner;
     private final CompletionList completionList;
     private final DocumentationPanel documentationPanel;
+    private final JScrollPane documentationScroll;
     private JWindow window;
     private int caretPosition;
     private Consumer<CompletionSelectionEvent> onSelect;
 
     public CompletionPopup() {
         this.positioner = new CompletionPopupPositioner();
-        this.documentationPanel = new DocumentationPanel();
+        documentationPanel = new DocumentationPanel();
+
+        documentationScroll = new JScrollPane(documentationPanel);
+
+        documentationScroll.setBorder(null);
+        documentationScroll.setOpaque(false);
+        documentationScroll.getViewport().setOpaque(false);
+
+        documentationScroll.setHorizontalScrollBarPolicy(
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+
+        documentationScroll.setVerticalScrollBarPolicy(
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         this.completionList = new CompletionList(
                 this::onSelectionChanged,
                 this::emitSelection
@@ -181,6 +191,17 @@ public final class CompletionPopup {
     private void updateDocumentation() {
         CompletionItem item = completionList.getSelectedItem();
         documentationPanel.update(item);
+
+        int h = documentationPanel.preferredHeight(430);
+
+        documentationScroll.setPreferredSize(
+                new Dimension(
+                        460,
+                        Math.min(h, 220)
+                )
+        );
+
+        documentationScroll.getVerticalScrollBar().setValue(0);
     }
 
     private void emitSelection() {
