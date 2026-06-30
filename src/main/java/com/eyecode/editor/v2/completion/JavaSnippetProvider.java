@@ -115,15 +115,6 @@ public final class JavaSnippetProvider implements CompletionProvider {
 
     @Override
     public CompletionSnapshot complete(LanguageContext context) {
-        String prefix = LanguageContextQueries.getCurrentWordPrefix(context);
-        if (prefix.isEmpty()) {
-            return CompletionSnapshot.empty();
-        }
-
-        List<CompletionItem> items = SNIPPETS.stream()
-                .filter(snippet -> snippet.getLabel().startsWith(prefix))
-                .toList();
-
-        return new CompletionSnapshot(items);
+        return new CompletionSnapshot(SNIPPETS);
     }
 }

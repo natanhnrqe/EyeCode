@@ -12,19 +12,7 @@ public final class JavaStandardLibraryProvider implements CompletionProvider {
 
     @Override
     public CompletionSnapshot complete(LanguageContext context) {
-        String prefix = LanguageContextQueries.getCurrentWordPrefix(context);
-        if (prefix.isEmpty()) {
-            return CompletionSnapshot.empty();
-        }
-
-        List<CompletionItem> items = new ArrayList<>();
-        for (CompletionItem item : LIBRARY_ITEMS) {
-            if (item.getLabel().startsWith(prefix)) {
-                items.add(item);
-            }
-        }
-
-        return new CompletionSnapshot(items);
+        return new CompletionSnapshot(LIBRARY_ITEMS);
     }
 
     private static List<CompletionItem> buildItems() {

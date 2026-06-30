@@ -13,7 +13,11 @@ public final class CompletionManager {
     }
 
     public void refresh(LanguageContext context) {
-        currentSnapshot = engine.complete(context);
+        refresh(context, false);
+    }
+
+    public void refresh(LanguageContext context, boolean manual) {
+        currentSnapshot = engine.complete(context, manual);
         if (currentSnapshot == null) {
             currentSnapshot = CompletionSnapshot.empty();
         }

@@ -19,6 +19,10 @@ public final class CompletionEngine {
     }
 
     public CompletionSnapshot complete(LanguageContext context) {
+        return complete(context, false);
+    }
+
+    public CompletionSnapshot complete(LanguageContext context, boolean manual) {
         Map<String, CompletionItem> merged = new LinkedHashMap<>();
         for (CompletionProvider provider : providers) {
             CompletionSnapshot snapshot = provider.complete(context);
@@ -27,7 +31,7 @@ public final class CompletionEngine {
             }
         }
         String prefix = LanguageContextQueries.getCurrentWordPrefix(context);
-        List<CompletionItem> ranked = ranking.rank(new ArrayList<>(merged.values()), prefix);
+        List<CompletionItem> ranked = ranking.rank(new ArrayList<>(merged.values()), prefix, manual);
         return new CompletionSnapshot(ranked);
     }
 }

@@ -88,6 +88,7 @@ public final class RichEditorView extends JPanel {
     private final LanguageManager languageManager;
     private final CompletionManager completionManager;
     private final CompletionPopup completionPopup;
+    private final com.eyecode.editor.v2.ui.completion.CompletionController completionController;
     private final CompletionInsertionEngine completionInsertionEngine;
     private final SnippetInsertionEngine snippetInsertionEngine;
     private final CompletionPrefixResolver completionPrefixResolver;
@@ -153,9 +154,12 @@ public final class RichEditorView extends JPanel {
                 )
         ));
         this.completionPopup = new CompletionPopup();
+        this.completionPrefixResolver = new CompletionPrefixResolver();
+        this.completionController = new com.eyecode.editor.v2.ui.completion.CompletionController(
+                buffer, textPane, completionManager, completionPopup, completionPrefixResolver
+        );
         this.completionInsertionEngine = new CompletionInsertionEngine();
         this.snippetInsertionEngine = new SnippetInsertionEngine();
-        this.completionPrefixResolver = new CompletionPrefixResolver();
         this.autoPairs = new ArrayList<>();
         this.searchMatches = new ArrayList<>();
         this.searchHighlightTags = new ArrayList<>();
@@ -250,11 +254,7 @@ public final class RichEditorView extends JPanel {
             gutterPanel.refresh();
             if (completionPopup.isVisible()) {
                 refreshLanguageContext();
-                if (isCompletionContextValid()) {
-                    completionPopup.move(textPane, textPane.getCaretPosition());
-                } else {
-                    completionPopup.hide();
-                }
+                completionController.invokeCompletion(false);
             }
         };
         textPane.addCaretListener(caretListener);
@@ -532,15 +532,6 @@ public final class RichEditorView extends JPanel {
             @Override
             public void actionPerformed(ActionEvent e) {
                 completionPopup.hide();
-            }
-        });
-
-        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, InputEvent.CTRL_DOWN_MASK), "completionForceOpen");
-        actionMap.put("completionForceOpen", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                forceOpenCompletions();
-
             }
         });
     
@@ -1510,48 +1501,8 @@ public final class RichEditorView extends JPanel {
     }
 
     private void refreshCompletions() {
-        refreshCompletions(false);
-    }
-
-    private void forceOpenCompletions() {
         if (disposed) return;
-        renderSyntax();
-        refreshDiagnostics();
-        refreshLanguageContext();
-        refreshCompletions(true);
-    }
-
-    private void refreshCompletions(boolean forceOpen) {
-        if (disposed) return;
-        completionManager.refresh(buffer.getLanguageContext());
-        buffer.setCompletionSnapshot(completionManager.getSnapshot());
-
-        if (suppressPopup) return;
-
-        if ((!forceOpen && !isCompletionContextValid()) || buffer.getCompletionSnapshot().isEmpty()) {
-            completionPopup.hide();
-            return;
-        }
-
-        String currentPrefix = completionPrefixResolver.resolve(buffer.getLanguageContext());
-
-        if (completionPopup.isVisible()) {
-            completionPopup.update(buffer.getCompletionSnapshot(), currentPrefix);
-            completionPopup.move(textPane, textPane.getCaretPosition());
-        } else {
-            completionPopup.show(textPane, buffer.getCompletionSnapshot(), textPane.getCaretPosition(), currentPrefix);
-        }
-    }
-
-    private boolean isCompletionContextValid() {
-        String prefix = completionPrefixResolver.resolve(buffer.getLanguageContext());
-        if (prefix.length() < 1) return false;
-
-        String text = buffer.getDocument().getText();
-        int offset = toOffset(text, buffer.getCaret());
-        if (offset == 0) return false;
-        char charBefore = text.charAt(offset - 1);
-        return Character.isJavaIdentifierPart(charBefore);
+        completionController.invokeCompletion(false);
     }
 
     private int toOffset(String text, com.eyecode.editor.v2.EditorPosition position) {
