@@ -1,189 +1,249 @@
 <div align="center">
 
-# EyeCode
+<!-- BANNER -->
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f2027,50:2c5364,100:00c6ff&height=260&section=header&text=EyeCode&fontSize=70&fontColor=ffffff&animation=fadeIn&fontAlignY=38&desc=Software%20Architecture%20Exploration%20Through%20Code&descAlignY=58&descSize=18" width="100%"/>
 
-### See deeper. Build better.
+<!-- TYPING SVG -->
+<a href="#-overview">
+  <img src="https://readme-typing-svg.demolab.com/?font=Fira+Code&size=20&duration=3000&pause=1000&color=00C6FF&center=true&vCenter=true&width=650&lines=javac+EyeCode.java;java+-jar+eyecode.jar;%3E+Explorando+arquitetura+de+software+na+pr%C3%A1tica" />
+</a>
 
-Lightweight Java IDE built from scratch with Swing, inspired by IntelliJ IDEA.
+<br><br>
+
+<!-- BADGES -->
+<img src="https://img.shields.io/badge/Java-21%2B-00C6FF?style=for-the-badge&logo=openjdk&labelColor=0f2027" />
+<img src="https://img.shields.io/badge/Architecture-Modular-2c5364?style=for-the-badge&labelColor=0f2027" />
+<img src="https://img.shields.io/badge/IDE-Desktop%20Application-00c6ff?style=for-the-badge&labelColor=0f2027" />
+<img src="https://img.shields.io/badge/Status-In%20Development-2c5364?style=for-the-badge&labelColor=0f2027" />
+
+<br><br>
+
+<!-- NAVEGAÇÃO -->
+<p>
+  <a href="#-overview">Overview</a> •
+  <a href="#-developer-context">Developer</a> •
+  <a href="#-engineering-philosophy">Philosophy</a> •
+  <a href="#-system-model">System Model</a> •
+  <a href="#-architecture-decision-records-adr">ADRs</a> •
+  <a href="#-roadmap">Roadmap</a>
+</p>
+
+</div>
+
+<div align="center">
+  <img src="https://caminho-do-seu.gif" alt="EyeCode em ação" width="85%" />
+</div>
+
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:00c6ff,100:0f2027&height=3&section=header" width="100%"/>
 
 <br>
 
-![Java](https://img.shields.io/badge/Java-21-orange?style=for-the-badge)
-![Swing](https://img.shields.io/badge/UI-Swing-blue?style=for-the-badge)
-![FlatLaf](https://img.shields.io/badge/Theme-FlatLaf-purple?style=for-the-badge)
-![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
+## 👁️ Overview
 
-</div>
+> *"Software architecture is not learned by reading — it is learned by building systems that evolve."*
 
----
+**EyeCode** is a Java-based desktop IDE project designed not as a product, but as an **engineering exploration platform**.
 
+The objective is to understand how professional IDEs are structured internally by building one from scratch and evolving its architecture over time.
 
-## Preview
+Instead of focusing only on features, EyeCode focuses on:
 
-<p align="center">
-  <img src="assets/EyeCode.png" alt="EyeCode Preview">
-</p>
+<table align="center">
+<tr>
+<td align="center" width="16%">🧱<br><sub><b>System Design</b></sub></td>
+<td align="center" width="16%">🧩<br><sub><b>Decomposition</b></sub></td>
+<td align="center" width="16%">📝<br><sub><b>State Mgmt</b></sub></td>
+<td align="center" width="16%">⚡<br><sub><b>Completion</b></sub></td>
+<td align="center" width="16%">🎨<br><sub><b>Rendering</b></sub></td>
+<td align="center" width="16%">🏗<br><sub><b>Orchestration</b></sub></td>
+</tr>
+</table>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Autocomplete-Smart-orange?style=flat-square">
-  <img src="https://img.shields.io/badge/Theme-IntelliJ%20Inspired-blue?style=flat-square">
-  <img src="https://img.shields.io/badge/Breakpoints-Interactive-red?style=flat-square">
-  <img src="https://img.shields.io/badge/Indentation-Automatic-green?style=flat-square">
-</p>
+<br>
 
----
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:00c6ff,100:0f2027&height=3&section=header" width="100%"/>
 
-## About
+<br>
 
-EyeCode is a custom lightweight IDE developed entirely in Java using Swing.
+## 🧠 Engineering Philosophy
 
-The project was built to explore how professional development tools work internally: text editors, syntax engines, autocomplete systems, breakpoints, keyboard interactions, and desktop UI architecture.
+EyeCode is built under a single principle:
 
-Inspired by IntelliJ IDEA, EyeCode combines technical curiosity with practical software engineering.
+> Architecture must justify itself through complexity.
 
-More than an editor, this project is a hands-on study of how real tools are designed.
+This means:
 
----
+- No feature exists without a structural reason
+- Every module solves a system-level problem
+- Complexity is introduced only when necessary
+- Refactoring is part of the design, not a failure
 
-## Features
+<br>
 
-| Feature | Description |
-|--------|-------------|
-| 🧠 Smart Autocomplete | Context-aware suggestions with keyboard navigation |
-| 🎨 Syntax Highlighting | IntelliJ-inspired token coloring for Java |
-| 🔴 Breakpoints | Click gutter to toggle breakpoints visually |
-| 📏 Line Numbers | Dynamic synchronized line numbering |
-| ⌨️ Auto Indentation | Smart indentation for blocks and braces |
-| 🌙 Dark Theme | Clean UI inspired by modern JetBrains IDEs |
-| 📁 File Explorer | Browse and open project files easily |
-| ⚡ Fast Editing | Lightweight editor built with Swing |
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:00c6ff,100:0f2027&height=3&section=header" width="100%"/>
 
----
+<br>
 
-### Current Development Focus
+## ⚙️ System Model
 
-- [x] Editor Core
-- [x] UI Theme
-- [x] Highlight Engine
-- [x] Autocomplete
-- [ ] Semantic Parsing
-- [ ] Compiler Panel
-- [ ] Run Button
+The system is structured around four core concerns:
 
+<table align="center">
+<tr>
+<td align="center" width="25%">
+<h3>🧩</h3>
+<b>Editor System</b><br>
+<sub>Document lifecycle, editing state, and interaction model</sub>
+</td>
+<td align="center" width="25%">
+<h3>⚡</h3>
+<b>Completion Engine</b><br>
+<sub>Independent system for suggestion ranking and contextual awareness</sub>
+</td>
+<td align="center" width="25%">
+<h3>🏗</h3>
+<b>Workspace Layer</b><br>
+<sub>Manages multiple editor sessions and application-level state</sub>
+</td>
+<td align="center" width="25%">
+<h3>🎨</h3>
+<b>Rendering Pipeline</b><br>
+<sub>Decoupled UI rendering responsible for performance and composition</sub>
+</td>
+</tr>
+</table>
 
----
-### Package Structure
-```md id="g8q2ls"
+<br>
 
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:00c6ff,100:0f2027&height=3&section=header" width="100%"/>
 
-```EyeCode
-ide.java
-├── console        # output / logs
-├── editor         # document model
-├── filesystem     # file handling
-├── run            # execution manager
-├── ui             # visual components
-├── util           # helpers
-└── Main.java      # application entry point
+<br>
+
+## 🔁 Architectural Evolution
+
+The system evolves continuously:
+
+| Phase | Milestone |
+|---|---|
+| **Phase 1** | Monolithic prototype |
+| **Phase 2** | Modular decomposition |
+| **Phase 3** | System separation (editor/workspace/rendering) |
+| **Phase 4** | Engine-level abstraction |
+| **Phase 5** | AI-assisted architecture *(future)* |
+
+<br>
+
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:00c6ff,100:0f2027&height=3&section=header" width="100%"/>
+
+<br>
+
+## 📘 Architecture Decision Records (ADR)
+
+<details open>
+<summary><b>ADR-001 — Editor Isolation Model</b></summary>
+<br>
+
+Each editor instance operates independently with its own document lifecycle.
+
+**Why:**
+- Prevents global state coupling
+- Enables multi-document architecture
+- Improves scalability of editor system
+
+</details>
+
+<details>
+<summary><b>ADR-002 — Completion Engine Separation</b></summary>
+<br>
+
+Completion is treated as an independent subsystem.
+
+**Why:**
+- Allows ranking algorithm evolution
+- Decouples UI from suggestion logic
+- Enables future AI integration
+
+</details>
+
+<details>
+<summary><b>ADR-003 — Rendering Decoupling</b></summary>
+<br>
+
+Rendering is fully separated from business logic.
+
+**Why:**
+- Prevents UI from dictating architecture
+- Enables performance optimization
+- Improves long-term maintainability
+
+</details>
+
+<br>
+
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:00c6ff,100:0f2027&height=3&section=header" width="100%"/>
+
+<br>
+
+## 🏗 System Architecture
+
 ```
----
-
-## Challenges Solved
-
-Building EyeCode required solving several real-world editor problems:
-
-| Challenge | Solution |
-|----------|----------|
-| ⌨️ Autocomplete popup blocking typing | Reworked focus and key event handling |
-| ↩️ Enter / Tab conflicts | Custom key bindings with context-aware behavior |
-| 🎨 Syntax highlight overlap | Improved token rendering priority |
-| 📏 Full-width line highlight | Custom painter implementation |
-| 🔤 Font fallback issues | Explicit JetBrains Mono loading |
-| 🔴 Breakpoint rendering | Interactive gutter state management |
-| ⚡ Real-time updates | Optimized listeners and repaint flow |
-
----
-
-## What I Learned
-
-Building EyeCode helped me develop practical knowledge in:
-
-- Java Swing desktop architecture
-- Event-driven programming
-- Custom rendering and painting
-- Keyboard input systems
-- Syntax highlighting logic
-- Autocomplete workflows
-- File system integration
-- UI/UX thinking for developer tools
-- Debugging complex interactions
-- Structuring maintainable codebases
-
-- ---
-
-## Roadmap
-
-### Core Editor
-
-- [x] Custom text editor
-- [x] Syntax highlighting
-- [x] Auto indentation
-- [x] Breakpoints
-- [x] Line numbers
-- [x] Dark theme
-
-### Smart Features
-
-- [x] Basic autocomplete
-- [ ] Context-aware autocomplete
-- [ ] Method signatures tooltip
-- [ ] Import suggestions
-- [ ] Snippet expansion
-
-### Runtime Tools
-
-- [x] Console panel
-- [x] Run manager
-- [ ] Build button
-- [ ] Error navigation
-- [ ] Integrated terminal
-
-### Advanced Goals
-
-- [ ] Project tabs
-- [ ] Search / Replace
-- [ ] Mini-map
-- [ ] Plugin system
-- [ ] LSP integration
-
----
-
-## Installation
-
-### Requirements
-
-- Java 21+
-- IntelliJ IDEA (recommended) or any Java IDE
-
-### Run Locally
-
-```bash
-git clone https://github.com/natanhnrqe/EyeCode.git
-cd EyeCode
+Application Layer
+ ├── Workspace Manager
+ │    ├── Editor Sessions
+ │    │    ├── Document Model
+ │    │    └── Editor View
+ │    └── Completion Engine
+ │
+ ├── Rendering Pipeline
+ │
+ └── UI Layer
 ```
-Open the project in IntelliJ IDEA and run Main.java.
 
-## Author
+### 📁 Repository Structure
 
-**Natan Henrique**
+```
+src/
+ ├── core/
+ ├── editor/
+ ├── workspace/
+ ├── rendering/
+ ├── completion/
+ ├── ai/
+ └── ui/
+```
 
-- GitHub: https://github.com/natanhnrqe
-- LinkedIn: https://linkedin.com/in/natannhenriquee
+<br>
 
----
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:00c6ff,100:0f2027&height=3&section=header" width="100%"/>
+
+<br>
+
+## 🗺 Roadmap
+
+- [x] **Phase 1 — Core Editor** — Text editing system, basic UI foundation
+- [ ] **Phase 2 — Architecture Refactor** — Modular separation, workspace system
+- [ ] **Phase 3 — Completion Engine** — Ranking system, context-aware suggestions
+- [ ] **Phase 4 — Advanced Tooling** — Plugin system, external integrations
+- [ ] **Phase 5 — Intelligent Layer** — AI-assisted features, workflow automation
+
+<br>
+
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:00c6ff,100:0f2027&height=3&section=header" width="100%"/>
 
 <div align="center">
 
-### Built with Java, curiosity, and craftsmanship.
+### 📌 Final Statement
+
+> EyeCode is not a project about features.
+> It is a project about how software systems are designed, structured, and evolved.
+
+<br>
+
+⭐ If this project reflects your interests in software architecture, consider following its development.
 
 </div>
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f2027,50:2c5364,100:00c6ff&height=150&section=footer" width="100%"/>
+
+
+
