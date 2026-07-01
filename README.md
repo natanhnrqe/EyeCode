@@ -21,7 +21,6 @@
 <!-- NAVEGAÇÃO -->
 <p>
   <a href="#-overview">Overview</a> •
-  <a href="#-developer-context">Developer</a> •
   <a href="#-engineering-philosophy">Philosophy</a> •
   <a href="#-system-model">System Model</a> •
   <a href="#-architecture-decision-records-adr">ADRs</a> •
@@ -31,7 +30,7 @@
 </div>
 
 <div align="center">
-  <img src="https://caminho-do-seu.gif" alt="EyeCode em ação" width="85%" />
+  <img alt="Image" src="https://github.com/user-attachments/assets/128893d4-dc2f-4404-afda-7b95dc4c1ea4" width="100%"/>
 </div>
 
 <img src="https://capsule-render.vercel.app/api?type=rect&color=0:00c6ff,100:0f2027&height=3&section=header" width="100%"/>
