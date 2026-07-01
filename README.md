@@ -19,12 +19,12 @@
 <br><br>
 
 <!-- NAVEGAÇÃO -->
-<p>
-  <a href="#%EF%B8%8F-overview">Overview</a> •
-  <a href="#-engineering-philosophy">Philosophy</a> •
-  <a href="#-system-architecture">System Model</a> •
-  <a href="#-architecture-decision-records-adr">ADRs</a> •
-  <a href="#-roadmap">Roadmap</a>
+<p align="center">
+  <a href="#%EF%B8%8F-overview"><kbd>&nbsp; <b>Overview</b> &nbsp;</kbd></a>
+  <a href="#-engineering-philosophy"><kbd>&nbsp; <b>Philosophy</b> &nbsp;</kbd></a>
+  <a href="#-system-architecture"><kbd>&nbsp; <b>System Model</b> &nbsp;</kbd></a>
+  <a href="#-architecture-decision-records-adr"><kbd>&nbsp; <b>ADRs</b> &nbsp;</kbd></a>
+  <a href="#-roadmap"><kbd>&nbsp; <b>Roadmap</b> &nbsp;</kbd></a>
 </p>
 
 </div>
