@@ -20,9 +20,9 @@
 
 <!-- NAVEGAÇÃO -->
 <p>
-  <a href="#-overview">Overview</a> •
+  <a href="#%EF%B8%8F-overview">Overview</a> •
   <a href="#-engineering-philosophy">Philosophy</a> •
-  <a href="#-system-model">System Model</a> •
+  <a href="#-system-architecture">System Model</a> •
   <a href="#-architecture-decision-records-adr">ADRs</a> •
   <a href="#-roadmap">Roadmap</a>
 </p>
@@ -202,13 +202,18 @@ Application Layer
 
 ```
 src/
- ├── core/
+ ├── command/
  ├── editor/
- ├── workspace/
- ├── rendering/
- ├── completion/
- ├── ai/
- └── ui/
+ ├── eventbus/
+ ├── explorer/
+ ├── filesystem/
+ ├── maven/
+ ├── project/
+ ├── run/
+ ├── runtime/
+ ├── terminal/
+ ├── ui/
+ └── util/
 ```
 
 <br>
