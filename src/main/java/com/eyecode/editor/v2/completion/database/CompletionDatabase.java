@@ -20,6 +20,7 @@ public final class CompletionDatabase {
         registerAll(JavaMathSymbols.getAll());
         registerAll(JavaNioSymbols.getAll());
         registerAll(JavaNetSymbols.getAll());
+        registerAll(JavaStreamSymbols.getAll());
     }
 
     private CompletionDatabase() {}
