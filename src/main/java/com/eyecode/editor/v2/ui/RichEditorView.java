@@ -18,8 +18,11 @@ import com.eyecode.editor.v2.completion.insert.CompletionInsertionEngine;
 import com.eyecode.editor.v2.completion.insert.CompletionPrefixResolver;
 import com.eyecode.editor.v2.completion.insert.SnippetInsertionEngine;
 import com.eyecode.editor.v2.completion.knowledge.JavaKnowledgeBaseProvider;
+import com.eyecode.editor.v2.completion.project.ProjectCompletionProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticCompletionProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
+import com.eyecode.editor.v2.project.ProjectIndexer;
+import com.eyecode.editor.v2.project.ProjectSymbolIndex;
 import com.eyecode.editor.v2.diagnostics.DiagnosticManager;
 import com.eyecode.editor.v2.diagnostics.EmptyDiagnosticEngine;
 import com.eyecode.editor.v2.language.DefaultLanguageService;
@@ -68,6 +71,9 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -106,6 +112,8 @@ public final class RichEditorView extends JPanel {
     private final List<Object> searchHighlightTags;
     private final Highlighter.HighlightPainter searchHighlightPainter;
     private final Highlighter.HighlightPainter currentSearchHighlightPainter;
+    private final ProjectSymbolIndex projectSymbolIndex;
+    private final ProjectIndexer projectIndexer;
     private SyntaxSnapshot latestSyntaxSnapshot;
     private boolean refreshing;
     private boolean suppressPopup;
@@ -146,13 +154,20 @@ public final class RichEditorView extends JPanel {
         this.caretSync = new CaretSynchronizationManager(textPane, buffer);
         this.diagnosticManager = new DiagnosticManager(new EmptyDiagnosticEngine());
         this.languageManager = new LanguageManager(new DefaultLanguageService());
+        this.projectSymbolIndex = new ProjectSymbolIndex();
+        Path projectRoot = findProjectRoot();
+        this.projectIndexer = projectRoot != null ? new ProjectIndexer(projectRoot) : null;
+        if (this.projectIndexer != null) {
+            this.projectIndexer.index(this.projectSymbolIndex);
+        }
         this.completionManager = new CompletionManager(new CompletionEngine(
                 List.of(
                         new ContextAwareCompletionProvider(),
                         new JavaKnowledgeBaseProvider(),
                         new JavaStandardLibraryProvider(),
                         new JavaSnippetProvider(),
-                        new SemanticCompletionProvider(new SemanticSymbolRegistry())
+                        new SemanticCompletionProvider(new SemanticSymbolRegistry()),
+                        new ProjectCompletionProvider(this.projectSymbolIndex)
                 )
         ));
         this.completionPopup = new CompletionPopup();
@@ -1573,5 +1588,22 @@ public final class RichEditorView extends JPanel {
             }
         }
         return new EditorPosition(line, column);
+    }
+
+    private Path findProjectRoot() {
+        Path current = Paths.get("").toAbsolutePath();
+        Path sourceFile = buffer.getDocument().getSourceFile();
+        if (sourceFile != null) {
+            current = sourceFile.getParent().toAbsolutePath();
+        }
+        while (current != null) {
+            if (Files.exists(current.resolve("pom.xml"))
+                    || Files.exists(current.resolve("build.gradle"))
+                    || Files.exists(current.resolve(".git"))) {
+                return current;
+            }
+            current = current.getParent();
+        }
+        return null;
     }
 }
