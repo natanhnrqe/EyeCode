@@ -5,6 +5,7 @@ import com.eyecode.editor.v2.completion.CompletionItemKind;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,6 +14,11 @@ public final class JavaFileParser {
     private static final Pattern TYPE_PATTERN = Pattern.compile(
             "\\b(class|interface|enum|record)\\s+([A-Za-z_]\\w*)" +
             "(?:\\s*<[^>]+>)?(?:\\s+(?:extends|implements|permits)\\s+[^{]+)?"
+    );
+
+    private static final Set<String> MODIFIERS = Set.of(
+            "public", "private", "protected", "static", "final", "transient",
+            "volatile", "synchronized", "strictfp", "default", "abstract", "native"
     );
 
     public List<CompletionItem> parse(String source) {
@@ -39,9 +45,195 @@ public final class JavaFileParser {
                     .detail(name)
                     .category(kind.substring(0, 1).toUpperCase() + kind.substring(1))
                     .build());
+
+            int bodyStart = findBodyStart(cleaned, matcher.end());
+            if (bodyStart >= 0) {
+                parseClassFields(cleaned, bodyStart, name, items);
+            }
         }
 
         return items;
+    }
+
+    private int findBodyStart(String text, int fromPos) {
+        for (int i = fromPos; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '{') return i + 1;
+            if (!Character.isWhitespace(c) && c != ',' && c != '<' && c != '>'
+                    && !Character.isLetter(c) && c != '[' && c != ']' && c != '?'
+                    && c != '&' && c != '|') {
+                return -1;
+            }
+        }
+        return -1;
+    }
+
+    private void parseClassFields(String cleaned, int bodyStart, String className, List<CompletionItem> items) {
+        int i = bodyStart;
+        int braceDepth = 1;
+
+        while (i < cleaned.length() && braceDepth > 0) {
+            char c = cleaned.charAt(i);
+
+            if (c == '{') { braceDepth++; i++; continue; }
+            if (c == '}') { braceDepth--; i++; continue; }
+            if (braceDepth != 1) { i++; continue; }
+
+            if (Character.isWhitespace(c)) { i++; continue; }
+
+            if (c == '@') {
+                i = skipAnnotation(cleaned, i);
+                continue;
+            }
+
+            int stmtStart = i;
+            boolean hasParen = false;
+
+            while (i < cleaned.length()) {
+                char sc = cleaned.charAt(i);
+
+                if (sc == '(') {
+                    hasParen = true;
+                    i = skipParenBlock(cleaned, i);
+                    while (i < cleaned.length() && Character.isWhitespace(cleaned.charAt(i))) i++;
+                    if (i < cleaned.length() && cleaned.charAt(i) == '{') {
+                        i = skipBraceBlock(cleaned, i);
+                    }
+                    break;
+                }
+
+                if (sc == ';') {
+                    i++;
+                    break;
+                }
+
+                if (sc == '{') {
+                    i = skipBraceBlock(cleaned, i);
+                    continue;
+                }
+
+                i++;
+            }
+
+            if (!hasParen) {
+                String decl = cleaned.substring(stmtStart, i).trim();
+                parseFieldDeclaration(decl, className, items);
+            }
+        }
+    }
+
+    private void parseFieldDeclaration(String decl, String className, List<CompletionItem> items) {
+        if (decl.isEmpty() || !decl.endsWith(";")) return;
+        decl = decl.substring(0, decl.length() - 1).trim();
+        if (decl.isEmpty()) return;
+
+        String[] parts = splitTopLevelCommas(decl);
+        if (parts.length == 0) return;
+
+        String typeAndName = parts[0].trim();
+        String fieldType = extractType(typeAndName);
+
+        for (String part : parts) {
+            String trimmed = part.trim();
+            String name = extractName(trimmed);
+            if (name == null || name.isEmpty()) continue;
+
+            items.add(CompletionItem.builder(name, name, CompletionItemKind.FIELD)
+                    .detail("field")
+                    .returnType(fieldType)
+                    .owner(className)
+                    .category("Field")
+                    .build());
+        }
+    }
+
+    private String extractType(String decl) {
+        String[] tokens = decl.split("\\s+");
+        int modifierEnd = 0;
+        while (modifierEnd < tokens.length && MODIFIERS.contains(tokens[modifierEnd])) {
+            modifierEnd++;
+        }
+        if (modifierEnd >= tokens.length) return "";
+        if (modifierEnd == tokens.length - 1) return tokens[modifierEnd];
+        StringBuilder type = new StringBuilder();
+        for (int i = modifierEnd; i < tokens.length - 1; i++) {
+            if (!type.isEmpty()) type.append(' ');
+            type.append(tokens[i]);
+        }
+        return type.toString();
+    }
+
+    private String extractName(String decl) {
+        String[] tokens = decl.split("\\s+");
+        if (tokens.length == 0) return null;
+
+        int modifierEnd = 0;
+        while (modifierEnd < tokens.length && MODIFIERS.contains(tokens[modifierEnd])) {
+            modifierEnd++;
+        }
+
+        if (modifierEnd >= tokens.length) return null;
+        String candidate = tokens[tokens.length - 1];
+        int eqIdx = candidate.indexOf('=');
+        if (eqIdx >= 0) candidate = candidate.substring(0, eqIdx);
+        int bracketIdx = candidate.indexOf('[');
+        if (bracketIdx >= 0) candidate = candidate.substring(0, bracketIdx);
+        return candidate.trim();
+    }
+
+    private String[] splitTopLevelCommas(String text) {
+        List<String> parts = new ArrayList<>();
+        int depth = 0;
+        int start = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '<') depth++;
+            else if (c == '>') depth--;
+            else if (c == ',' && depth == 0) {
+                parts.add(text.substring(start, i));
+                start = i + 1;
+            }
+        }
+        parts.add(text.substring(start));
+        return parts.toArray(new String[0]);
+    }
+
+    private int skipAnnotation(String text, int pos) {
+        if (text.charAt(pos) != '@') return pos + 1;
+        pos++;
+        while (pos < text.length() && (Character.isJavaIdentifierPart(text.charAt(pos)) || text.charAt(pos) == '.')) {
+            pos++;
+        }
+        if (pos < text.length() && text.charAt(pos) == '(') {
+            pos = skipParenBlock(text, pos);
+        }
+        return pos;
+    }
+
+    private int skipParenBlock(String text, int pos) {
+        if (pos >= text.length() || text.charAt(pos) != '(') return pos + 1;
+        int depth = 1;
+        pos++;
+        while (pos < text.length() && depth > 0) {
+            char c = text.charAt(pos);
+            if (c == '(') depth++;
+            else if (c == ')') depth--;
+            pos++;
+        }
+        return pos;
+    }
+
+    private int skipBraceBlock(String text, int pos) {
+        if (pos >= text.length() || text.charAt(pos) != '{') return pos + 1;
+        int depth = 1;
+        pos++;
+        while (pos < text.length() && depth > 0) {
+            char c = text.charAt(pos);
+            if (c == '{') depth++;
+            else if (c == '}') depth--;
+            pos++;
+        }
+        return pos;
     }
 
     private boolean isValidDeclaration(String text, int matchStart) {

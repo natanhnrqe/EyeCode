@@ -13,11 +13,12 @@ import java.util.List;
 
 public final class ProjectCompletionProvider implements CompletionProvider {
 
-    private static final EnumSet<CompletionItemKind> TYPE_KINDS = EnumSet.of(
+    private static final EnumSet<CompletionItemKind> ACCEPTED_KINDS = EnumSet.of(
             CompletionItemKind.CLASS,
             CompletionItemKind.INTERFACE,
             CompletionItemKind.ENUM,
-            CompletionItemKind.RECORD
+            CompletionItemKind.RECORD,
+            CompletionItemKind.FIELD
     );
 
     private final ProjectSymbolIndex index;
@@ -34,7 +35,7 @@ public final class ProjectCompletionProvider implements CompletionProvider {
         }
 
         List<CompletionItem> items = index.getAll().stream()
-                .filter(item -> TYPE_KINDS.contains(item.getKind()))
+                .filter(item -> ACCEPTED_KINDS.contains(item.getKind()))
                 .filter(item -> item.getLabel().toLowerCase().startsWith(prefix.toLowerCase()))
                 .toList();
 
