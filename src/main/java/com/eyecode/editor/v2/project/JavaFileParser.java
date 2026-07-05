@@ -87,6 +87,7 @@ public final class JavaFileParser {
             }
 
             int stmtStart = i;
+            int sigEnd = -1;
             boolean hasParen = false;
 
             while (i < cleaned.length()) {
@@ -95,9 +96,12 @@ public final class JavaFileParser {
                 if (sc == '(') {
                     hasParen = true;
                     i = skipParenBlock(cleaned, i);
+                    sigEnd = i;
                     while (i < cleaned.length() && Character.isWhitespace(cleaned.charAt(i))) i++;
                     if (i < cleaned.length() && cleaned.charAt(i) == '{') {
                         i = skipBraceBlock(cleaned, i);
+                    } else if (i < cleaned.length() && cleaned.charAt(i) == ';') {
+                        i++;
                     }
                     break;
                 }
@@ -118,6 +122,9 @@ public final class JavaFileParser {
             if (!hasParen) {
                 String decl = cleaned.substring(stmtStart, i).trim();
                 parseFieldDeclaration(decl, className, items);
+            } else if (sigEnd > 0) {
+                String sig = cleaned.substring(stmtStart, sigEnd).trim();
+                parseMethodSignature(sig, className, items);
             }
         }
     }
@@ -145,6 +152,47 @@ public final class JavaFileParser {
                     .category("Field")
                     .build());
         }
+    }
+
+    private void parseMethodSignature(String sig, String className, List<CompletionItem> items) {
+        if (!sig.startsWith("public")) return;
+
+        String stripped = sig.substring("public".length()).trim();
+        while (true) {
+            boolean found = false;
+            for (String mod : MODIFIERS) {
+                if (stripped.startsWith(mod + " ") || stripped.startsWith(mod + "\t")) {
+                    stripped = stripped.substring(mod.length()).trim();
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) break;
+        }
+
+        int parenIdx = stripped.indexOf('(');
+        if (parenIdx < 0) return;
+
+        String beforeParen = stripped.substring(0, parenIdx).trim();
+        if (beforeParen.isEmpty()) return;
+
+        String[] tokens = beforeParen.split("\\s+");
+        if (tokens.length == 0) return;
+
+        String methodName = tokens[tokens.length - 1];
+        if (methodName.equals(className)) return;
+
+        String returnType = tokens.length > 1
+                ? beforeParen.substring(0, beforeParen.length() - methodName.length()).trim()
+                : "";
+
+        items.add(CompletionItem.builder(methodName, methodName + "()", CompletionItemKind.METHOD)
+                .signature("(...)")
+                .returnType(returnType)
+                .owner(className)
+                .category("Project Method")
+                .priority(40)
+                .build());
     }
 
     private String extractType(String decl) {
