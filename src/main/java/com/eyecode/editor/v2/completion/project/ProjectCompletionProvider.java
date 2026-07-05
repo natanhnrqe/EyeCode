@@ -29,6 +29,18 @@ public final class ProjectCompletionProvider implements CompletionProvider {
 
     @Override
     public CompletionSnapshot complete(LanguageContext context) {
+        String ownerType = ProjectCompletionContextResolver.resolveOwnerType(context);
+        if (ownerType != null) {
+            List<CompletionItem> members = index.getMembers(ownerType);
+            String prefix = LanguageContextQueries.getCurrentWordPrefix(context);
+            if (!prefix.isEmpty()) {
+                members = members.stream()
+                        .filter(item -> item.getLabel().toLowerCase().startsWith(prefix.toLowerCase()))
+                        .toList();
+            }
+            return new CompletionSnapshot(members);
+        }
+
         String prefix = LanguageContextQueries.getCurrentWordPrefix(context);
         if (prefix.isEmpty()) {
             return CompletionSnapshot.empty();
