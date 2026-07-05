@@ -146,10 +146,10 @@ public final class JavaFileParser {
             if (name == null || name.isEmpty()) continue;
 
             items.add(CompletionItem.builder(name, name, CompletionItemKind.FIELD)
-                    .detail("field")
                     .returnType(fieldType)
                     .owner(className)
-                    .category("Field")
+                    .category("Project Field")
+                    .priority(35)
                     .build());
         }
     }
