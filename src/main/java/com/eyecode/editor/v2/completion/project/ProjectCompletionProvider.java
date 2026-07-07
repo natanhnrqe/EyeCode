@@ -58,6 +58,16 @@ public final class ProjectCompletionProvider implements CompletionProvider {
                 .filter(item -> item.getLabel().toLowerCase().startsWith(prefix.toLowerCase()))
                 .toList();
 
+        System.out.println("[DEBUG] Provider input (" + prefix + "):");
+        for (CompletionItem item : index.getAll().stream()
+                .filter(item -> ACCEPTED_KINDS.contains(item.getKind()))
+                .toList()) {
+            System.out.println("[DEBUG]   " + item.getKind() + " " + item.getLabel());
+        }
+        System.out.println("[DEBUG] Provider output (" + prefix + "):");
+        for (CompletionItem item : items) {
+            System.out.println("[DEBUG]   " + item.getKind() + " " + item.getLabel());
+        }
         System.out.println("[DEBUG] ProjectCompletionProvider: standard-flow results=" + items.size());
         return new CompletionSnapshot(items);
     }

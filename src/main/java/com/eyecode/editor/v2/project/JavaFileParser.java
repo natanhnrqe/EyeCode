@@ -280,6 +280,7 @@ public final class JavaFileParser {
                     .category("Local Variable")
                     .priority(45)
                     .build());
+            System.out.println("[DEBUG] LocalVariableParser -> " + name + " : " + varType);
         }
     }
 

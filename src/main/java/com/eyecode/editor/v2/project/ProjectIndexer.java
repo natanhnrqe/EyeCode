@@ -47,6 +47,11 @@ public final class ProjectIndexer {
             long fieldCount = parsed.stream().filter(i -> i.getKind() == com.eyecode.editor.v2.completion.CompletionItemKind.FIELD).count();
             System.out.println("[DEBUG] ProjectIndexer: parsed " + file.getFileName() + " -> " + parsed.size()
                     + " items (" + methodCount + " methods, " + fieldCount + " fields)");
+            for (CompletionItem item : index.getAll()) {
+                if (item.getKind() == com.eyecode.editor.v2.completion.CompletionItemKind.VARIABLE) {
+                    System.out.println("[DEBUG] Indexed VARIABLE -> " + item.getLabel() + " : " + item.getReturnType());
+                }
+            }
         } catch (Exception ignored) {
             System.out.println("[DEBUG] ProjectIndexer: error reading " + file.getFileName() + ": " + ignored.getMessage());
         }

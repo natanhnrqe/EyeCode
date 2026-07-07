@@ -47,7 +47,10 @@ public final class CompletionRanking {
         return items.stream()
                 .map(item -> {
                     if (emptyQuery) {
-                        return new ScoredItem(item, emptyScore(item), 0);
+                        ScoredItem si = new ScoredItem(item, emptyScore(item), 0);
+                        System.out.println("[DEBUG] Ranking: " + item.getLabel() + " " + item.getKind()
+                                + " score=" + si.score + " accepted=true (empty)");
+                        return si;
                     }
                     // labelScore is always computed; detailScore only for manual invocation.
                     int labelScore  = fuzzyScore(q, item.getLabel());
@@ -60,9 +63,14 @@ public final class CompletionRanking {
                 // For auto: filter by raw labelScore so boosts can't compensate weak matches.
                 // For manual: any positive matchScore (stored as total > 0) is accepted.
                 .filter(s -> {
-                    if (emptyQuery) return true;
-                    if (manual)    return s.score > 0;
-                    return s.rawLabelScore >= AUTO_MIN_SCORE;
+                    boolean accepted;
+                    if (emptyQuery) accepted = true;
+                    else if (manual) accepted = s.score > 0;
+                    else accepted = s.rawLabelScore >= AUTO_MIN_SCORE;
+                    System.out.println("[DEBUG] Ranking: " + s.item.getLabel() + " " + s.item.getKind()
+                            + " score=" + s.score + " labelScore=" + s.rawLabelScore
+                            + (accepted ? " accepted=true" : " filtered=true"));
+                    return accepted;
                 })
                 .sorted(Comparator.comparingInt((ScoredItem s) -> -s.score))
                 .map(s -> s.item)
