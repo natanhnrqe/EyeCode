@@ -15,32 +15,58 @@ public final class ProjectCompletionContextResolver {
         int offset = offsetForPosition(context);
         int safeOffset = Math.max(0, Math.min(offset, text.length()));
 
-        if (safeOffset < 1 || safeOffset > text.length()) return null;
-        if (text.charAt(safeOffset - 1) != '.') return null;
+        System.out.println("[DEBUG] ContextResolver: caret offset=" + safeOffset + ", text.length=" + text.length());
 
-        int identEnd = safeOffset - 1;
-        int identStart = identEnd;
-        while (identStart > 0 && Character.isJavaIdentifierPart(text.charAt(identStart - 1))) {
-            identStart--;
+        if (safeOffset < 1) {
+            System.out.println("[DEBUG] ContextResolver: offset out of range -> null");
+            return null;
         }
 
-        if (identStart >= identEnd) return null;
-        String variableName = text.substring(identStart, identEnd);
+        int pos = safeOffset;
+        while (pos > 0 && Character.isJavaIdentifierPart(text.charAt(pos - 1))) {
+            pos--;
+        }
 
-        return resolveType(text, variableName);
+        if (pos < 1 || text.charAt(pos - 1) != '.') {
+            System.out.println("[DEBUG] ContextResolver: no dot found before prefix -> null");
+            return null;
+        }
+
+        int dotPos = pos - 1;
+        int varEnd = dotPos;
+        int varStart = varEnd;
+        while (varStart > 0 && Character.isJavaIdentifierPart(text.charAt(varStart - 1))) {
+            varStart--;
+        }
+
+        if (varStart >= varEnd) {
+            System.out.println("[DEBUG] ContextResolver: empty variable before dot -> null");
+            return null;
+        }
+
+        String variableName = text.substring(varStart, varEnd);
+        System.out.println("[DEBUG] ContextResolver: extracted variableName=\"" + variableName + "\"");
+
+        String type = resolveType(text, variableName);
+        System.out.println("[DEBUG] ContextResolver: resolved type=\"" + type + "\"");
+
+        return type;
     }
 
     private static String resolveType(String text, String variableName) {
-        Pattern pattern = Pattern.compile(
-                "\\b([A-Z]\\w*(?:<[^>]*>)?)\\s+" + Pattern.quote(variableName) + "\\s*(?:[=;])",
-                Pattern.MULTILINE
-        );
+        String regex = "\\b([A-Z]\\w*(?:<[^>]*>)?)\\s+" + Pattern.quote(variableName) + "\\s*(?:[=;])";
+        System.out.println("[DEBUG] ContextResolver.resolveType: regex=\"" + regex + "\"");
+        Pattern pattern = Pattern.compile(regex, Pattern.MULTILINE);
         Matcher matcher = pattern.matcher(text);
         String type = null;
         while (matcher.find()) {
             type = matcher.group(1);
+            System.out.println("[DEBUG] ContextResolver.resolveType: match at " + matcher.start() + " -> type=\"" + type + "\"");
             int lt = type.indexOf('<');
             if (lt >= 0) type = type.substring(0, lt);
+        }
+        if (type == null) {
+            System.out.println("[DEBUG] ContextResolver.resolveType: no match found");
         }
         return type;
     }
