@@ -214,6 +214,7 @@ public final class JavaFileParser {
     }
 
     private void parseLocalVariablesInBlock(String cleaned, int bodyStart, String methodName, List<CompletionItem> items) {
+        System.out.println("[DEBUG] parseLocalVariablesInBlock: ENTER method=" + methodName + " bodyStart=" + bodyStart);
         int i = bodyStart;
         int braceDepth = 1;
 
@@ -251,11 +252,14 @@ public final class JavaFileParser {
                 i++;
             }
 
-            if (!hasParen) {
-                String decl = cleaned.substring(stmtStart, i).trim();
-                parseLocalVariable(decl, methodName, items);
-            }
+            String decl = cleaned.substring(stmtStart, i).trim();
+            if (hasParen) decl += ";";
+            System.out.println("[DEBUG] parseLocalVariablesInBlock: braceDepth=" + braceDepth
+                    + " hasParen=" + hasParen + " decl=\"" + decl.substring(0, Math.min(60, decl.length())) + "\"");
+            parseLocalVariable(decl, methodName, items);
+            System.out.println("[DEBUG] parseLocalVariablesInBlock: --- end of statement at offset " + i);
         }
+        System.out.println("[DEBUG] parseLocalVariablesInBlock: exiting with braceDepth=" + braceDepth);
     }
 
     private void parseLocalVariable(String decl, String methodName, List<CompletionItem> items) {
