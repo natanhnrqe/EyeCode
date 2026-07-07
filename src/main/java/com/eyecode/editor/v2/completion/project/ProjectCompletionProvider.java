@@ -18,7 +18,9 @@ public final class ProjectCompletionProvider implements CompletionProvider {
             CompletionItemKind.INTERFACE,
             CompletionItemKind.ENUM,
             CompletionItemKind.RECORD,
-            CompletionItemKind.FIELD
+            CompletionItemKind.FIELD,
+            CompletionItemKind.METHOD,
+            CompletionItemKind.VARIABLE
     );
 
     private final ProjectSymbolIndex index;
@@ -30,18 +32,23 @@ public final class ProjectCompletionProvider implements CompletionProvider {
     @Override
     public CompletionSnapshot complete(LanguageContext context) {
         String ownerType = ProjectCompletionContextResolver.resolveOwnerType(context);
+        System.out.println("[DEBUG] ProjectCompletionProvider: resolveOwnerType returned \"" + ownerType + "\"");
         if (ownerType != null) {
             List<CompletionItem> members = index.getMembers(ownerType);
             String prefix = LanguageContextQueries.getCurrentWordPrefix(context);
+            System.out.println("[DEBUG] ProjectCompletionProvider: dot-flow, owner=" + ownerType
+                    + ", members=" + members.size() + ", prefix=\"" + prefix + "\"");
             if (!prefix.isEmpty()) {
                 members = members.stream()
                         .filter(item -> item.getLabel().toLowerCase().startsWith(prefix.toLowerCase()))
                         .toList();
+                System.out.println("[DEBUG] ProjectCompletionProvider: after prefix filter -> " + members.size() + " items");
             }
             return new CompletionSnapshot(members);
         }
 
         String prefix = LanguageContextQueries.getCurrentWordPrefix(context);
+        System.out.println("[DEBUG] ProjectCompletionProvider: standard-flow, prefix=\"" + prefix + "\"");
         if (prefix.isEmpty()) {
             return CompletionSnapshot.empty();
         }
@@ -51,6 +58,7 @@ public final class ProjectCompletionProvider implements CompletionProvider {
                 .filter(item -> item.getLabel().toLowerCase().startsWith(prefix.toLowerCase()))
                 .toList();
 
+        System.out.println("[DEBUG] ProjectCompletionProvider: standard-flow results=" + items.size());
         return new CompletionSnapshot(items);
     }
 }

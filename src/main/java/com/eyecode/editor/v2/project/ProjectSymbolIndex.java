@@ -32,7 +32,12 @@ public final class ProjectSymbolIndex {
     }
 
     public List<CompletionItem> getMembers(String owner) {
-        return membersByOwner.getOrDefault(owner, Collections.emptyList());
+        List<CompletionItem> result = membersByOwner.getOrDefault(owner, Collections.emptyList());
+        System.out.println("[DEBUG] ProjectSymbolIndex.getMembers(\"" + owner + "\") -> " + result.size() + " items");
+        for (CompletionItem item : result) {
+            System.out.println("[DEBUG]   member: " + item.getLabel() + " (kind=" + item.getKind() + ")");
+        }
+        return result;
     }
 
     public int size() {
