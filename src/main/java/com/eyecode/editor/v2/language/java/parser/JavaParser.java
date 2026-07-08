@@ -10,6 +10,7 @@ import com.eyecode.editor.v2.language.java.model.JavaFileModel;
 import com.eyecode.editor.v2.language.java.model.JavaMethodModel;
 import com.eyecode.editor.v2.language.java.model.JavaModifier;
 import com.eyecode.editor.v2.language.java.model.JavaParameterModel;
+import com.eyecode.editor.v2.language.java.model.JavaVariableModel;
 import com.eyecode.editor.v2.language.java.model.TypeKind;
 
 import java.util.EnumSet;
@@ -319,7 +320,6 @@ public final class JavaParser {
         List<JavaParameterModel> parameters = parseParameters();
         stream.expect(JavaTokenType.SEPARATOR, ")");
         skipThrowsClause();
-        skipMethodBody();
 
         JavaMethodModel method = new JavaMethodModel();
         method.setName(nameToken.getLexeme());
@@ -327,6 +327,8 @@ public final class JavaParser {
         method.setModifiers(modifiers);
         method.setParameters(parameters);
         method.setOwner(owner.getName());
+
+        parseMethodBody(method);
         owner.getMethods().add(method);
     }
 
@@ -475,6 +477,109 @@ public final class JavaParser {
                 depth++;
             } else if (token.getType() == JavaTokenType.SEPARATOR && token.getLexeme().equals("}")) {
                 depth--;
+            }
+        }
+    }
+
+    private void parseMethodBody(JavaMethodModel method) {
+        skipTrivia();
+        if (stream.match(JavaTokenType.SEPARATOR, ";")) {
+            return;
+        }
+
+        stream.expect(JavaTokenType.SEPARATOR, "{");
+        int braceDepth = 1;
+
+        while (stream.hasNext() && braceDepth > 0) {
+            skipTrivia();
+
+            if (stream.peek().getType() == JavaTokenType.SEPARATOR && stream.peek().getLexeme().equals("}")) {
+                stream.consume();
+                braceDepth--;
+                continue;
+            }
+
+            if (braceDepth == 1 && isLocalVariable()) {
+                parseLocalVariable(method);
+                continue;
+            }
+
+            JavaToken token = stream.peek();
+            if (token.getType() == JavaTokenType.SEPARATOR && token.getLexeme().equals("{")) {
+                stream.consume();
+                braceDepth++;
+                continue;
+            }
+
+            skipStatement();
+        }
+    }
+
+    private boolean isLocalVariable() {
+        int mark = stream.mark();
+        skipTrivia();
+
+        boolean result = false;
+        if (consumeType(false)) {
+            skipTrivia();
+            result = stream.peek().getType() == JavaTokenType.IDENTIFIER;
+            if (result) {
+                stream.consume();
+                skipTrivia();
+                JavaToken next = stream.peek();
+                result = (next.getType() == JavaTokenType.OPERATOR && next.getLexeme().equals("="))
+                        || (next.getType() == JavaTokenType.SEPARATOR && next.getLexeme().equals(";"));
+            }
+        }
+
+        stream.reset(mark);
+        return result;
+    }
+
+    private void parseLocalVariable(JavaMethodModel method) {
+        String type = parseTypeReference(false);
+        skipTrivia();
+        JavaToken nameToken = stream.expect(JavaTokenType.IDENTIFIER);
+        skipTrivia();
+
+        if (stream.match(JavaTokenType.OPERATOR, "=")) {
+            skipUntilSemicolon();
+        }
+        stream.expect(JavaTokenType.SEPARATOR, ";");
+
+        JavaVariableModel variable = new JavaVariableModel();
+        variable.setName(nameToken.getLexeme());
+        variable.setType(type);
+        variable.setOwnerMethod(method.getName());
+        method.getLocalVariables().add(variable);
+    }
+
+    private void skipStatement() {
+        int depth = 0;
+
+        while (stream.hasNext()) {
+            JavaToken token = stream.peek();
+            if (depth == 0) {
+                if (token.getType() == JavaTokenType.SEPARATOR && token.getLexeme().equals(";")) {
+                    stream.consume();
+                    return;
+                }
+                if (token.getType() == JavaTokenType.SEPARATOR
+                        && (token.getLexeme().equals("{") || token.getLexeme().equals("}"))) {
+                    return;
+                }
+            }
+
+            token = stream.consume();
+            if (token.getType() == JavaTokenType.SEPARATOR
+                    && (token.getLexeme().equals("(") || token.getLexeme().equals("[") || token.getLexeme().equals("{"))) {
+                depth++;
+            } else if (token.getType() == JavaTokenType.SEPARATOR
+                    && (token.getLexeme().equals(")") || token.getLexeme().equals("]") || token.getLexeme().equals("}"))) {
+                depth--;
+                if (depth < 0) {
+                    return;
+                }
             }
         }
     }
