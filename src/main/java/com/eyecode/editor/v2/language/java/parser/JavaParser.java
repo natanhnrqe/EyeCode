@@ -104,6 +104,13 @@ public final class JavaParser {
         stream.consume();
         JavaToken nameToken = stream.expect(JavaTokenType.IDENTIFIER);
 
+        JavaClassModel classModel = new JavaClassModel();
+        classModel.setName(nameToken.getLexeme());
+        classModel.setKind(kind);
+        classModel.setModifiers(modifiers);
+
+        parseTypeHeader(classModel);
+
         skipToBodyOrSemicolon();
 
         if (stream.peek().getType() == JavaTokenType.SEPARATOR
@@ -114,11 +121,67 @@ public final class JavaParser {
             stream.consume();
         }
 
-        JavaClassModel classModel = new JavaClassModel();
-        classModel.setName(nameToken.getLexeme());
-        classModel.setKind(kind);
-        classModel.setModifiers(modifiers);
         model.getTypes().add(classModel);
+    }
+
+    private void parseTypeHeader(JavaClassModel classModel) {
+        while (stream.hasNext() && !isBodyOrSemicolon(stream.peek())) {
+            skipTrivia();
+            JavaToken current = stream.peek();
+
+            if (current.getType() == JavaTokenType.KEYWORD && current.getLexeme().equals("extends")) {
+                stream.consume();
+                skipTrivia();
+                classModel.setSuperClass(parseTypeName());
+                continue;
+            }
+
+            if (current.getType() == JavaTokenType.KEYWORD && current.getLexeme().equals("implements")) {
+                stream.consume();
+                skipTrivia();
+                parseInterfaceList(classModel);
+                continue;
+            }
+
+            stream.consume();
+        }
+    }
+
+    private void parseInterfaceList(JavaClassModel classModel) {
+        while (stream.hasNext() && !isBodyOrSemicolon(stream.peek())) {
+            skipTrivia();
+            classModel.getInterfaces().add(parseTypeName());
+            skipTrivia();
+            if (!stream.match(JavaTokenType.SEPARATOR, ",")) {
+                break;
+            }
+        }
+    }
+
+    private String parseTypeName() {
+        StringBuilder sb = new StringBuilder();
+
+        JavaToken first = stream.peek();
+        if (first.getType() != JavaTokenType.IDENTIFIER && first.getType() != JavaTokenType.KEYWORD) {
+            return "";
+        }
+        sb.append(stream.consume().getLexeme());
+
+        while (stream.match(JavaTokenType.SEPARATOR, ".")) {
+            sb.append(".");
+            JavaToken next = stream.peek();
+            if (next.getType() != JavaTokenType.IDENTIFIER && next.getType() != JavaTokenType.KEYWORD) {
+                break;
+            }
+            sb.append(stream.consume().getLexeme());
+        }
+
+        return sb.toString();
+    }
+
+    private boolean isBodyOrSemicolon(JavaToken token) {
+        return token.getType() == JavaTokenType.SEPARATOR
+                && (token.getLexeme().equals("{") || token.getLexeme().equals(";"));
     }
 
     private void skipBlock() {
