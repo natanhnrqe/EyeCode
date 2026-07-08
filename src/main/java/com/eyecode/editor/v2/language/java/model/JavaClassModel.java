@@ -13,6 +13,7 @@ public final class JavaClassModel {
     private List<String> interfaces = new ArrayList<>();
     private List<JavaFieldModel> fields = new ArrayList<>();
     private List<JavaMethodModel> methods = new ArrayList<>();
+    private List<JavaConstructorModel> constructors = new ArrayList<>();
     private List<JavaClassModel> nestedTypes = new ArrayList<>();
 
     public String getName() {
@@ -69,6 +70,14 @@ public final class JavaClassModel {
 
     public void setMethods(List<JavaMethodModel> methods) {
         this.methods = methods;
+    }
+
+    public List<JavaConstructorModel> getConstructors() {
+        return constructors;
+    }
+
+    public void setConstructors(List<JavaConstructorModel> constructors) {
+        this.constructors = constructors;
     }
 
     public List<JavaClassModel> getNestedTypes() {

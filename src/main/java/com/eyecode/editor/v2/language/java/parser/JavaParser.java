@@ -4,12 +4,15 @@ import com.eyecode.editor.v2.language.java.lexer.JavaToken;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenType;
 import com.eyecode.editor.v2.language.java.model.JavaClassModel;
+import com.eyecode.editor.v2.language.java.model.JavaConstructorModel;
 import com.eyecode.editor.v2.language.java.model.JavaFieldModel;
 import com.eyecode.editor.v2.language.java.model.JavaFileModel;
 import com.eyecode.editor.v2.language.java.model.JavaModifier;
+import com.eyecode.editor.v2.language.java.model.JavaParameterModel;
 import com.eyecode.editor.v2.language.java.model.TypeKind;
 
 import java.util.EnumSet;
+import java.util.List;
 
 public final class JavaParser {
 
@@ -199,6 +202,11 @@ public final class JavaParser {
                 continue;
             }
 
+            if (isConstructor(model.getName())) {
+                parseConstructor(model);
+                continue;
+            }
+
             if (isField()) {
                 parseField(model);
                 continue;
@@ -206,6 +214,54 @@ public final class JavaParser {
 
             skipMember();
         }
+    }
+
+    private boolean isConstructor(String className) {
+        int mark = stream.mark();
+        skipTrivia();
+
+        while (isModifierKeyword(stream.peek())) {
+            stream.consume();
+            skipTrivia();
+        }
+
+        boolean result = stream.peek().getType() == JavaTokenType.IDENTIFIER
+                && stream.peek().getLexeme().equals(className);
+        if (result) {
+            stream.consume();
+            skipTrivia();
+            result = stream.peek().getType() == JavaTokenType.SEPARATOR
+                    && stream.peek().getLexeme().equals("(");
+        }
+
+        stream.reset(mark);
+        return result;
+    }
+
+    private void parseConstructor(JavaClassModel owner) {
+        EnumSet<JavaModifier> modifiers = EnumSet.noneOf(JavaModifier.class);
+        while (isModifierKeyword(stream.peek())) {
+            JavaModifier mod = toModifier(stream.consume().getLexeme());
+            if (mod != null) {
+                modifiers.add(mod);
+            }
+            skipTrivia();
+        }
+
+        JavaToken nameToken = stream.expect(JavaTokenType.IDENTIFIER, owner.getName());
+        skipTrivia();
+        stream.expect(JavaTokenType.SEPARATOR, "(");
+        List<JavaParameterModel> parameters = parseParameters();
+        stream.expect(JavaTokenType.SEPARATOR, ")");
+
+        skipMethodBody();
+
+        JavaConstructorModel constructor = new JavaConstructorModel();
+        constructor.setName(nameToken.getLexeme());
+        constructor.setModifiers(modifiers);
+        constructor.setParameters(parameters);
+        constructor.setOwner(owner.getName());
+        owner.getConstructors().add(constructor);
     }
 
     private boolean isField() {
@@ -337,6 +393,52 @@ public final class JavaParser {
                 depth--;
             }
         }
+    }
+
+    private void skipMethodBody() {
+        skipTrivia();
+        if (stream.match(JavaTokenType.SEPARATOR, ";")) {
+            return;
+        }
+
+        stream.expect(JavaTokenType.SEPARATOR, "{");
+        int depth = 1;
+        while (stream.hasNext() && depth > 0) {
+            JavaToken token = stream.consume();
+            if (token.getType() == JavaTokenType.SEPARATOR && token.getLexeme().equals("{")) {
+                depth++;
+            } else if (token.getType() == JavaTokenType.SEPARATOR && token.getLexeme().equals("}")) {
+                depth--;
+            }
+        }
+    }
+
+    private List<JavaParameterModel> parseParameters() {
+        List<JavaParameterModel> parameters = new java.util.ArrayList<>();
+        skipTrivia();
+
+        if (stream.peek().getType() == JavaTokenType.SEPARATOR && stream.peek().getLexeme().equals(")")) {
+            return parameters;
+        }
+
+        while (stream.hasNext()) {
+            String type = parseTypeReference();
+            skipTrivia();
+            JavaToken nameToken = stream.expect(JavaTokenType.IDENTIFIER);
+
+            JavaParameterModel parameter = new JavaParameterModel();
+            parameter.setType(type);
+            parameter.setName(nameToken.getLexeme());
+            parameters.add(parameter);
+
+            skipTrivia();
+            if (!stream.match(JavaTokenType.SEPARATOR, ",")) {
+                break;
+            }
+            skipTrivia();
+        }
+
+        return parameters;
     }
 
     private String parseTypeReference() {
