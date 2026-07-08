@@ -36,36 +36,48 @@ public final class JavaParser {
     }
 
     private void parsePackage(JavaFileModel model) {
+        skipTrivia();
         if (!stream.match(JavaTokenType.KEYWORD, "package")) {
             return;
         }
 
+        skipTrivia();
         StringBuilder sb = new StringBuilder();
         sb.append(stream.expect(JavaTokenType.IDENTIFIER).getLexeme());
 
-        while (stream.match(JavaTokenType.SEPARATOR, ".")) {
+        while (true) {
+            skipTrivia();
+            if (!stream.match(JavaTokenType.SEPARATOR, ".")) break;
             sb.append(".");
+            skipTrivia();
             sb.append(stream.expect(JavaTokenType.IDENTIFIER).getLexeme());
         }
 
+        skipTrivia();
         stream.expect(JavaTokenType.SEPARATOR, ";");
         model.setPackageName(sb.toString());
     }
 
     private void parseImports(JavaFileModel model) {
+        skipTrivia();
         while (stream.peek().getType() == JavaTokenType.KEYWORD
                 && stream.peek().getLexeme().equals("import")) {
             stream.consume();
+            skipTrivia();
 
             StringBuilder sb = new StringBuilder();
             if (stream.match(JavaTokenType.KEYWORD, "static")) {
                 sb.append("static ");
+                skipTrivia();
             }
 
             sb.append(stream.expect(JavaTokenType.IDENTIFIER).getLexeme());
 
-            while (stream.match(JavaTokenType.SEPARATOR, ".")) {
+            while (true) {
+                skipTrivia();
+                if (!stream.match(JavaTokenType.SEPARATOR, ".")) break;
                 sb.append(".");
+                skipTrivia();
                 JavaToken next = stream.peek();
                 if (next.getType() == JavaTokenType.OPERATOR && next.getLexeme().equals("*")) {
                     sb.append("*");
@@ -75,6 +87,7 @@ public final class JavaParser {
                 sb.append(stream.expect(JavaTokenType.IDENTIFIER).getLexeme());
             }
 
+            skipTrivia();
             stream.expect(JavaTokenType.SEPARATOR, ";");
             model.getImports().add(sb.toString());
             skipTrivia();
@@ -97,6 +110,7 @@ public final class JavaParser {
             if (mod != null) {
                 modifiers.add(mod);
             }
+            skipTrivia();
         }
 
         JavaToken typeToken = stream.peek();
@@ -108,6 +122,7 @@ public final class JavaParser {
         }
 
         stream.consume();
+        skipTrivia();
         JavaToken nameToken = stream.expect(JavaTokenType.IDENTIFIER);
 
         JavaClassModel classModel = new JavaClassModel();
@@ -131,14 +146,15 @@ public final class JavaParser {
     }
 
     private void parseTypeHeader(JavaClassModel classModel) {
+        skipTrivia();
         while (stream.hasNext() && !isBodyOrSemicolon(stream.peek())) {
-            skipTrivia();
             JavaToken current = stream.peek();
 
             if (current.getType() == JavaTokenType.KEYWORD && current.getLexeme().equals("extends")) {
                 stream.consume();
                 skipTrivia();
                 classModel.setSuperClass(parseTypeName());
+                skipTrivia();
                 continue;
             }
 
@@ -146,21 +162,24 @@ public final class JavaParser {
                 stream.consume();
                 skipTrivia();
                 parseInterfaceList(classModel);
+                skipTrivia();
                 continue;
             }
 
             stream.consume();
+            skipTrivia();
         }
     }
 
     private void parseInterfaceList(JavaClassModel classModel) {
+        skipTrivia();
         while (stream.hasNext() && !isBodyOrSemicolon(stream.peek())) {
-            skipTrivia();
             classModel.getInterfaces().add(parseTypeName());
             skipTrivia();
             if (!stream.match(JavaTokenType.SEPARATOR, ",")) {
                 break;
             }
+            skipTrivia();
         }
     }
 
@@ -259,6 +278,7 @@ public final class JavaParser {
         skipTrivia();
         stream.expect(JavaTokenType.SEPARATOR, "(");
         List<JavaParameterModel> parameters = parseParameters();
+        skipTrivia();
         stream.expect(JavaTokenType.SEPARATOR, ")");
 
         skipMethodBody();
@@ -318,6 +338,7 @@ public final class JavaParser {
         skipTrivia();
         stream.expect(JavaTokenType.SEPARATOR, "(");
         List<JavaParameterModel> parameters = parseParameters();
+        skipTrivia();
         stream.expect(JavaTokenType.SEPARATOR, ")");
         skipThrowsClause();
 
@@ -377,6 +398,7 @@ public final class JavaParser {
             skipUntilSemicolon();
         }
 
+        skipTrivia();
         stream.expect(JavaTokenType.SEPARATOR, ";");
 
         JavaFieldModel field = new JavaFieldModel();
@@ -405,6 +427,7 @@ public final class JavaParser {
         }
 
         stream.consume();
+        skipTrivia();
         JavaToken nameToken = stream.expect(JavaTokenType.IDENTIFIER);
 
         JavaClassModel nestedType = new JavaClassModel();
