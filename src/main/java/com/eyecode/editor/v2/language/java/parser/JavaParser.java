@@ -115,7 +115,7 @@ public final class JavaParser {
 
         if (stream.peek().getType() == JavaTokenType.SEPARATOR
                 && stream.peek().getLexeme().equals("{")) {
-            skipBlock();
+            parseClassBody(classModel);
         } else if (stream.peek().getType() == JavaTokenType.SEPARATOR
                 && stream.peek().getLexeme().equals(";")) {
             stream.consume();
@@ -184,17 +184,92 @@ public final class JavaParser {
                 && (token.getLexeme().equals("{") || token.getLexeme().equals(";"));
     }
 
-    private void skipBlock() {
+    private void parseClassBody(JavaClassModel model) {
         stream.expect(JavaTokenType.SEPARATOR, "{");
-        int depth = 1;
-        while (depth > 0 && stream.hasNext()) {
-            JavaToken token = stream.consume();
+
+        while (stream.hasNext()) {
+            skipTrivia();
+            if (stream.match(JavaTokenType.SEPARATOR, "}")) {
+                return;
+            }
+
+            if (isNestedType()) {
+                parseNestedType(model);
+                continue;
+            }
+
+            skipMember();
+        }
+    }
+
+    private void parseNestedType(JavaClassModel owner) {
+        EnumSet<JavaModifier> modifiers = EnumSet.noneOf(JavaModifier.class);
+        while (isModifierKeyword(stream.peek())) {
+            JavaModifier mod = toModifier(stream.consume().getLexeme());
+            if (mod != null) {
+                modifiers.add(mod);
+            }
+            skipTrivia();
+        }
+
+        JavaToken typeToken = stream.peek();
+        TypeKind kind = detectTypeKind(typeToken);
+        if (kind == null) {
+            skipMember();
+            return;
+        }
+
+        stream.consume();
+        JavaToken nameToken = stream.expect(JavaTokenType.IDENTIFIER);
+
+        JavaClassModel nestedType = new JavaClassModel();
+        nestedType.setName(nameToken.getLexeme());
+        nestedType.setKind(kind);
+        nestedType.setModifiers(modifiers);
+        owner.getNestedTypes().add(nestedType);
+
+        skipMember();
+    }
+
+    private void skipMember() {
+        int depth = 0;
+
+        while (stream.hasNext()) {
+            JavaToken token = stream.peek();
+
+            if (token.getType() == JavaTokenType.SEPARATOR && token.getLexeme().equals(";") && depth == 0) {
+                stream.consume();
+                return;
+            }
+
+            if (token.getType() == JavaTokenType.SEPARATOR && token.getLexeme().equals("}") && depth == 0) {
+                return;
+            }
+
+            token = stream.consume();
             if (token.getType() == JavaTokenType.SEPARATOR && token.getLexeme().equals("{")) {
                 depth++;
             } else if (token.getType() == JavaTokenType.SEPARATOR && token.getLexeme().equals("}")) {
                 depth--;
+                if (depth <= 0) {
+                    return;
+                }
             }
         }
+    }
+
+    private boolean isNestedType() {
+        int mark = stream.mark();
+        skipTrivia();
+
+        while (isModifierKeyword(stream.peek())) {
+            stream.consume();
+            skipTrivia();
+        }
+
+        boolean result = detectTypeKind(stream.peek()) != null;
+        stream.reset(mark);
+        return result;
     }
 
     private void skipToBodyOrSemicolon() {
