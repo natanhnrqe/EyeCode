@@ -4,6 +4,7 @@ import com.eyecode.editor.v2.language.java.lexer.JavaToken;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenType;
 import com.eyecode.editor.v2.language.java.model.JavaClassModel;
+import com.eyecode.editor.v2.language.java.model.JavaFieldModel;
 import com.eyecode.editor.v2.language.java.model.JavaFileModel;
 import com.eyecode.editor.v2.language.java.model.JavaModifier;
 import com.eyecode.editor.v2.language.java.model.TypeKind;
@@ -198,8 +199,68 @@ public final class JavaParser {
                 continue;
             }
 
+            if (isField()) {
+                parseField(model);
+                continue;
+            }
+
             skipMember();
         }
+    }
+
+    private boolean isField() {
+        int mark = stream.mark();
+        skipTrivia();
+
+        while (isModifierKeyword(stream.peek())) {
+            stream.consume();
+            skipTrivia();
+        }
+
+        if (!consumeType()) {
+            stream.reset(mark);
+            return false;
+        }
+        skipTrivia();
+
+        boolean result = stream.peek().getType() == JavaTokenType.IDENTIFIER;
+        if (result) {
+            stream.consume();
+            skipTrivia();
+            result = !stream.match(JavaTokenType.SEPARATOR, "(");
+        }
+
+        stream.reset(mark);
+        return result;
+    }
+
+    private void parseField(JavaClassModel owner) {
+        EnumSet<JavaModifier> modifiers = EnumSet.noneOf(JavaModifier.class);
+        while (isModifierKeyword(stream.peek())) {
+            JavaModifier mod = toModifier(stream.consume().getLexeme());
+            if (mod != null) {
+                modifiers.add(mod);
+            }
+            skipTrivia();
+        }
+
+        String type = parseTypeReference();
+        skipTrivia();
+        JavaToken nameToken = stream.expect(JavaTokenType.IDENTIFIER);
+        skipTrivia();
+
+        if (stream.match(JavaTokenType.OPERATOR, "=")) {
+            skipUntilSemicolon();
+        }
+
+        stream.expect(JavaTokenType.SEPARATOR, ";");
+
+        JavaFieldModel field = new JavaFieldModel();
+        field.setName(nameToken.getLexeme());
+        field.setType(type);
+        field.setModifiers(modifiers);
+        field.setOwner(owner.getName());
+        owner.getFields().add(field);
     }
 
     private void parseNestedType(JavaClassModel owner) {
@@ -256,6 +317,96 @@ public final class JavaParser {
                 }
             }
         }
+    }
+
+    private void skipUntilSemicolon() {
+        int depth = 0;
+
+        while (stream.hasNext()) {
+            JavaToken token = stream.peek();
+            if (token.getType() == JavaTokenType.SEPARATOR && token.getLexeme().equals(";") && depth == 0) {
+                return;
+            }
+
+            token = stream.consume();
+            if (token.getType() == JavaTokenType.SEPARATOR
+                    && (token.getLexeme().equals("(") || token.getLexeme().equals("[") || token.getLexeme().equals("{"))) {
+                depth++;
+            } else if (token.getType() == JavaTokenType.SEPARATOR
+                    && (token.getLexeme().equals(")") || token.getLexeme().equals("]") || token.getLexeme().equals("}"))) {
+                depth--;
+            }
+        }
+    }
+
+    private String parseTypeReference() {
+        StringBuilder sb = new StringBuilder();
+        appendTypeName(sb);
+        parseGenericArguments(sb);
+        return sb.toString();
+    }
+
+    private boolean consumeType() {
+        int mark = stream.mark();
+        StringBuilder ignored = new StringBuilder();
+        if (!appendTypeName(ignored)) {
+            stream.reset(mark);
+            return false;
+        }
+        parseGenericArguments(ignored);
+        return true;
+    }
+
+    private boolean appendTypeName(StringBuilder sb) {
+        JavaToken token = stream.peek();
+        if (!isTypeToken(token)) {
+            return false;
+        }
+
+        sb.append(stream.consume().getLexeme());
+        while (stream.match(JavaTokenType.SEPARATOR, ".")) {
+            sb.append(".");
+            JavaToken next = stream.peek();
+            if (!isTypeToken(next)) {
+                break;
+            }
+            sb.append(stream.consume().getLexeme());
+        }
+        return true;
+    }
+
+    private void parseGenericArguments(StringBuilder sb) {
+        skipTrivia();
+        if (!stream.match(JavaTokenType.OPERATOR, "<")) {
+            return;
+        }
+
+        sb.append("<");
+        int depth = 1;
+        while (stream.hasNext() && depth > 0) {
+            skipTrivia();
+            JavaToken token = stream.consume();
+            sb.append(token.getLexeme());
+
+            if (token.getType() == JavaTokenType.OPERATOR && token.getLexeme().equals("<")) {
+                depth++;
+            } else if (token.getType() == JavaTokenType.OPERATOR && token.getLexeme().equals(">")) {
+                depth--;
+            } else if (token.getType() == JavaTokenType.OPERATOR && token.getLexeme().equals(">>")) {
+                depth -= 2;
+            } else if (token.getType() == JavaTokenType.OPERATOR && token.getLexeme().equals(">>>")) {
+                depth -= 3;
+            }
+        }
+    }
+
+    private boolean isTypeToken(JavaToken token) {
+        if (token.getType() == JavaTokenType.IDENTIFIER) return true;
+        if (token.getType() != JavaTokenType.KEYWORD) return false;
+        String lexeme = token.getLexeme();
+        return lexeme.equals("boolean") || lexeme.equals("byte") || lexeme.equals("char")
+                || lexeme.equals("short") || lexeme.equals("int") || lexeme.equals("long")
+                || lexeme.equals("float") || lexeme.equals("double");
     }
 
     private boolean isNestedType() {
