@@ -74,6 +74,51 @@ public final class SemanticResolver {
         return symbols;
     }
 
+    public ProjectSymbol resolve(String name, Scope scope) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+
+        Scope current = scope;
+        while (current != null) {
+            ProjectSymbol symbol = findInScope(name, current);
+            if (symbol != null) {
+                return symbol;
+            }
+            current = current.getParent();
+        }
+
+        return resolveByName(name);
+    }
+
+    public List<ProjectSymbol> resolveVisibleSymbols(Scope scope) {
+        if (scope == null) {
+            return resolveVisibleSymbols();
+        }
+
+        Map<String, ProjectSymbol> visible = new LinkedHashMap<>();
+        Scope current = scope;
+        while (current != null) {
+            for (ProjectSymbol symbol : current.getSymbols()) {
+                visible.putIfAbsent(symbol.getName(), symbol);
+            }
+
+            ProjectSymbol owner = current.getOwner();
+            if (owner != null && isType(owner)) {
+                addInheritedMembers(owner, visible);
+            }
+            current = current.getParent();
+        }
+
+        for (ProjectSymbol symbol : symbols) {
+            if (isGlobal(symbol)) {
+                visible.putIfAbsent(symbol.getName(), symbol);
+            }
+        }
+
+        return List.copyOf(visible.values());
+    }
+
     private void indexSymbols() {
         for (ProjectSymbol symbol : symbols) {
             if (symbol.getName() != null && isGlobal(symbol)) {
@@ -95,6 +140,25 @@ public final class SemanticResolver {
             }
         }
         return null;
+    }
+
+    private ProjectSymbol findInScope(String name, Scope scope) {
+        for (ProjectSymbol symbol : scope.getSymbols()) {
+            if (symbol.getName().equals(name)) {
+                return symbol;
+            }
+        }
+        return null;
+    }
+
+    private void addInheritedMembers(ProjectSymbol owner, Map<String, ProjectSymbol> visible) {
+        ProjectSymbol superType = resolveType(owner);
+        if (superType == null) {
+            return;
+        }
+        for (ProjectSymbol member : resolveMembers(superType)) {
+            visible.putIfAbsent(member.getName(), member);
+        }
     }
 
     private boolean isGlobal(ProjectSymbol symbol) {
