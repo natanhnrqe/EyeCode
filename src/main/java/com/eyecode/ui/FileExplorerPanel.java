@@ -1,5 +1,6 @@
 package com.eyecode.ui;
 
+import com.eyecode.filesystem.FileSystemService;
 import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.SpacingSystem;
 import com.eyecode.ui.designsystem.TypographyManager;
@@ -42,9 +43,10 @@ public class FileExplorerPanel extends RoundedPanel {
     // Diretorio raiz atual (estado do explorer)
     private File currentRoot;
 
+    private final FileSystemService fileSystemService;
 
-
-    public FileExplorerPanel(File rootDirectory) {
+    public FileExplorerPanel(File rootDirectory, FileSystemService fileSystemService) {
+        this.fileSystemService = fileSystemService;
         setLayout(new BorderLayout());
         setBackground(ColorManager.EDITOR_BG);
 
@@ -197,14 +199,10 @@ public class FileExplorerPanel extends RoundedPanel {
 
         if (file.isDirectory()){
 
-            JMenuItem newFile = new JMenuItem("New File");
-            newFile.addActionListener(e -> createNewFile(file));
+            JMenuItem newItem = new JMenuItem("New...");
+            newItem.addActionListener(e -> showNewFileDialog(file));
 
-            JMenuItem newFolder = new JMenuItem("New Folder");
-            newFolder.addActionListener(e -> createNewFolder(file));
-
-            popupMenu.add(newFile);
-            popupMenu.add(newFolder);
+            popupMenu.add(newItem);
         }
 
         JMenuItem rename = new JMenuItem("Rename");
@@ -252,28 +250,12 @@ public class FileExplorerPanel extends RoundedPanel {
         }
     }
 
-    private void createNewFile(File directory){
-        String name = JOptionPane.showInputDialog("File name:");
-
-        if (name == null || name.isBlank()) return;
-
-        try {
-            File newFile = new File(directory, name);
-            if (newFile.createNewFile()) {
-                refresh();
-            }
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-    }
-
-    private void createNewFolder(File directory){
-        String name = JOptionPane.showInputDialog("Folder name:");
-
-        if (name == null || name.isBlank()) return;
-
-        File folder = new File(directory, name);
-        if (folder.mkdir()){
+    private void showNewFileDialog(File directory){
+        NewFileDialog dialog = new NewFileDialog(
+                (Frame) SwingUtilities.getWindowAncestor(this),
+                directory, fileSystemService);
+        dialog.setVisible(true);
+        if (dialog.isConfirmed()) {
             refresh();
         }
     }

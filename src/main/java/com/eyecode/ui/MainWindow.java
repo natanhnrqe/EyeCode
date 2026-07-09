@@ -90,7 +90,7 @@ public class MainWindow extends JFrame {
 
         UIManager.put("TabbedPane.cardTabArc", 14);
         tabbedPane = new EditorHostPanel(fileSystemService);
-        explorerPanel = new FileExplorerPanel(new File("."));
+        explorerPanel = new FileExplorerPanel(new File("."), fileSystemService);
         bottomTool = new BottomToolWindowPanel();
         topBar = new TopBarPanel();
         statusBar = new StatusBar();
@@ -133,7 +133,7 @@ public class MainWindow extends JFrame {
         topBar.setOnSave(this::saveFile);
         topBar.setOnOpenProject(this::openProject);
         topBar.setOnSearch(this::showSearchDialog);
-        topBar.setOnNewFile(this::newFile);
+        topBar.setOnNewFile(this::newFileOrType);
         topBar.setOnSettings(() -> {
             Font currentFont = TypographyManager.UI_TITLE();
             RichEditorView view = tabbedPane.getActiveView();
@@ -173,7 +173,7 @@ public class MainWindow extends JFrame {
         popup.setBorder(BorderFactory.createLineBorder(ColorManager.BORDER));
 
         JMenu fileMenu = new JMenu("File");
-        addItem(fileMenu, "New File", e -> newFile());
+        addItem(fileMenu, "New...", e -> newFileOrType());
         addItem(fileMenu, "Save", e -> saveFile());
         fileMenu.addSeparator();
         addItem(fileMenu, "Open Project", e -> openProject());
@@ -484,6 +484,21 @@ public class MainWindow extends JFrame {
         statusBar.updateStatus("New file created");
         updateBreadcrump();
         updateSelectedFileUi();
+    }
+
+    private void newFileOrType() {
+        File root = explorerPanel.getCurrentRoot();
+        if (root == null) {
+            newFile();
+            return;
+        }
+        NewFileDialog dialog = new NewFileDialog(this, root, fileSystemService);
+        dialog.setVisible(true);
+        if (dialog.isConfirmed()) {
+            refreshExplorer();
+            bottomTool.printRunOutput("Created: " + dialog.getResultName());
+            statusBar.updateStatus("Created " + dialog.getResultName());
+        }
     }
 
     private void updateTabTitle() {
