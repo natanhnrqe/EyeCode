@@ -1,11 +1,9 @@
 package com.eyecode.editor.v2.project;
 
-import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.language.java.lexer.JavaLexer;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
 import com.eyecode.editor.v2.language.java.model.JavaFileModel;
 import com.eyecode.editor.v2.language.java.parser.JavaParser;
-import com.eyecode.editor.v2.language.java.symbols.CompletionSymbolAdapter;
 import com.eyecode.editor.v2.language.java.symbols.ProjectSymbol;
 import com.eyecode.editor.v2.language.java.symbols.SymbolBuilder;
 
@@ -51,12 +49,10 @@ public final class ProjectIndexer {
             JavaFileModel model = parser.parse();
 
             SymbolBuilder symbolBuilder = new SymbolBuilder();
-            CompletionSymbolAdapter adapter = new CompletionSymbolAdapter();
             List<ProjectSymbol> symbols = symbolBuilder.build(model, file);
 
             for (ProjectSymbol symbol : symbols) {
-                CompletionItem item = adapter.toCompletionItem(symbol);
-                index.add(item);
+                index.add(symbol);
             }
         } catch (Exception ignored) {
         }
