@@ -15,10 +15,7 @@ public final class ProjectCompletionContextResolver {
         int offset = offsetForPosition(context);
         int safeOffset = Math.max(0, Math.min(offset, text.length()));
 
-        System.out.println("[DEBUG] ContextResolver: caret offset=" + safeOffset + ", text.length=" + text.length());
-
         if (safeOffset < 1) {
-            System.out.println("[DEBUG] ContextResolver: offset out of range -> null");
             return null;
         }
 
@@ -28,7 +25,6 @@ public final class ProjectCompletionContextResolver {
         }
 
         if (pos < 1 || text.charAt(pos - 1) != '.') {
-            System.out.println("[DEBUG] ContextResolver: no dot found before prefix -> null");
             return null;
         }
 
@@ -40,33 +36,22 @@ public final class ProjectCompletionContextResolver {
         }
 
         if (varStart >= varEnd) {
-            System.out.println("[DEBUG] ContextResolver: empty variable before dot -> null");
             return null;
         }
 
         String variableName = text.substring(varStart, varEnd);
-        System.out.println("[DEBUG] ContextResolver: extracted variableName=\"" + variableName + "\"");
-
-        String type = resolveType(text, variableName);
-        System.out.println("[DEBUG] ContextResolver: resolved type=\"" + type + "\"");
-
-        return type;
+        return resolveType(text, variableName);
     }
 
     private static String resolveType(String text, String variableName) {
         String regex = "\\b([A-Z]\\w*(?:<[^>]*>)?)\\s+" + Pattern.quote(variableName) + "\\s*(?:[=;])";
-        System.out.println("[DEBUG] ContextResolver.resolveType: regex=\"" + regex + "\"");
         Pattern pattern = Pattern.compile(regex, Pattern.MULTILINE);
         Matcher matcher = pattern.matcher(text);
         String type = null;
         while (matcher.find()) {
             type = matcher.group(1);
-            System.out.println("[DEBUG] ContextResolver.resolveType: match at " + matcher.start() + " -> type=\"" + type + "\"");
             int lt = type.indexOf('<');
             if (lt >= 0) type = type.substring(0, lt);
-        }
-        if (type == null) {
-            System.out.println("[DEBUG] ContextResolver.resolveType: no match found");
         }
         return type;
     }
