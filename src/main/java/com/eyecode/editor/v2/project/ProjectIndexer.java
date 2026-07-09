@@ -1,23 +1,17 @@
 package com.eyecode.editor.v2.project;
 
 import com.eyecode.editor.v2.completion.CompletionItem;
-import com.eyecode.editor.v2.completion.CompletionItemKind;
 import com.eyecode.editor.v2.language.java.lexer.JavaLexer;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
-import com.eyecode.editor.v2.language.java.model.JavaClassModel;
-import com.eyecode.editor.v2.language.java.model.JavaConstructorModel;
-import com.eyecode.editor.v2.language.java.model.JavaFieldModel;
 import com.eyecode.editor.v2.language.java.model.JavaFileModel;
-import com.eyecode.editor.v2.language.java.model.JavaMethodModel;
-import com.eyecode.editor.v2.language.java.model.JavaParameterModel;
-import com.eyecode.editor.v2.language.java.model.JavaVariableModel;
-import com.eyecode.editor.v2.language.java.model.TypeKind;
 import com.eyecode.editor.v2.language.java.parser.JavaParser;
+import com.eyecode.editor.v2.language.java.symbols.CompletionSymbolAdapter;
+import com.eyecode.editor.v2.language.java.symbols.ProjectSymbol;
+import com.eyecode.editor.v2.language.java.symbols.SymbolBuilder;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -56,84 +50,15 @@ public final class ProjectIndexer {
             JavaParser parser = new JavaParser(stream);
             JavaFileModel model = parser.parse();
 
-            for (CompletionItem item : buildCompletionItems(model)) {
+            SymbolBuilder symbolBuilder = new SymbolBuilder();
+            CompletionSymbolAdapter adapter = new CompletionSymbolAdapter();
+            List<ProjectSymbol> symbols = symbolBuilder.build(model, file);
+
+            for (ProjectSymbol symbol : symbols) {
+                CompletionItem item = adapter.toCompletionItem(symbol);
                 index.add(item);
             }
         } catch (Exception ignored) {
         }
-    }
-
-    private List<CompletionItem> buildCompletionItems(JavaFileModel model) {
-        List<CompletionItem> items = new ArrayList<>();
-        for (JavaClassModel type : model.getTypes()) {
-            indexType(type, items);
-        }
-        return items;
-    }
-
-    private void indexType(JavaClassModel type, List<CompletionItem> items) {
-        items.add(CompletionItem.builder(type.getName(), type.getName(), toKind(type.getKind()))
-                .detail(type.getName())
-                .category(type.getKind().name().charAt(0) + type.getKind().name().substring(1).toLowerCase())
-                .build());
-
-        for (JavaFieldModel field : type.getFields()) {
-            items.add(CompletionItem.builder(field.getName(), field.getName(), CompletionItemKind.FIELD)
-                    .returnType(field.getType())
-                    .owner(type.getName())
-                    .category("Project Field")
-                    .priority(35)
-                    .build());
-        }
-
-        for (JavaConstructorModel ctor : type.getConstructors()) {
-            items.add(CompletionItem.builder(ctor.getName(), ctor.getName() + "()", CompletionItemKind.CONSTRUCTOR)
-                    .signature("(...)")
-                    .owner(type.getName())
-                    .category("Constructor")
-                    .priority(40)
-                    .build());
-        }
-
-        for (JavaMethodModel method : type.getMethods()) {
-            items.add(CompletionItem.builder(method.getName(), method.getName() + "()", CompletionItemKind.METHOD)
-                    .signature("(...)")
-                    .returnType(method.getReturnType())
-                    .owner(type.getName())
-                    .category("Project Method")
-                    .priority(40)
-                    .build());
-
-            for (JavaParameterModel param : method.getParameters()) {
-                items.add(CompletionItem.builder(param.getName(), param.getName(), CompletionItemKind.VARIABLE)
-                        .returnType(param.getType())
-                        .owner(method.getName())
-                        .category("Parameter")
-                        .priority(45)
-                        .build());
-            }
-
-            for (JavaVariableModel var : method.getLocalVariables()) {
-                items.add(CompletionItem.builder(var.getName(), var.getName(), CompletionItemKind.VARIABLE)
-                        .returnType(var.getType())
-                        .owner(method.getName())
-                        .category("Local Variable")
-                        .priority(45)
-                        .build());
-            }
-        }
-
-        for (JavaClassModel nested : type.getNestedTypes()) {
-            indexType(nested, items);
-        }
-    }
-
-    private CompletionItemKind toKind(TypeKind kind) {
-        return switch (kind) {
-            case CLASS -> CompletionItemKind.CLASS;
-            case INTERFACE -> CompletionItemKind.INTERFACE;
-            case ENUM -> CompletionItemKind.ENUM;
-            case RECORD -> CompletionItemKind.RECORD;
-        };
     }
 }
