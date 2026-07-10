@@ -1,5 +1,6 @@
 package com.eyecode.editor.v2.integration;
 
+import com.eyecode.autosave.AutoSaveManager;
 import com.eyecode.editor.EditorTab;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
@@ -7,7 +8,10 @@ import com.eyecode.editor.v2.ui.RichEditorView;
 import com.eyecode.filesystem.FileSystemService;
 
 import javax.swing.JTabbedPane;
+import javax.swing.SwingUtilities;
 import java.awt.Component;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -20,10 +24,20 @@ public final class EditorHostPanel extends JTabbedPane {
     private final Map<EditorSession, File> sessionKeys = new HashMap<>();
     private final Map<Component, EditorSession> componentSessions = new HashMap<>();
     private final FileSystemService fileSystemService;
+    private AutoSaveManager autoSaveManager;
     private EditorSession activeSession;
 
     public EditorHostPanel(FileSystemService fileSystemService) {
+        this(fileSystemService, null);
+    }
+
+    public EditorHostPanel(FileSystemService fileSystemService, AutoSaveManager autoSaveManager) {
         this.fileSystemService = fileSystemService;
+        this.autoSaveManager = autoSaveManager;
+    }
+
+    public void setAutoSaveManager(AutoSaveManager autoSaveManager) {
+        this.autoSaveManager = autoSaveManager;
     }
 
     public EditorSession openFile(File file) {
@@ -51,11 +65,18 @@ public final class EditorHostPanel extends JTabbedPane {
         RichEditorView view = new RichEditorView(buffer);
         EditorTab tab = new EditorTab(canonicalFile);
 
-        EditorSession session = new EditorSession(tab, buffer, view, canonicalFile, dirty -> tab.setDirty(dirty));
+        EditorSession[] box = new EditorSession[1];
+        box[0] = new EditorSession(tab, buffer, view, canonicalFile, dirty -> {
+            tab.setDirty(dirty);
+            EditorSession s = box[0];
+            if (s != null) refreshTitle(s);
+        });
+        EditorSession session = box[0];
         registerSession(canonicalFile, session);
 
         addTab(canonicalFile.getName(), view);
         activateSession(session);
+        wireAutoSave(session);
 
         return session;
     }
@@ -66,10 +87,17 @@ public final class EditorHostPanel extends JTabbedPane {
         RichEditorView view = new RichEditorView(buffer);
         EditorTab tab = new EditorTab(null);
 
-        EditorSession session = new EditorSession(tab, buffer, view, null, dirty -> tab.setDirty(dirty));
+        EditorSession[] box = new EditorSession[1];
+        box[0] = new EditorSession(tab, buffer, view, null, dirty -> {
+            tab.setDirty(dirty);
+            EditorSession s = box[0];
+            if (s != null) refreshTitle(s);
+        });
+        EditorSession session = box[0];
         sessionKeys.put(session, null);
         addTab("Untitled", view);
         activateSession(session);
+        wireAutoSave(session);
 
         return session;
     }
@@ -228,11 +256,43 @@ public final class EditorHostPanel extends JTabbedPane {
         if (activeSession == session) {
             activeSession = null;
         }
+        if (autoSaveManager != null) {
+            autoSaveManager.unregister(session.getBuffer().getDocument());
+        }
         session.dispose();
         super.remove(session.getView());
         if (wasSelected) {
             updateActiveSessionFromSelection();
         }
+    }
+
+    private void wireAutoSave(EditorSession session) {
+        if (session == null || autoSaveManager == null) return;
+        EditorDocument document = session.getBuffer().getDocument();
+        autoSaveManager.register(document);
+        session.getView().getTextPane().addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                AutoSaveManager manager = autoSaveManager;
+                if (manager != null) {
+                    manager.saveNow(document);
+                }
+            }
+        });
+    }
+
+    private void refreshTitle(EditorSession session) {
+        if (session == null) return;
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(() -> refreshTitle(session));
+            return;
+        }
+        int index = indexOfComponent(session.getView());
+        if (index < 0) return;
+        File file = sessionKeys.get(session);
+        String name = file != null ? file.getName() : "Untitled";
+        String title = session.getBuffer().getDocument().isDirty() ? name + " *" : name;
+        setTitleAt(index, title);
     }
 
     private EditorSession findSession(Component component) {

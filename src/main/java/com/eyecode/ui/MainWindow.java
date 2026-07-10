@@ -1,9 +1,11 @@
 package com.eyecode.ui;
 
 import com.eyecode.command.CommandContext;
+import com.eyecode.autosave.AutoSaveManager;
 import com.eyecode.editor.Document;
 import com.eyecode.editor.EditorContext;
 import com.eyecode.editor.v2.integration.EditorHostPanel;
+import com.eyecode.editor.v2.integration.EditorSession;
 import com.eyecode.editor.v2.ui.RichEditorView;
 import com.eyecode.eventbus.EventBus;
 import com.eyecode.explorer.integration.ExplorerIntegrationController;
@@ -32,6 +34,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
+import java.awt.event.WindowAdapter;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +48,7 @@ public class MainWindow extends JFrame {
     private final EditorHostPanel tabbedPane;
     private final FileManager fileManager;
     private final FileSystemService fileSystemService;
+    private final AutoSaveManager autoSaveManager;
     private final RunManager runManager;
     private final FileExplorerPanel explorerPanel;
     private final BottomToolWindowPanel bottomTool;
@@ -80,6 +84,7 @@ public class MainWindow extends JFrame {
 
         fileManager = new FileManager();
         fileSystemService = new DefaultFileSystemService();
+        autoSaveManager = new AutoSaveManager(fileSystemService);
         runManager = new RunManager();
         projectService = new ProjectService();
         templateService = new ProjectTemplateService();
@@ -89,7 +94,7 @@ public class MainWindow extends JFrame {
         explorerController = new ExplorerIntegrationController(eventBus, editorContext, commandContext);
 
         UIManager.put("TabbedPane.cardTabArc", 14);
-        tabbedPane = new EditorHostPanel(fileSystemService);
+        tabbedPane = new EditorHostPanel(fileSystemService, autoSaveManager);
         explorerPanel = new FileExplorerPanel(new File("."), fileSystemService);
         bottomTool = new BottomToolWindowPanel();
         topBar = new TopBarPanel();
@@ -108,6 +113,7 @@ public class MainWindow extends JFrame {
         configureTabs();
         configureExplorer();
         configureWindowChrome();
+        configureLifecycle();
 
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
                 KeyStroke.getKeyStroke(KeyEvent.VK_P, InputEvent.CTRL_DOWN_MASK), "quickFileSearch");
@@ -239,7 +245,6 @@ public class MainWindow extends JFrame {
 
     private void configureWindowChrome() {
         getRootPane().setBorder(BorderFactory.createLineBorder(ColorManager.BORDER));
-
         topBar.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
@@ -263,6 +268,16 @@ public class MainWindow extends JFrame {
 
                 Point screenPoint = e.getLocationOnScreen();
                 setLocation(screenPoint.x - dragStart.x, screenPoint.y - dragStart.y);
+            }
+        });
+    }
+
+    private void configureLifecycle() {
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                autoSaveManager.saveAll();
+                autoSaveManager.shutdown();
             }
         });
     }
@@ -397,9 +412,7 @@ public class MainWindow extends JFrame {
             saveFileAs();
             activeFile = tabbedPane.getActiveFile();
         }
-        if (activeFile != null && tabbedPane.isDirty()) {
-            saveFile();
-        }
+        autoSaveManager.saveAll();
 
         bottomTool.showRun();
         bottomTool.clearRunOutput();
@@ -516,19 +529,9 @@ public class MainWindow extends JFrame {
     }
 
     private void closeCurrentTab() {
-        if (tabbedPane.isDirty()) {
-            int opt = JOptionPane.showConfirmDialog(
-                    this,
-                    "File has unsaved changes. Save before closing?",
-                    "Warning",
-                    JOptionPane.YES_NO_CANCEL_OPTION
-            );
-
-            if (opt == JOptionPane.CANCEL_OPTION) return;
-            if (opt == JOptionPane.YES_OPTION) {
-                saveFile();
-                if (tabbedPane.isDirty()) return;
-            }
+        EditorSession activeSession = tabbedPane.getActiveSession();
+        if (activeSession != null) {
+            autoSaveManager.saveNow(activeSession.getBuffer().getDocument());
         }
 
         tabbedPane.closeActive();
