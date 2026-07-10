@@ -4,6 +4,8 @@ import com.eyecode.autosave.AutoSaveManager;
 import com.eyecode.editor.EditorTab;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.editor.v2.project.ProjectIndexer;
+import com.eyecode.editor.v2.project.ProjectSymbolIndex;
 import com.eyecode.editor.v2.ui.RichEditorView;
 import com.eyecode.filesystem.FileSystemService;
 
@@ -24,16 +26,27 @@ public final class EditorHostPanel extends JTabbedPane {
     private final Map<EditorSession, File> sessionKeys = new HashMap<>();
     private final Map<Component, EditorSession> componentSessions = new HashMap<>();
     private final FileSystemService fileSystemService;
+    private final ProjectSymbolIndex sharedSymbolIndex;
+    private final ProjectIndexer sharedIndexer;
     private AutoSaveManager autoSaveManager;
     private EditorSession activeSession;
 
     public EditorHostPanel(FileSystemService fileSystemService) {
-        this(fileSystemService, null);
+        this(fileSystemService, null, null, null);
     }
 
     public EditorHostPanel(FileSystemService fileSystemService, AutoSaveManager autoSaveManager) {
+        this(fileSystemService, autoSaveManager, null, null);
+    }
+
+    public EditorHostPanel(FileSystemService fileSystemService,
+                           AutoSaveManager autoSaveManager,
+                           ProjectSymbolIndex sharedSymbolIndex,
+                           ProjectIndexer sharedIndexer) {
         this.fileSystemService = fileSystemService;
         this.autoSaveManager = autoSaveManager;
+        this.sharedSymbolIndex = sharedSymbolIndex;
+        this.sharedIndexer = sharedIndexer;
     }
 
     public void setAutoSaveManager(AutoSaveManager autoSaveManager) {
@@ -62,7 +75,7 @@ public final class EditorHostPanel extends JTabbedPane {
 
         EditorDocument document = new EditorDocument(canonicalFile.toPath(), content);
         EditorBuffer buffer = new EditorBuffer(document);
-        RichEditorView view = new RichEditorView(buffer);
+        RichEditorView view = new RichEditorView(buffer, sharedSymbolIndex, sharedIndexer);
         EditorTab tab = new EditorTab(canonicalFile);
 
         EditorSession[] box = new EditorSession[1];
@@ -84,7 +97,7 @@ public final class EditorHostPanel extends JTabbedPane {
     public EditorSession newUntitled() {
         EditorDocument document = new EditorDocument();
         EditorBuffer buffer = new EditorBuffer(document);
-        RichEditorView view = new RichEditorView(buffer);
+        RichEditorView view = new RichEditorView(buffer, sharedSymbolIndex, sharedIndexer);
         EditorTab tab = new EditorTab(null);
 
         EditorSession[] box = new EditorSession[1];

@@ -124,6 +124,10 @@ public final class RichEditorView extends JPanel {
     private boolean replaceMode;
 
     public RichEditorView(EditorBuffer buffer) {
+        this(buffer, null, null);
+    }
+
+    public RichEditorView(EditorBuffer buffer, ProjectSymbolIndex sharedSymbolIndex, ProjectIndexer sharedIndexer) {
         super(new BorderLayout());
         this.buffer = buffer;
         this.textPane = new JTextPane() {
@@ -154,10 +158,12 @@ public final class RichEditorView extends JPanel {
         this.caretSync = new CaretSynchronizationManager(textPane, buffer);
         this.diagnosticManager = new DiagnosticManager(new EmptyDiagnosticEngine());
         this.languageManager = new LanguageManager(new DefaultLanguageService());
-        this.projectSymbolIndex = new ProjectSymbolIndex();
+        this.projectSymbolIndex = sharedSymbolIndex != null ? sharedSymbolIndex : new ProjectSymbolIndex();
         Path projectRoot = findProjectRoot();
-        this.projectIndexer = projectRoot != null ? new ProjectIndexer(projectRoot) : null;
-        if (this.projectIndexer != null) {
+        this.projectIndexer = sharedIndexer != null
+                ? sharedIndexer
+                : (projectRoot != null ? new ProjectIndexer(projectRoot) : null);
+        if (sharedSymbolIndex == null && this.projectIndexer != null) {
             this.projectIndexer.index(this.projectSymbolIndex);
         }
         this.completionManager = new CompletionManager(new CompletionEngine(
@@ -1416,6 +1422,14 @@ public final class RichEditorView extends JPanel {
 
     public StyledDocument getStyledDocument() {
         return styledDocument;
+    }
+
+    public ProjectSymbolIndex getProjectSymbolIndex() {
+        return projectSymbolIndex;
+    }
+
+    public ProjectIndexer getProjectIndexer() {
+        return projectIndexer;
     }
 
     private void applyHistoryAction(boolean undo) {

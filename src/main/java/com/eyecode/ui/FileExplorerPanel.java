@@ -1,5 +1,7 @@
 package com.eyecode.ui;
 
+import com.eyecode.eventbus.EventBus;
+import com.eyecode.eventbus.events.ProjectRefreshEvent;
 import com.eyecode.filesystem.FileSystemService;
 import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.SpacingSystem;
@@ -10,12 +12,15 @@ import com.eyecode.ui.scroll.ModernScrollBarUI;
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.function.Consumer;
 import javax.swing.JTree;
 
@@ -44,6 +49,7 @@ public class FileExplorerPanel extends RoundedPanel {
     private File currentRoot;
 
     private final FileSystemService fileSystemService;
+    private EventBus eventBus;
 
     public FileExplorerPanel(File rootDirectory, FileSystemService fileSystemService) {
         this.fileSystemService = fileSystemService;
@@ -224,6 +230,16 @@ public class FileExplorerPanel extends RoundedPanel {
         this.fileOpenCallBack = fileOpenCallBack;
     }
 
+    public void setEventBus(EventBus eventBus) {
+        this.eventBus = eventBus;
+    }
+
+    private void emit(ProjectRefreshEvent event) {
+        if (eventBus != null && event != null) {
+            eventBus.publish(event);
+        }
+    }
+
     /**
      * Permite trocar a pasta raiz dinamicamente (Open Folder).
      */
@@ -255,8 +271,11 @@ public class FileExplorerPanel extends RoundedPanel {
                 (Frame) SwingUtilities.getWindowAncestor(this),
                 directory, fileSystemService);
         dialog.setVisible(true);
-        if (dialog.isConfirmed()) {
-            refresh();
+        if (dialog.isConfirmed() && dialog.getCreatedPath() != null) {
+            ProjectRefreshEvent.Kind kind = dialog.isCreatedDirectory()
+                    ? ProjectRefreshEvent.Kind.DIRECTORY_CREATED
+                    : ProjectRefreshEvent.Kind.FILE_CREATED;
+            emit(new ProjectRefreshEvent(kind, dialog.getCreatedPath()));
         }
     }
 
@@ -268,7 +287,10 @@ public class FileExplorerPanel extends RoundedPanel {
         File newfile = new File(file.getParent(), name);
 
         if (file.renameTo(newfile)){
-            refresh();
+            emit(new ProjectRefreshEvent(
+                    ProjectRefreshEvent.Kind.FILE_RENAMED,
+                    newfile.toPath(),
+                    file.toPath()));
         }
     }
 
@@ -294,7 +316,10 @@ public class FileExplorerPanel extends RoundedPanel {
         if (confirm != JOptionPane.YES_OPTION) return;
 
         deleteRecursively(file);
-        refresh();
+        ProjectRefreshEvent.Kind kind = file.isDirectory()
+                ? ProjectRefreshEvent.Kind.DIRECTORY_DELETED
+                : ProjectRefreshEvent.Kind.FILE_DELETED;
+        emit(new ProjectRefreshEvent(kind, file.toPath()));
     }
 
     public File getCurrentRoot() {
@@ -321,4 +346,121 @@ public class FileExplorerPanel extends RoundedPanel {
         return null;
     }
 
+    /**
+     * Incremental refresh driven by {@link ProjectRefreshEvent}.
+     * <p>
+     * Patches only the affected node: never rebuilds the tree, never loses
+     * folder expansion and never changes the current selection.
+     */
+    public void incrementalRefresh(ProjectRefreshEvent event) {
+        if (event == null) return;
+
+        TreePath savedSelection = jTree.getSelectionPath();
+        java.util.List<TreePath> expandedPaths = captureExpandedPaths();
+
+        switch (event.getKind()) {
+            case FILE_CREATED, DIRECTORY_CREATED -> insertPath(event.getPath());
+            case FILE_DELETED, DIRECTORY_DELETED -> removePath(event.getPath());
+            case FILE_RENAMED -> {
+                if (event.hasOldPath()) removePath(event.getOldPath());
+                insertPath(event.getPath());
+            }
+            case FILE_MODIFIED -> { /* no structural change */ }
+        }
+
+        restoreExpandedPaths(expandedPaths);
+        if (savedSelection != null) {
+            jTree.setSelectionPath(savedSelection);
+        }
+    }
+
+    private java.util.List<TreePath> captureExpandedPaths() {
+        java.util.List<TreePath> paths = new java.util.ArrayList<>();
+        Enumeration<TreePath> expanded = jTree.getExpandedDescendants(
+                new TreePath(treeModel.getRoot()));
+        if (expanded != null) {
+            while (expanded.hasMoreElements()) {
+                paths.add(expanded.nextElement());
+            }
+        }
+        return paths;
+    }
+
+    private void restoreExpandedPaths(java.util.List<TreePath> paths) {
+        for (TreePath path : paths) {
+            jTree.expandPath(path);
+        }
+    }
+
+    private void insertPath(Path path) {
+        if (path == null) return;
+        File file = path.toFile();
+        DefaultMutableTreeNode root = (DefaultMutableTreeNode) treeModel.getRoot();
+        File rootFile = (File) root.getUserObject();
+        if (!isDescendant(rootFile, file)) return;
+
+        DefaultMutableTreeNode parent = findParentNode(root, file);
+        if (parent == null) return;
+        if (findDirectChild(parent, file) != null) return;
+
+        DefaultMutableTreeNode newNode = createNode(file);
+        int index = insertionIndex(parent, file);
+        parent.insert(newNode, index);
+        treeModel.nodesWereInserted(parent, new int[]{index});
+    }
+
+    private void removePath(Path path) {
+        if (path == null) return;
+        File file = path.toFile();
+        DefaultMutableTreeNode root = (DefaultMutableTreeNode) treeModel.getRoot();
+        DefaultMutableTreeNode node = findNode(root, file);
+        if (node == null || node.getParent() == null) return;
+        DefaultMutableTreeNode parent = (DefaultMutableTreeNode) node.getParent();
+        int index = parent.getIndex(node);
+        parent.remove(index);
+        treeModel.nodesWereRemoved(parent, new int[]{index}, new Object[]{node});
+    }
+
+    private DefaultMutableTreeNode findParentNode(DefaultMutableTreeNode root, File file) {
+        File parentFile = file.getParentFile();
+        if (parentFile == null) return null;
+        DefaultMutableTreeNode parentNode = findNode(root, parentFile);
+        return parentNode;
+    }
+
+    private DefaultMutableTreeNode findDirectChild(DefaultMutableTreeNode parent, File target) {
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            DefaultMutableTreeNode child = (DefaultMutableTreeNode) parent.getChildAt(i);
+            File childFile = (File) child.getUserObject();
+            if (childFile.equals(target)) return child;
+        }
+        return null;
+    }
+
+    private int insertionIndex(DefaultMutableTreeNode parent, File newFile) {
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            DefaultMutableTreeNode child = (DefaultMutableTreeNode) parent.getChildAt(i);
+            File childFile = (File) child.getUserObject();
+            if (compareChildren(newFile, childFile) < 0) {
+                return i;
+            }
+        }
+        return parent.getChildCount();
+    }
+
+    private int compareChildren(File a, File b) {
+        return Comparator
+                .comparing(File::isFile)
+                .thenComparing(File::getName, String.CASE_INSENSITIVE_ORDER)
+                .compare(a, b);
+    }
+
+    private boolean isDescendant(File root, File candidate) {
+        if (root == null || candidate == null) return false;
+        Path rootPath = root.toPath().toAbsolutePath().normalize();
+        Path candidatePath = candidate.toPath().toAbsolutePath().normalize();
+        return candidatePath.startsWith(rootPath);
+    }
+
 }
+

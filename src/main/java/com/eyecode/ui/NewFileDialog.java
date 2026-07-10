@@ -20,6 +20,8 @@ public class NewFileDialog extends JDialog {
     private ItemType selectedType = ItemType.JAVA_CLASS;
     private String resultName;
     private boolean confirmed;
+    private Path createdPath;
+    private boolean createdDirectory;
 
     private final JTextField nameField;
     private final JList<ListItem> itemList;
@@ -155,7 +157,6 @@ public class NewFileDialog extends JDialog {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
-
         buttonBar.add(cancelButton);
         buttonBar.add(createButton);
         add(buttonBar, BorderLayout.SOUTH);
@@ -166,18 +167,41 @@ public class NewFileDialog extends JDialog {
     private void create(File targetDirectory, String name, FileSystemService fs) throws Exception {
         Path basePath = targetDirectory.toPath();
         switch (selectedType) {
-            case JAVA_CLASS -> fs.writeFile(basePath.resolve(name + ".java"),
-                    "public class " + name + " {\n}\n");
-            case JAVA_INTERFACE -> fs.writeFile(basePath.resolve(name + ".java"),
-                    "public interface " + name + " {\n}\n");
-            case JAVA_ENUM -> fs.writeFile(basePath.resolve(name + ".java"),
-                    "public enum " + name + " {\n}\n");
-            case JAVA_RECORD -> fs.writeFile(basePath.resolve(name + ".java"),
-                    "public record " + name + "() {\n}\n");
-            case JAVA_ANNOTATION -> fs.writeFile(basePath.resolve(name + ".java"),
-                    "public @interface " + name + " {\n}\n");
-            case GENERAL_FILE -> fs.writeFile(basePath.resolve(name), "");
-            case GENERAL_DIRECTORY -> fs.createDirectories(basePath.resolve(name));
+            case JAVA_CLASS -> {
+                Path p = basePath.resolve(name + ".java");
+                fs.writeFile(p, "public class " + name + " {\n}\n");
+                recordCreated(p, false);
+            }
+            case JAVA_INTERFACE -> {
+                Path p = basePath.resolve(name + ".java");
+                fs.writeFile(p, "public interface " + name + " {\n}\n");
+                recordCreated(p, false);
+            }
+            case JAVA_ENUM -> {
+                Path p = basePath.resolve(name + ".java");
+                fs.writeFile(p, "public enum " + name + " {\n}\n");
+                recordCreated(p, false);
+            }
+            case JAVA_RECORD -> {
+                Path p = basePath.resolve(name + ".java");
+                fs.writeFile(p, "public record " + name + "() {\n}\n");
+                recordCreated(p, false);
+            }
+            case JAVA_ANNOTATION -> {
+                Path p = basePath.resolve(name + ".java");
+                fs.writeFile(p, "public @interface " + name + " {\n}\n");
+                recordCreated(p, false);
+            }
+            case GENERAL_FILE -> {
+                Path p = basePath.resolve(name);
+                fs.writeFile(p, "");
+                recordCreated(p, false);
+            }
+            case GENERAL_DIRECTORY -> {
+                Path p = basePath.resolve(name);
+                fs.createDirectories(p);
+                recordCreated(p, true);
+            }
             case GENERAL_PACKAGE -> {
                 String[] parts = name.split("\\.");
                 Path pkgPath = basePath;
@@ -185,8 +209,14 @@ public class NewFileDialog extends JDialog {
                     pkgPath = pkgPath.resolve(part);
                 }
                 fs.createDirectories(pkgPath);
+                recordCreated(pkgPath, true);
             }
         }
+    }
+
+    private void recordCreated(Path path, boolean directory) {
+        this.createdPath = path;
+        this.createdDirectory = directory;
     }
 
     public boolean isConfirmed() {
@@ -195,6 +225,14 @@ public class NewFileDialog extends JDialog {
 
     public String getResultName() {
         return resultName;
+    }
+
+    public Path getCreatedPath() {
+        return createdPath;
+    }
+
+    public boolean isCreatedDirectory() {
+        return createdDirectory;
     }
 
     private static class ListItem {

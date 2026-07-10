@@ -65,6 +65,9 @@ public class MainWindow extends JFrame {
     private final EditorContext editorContext;
     private final CommandContext commandContext;
     private final ExplorerIntegrationController explorerController;
+    private final com.eyecode.editor.v2.project.ProjectSymbolIndex sharedSymbolIndex;
+    private com.eyecode.editor.v2.project.ProjectIndexer sharedIndexer;
+    private com.eyecode.project.ProjectRefreshService projectRefreshService;
     private JSplitPane rootSplit;
     private int lastBottomHeight = 300;
     private boolean bottomVisible = true;
@@ -93,9 +96,14 @@ public class MainWindow extends JFrame {
         commandContext = new CommandContext(eventBus, editorContext, null);
         explorerController = new ExplorerIntegrationController(eventBus, editorContext, commandContext);
 
+        sharedSymbolIndex = new com.eyecode.editor.v2.project.ProjectSymbolIndex();
+        sharedIndexer = new com.eyecode.editor.v2.project.ProjectIndexer(new File(".").toPath().toAbsolutePath().normalize());
+        sharedIndexer.index(sharedSymbolIndex);
+
         UIManager.put("TabbedPane.cardTabArc", 14);
-        tabbedPane = new EditorHostPanel(fileSystemService, autoSaveManager);
+        tabbedPane = new EditorHostPanel(fileSystemService, autoSaveManager, sharedSymbolIndex, sharedIndexer);
         explorerPanel = new FileExplorerPanel(new File("."), fileSystemService);
+        explorerPanel.setEventBus(eventBus);
         bottomTool = new BottomToolWindowPanel();
         topBar = new TopBarPanel();
         statusBar = new StatusBar();
@@ -114,6 +122,7 @@ public class MainWindow extends JFrame {
         configureExplorer();
         configureWindowChrome();
         configureLifecycle();
+        configureProjectRefresh();
 
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
                 KeyStroke.getKeyStroke(KeyEvent.VK_P, InputEvent.CTRL_DOWN_MASK), "quickFileSearch");
@@ -278,7 +287,25 @@ public class MainWindow extends JFrame {
             public void windowClosing(WindowEvent e) {
                 autoSaveManager.saveAll();
                 autoSaveManager.shutdown();
+                if (projectRefreshService != null) projectRefreshService.stop();
             }
+        });
+    }
+
+    private void configureProjectRefresh() {
+        projectRefreshService = new com.eyecode.project.ProjectRefreshService(
+                eventBus, sharedIndexer, sharedSymbolIndex);
+        projectRefreshService.start();
+
+        projectRefreshService.addTreeChangeListener(event ->
+                SwingUtilities.invokeLater(() -> explorerPanel.incrementalRefresh(event)));
+
+        autoSaveManager.addSaveListener(savedEvent -> {
+            if (savedEvent == null || !savedEvent.succeeded()) return;
+            java.nio.file.Path savedPath = savedEvent.path();
+            if (savedPath == null) return;
+            eventBus.publish(new com.eyecode.eventbus.events.ProjectRefreshEvent(
+                    com.eyecode.eventbus.events.ProjectRefreshEvent.Kind.FILE_MODIFIED, savedPath));
         });
     }
 
@@ -508,7 +535,14 @@ public class MainWindow extends JFrame {
         NewFileDialog dialog = new NewFileDialog(this, root, fileSystemService);
         dialog.setVisible(true);
         if (dialog.isConfirmed()) {
-            refreshExplorer();
+            java.nio.file.Path created = dialog.getCreatedPath();
+            if (created != null) {
+                com.eyecode.eventbus.events.ProjectRefreshEvent.Kind kind =
+                        dialog.isCreatedDirectory()
+                                ? com.eyecode.eventbus.events.ProjectRefreshEvent.Kind.DIRECTORY_CREATED
+                                : com.eyecode.eventbus.events.ProjectRefreshEvent.Kind.FILE_CREATED;
+                eventBus.publish(new com.eyecode.eventbus.events.ProjectRefreshEvent(kind, created));
+            }
             bottomTool.printRunOutput("Created: " + dialog.getResultName());
             statusBar.updateStatus("Created " + dialog.getResultName());
         }
@@ -569,6 +603,13 @@ public class MainWindow extends JFrame {
     private void openProjectDir(File folder) {
         explorerPanel.setRootDirectory(folder);
         updateProjectUi(folder);
+
+        sharedSymbolIndex.clear();
+        sharedIndexer = new com.eyecode.editor.v2.project.ProjectIndexer(folder.toPath().toAbsolutePath().normalize());
+        sharedIndexer.index(sharedSymbolIndex);
+        if (projectRefreshService != null) {
+            projectRefreshService.setIndexer(sharedIndexer);
+        }
 
         ProjectType type = ProjectDetector.detect(folder);
         ProjectInfo info = new ProjectInfo(folder.getName(), folder.getAbsolutePath(), type);

@@ -10,6 +10,7 @@ import com.eyecode.editor.v2.language.java.symbols.SymbolBuilder;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -40,9 +41,38 @@ public final class ProjectIndexer {
         }
     }
 
-    private void indexFile(Path file, ProjectSymbolIndex index) {
+    public void indexFile(Path file, ProjectSymbolIndex index) {
+        indexFile(file, index, readSource(file));
+    }
+
+    private void indexFile(Path file, ProjectSymbolIndex index, String source) {
+        if (file == null || index == null) return;
+        if (source == null) return;
+        List<ProjectSymbol> symbols = parseSymbols(file, source);
+        index.replaceFile(file, symbols);
+    }
+
+    public void removeFile(Path file, ProjectSymbolIndex index) {
+        if (file == null || index == null) return;
+        index.removeFile(file);
+    }
+
+    public void updateFile(Path file, ProjectSymbolIndex index) {
+        if (file == null || index == null) return;
+        updateFile(file, index, readSource(file));
+    }
+
+    public void updateFile(Path file, ProjectSymbolIndex index, String source) {
+        if (file == null || index == null) return;
+        if (!isIndexedSource(file)) return;
+        String effectiveSource = source != null ? source : readSource(file);
+        List<ProjectSymbol> symbols = parseSymbols(file, effectiveSource);
+        index.replaceFile(file, symbols);
+    }
+
+    public List<ProjectSymbol> parseSymbols(Path file, String source) {
+        if (source == null) return List.of();
         try {
-            String source = Files.readString(file);
             JavaLexer lexer = new JavaLexer();
             JavaTokenStream stream = new JavaTokenStream(lexer.tokenize(source));
             JavaParser parser = new JavaParser(stream);
@@ -50,11 +80,24 @@ public final class ProjectIndexer {
 
             SymbolBuilder symbolBuilder = new SymbolBuilder();
             List<ProjectSymbol> symbols = symbolBuilder.build(model, file);
-
-            for (ProjectSymbol symbol : symbols) {
-                index.add(symbol);
-            }
+            return new ArrayList<>(symbols);
         } catch (Exception ignored) {
+            return List.of();
+        }
+    }
+
+    private boolean isIndexedSource(Path file) {
+        if (file == null) return false;
+        String name = file.getFileName().toString();
+        return name.endsWith(".java");
+    }
+
+    private String readSource(Path file) {
+        if (file == null || !Files.isRegularFile(file)) return null;
+        try {
+            return Files.readString(file);
+        } catch (IOException ignored) {
+            return null;
         }
     }
 }
