@@ -6,6 +6,10 @@ import com.eyecode.ui.designsystem.IconManager;
 import com.eyecode.ui.designsystem.SpacingSystem;
 import com.eyecode.ui.designsystem.TypographyManager;
 import javax.swing.*;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
+import javax.swing.JList;
+import javax.swing.ListSelectionModel;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -23,9 +27,11 @@ public class WelcomePanel extends JPanel {
     private static final int ROW_HEIGHT = 42;
     private static final int MAX_VISIBLE_ROWS = 10;
 
-    private final JPanel cardBody;
+    private final DefaultListModel<ProjectInfo> recentProjectModel;
+    private final JList<ProjectInfo> recentProjectList;
     private final JScrollPane cardScroll;
     private final JLabel emptyHint;
+    private final JPanel cardInner;
     private Consumer<ProjectInfo> onOpenRecentProject;
 
     private static final Color
@@ -87,7 +93,7 @@ public class WelcomePanel extends JPanel {
                 ColorManager.TEXT_PRIMARY);
         newProjectBtn.addActionListener(e -> onNewProject.run());
 
-        JButton cloneBtn = createStyledButton("Clone Repo",
+        JButton cloneBtn = createStyledButton("Clone Repository",
                 IconManager.welcomeIcon("git"),
                 BTN_SEC_BG, BTN_SEC_BORDER,
                 BTN_SEC_HOVER, BTN_SEC_HOVER_BORDER,
@@ -131,32 +137,47 @@ public class WelcomePanel extends JPanel {
         };
         card.setOpaque(false);
         card.setAlignmentX(Component.CENTER_ALIGNMENT);
-        card.setMaximumSize(new Dimension(COLUMN_WIDTH, Short.MAX_VALUE));
+        card.setMaximumSize(new Dimension(COLUMN_WIDTH, ROW_HEIGHT * MAX_VISIBLE_ROWS + SpacingSystem.XXL * 2));
 
-        JPanel cardInner = new JPanel();
+        cardInner = new JPanel();
         cardInner.setOpaque(false);
-        cardInner.setLayout(new BoxLayout(cardInner, BoxLayout.Y_AXIS));
+        cardInner.setLayout(new CardLayout());
         cardInner.setBorder(new EmptyBorder(SpacingSystem.XL, SpacingSystem.LG, SpacingSystem.XL, SpacingSystem.LG));
 
-        cardBody = new JPanel();
-        cardBody.setOpaque(false);
-        cardBody.setLayout(new BoxLayout(cardBody, BoxLayout.Y_AXIS));
+        recentProjectModel = new DefaultListModel<>();
+        recentProjectList = new JList<>(recentProjectModel);
+        recentProjectList.setOpaque(false);
+        recentProjectList.setFixedCellHeight(ROW_HEIGHT);
+        recentProjectList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        recentProjectList.setVisibleRowCount(MAX_VISIBLE_ROWS);
+        recentProjectList.setCellRenderer(new ProjectListCellRenderer());
+        recentProjectList.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        recentProjectList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                ProjectInfo selected = recentProjectList.getSelectedValue();
+                if (selected != null && onOpenRecentProject != null) {
+                    onOpenRecentProject.accept(selected);
+                }
+            }
+        });
 
         emptyHint = new JLabel("No recent projects");
         emptyHint.setAlignmentX(Component.CENTER_ALIGNMENT);
         emptyHint.setFont(TypographyManager.UI_BODY());
         emptyHint.setForeground(ColorManager.TEXT_DISABLED);
 
-        cardScroll = new JScrollPane(cardBody);
+        cardScroll = new JScrollPane(recentProjectList);
         cardScroll.setOpaque(false);
         cardScroll.getViewport().setOpaque(false);
         cardScroll.setBorder(null);
         cardScroll.getVerticalScrollBar().setUnitIncrement(24);
         cardScroll.getVerticalScrollBar().setBlockIncrement(120);
-        cardScroll.setMaximumSize(new Dimension(COLUMN_WIDTH - SpacingSystem.HUGE, ROW_HEIGHT * MAX_VISIBLE_ROWS + SpacingSystem.SM));
+        cardScroll.setPreferredSize(new Dimension(COLUMN_WIDTH - SpacingSystem.HUGE, ROW_HEIGHT * MAX_VISIBLE_ROWS));
+        cardScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, ROW_HEIGHT * MAX_VISIBLE_ROWS));
 
-        cardInner.add(cardScroll);
-        cardInner.add(emptyHint);
+        cardInner.add(cardScroll, "list");
+        cardInner.add(emptyHint, "empty");
         card.add(cardInner, BorderLayout.CENTER);
 
         // ── Assemble column ──────────────────────────────────
@@ -179,21 +200,21 @@ public class WelcomePanel extends JPanel {
     }
 
     public void setRecentProjects(List<ProjectInfo> projects) {
-        cardBody.removeAll();
+        recentProjectModel.clear();
         boolean empty = (projects == null || projects.isEmpty());
-        emptyHint.setVisible(empty);
-        cardScroll.setVisible(!empty);
 
         if (!empty) {
-            for (int i = 0; i < projects.size(); i++) {
-                boolean last = (i == projects.size() - 1);
-                cardBody.add(new ProjectRow(projects.get(i), last));
+            for (ProjectInfo project : projects) {
+                recentProjectModel.addElement(project);
             }
-            cardBody.add(Box.createVerticalGlue());
         }
 
-        cardBody.revalidate();
-        cardBody.repaint();
+        CardLayout cl = (CardLayout) cardInner.getLayout();
+        cl.show(cardInner, empty ? "empty" : "list");
+
+        recentProjectList.clearSelection();
+        revalidate();
+        repaint();
     }
 
     // ── Rounded button with custom painting ──────────────────
@@ -266,25 +287,32 @@ public class WelcomePanel extends JPanel {
         }
     }
 
-    // ── Recent project row with hover ────────────────────────
-    private class ProjectRow extends JPanel {
+    // ── Recent project row renderer ──────────────────────────
+    private static class ProjectListCellRenderer extends DefaultListCellRenderer {
 
-        private final ProjectInfo projectInfo;
-        private boolean hovered;
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                boolean isSelected, boolean cellHasFocus) {
 
-        ProjectRow(ProjectInfo info, boolean last) {
-            this.projectInfo = info;
-            setLayout(new BorderLayout());
-            setOpaque(false);
-            setMaximumSize(new Dimension(Short.MAX_VALUE, ROW_HEIGHT));
-            setPreferredSize(new Dimension(0, ROW_HEIGHT));
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-            if (!last) {
-                setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, ColorManager.BORDER_DIVIDER));
-            } else {
-                setBorder(new EmptyBorder(0, 0, 0, 0));
-            }
+            ProjectInfo info = (ProjectInfo) value;
+            JPanel row = new JPanel(new BorderLayout()) {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    if (isSelected) {
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        int arc = 8;
+                        g2.setColor(new Color(52, 56, 66));
+                        g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
+                        g2.setColor(ColorManager.ACCENT_BLUE);
+                        g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
+                        g2.dispose();
+                    }
+                    super.paintComponent(g);
+                }
+            };
+            row.setOpaque(false);
+            row.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, ColorManager.BORDER_DIVIDER));
 
             JLabel iconLabel = new JLabel(IconManager.welcomeIcon(info.getType().getIconName()));
             iconLabel.setBorder(new EmptyBorder(0, SpacingSystem.SM, 0, SpacingSystem.XL));
@@ -298,42 +326,10 @@ public class WelcomePanel extends JPanel {
             typeLabel.setForeground(ColorManager.TEXT_MUTED);
             typeLabel.setBorder(new EmptyBorder(0, SpacingSystem.XL, 0, SpacingSystem.XL));
 
-            add(iconLabel, BorderLayout.WEST);
-            add(nameLabel, BorderLayout.CENTER);
-            add(typeLabel, BorderLayout.EAST);
-
-            addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) { setHovered(true); }
-                @Override
-                public void mouseExited(MouseEvent e)  { setHovered(false); }
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    if (onOpenRecentProject != null) {
-                        onOpenRecentProject.accept(projectInfo);
-                    }
-                }
-            });
-        }
-
-        private void setHovered(boolean h) {
-            if (hovered == h) return;
-            hovered = h;
-            repaint();
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            if (hovered) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                int arc = 8;
-                g2.setColor(new Color(52, 56, 66));
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
-                g2.setColor(ColorManager.ACCENT_BLUE);
-                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
-                g2.dispose();
-            }
+            row.add(iconLabel, BorderLayout.WEST);
+            row.add(nameLabel, BorderLayout.CENTER);
+            row.add(typeLabel, BorderLayout.EAST);
+            return row;
         }
     }
 }
