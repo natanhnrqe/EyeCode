@@ -16,6 +16,7 @@ public final class ProjectSymbol {
     private Path sourceFile;
     private int line = -1;
     private int column = -1;
+    private String superClassName;
     private Object astReference;
 
     public String getName() {
@@ -88,6 +89,14 @@ public final class ProjectSymbol {
 
     public void setColumn(int column) {
         this.column = column;
+    }
+
+    public String getSuperClassName() {
+        return superClassName;
+    }
+
+    public void setSuperClassName(String superClassName) {
+        this.superClassName = superClassName;
     }
 
     public Object getAstReference() {

@@ -35,7 +35,8 @@ public final class SemanticResolver {
 
     public ProjectSymbol resolveVariable(String name) {
         for (ProjectSymbol symbol : symbols) {
-            if ((symbol.getKind() == SymbolKind.LOCAL_VARIABLE || symbol.getKind() == SymbolKind.PARAMETER)
+            SymbolKind k = symbol.getKind();
+            if ((k == SymbolKind.LOCAL_VARIABLE || k == SymbolKind.PARAMETER || k == SymbolKind.FIELD)
                     && symbol.getName().equals(name)) {
                 return symbol;
             }
@@ -50,6 +51,13 @@ public final class SemanticResolver {
         return resolveClass(stripGenericType(symbol.getType()));
     }
 
+    public ProjectSymbol resolveSuperClass(ProjectSymbol classSymbol) {
+        if (classSymbol == null) return null;
+        String superName = classSymbol.getSuperClassName();
+        if (superName == null || superName.isBlank()) return null;
+        return resolveClass(superName);
+    }
+
     public List<ProjectSymbol> resolveMembers(ProjectSymbol symbol) {
         if (symbol == null) {
             return Collections.emptyList();
@@ -60,7 +68,12 @@ public final class SemanticResolver {
             return Collections.emptyList();
         }
 
-        return membersByOwner.getOrDefault(type.getName(), Collections.emptyList());
+        Map<String, ProjectSymbol> result = new LinkedHashMap<>();
+        for (ProjectSymbol member : membersByOwner.getOrDefault(type.getName(), Collections.emptyList())) {
+            result.putIfAbsent(member.getName(), member);
+        }
+        addInheritedMembers(type, result);
+        return List.copyOf(result.values());
     }
 
     public ProjectSymbol resolveByName(String name) {
@@ -151,14 +164,13 @@ public final class SemanticResolver {
         return null;
     }
 
-    private void addInheritedMembers(ProjectSymbol owner, Map<String, ProjectSymbol> visible) {
-        ProjectSymbol superType = resolveType(owner);
-        if (superType == null) {
-            return;
+    private void addInheritedMembers(ProjectSymbol type, Map<String, ProjectSymbol> result) {
+        ProjectSymbol superType = resolveSuperClass(type);
+        if (superType == null) return;
+        for (ProjectSymbol member : membersByOwner.getOrDefault(superType.getName(), Collections.emptyList())) {
+            result.putIfAbsent(member.getName(), member);
         }
-        for (ProjectSymbol member : resolveMembers(superType)) {
-            visible.putIfAbsent(member.getName(), member);
-        }
+        addInheritedMembers(superType, result);
     }
 
     private boolean isGlobal(ProjectSymbol symbol) {

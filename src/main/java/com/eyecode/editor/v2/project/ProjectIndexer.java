@@ -27,8 +27,22 @@ public final class ProjectIndexer {
 
         index.clear();
 
-        indexSourceDir(projectRoot.resolve("src/main/java"), index);
-        indexSourceDir(projectRoot.resolve("src/test/java"), index);
+        Path mainSrc = projectRoot.resolve("src/main/java");
+        Path testSrc = projectRoot.resolve("src/test/java");
+
+        boolean hasSrcDir = Files.isDirectory(mainSrc) || Files.isDirectory(testSrc);
+
+        if (Files.isDirectory(mainSrc)) {
+            indexSourceDir(mainSrc, index);
+        }
+        if (Files.isDirectory(testSrc)) {
+            indexSourceDir(testSrc, index);
+        }
+
+        // Fallback: scan entire project root for .java files when no src/ dirs exist
+        if (!hasSrcDir) {
+            indexSourceDir(projectRoot, index);
+        }
     }
 
     private void indexSourceDir(Path dir, ProjectSymbolIndex index) {
@@ -70,7 +84,7 @@ public final class ProjectIndexer {
         index.replaceFile(file, symbols);
     }
 
-    public List<ProjectSymbol> parseSymbols(Path file, String source) {
+    public static List<ProjectSymbol> parseSymbols(Path file, String source) {
         if (source == null) return List.of();
         try {
             JavaLexer lexer = new JavaLexer();
@@ -81,7 +95,8 @@ public final class ProjectIndexer {
             SymbolBuilder symbolBuilder = new SymbolBuilder();
             List<ProjectSymbol> symbols = symbolBuilder.build(model, file);
             return new ArrayList<>(symbols);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            System.err.println("[ProjectIndexer] Failed to parse " + file + ": " + e.getMessage());
             return List.of();
         }
     }

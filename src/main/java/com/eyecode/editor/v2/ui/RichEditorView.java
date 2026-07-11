@@ -1605,19 +1605,27 @@ public final class RichEditorView extends JPanel {
     }
 
     private Path findProjectRoot() {
-        Path current = Paths.get("").toAbsolutePath();
         Path sourceFile = buffer.getDocument().getSourceFile();
-        if (sourceFile != null) {
-            current = sourceFile.getParent().toAbsolutePath();
-        }
+        Path start = sourceFile != null
+                ? sourceFile.getParent().toAbsolutePath()
+                : Paths.get("").toAbsolutePath();
+        Path current = start;
         while (current != null) {
             if (Files.exists(current.resolve("pom.xml"))
                     || Files.exists(current.resolve("build.gradle"))
-                    || Files.exists(current.resolve(".git"))) {
+                    || Files.exists(current.resolve("build.gradle.kts"))
+                    || Files.exists(current.resolve("settings.gradle"))
+                    || Files.exists(current.resolve("settings.gradle.kts"))
+                    || Files.exists(current.resolve("gradlew"))
+                    || Files.exists(current.resolve("mvnw"))
+                    || Files.exists(current.resolve(".git"))
+                    || Files.exists(current.resolve(".project"))
+                    || Files.exists(current.resolve(".idea"))
+                    || Files.exists(current.resolve(".classpath"))) {
                 return current;
             }
             current = current.getParent();
         }
-        return null;
+        return start;
     }
 }

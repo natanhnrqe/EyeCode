@@ -2,6 +2,7 @@ package com.eyecode.editor.v2.project;
 
 import com.eyecode.editor.v2.language.java.symbols.ProjectSymbol;
 import com.eyecode.editor.v2.language.java.symbols.SemanticResolver;
+import com.eyecode.editor.v2.language.java.symbols.StandardLibrarySymbols;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -62,7 +63,9 @@ public final class ProjectSymbolIndex {
     }
 
     public SemanticResolver resolver() {
-        return new SemanticResolver(symbols);
+        List<ProjectSymbol> all = new ArrayList<>(symbols);
+        all.addAll(StandardLibrarySymbols.all());
+        return new SemanticResolver(all);
     }
 
     public int size() {

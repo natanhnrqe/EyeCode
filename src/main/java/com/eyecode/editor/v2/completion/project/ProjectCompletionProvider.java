@@ -8,8 +8,11 @@ import com.eyecode.editor.v2.language.LanguageContextQueries;
 import com.eyecode.editor.v2.language.java.symbols.CompletionSymbolAdapter;
 import com.eyecode.editor.v2.language.java.symbols.ProjectSymbol;
 import com.eyecode.editor.v2.language.java.symbols.SemanticResolver;
+import com.eyecode.editor.v2.language.java.symbols.SymbolKind;
+import com.eyecode.editor.v2.project.ProjectIndexer;
 import com.eyecode.editor.v2.project.ProjectSymbolIndex;
 
+import java.nio.file.Path;
 import java.util.List;
 
 public final class ProjectCompletionProvider implements CompletionProvider {
@@ -24,14 +27,21 @@ public final class ProjectCompletionProvider implements CompletionProvider {
 
     @Override
     public CompletionSnapshot complete(LanguageContext context) {
+        ensureFileIndexed(context);
         SemanticResolver resolver = index.resolver();
         List<ProjectSymbol> symbols;
 
         String receiver = getDotReceiver(context);
         if (receiver != null) {
-            ProjectSymbol receiverSymbol = receiver.equals("this")
-                    ? resolveCurrentClass(context, resolver)
-                    : resolver.resolveVariable(receiver);
+            ProjectSymbol receiverSymbol;
+            if (receiver.equals("this")) {
+                receiverSymbol = resolveCurrentClass(context, resolver);
+            } else if (receiver.equals("super")) {
+                ProjectSymbol currentClass = resolveCurrentClass(context, resolver);
+                receiverSymbol = resolveSuperClass(currentClass, resolver);
+            } else {
+                receiverSymbol = resolver.resolveVariable(receiver);
+            }
             symbols = resolver.resolveMembers(receiverSymbol);
         } else {
             symbols = resolver.resolveVisibleSymbols();
@@ -84,6 +94,9 @@ public final class ProjectCompletionProvider implements CompletionProvider {
         ProjectSymbol current = null;
 
         for (ProjectSymbol symbol : resolver.resolveVisibleSymbols()) {
+            SymbolKind k = symbol.getKind();
+            if (k != SymbolKind.CLASS && k != SymbolKind.INTERFACE
+                    && k != SymbolKind.ENUM && k != SymbolKind.RECORD) continue;
             Object ast = symbol.getAstReference();
             if (ast == null) continue;
             if (symbol.getSourceFile() == null) continue;
@@ -94,6 +107,21 @@ public final class ProjectCompletionProvider implements CompletionProvider {
             }
         }
         return current;
+    }
+
+    private ProjectSymbol resolveSuperClass(ProjectSymbol classSymbol, SemanticResolver resolver) {
+        return resolver.resolveSuperClass(classSymbol);
+    }
+
+    private void ensureFileIndexed(LanguageContext context) {
+        Path sourceFile = context.getDocument().getSourceFile();
+        if (sourceFile == null) return;
+        if (!index.getForFile(sourceFile).isEmpty()) return;
+
+        String source = context.getDocument().getText();
+        List<ProjectSymbol> symbols = ProjectIndexer.parseSymbols(sourceFile, source);
+        if (symbols.isEmpty()) return;
+        index.replaceFile(sourceFile, symbols);
     }
 
     private int offsetForPosition(LanguageContext context) {

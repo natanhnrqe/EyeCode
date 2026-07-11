@@ -27,6 +27,7 @@ public final class SymbolBuilder {
         ProjectSymbol symbol = new ProjectSymbol();
         symbol.setName(type.getName());
         symbol.setKind(toKind(type.getKind()));
+        symbol.setSuperClassName(type.getSuperClass());
         symbol.setModifiers(type.getModifiers());
         symbol.setSourceFile(sourceFile);
         symbol.setAstReference(type);
