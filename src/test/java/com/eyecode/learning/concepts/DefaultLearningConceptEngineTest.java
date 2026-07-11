@@ -4,6 +4,8 @@ import com.eyecode.editor.v2.language.java.symbols.ProjectSymbol;
 import com.eyecode.editor.v2.language.java.symbols.SymbolKind;
 import com.eyecode.learning.analysis.LearningAnalysisContext;
 import com.eyecode.learning.analysis.LearningContextResolver;
+import com.eyecode.learning.catalog.DefaultLearningCatalog;
+import com.eyecode.learning.catalog.LearningCatalog;
 import com.eyecode.learning.concepts.providers.ClassConceptProvider;
 import com.eyecode.learning.model.ConceptType;
 import com.eyecode.learning.model.DifficultyLevel;
@@ -18,7 +20,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class DefaultLearningConceptEngineTest {
 
-    private final ClassConceptProvider classProvider = new ClassConceptProvider();
+    private final LearningCatalog catalog = new DefaultLearningCatalog();
+    private final ClassConceptProvider classProvider = new ClassConceptProvider(catalog);
 
     @Test
     void classKindReturnsClassConcept() {
@@ -71,6 +74,7 @@ class DefaultLearningConceptEngineTest {
 
     @Test
     void engineAggregatesMultipleProviders() {
+        LearningCatalog cat = new DefaultLearningCatalog();
         LearningConceptProvider fakeProvider = ctx -> List.of(createConcept("fake", ConceptType.LOOP, DifficultyLevel.ADVANCED));
 
         DefaultLearningConceptEngine engine = new DefaultLearningConceptEngine(List.of(classProvider, fakeProvider));
@@ -132,6 +136,59 @@ class DefaultLearningConceptEngineTest {
         assertTrue(result.isEmpty());
     }
 
+    @Test
+    void conceptFromCatalogHasAllFields() {
+        DefaultLearningConceptEngine engine = new DefaultLearningConceptEngine(List.of(classProvider));
+
+        LearningContext ctx = contextWithSymbol(SymbolKind.RECORD);
+        List<LearningConcept> result = engine.analyze(ctx);
+
+        assertEquals(1, result.size());
+        LearningConcept concept = result.getFirst();
+
+        assertEquals("record", concept.getId());
+        assertEquals("Record", concept.getTitle());
+        assertEquals(ConceptType.RECORD, concept.getType());
+        assertEquals(DifficultyLevel.INTERMEDIATE, concept.getDifficulty());
+        assertNotNull(concept.getDescription());
+        assertNotNull(concept.getRelatedConcepts());
+    }
+
+    @Test
+    void typeNotInCatalogReturnsEmpty() {
+        LearningCatalog emptyCatalog = new LearningCatalog() {
+            @Override
+            public LearningConcept get(ConceptType type) {
+                return null;
+            }
+
+            @Override
+            public boolean contains(ConceptType type) {
+                return false;
+            }
+        };
+
+        ClassConceptProvider provider = new ClassConceptProvider(emptyCatalog);
+        DefaultLearningConceptEngine engine = new DefaultLearningConceptEngine(List.of(provider));
+
+        LearningContext ctx = contextWithSymbol(SymbolKind.CLASS);
+        List<LearningConcept> result = engine.analyze(ctx);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void catalogDoesNotMutateAcrossCalls() {
+        DefaultLearningConceptEngine engine = new DefaultLearningConceptEngine(List.of(classProvider));
+
+        LearningContext ctx = contextWithSymbol(SymbolKind.CLASS);
+        List<LearningConcept> first = engine.analyze(ctx);
+        List<LearningConcept> second = engine.analyze(ctx);
+
+        assertEquals(first.size(), second.size());
+        assertEquals(first.getFirst().getTitle(), second.getFirst().getTitle());
+    }
+
     private void assertConceptForKind(SymbolKind kind, ConceptType expectedType, DifficultyLevel expectedDifficulty) {
         DefaultLearningConceptEngine engine = new DefaultLearningConceptEngine(List.of(classProvider));
 
@@ -142,7 +199,7 @@ class DefaultLearningConceptEngineTest {
 
         LearningConcept concept = result.getFirst();
         assertNotNull(concept.getId());
-        assertEquals(expectedType.name(), concept.getTitle());
+        assertEquals(expectedType.name(), concept.getType().name());
         assertEquals(expectedType, concept.getType());
         assertEquals(expectedDifficulty, concept.getDifficulty());
         assertNotNull(concept.getDescription());
