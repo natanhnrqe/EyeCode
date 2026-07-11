@@ -35,6 +35,15 @@ import com.eyecode.editor.v2.syntax.TokenType;
 import com.eyecode.editor.v2.syntax.swing.SwingSyntaxRenderer;
 import com.eyecode.editor.v2.ui.completion.CompletionPopup;
 import com.eyecode.editor.v2.ui.gutter.GutterPanel;
+import com.eyecode.learning.catalog.DefaultLearningCatalog;
+import com.eyecode.learning.catalog.LearningCatalog;
+import com.eyecode.learning.concepts.DefaultLearningConceptEngine;
+import com.eyecode.learning.concepts.LearningConceptEngine;
+import com.eyecode.learning.concepts.providers.ClassConceptProvider;
+import com.eyecode.learning.hover.ConceptHoverProvider;
+import com.eyecode.learning.hover.DefaultHoverEngine;
+import com.eyecode.learning.hover.HoverEngine;
+import com.eyecode.learning.ui.LearningHoverController;
 import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.TypographyManager;
 
@@ -122,6 +131,7 @@ public final class RichEditorView extends JPanel {
     private boolean renderPending;
     private int currentSearchIndex = -1;
     private boolean replaceMode;
+    private final LearningHoverController learningHoverController;
 
     public RichEditorView(EditorBuffer buffer) {
         this(buffer, null, null);
@@ -288,6 +298,13 @@ public final class RichEditorView extends JPanel {
             }
         };
         textPane.addFocusListener(focusListener);
+
+        LearningCatalog catalog = new DefaultLearningCatalog();
+        ClassConceptProvider classProvider = new ClassConceptProvider(catalog);
+        LearningConceptEngine conceptEngine = new DefaultLearningConceptEngine(List.of(classProvider));
+        HoverEngine hoverEngine = new DefaultHoverEngine(List.of(new ConceptHoverProvider(conceptEngine)));
+        this.learningHoverController = new LearningHoverController(textPane, hoverEngine, () -> latestSyntaxSnapshot);
+
         renderSyntax();
         refreshDiagnostics();
         refreshLanguageContext();
@@ -1377,6 +1394,7 @@ public final class RichEditorView extends JPanel {
         caretSync.dispose();
         buffer.clearListeners();
         completionPopup.hide();
+        learningHoverController.dispose();
         clearSearchHighlights();
     }
 
