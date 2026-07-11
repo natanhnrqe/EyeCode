@@ -2,11 +2,11 @@ package com.eyecode.learning.concepts.providers;
 
 import com.eyecode.editor.v2.language.java.symbols.ProjectSymbol;
 import com.eyecode.editor.v2.language.java.symbols.SymbolKind;
+import com.eyecode.learning.analysis.LearningAnalysisContext;
 import com.eyecode.learning.concepts.LearningConceptProvider;
 import com.eyecode.learning.model.ConceptType;
 import com.eyecode.learning.model.DifficultyLevel;
 import com.eyecode.learning.model.LearningConcept;
-import com.eyecode.learning.model.LearningContext;
 
 import java.util.Collections;
 import java.util.List;
@@ -14,7 +14,7 @@ import java.util.List;
 public final class ClassConceptProvider implements LearningConceptProvider {
 
     @Override
-    public List<LearningConcept> analyze(LearningContext context) {
+    public List<LearningConcept> analyze(LearningAnalysisContext context) {
         if (context == null) {
             return Collections.emptyList();
         }

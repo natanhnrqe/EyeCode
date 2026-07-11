@@ -2,6 +2,8 @@ package com.eyecode.learning.concepts;
 
 import com.eyecode.editor.v2.language.java.symbols.ProjectSymbol;
 import com.eyecode.editor.v2.language.java.symbols.SymbolKind;
+import com.eyecode.learning.analysis.LearningAnalysisContext;
+import com.eyecode.learning.analysis.LearningContextResolver;
 import com.eyecode.learning.concepts.providers.ClassConceptProvider;
 import com.eyecode.learning.model.ConceptType;
 import com.eyecode.learning.model.DifficultyLevel;
@@ -92,6 +94,37 @@ class DefaultLearningConceptEngineTest {
     @Test
     void engineWithEmptyProvidersIsSafe() {
         DefaultLearningConceptEngine engine = new DefaultLearningConceptEngine(List.of());
+
+        LearningContext ctx = contextWithSymbol(SymbolKind.CLASS);
+        List<LearningConcept> result = engine.analyze(ctx);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void resolverCanBeInjected() {
+        LearningAnalysisContext expected = new LearningAnalysisContext(null, null, null, null, null, null);
+        LearningContextResolver custom = ctx -> expected;
+
+        DefaultLearningConceptEngine engine = new DefaultLearningConceptEngine(List.of(), custom);
+
+        LearningContext ctx = contextWithSymbol(SymbolKind.CLASS);
+        LearningConceptProvider spy = actualCtx -> {
+            assertSame(expected, actualCtx);
+            return List.of();
+        };
+
+        DefaultLearningConceptEngine engineWithSpy = new DefaultLearningConceptEngine(List.of(spy), custom);
+        List<LearningConcept> result = engineWithSpy.analyze(ctx);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void nullLearningContextReturnsNullAnalysisContext() {
+        LearningContextResolver custom = ctx -> null;
+
+        DefaultLearningConceptEngine engine = new DefaultLearningConceptEngine(List.of(classProvider), custom);
 
         LearningContext ctx = contextWithSymbol(SymbolKind.CLASS);
         List<LearningConcept> result = engine.analyze(ctx);
