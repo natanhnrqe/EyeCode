@@ -1,5 +1,7 @@
 package com.eyecode.learning.model;
 
+import com.eyecode.learning.content.LearningPage;
+
 import java.util.List;
 
 public final class LearningConcept {
@@ -10,6 +12,7 @@ public final class LearningConcept {
     private ConceptType type;
     private DifficultyLevel difficulty;
     private List<String> relatedConcepts;
+    private LearningPage page;
 
     public String getId() {
         return id;
@@ -57,5 +60,13 @@ public final class LearningConcept {
 
     public void setRelatedConcepts(List<String> relatedConcepts) {
         this.relatedConcepts = relatedConcepts;
+    }
+
+    public LearningPage getPage() {
+        return page;
+    }
+
+    public void setPage(LearningPage page) {
+        this.page = page;
     }
 }
