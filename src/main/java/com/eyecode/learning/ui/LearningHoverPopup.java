@@ -10,6 +10,8 @@ import java.awt.*;
 
 public final class LearningHoverPopup {
 
+    private static final int CURSOR_OFFSET = 12;
+
     private JWindow window;
     private final JLabel titleLabel;
     private final JLabel descriptionLabel;
@@ -43,7 +45,9 @@ public final class LearningHoverPopup {
         }
 
         window.pack();
-        window.setLocation(screenLocation.x + 12, screenLocation.y + 12);
+
+        Point pos = adjustedPosition(screenLocation, window.getWidth(), window.getHeight());
+        window.setLocation(pos);
         window.setVisible(true);
     }
 
@@ -57,10 +61,31 @@ public final class LearningHoverPopup {
         return window != null && window.isVisible();
     }
 
+    private static Point adjustedPosition(Point mouse, int popupWidth, int popupHeight) {
+        GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getDefaultScreenDevice().getDefaultConfiguration();
+        Rectangle screen = gc.getBounds();
+        Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(gc);
+
+        int x = mouse.x + CURSOR_OFFSET;
+        int y = mouse.y + CURSOR_OFFSET;
+
+        if (x + popupWidth > screen.x + screen.width - insets.right) {
+            x = mouse.x - CURSOR_OFFSET - popupWidth;
+        }
+        if (y + popupHeight > screen.y + screen.height - insets.bottom) {
+            y = mouse.y - CURSOR_OFFSET - popupHeight;
+        }
+        x = Math.max(screen.x + insets.left, x);
+        y = Math.max(screen.y + insets.top, y);
+
+        return new Point(x, y);
+    }
+
     private void ensureWindow(Component owner) {
         if (window != null) return;
 
-        Window win = javax.swing.SwingUtilities.getWindowAncestor(owner);
+        Window win = SwingUtilities.getWindowAncestor(owner);
         window = new JWindow(win);
         window.setFocusableWindowState(false);
         window.setBackground(new Color(0, 0, 0, 0));

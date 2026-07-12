@@ -15,6 +15,7 @@ import com.eyecode.learning.model.LearningContext;
 import javax.swing.*;
 import java.awt.Point;
 import java.awt.event.*;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -32,6 +33,7 @@ public final class LearningHoverController {
     private final Timer hoverTimer;
 
     private volatile int lastOffset = -1;
+    private volatile String lastSymbolKey;
     private volatile boolean popupSuppressed;
 
     public LearningHoverController(JTextPane textPane, HoverEngine hoverEngine, Supplier<SyntaxSnapshot> syntaxSupplier) {
@@ -72,6 +74,7 @@ public final class LearningHoverController {
             if (offset == lastOffset) return;
 
             lastOffset = offset;
+            lastSymbolKey = null;
             popup.hide();
             hoverTimer.restart();
         }
@@ -84,6 +87,7 @@ public final class LearningHoverController {
             hoverTimer.stop();
             popup.hide();
             lastOffset = -1;
+            lastSymbolKey = null;
         }
     };
 
@@ -94,6 +98,7 @@ public final class LearningHoverController {
             hoverTimer.stop();
             popup.hide();
             lastOffset = -1;
+            lastSymbolKey = null;
         }
     };
 
@@ -104,6 +109,7 @@ public final class LearningHoverController {
             hoverTimer.stop();
             popup.hide();
             lastOffset = -1;
+            lastSymbolKey = null;
         }
     };
 
@@ -121,12 +127,17 @@ public final class LearningHoverController {
 
         if (token.isEmpty()) return;
 
-        SymbolKind kind = keywordToKind(token.get().text());
+        SyntaxToken t = token.get();
+        String key = t.text() + ":" + t.startOffset() + ":" + t.endOffset();
+        if (Objects.equals(key, lastSymbolKey)) return;
+        lastSymbolKey = key;
+
+        SymbolKind kind = keywordToKind(t.text());
         if (kind == null) return;
 
         ProjectSymbol symbol = new ProjectSymbol();
         symbol.setKind(kind);
-        symbol.setName(token.get().text());
+        symbol.setName(t.text());
 
         LearningContext ctx = new LearningContext();
         ctx.setCurrentSymbol(symbol);
@@ -136,7 +147,10 @@ public final class LearningHoverController {
         if (analysisCtx == null) return;
 
         Optional<LearningConcept> concept = hoverEngine.resolve(analysisCtx);
-        if (concept.isEmpty()) return;
+        if (concept.isEmpty()) {
+            lastSymbolKey = null;
+            return;
+        }
 
         Point mouseScreen = java.awt.MouseInfo.getPointerInfo().getLocation();
         popup.show(textPane, concept.get(), mouseScreen);
