@@ -14,7 +14,8 @@ public final class LearningBulletList extends JPanel {
     public LearningBulletList(List<String> items) {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
-        setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
+        setAlignmentX(Component.LEFT_ALIGNMENT);
+        setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
 
         if (items == null) return;
 
@@ -23,7 +24,7 @@ public final class LearningBulletList extends JPanel {
             bullet.setFont(TypographyManager.monoRegular(FONT_SIZE));
             bullet.setForeground(ColorManager.TEXT_SECONDARY);
             bullet.setAlignmentX(Component.LEFT_ALIGNMENT);
-            bullet.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
+            bullet.setBorder(BorderFactory.createEmptyBorder(1, 0, 1, 0));
             add(bullet);
         }
     }

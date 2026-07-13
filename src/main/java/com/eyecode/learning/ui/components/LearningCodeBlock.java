@@ -4,9 +4,6 @@ import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.TypographyManager;
 
 import javax.swing.*;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.SimpleAttributeSet;
-import javax.swing.text.StyleConstants;
 import java.awt.*;
 
 public final class LearningCodeBlock extends JPanel {
@@ -28,7 +25,6 @@ public final class LearningCodeBlock extends JPanel {
         area.setWrapStyleWord(true);
         area.setBorder(BorderFactory.createEmptyBorder(PADDING, PADDING, PADDING, PADDING));
         area.setOpaque(true);
-        area.setMaximumSize(new Dimension(Integer.MAX_VALUE, area.getPreferredSize().height));
 
         JPanel rounded = new JPanel(new BorderLayout()) {
             @Override
@@ -41,6 +37,18 @@ public final class LearningCodeBlock extends JPanel {
                 g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, ARC, ARC);
                 g2.dispose();
                 super.paintComponent(g);
+            }
+
+            @Override
+            public Dimension getMaximumSize() {
+                return new Dimension(Integer.MAX_VALUE, super.getPreferredSize().height);
+            }
+
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension d = super.getPreferredSize();
+                d.width = Math.max(d.width, area.getPreferredSize().width + PADDING * 2);
+                return d;
             }
         };
         rounded.setOpaque(false);
