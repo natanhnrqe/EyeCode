@@ -12,148 +12,211 @@ import com.eyecode.learning.hover.HoverEngine;
 import com.eyecode.learning.model.LearningConcept;
 import com.eyecode.learning.model.LearningContext;
 
-import javax.swing.*;
 import java.awt.Point;
-import java.awt.event.*;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
 public final class LearningHoverController {
 
-    private static final int HOVER_DELAY_MS = 500;
     private static final Set<String> TYPE_KEYWORDS = Set.of("class", "interface", "enum", "record");
 
-    private final JTextPane textPane;
+    private final LearningHoverSurface surface;
+    private final LearningHoverPopup popup;
+    private final LearningHoverScheduler scheduler;
+    private final HoverStateMachine stateMachine;
     private final HoverEngine hoverEngine;
     private final Supplier<SyntaxSnapshot> syntaxSupplier;
     private final LearningContextResolver resolver;
-    private final LearningHoverPopup popup;
-    private final Timer hoverTimer;
+    private final IntConsumer moveListener;
+    private final Runnable cancelListener;
 
     private volatile int lastOffset = -1;
-    private volatile String lastSymbolKey;
-    private volatile boolean popupSuppressed;
+    private volatile HoverSnapshot currentSnapshot;
+    private volatile String visibleSymbolKey;
 
-    public LearningHoverController(JTextPane textPane, HoverEngine hoverEngine, Supplier<SyntaxSnapshot> syntaxSupplier) {
-        this.textPane = textPane;
+    public LearningHoverController(
+            LearningHoverSurface surface,
+            LearningHoverPopup popup,
+            LearningHoverScheduler scheduler,
+            HoverEngine hoverEngine,
+            Supplier<SyntaxSnapshot> syntaxSupplier
+    ) {
+        this.surface = surface;
+        this.popup = popup;
+        this.scheduler = scheduler;
+        this.stateMachine = new HoverStateMachine();
         this.hoverEngine = hoverEngine;
         this.syntaxSupplier = syntaxSupplier;
         this.resolver = new DefaultLearningContextResolver();
-        this.popup = new LearningHoverPopup();
+        this.moveListener = this::onOffsetChanged;
+        this.cancelListener = this::cancelHover;
 
-        this.hoverTimer = new Timer(HOVER_DELAY_MS, e -> doShow());
-        this.hoverTimer.setRepeats(false);
-
-        installListeners();
+        this.surface.addMoveListener(moveListener);
+        this.surface.addCancelListener(cancelListener);
+        this.scheduler.startMonitor(this::monitorHover);
     }
 
     public void dispose() {
-        hoverTimer.stop();
+        scheduler.dispose();
         popup.hide();
-        textPane.removeMouseMotionListener(motionListener);
-        textPane.removeMouseListener(exitListener);
-        textPane.removeKeyListener(keyListener);
-        textPane.removeFocusListener(focusListener);
+        surface.removeMoveListener(moveListener);
+        surface.removeCancelListener(cancelListener);
+        surface.dispose();
     }
 
-    private void installListeners() {
-        textPane.addMouseMotionListener(motionListener);
-        textPane.addMouseListener(exitListener);
-        textPane.addKeyListener(keyListener);
-        textPane.addFocusListener(focusListener);
+    private void onOffsetChanged(int offset) {
+        if (offset == lastOffset) {
+            return;
+        }
+
+        lastOffset = offset;
+        HoverSnapshot snapshot = resolveCurrentHover(offset);
+        currentSnapshot = snapshot;
+
+        if (snapshot != null) {
+            stateMachine.enter(snapshot.symbolKey());
+
+            if (stateMachine.getState() == HoverState.WAITING) {
+                scheduler.restartHover(this::tryShow);
+            }
+
+            if ((stateMachine.getState() == HoverState.VISIBLE || stateMachine.getState() == HoverState.INTERACTING)
+                    && popup.isVisible()
+                    && !Objects.equals(visibleSymbolKey, snapshot.symbolKey())) {
+                popup.update(snapshot.concept());
+                visibleSymbolKey = snapshot.symbolKey();
+            }
+            return;
+        }
+
+        stateMachine.enter(null);
+        if (stateMachine.getState() == HoverState.IDLE) {
+            scheduler.stopHover();
+        }
     }
 
-    private final MouseMotionAdapter motionListener = new MouseMotionAdapter() {
-        @Override
-        public void mouseMoved(MouseEvent e) {
-            if (popupSuppressed) return;
+    private void cancelHover() {
+        scheduler.stopHover();
+        stateMachine.reset();
+        popup.hide();
+        resetHover();
+    }
 
-            int offset = textPane.viewToModel2D(e.getPoint());
-            if (offset == lastOffset) return;
+    private void checkShow() {
+    if(stateMachine.canShow()) {
+        tryShow();
+    }
+}
 
-            lastOffset = offset;
-            lastSymbolKey = null;
-            popup.hide();
-            hoverTimer.restart();
+    private void monitorHover() {
+        Point mouse = surface.pointerScreenLocation();
+        if (mouse == null) {
+            return;
         }
-    };
 
-    private final MouseAdapter exitListener = new MouseAdapter() {
-        @Override
-        public void mouseExited(MouseEvent e) {
-            popupSuppressed = false;
-            hoverTimer.stop();
-            popup.hide();
+        boolean insideEditor = surface.containsScreen(mouse);
+        boolean insidePopup = popup.containsScreen(mouse);
+
+        stateMachine.setPopupHover(insidePopup);
+
+        if (!insideEditor && !insidePopup) {
+            stateMachine.leave();
             lastOffset = -1;
-            lastSymbolKey = null;
+            if (stateMachine.getState() == HoverState.IDLE) {
+                scheduler.stopHover();
+            }
         }
-    };
 
-    private final KeyAdapter keyListener = new KeyAdapter() {
-        @Override
-        public void keyPressed(KeyEvent e) {
-            popupSuppressed = false;
-            hoverTimer.stop();
+        if (stateMachine.canHide()) {
             popup.hide();
+            visibleSymbolKey = null;
+            currentSnapshot = null;
             lastOffset = -1;
-            lastSymbolKey = null;
+            scheduler.stopHover();
+            return;
         }
-    };
 
-    private final FocusAdapter focusListener = new FocusAdapter() {
-        @Override
-        public void focusLost(FocusEvent e) {
-            popupSuppressed = false;
-            hoverTimer.stop();
-            popup.hide();
-            lastOffset = -1;
-            lastSymbolKey = null;
+        if (stateMachine.getState() == HoverState.WAITING) {
+            scheduler.startMonitor(this::tryShow);
         }
-    };
+    }
 
-    private void doShow() {
-        if (popup.isVisible()) return;
+    private void tryShow() {
 
+        if(!stateMachine.canShow()){
+            return;
+        }
+
+        HoverSnapshot snapshot = currentSnapshot;
+
+        if(snapshot == null){
+            return;
+        }
+
+        popup.show(snapshot.concept());
+
+        visibleSymbolKey = snapshot.symbolKey();
+    }
+
+    private HoverSnapshot resolveCurrentHover(int offset) {
         SyntaxSnapshot syntax = syntaxSupplier.get();
-        if (syntax == null || syntax.isEmpty()) return;
+        if (syntax == null || syntax.isEmpty()) {
+            return null;
+        }
 
         Optional<SyntaxToken> token = syntax.getTokens().stream()
-                .filter(t -> lastOffset >= t.startOffset() && lastOffset <= t.endOffset()
+                .filter(t -> offset >= t.startOffset() && offset <= t.endOffset()
                         && t.type() == TokenType.KEYWORD
                         && TYPE_KEYWORDS.contains(t.text()))
                 .findFirst();
 
-        if (token.isEmpty()) return;
-
-        SyntaxToken t = token.get();
-        String key = t.text() + ":" + t.startOffset() + ":" + t.endOffset();
-        if (Objects.equals(key, lastSymbolKey)) return;
-        lastSymbolKey = key;
-
-        SymbolKind kind = keywordToKind(t.text());
-        if (kind == null) return;
-
-        ProjectSymbol symbol = new ProjectSymbol();
-        symbol.setKind(kind);
-        symbol.setName(t.text());
-
-        LearningContext ctx = new LearningContext();
-        ctx.setCurrentSymbol(symbol);
-        ctx.setCursorOffset(lastOffset);
-
-        LearningAnalysisContext analysisCtx = resolver.resolve(ctx);
-        if (analysisCtx == null) return;
-
-        Optional<LearningConcept> concept = hoverEngine.resolve(analysisCtx);
-        if (concept.isEmpty()) {
-            lastSymbolKey = null;
-            return;
+        if (token.isEmpty()) {
+            return null;
         }
 
-        Point mouseScreen = java.awt.MouseInfo.getPointerInfo().getLocation();
-        popup.show(textPane, concept.get(), mouseScreen);
+        SyntaxToken syntaxToken = token.get();
+        String key = syntaxToken.text() + ":" + syntaxToken.startOffset() + ":" + syntaxToken.endOffset();
+
+        if (Objects.equals(key, visibleSymbolKey) && popup.isVisible()) {
+            return currentSnapshot;
+        }
+
+        SymbolKind kind = keywordToKind(syntaxToken.text());
+        if (kind == null) {
+            return null;
+        }
+
+        LearningAnalysisContext analysisContext = resolveContext(kind, syntaxToken.text(), offset);
+        if (analysisContext == null) {
+            return null;
+        }
+
+        Optional<LearningConcept> concept = hoverEngine.resolve(analysisContext);
+        if (concept.isEmpty()) {
+            return null;
+        }
+
+        return new HoverSnapshot(key, concept.get());
+    }
+
+    private LearningAnalysisContext resolveContext(SymbolKind kind, String symbolName, int offset) {
+        ProjectSymbol symbol = new ProjectSymbol();
+        symbol.setKind(kind);
+        symbol.setName(symbolName);
+
+        LearningContext context = new LearningContext();
+        context.setCurrentSymbol(symbol);
+        context.setCursorOffset(offset);
+        return resolver.resolve(context);
+    }
+
+    private void resetHover() {
+        lastOffset = -1;
+        currentSnapshot = null;
+        visibleSymbolKey = null;
     }
 
     private static SymbolKind keywordToKind(String text) {
@@ -164,5 +227,8 @@ public final class LearningHoverController {
             case "record" -> SymbolKind.RECORD;
             default -> null;
         };
+    }
+
+    private record HoverSnapshot(String symbolKey, LearningConcept concept) {
     }
 }

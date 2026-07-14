@@ -1,10 +1,8 @@
 package com.eyecode.learning.document;
 
 import com.eyecode.learning.content.LearningPage;
-import com.eyecode.ui.designsystem.ColorManager;
 
 import javax.swing.*;
-import javax.swing.text.StyledDocument;
 import java.awt.*;
 
 public final class LearningDocumentView extends JPanel {
@@ -19,38 +17,40 @@ public final class LearningDocumentView extends JPanel {
 
         renderer = new LearningDocumentRenderer();
 
-        textPane = new JTextPane(renderer.getDocument()) {
-            @Override
-            public boolean getScrollableTracksViewportWidth() {
-                return true;
-            }
-        };
+        textPane = new JTextPane();
+        textPane.setDocument(renderer.getDocument());
+
         textPane.setEditable(false);
+        textPane.setFocusable(false);
         textPane.setOpaque(false);
-        textPane.setBackground(new Color(0, 0, 0, 0));
-        textPane.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        textPane.setMargin(new Insets(0, 0, 0, 0));
-        textPane.setCaretColor(ColorManager.TEXT_SECONDARY);
+        textPane.setBackground(LearningDocumentStyle.transparent());
+        textPane.setCaretColor(LearningDocumentStyle.bodyColor());
+        textPane.setBorder(LearningDocumentStyle.documentBorder());
+        textPane.setMargin(LearningDocumentStyle.zeroInsets());
+        textPane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
 
         scrollPane = new JScrollPane(textPane);
         scrollPane.setBorder(null);
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(LearningDocumentStyle.documentScrollUnit());
 
         add(scrollPane, BorderLayout.CENTER);
     }
 
     public void setPage(LearningPage page) {
-        StyledDocument doc = renderer.render(page);
-        textPane.setDocument(doc);
+        textPane.setDocument(renderer.render(page));
         textPane.setCaretPosition(0);
+        repaint();
     }
 
     public void clear() {
         renderer.clear();
         textPane.setDocument(renderer.getDocument());
+        textPane.setCaretPosition(0);
+        repaint();
     }
 
     public JTextPane getTextPane() {
