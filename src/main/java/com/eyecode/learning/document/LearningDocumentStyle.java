@@ -21,11 +21,12 @@ public final class LearningDocumentStyle {
     private static final int CARD_ORIGIN = 0;
     private static final int CARD_BORDER_INSET = 1;
 
-    private static final int PAGE_TITLE_FONT_SIZE = 17;
+    private static final int PAGE_TITLE_FONT_SIZE = 18;
     private static final int META_FONT_SIZE = 11;
-    private static final int SECTION_FONT_SIZE = 12;
-    private static final int BODY_FONT_SIZE = 13;
+    private static final int SECTION_FONT_SIZE = 13;
+    private static final int BODY_FONT_SIZE = 12;
     private static final int BULLET_FONT_SIZE = 12;
+    private static final int CODE_FONT_SIZE = 12;
     private static final int LINK_FONT_SIZE = 12;
     private static final int ARROW_FONT_SIZE = 14;
     private static final int BUTTON_FONT_SIZE = 12;
@@ -37,7 +38,7 @@ public final class LearningDocumentStyle {
     private static final int HEADER_TEXT_GAP = 2;
     private static final int TITLE_ICON_GAP = 8;
 
-    private static final int DOCUMENT_TOP = 12;
+    private static final int DOCUMENT_TOP = 10;
     private static final int DOCUMENT_LEFT = 16;
     private static final int DOCUMENT_BOTTOM = 12;
     private static final int DOCUMENT_RIGHT = 16;
@@ -45,7 +46,7 @@ public final class LearningDocumentStyle {
 
     private static final int FOOTER_TOP = 4;
     private static final int FOOTER_LEFT = 0;
-    private static final int FOOTER_BOTTOM = 8;
+    private static final int FOOTER_BOTTOM = 4;
     private static final int FOOTER_RIGHT = 0;
     private static final int FOOTER_HORIZONTAL_GAP = 0;
     private static final int FOOTER_VERTICAL_GAP = 8;
@@ -59,14 +60,16 @@ public final class LearningDocumentStyle {
     private static final int TITLE_RIGHT_INDENT = 0;
     private static final int BODY_LEFT_INDENT = 0;
     private static final int BODY_RIGHT_INDENT = 0;
-    private static final int BULLET_LEFT_INDENT = 12;
+    private static final int BULLET_LEFT_INDENT = 14;
     private static final int BULLET_RIGHT_INDENT = 0;
-    private static final int CODE_LEFT_INDENT = 12;
-    private static final int CODE_RIGHT_INDENT = 12;
+    private static final int CODE_LEFT_INDENT = 4;
+    private static final int CODE_RIGHT_INDENT = 4;
+    private static final int CODE_BLOCK_HORIZONTAL_PADDING = 4;
+    private static final int CODE_BLOCK_MINIMUM_COLUMNS = 46;
 
     private static final float BODY_LINE_SPACING = 0.18f;
-    private static final float BULLET_LINE_SPACING = 0.14f;
-    private static final float CODE_LINE_SPACING = 0.10f;
+    private static final float BULLET_LINE_SPACING = 0.20f;
+    private static final float CODE_LINE_SPACING = 0.08f;
 
     private static final String DIVIDER_TEXT = "────────────────────────────────";
 
@@ -76,24 +79,50 @@ public final class LearningDocumentStyle {
     private static final SimpleAttributeSet META_PRIMARY;
     private static final SimpleAttributeSet META_SECONDARY;
     private static final SimpleAttributeSet SECTION_TITLE;
+    private static final SimpleAttributeSet EXPLANATION_TITLE;
+    private static final SimpleAttributeSet ANALOGY_TITLE;
+    private static final SimpleAttributeSet WORLD_TITLE;
+    private static final SimpleAttributeSet CODE_TITLE;
+    private static final SimpleAttributeSet FLOW_TITLE;
+    private static final SimpleAttributeSet MISTAKES_TITLE;
+    private static final SimpleAttributeSet NEXT_STEP_TITLE;
+    private static final SimpleAttributeSet REFERENCE_TITLE;
     private static final SimpleAttributeSet BODY;
     private static final SimpleAttributeSet CODE;
     private static final SimpleAttributeSet BULLET;
+    private static final SimpleAttributeSet MISTAKE;
     private static final SimpleAttributeSet LINK;
     private static final SimpleAttributeSet ARROW;
     private static final SimpleAttributeSet DIVIDER;
+    private static final SimpleAttributeSet CODE_KEYWORD;
+    private static final SimpleAttributeSet CODE_TYPE;
+    private static final SimpleAttributeSet CODE_STRING;
+    private static final SimpleAttributeSet CODE_COMMENT;
 
     static {
-        PAGE_TITLE = create(pageTitleFont(), ColorManager.TEXT_PRIMARY, null, 0, 4, TITLE_LEFT_INDENT, TITLE_RIGHT_INDENT, 0.0f);
+        PAGE_TITLE = create(pageTitleFont(), ColorManager.TEXT_PRIMARY, null, 0, 6, TITLE_LEFT_INDENT, TITLE_RIGHT_INDENT, 0.0f);
         META_PRIMARY = create(metaFont(), ColorManager.SUCCESS_GREEN, null, 0, 0, 0, 0, 0.0f);
         META_SECONDARY = create(metaFont(), ColorManager.TEXT_TERTIARY, null, 0, 0, 0, 0, 0.0f);
-        SECTION_TITLE = create(sectionTitleFont(), ColorManager.TEXT_PRIMARY, null, 14, 6, TITLE_LEFT_INDENT, TITLE_RIGHT_INDENT, 0.0f);
-        BODY = create(bodyFont(), ColorManager.TEXT_SECONDARY, null, 0, 6, BODY_LEFT_INDENT, BODY_RIGHT_INDENT, BODY_LINE_SPACING);
-        CODE = create(codeFont(), ColorManager.EDITOR_FOREGROUND, ColorManager.PANEL_BG, 10, 10, CODE_LEFT_INDENT, CODE_RIGHT_INDENT, CODE_LINE_SPACING);
-        BULLET = create(bulletFont(), ColorManager.TEXT_PRIMARY, null, 0, 4, BULLET_LEFT_INDENT, BULLET_RIGHT_INDENT, BULLET_LINE_SPACING);
-        LINK = create(linkFont(), ColorManager.ACCENT_BLUE_LIGHT, null, 10, 4, TITLE_LEFT_INDENT, TITLE_RIGHT_INDENT, 0.0f);
+        SECTION_TITLE = create(sectionTitleFont(), ColorManager.TEXT_PRIMARY, null, 18, 10, TITLE_LEFT_INDENT, TITLE_RIGHT_INDENT, 0.0f);
+        EXPLANATION_TITLE = sectionTitle(ColorManager.ACCENT_BLUE_LIGHT);
+        ANALOGY_TITLE = sectionTitle(ColorManager.SYNTAX_CLASS);
+        WORLD_TITLE = sectionTitle(ColorManager.SUCCESS_GREEN);
+        CODE_TITLE = sectionTitle(ColorManager.SYNTAX_KEYWORD);
+        FLOW_TITLE = sectionTitle(ColorManager.SYNTAX_CLASS);
+        MISTAKES_TITLE = sectionTitle(ColorManager.ERROR_RED);
+        NEXT_STEP_TITLE = sectionTitle(ColorManager.ACCENT_BLUE_LIGHT);
+        REFERENCE_TITLE = sectionTitle(ColorManager.TEXT_TERTIARY);
+        BODY = create(bodyFont(), ColorManager.TEXT_SECONDARY, null, 0, 9, BODY_LEFT_INDENT, BODY_RIGHT_INDENT, BODY_LINE_SPACING);
+        CODE = create(codeFont(), ColorManager.EDITOR_FOREGROUND, ColorManager.EDITOR_BG, 0, 0, CODE_LEFT_INDENT, CODE_RIGHT_INDENT, CODE_LINE_SPACING);
+        BULLET = create(bulletFont(), ColorManager.TEXT_PRIMARY, null, 0, 7, BULLET_LEFT_INDENT, BULLET_RIGHT_INDENT, BULLET_LINE_SPACING);
+        MISTAKE = create(bulletFont(), ColorManager.TEXT_PRIMARY, null, 0, 7, BULLET_LEFT_INDENT, BULLET_RIGHT_INDENT, BULLET_LINE_SPACING);
+        LINK = create(linkFont(), ColorManager.ACCENT_BLUE_LIGHT, null, 12, 6, TITLE_LEFT_INDENT, TITLE_RIGHT_INDENT, 0.0f);
         ARROW = create(arrowFont(), ColorManager.TEXT_TERTIARY, null, 0, 0, 0, 0, 0.0f);
-        DIVIDER = create(bodyFont(), ColorManager.BORDER_DIVIDER, null, 10, 10, 0, 0, 0.0f);
+        DIVIDER = create(bodyFont(), ColorManager.BORDER_CARD, null, 18, 18, 0, 0, 0.0f);
+        CODE_KEYWORD = syntax(ColorManager.SYNTAX_KEYWORD, true);
+        CODE_TYPE = syntax(ColorManager.SYNTAX_CLASS, false);
+        CODE_STRING = syntax(ColorManager.SYNTAX_STRING, false);
+        CODE_COMMENT = syntax(ColorManager.TEXT_MUTED, false);
     }
 
     private LearningDocumentStyle() {
@@ -119,6 +148,38 @@ public final class LearningDocumentStyle {
         return copy(SECTION_TITLE);
     }
 
+    public static SimpleAttributeSet explanationTitle() {
+        return copy(EXPLANATION_TITLE);
+    }
+
+    public static SimpleAttributeSet analogyTitle() {
+        return copy(ANALOGY_TITLE);
+    }
+
+    public static SimpleAttributeSet worldTitle() {
+        return copy(WORLD_TITLE);
+    }
+
+    public static SimpleAttributeSet codeTitle() {
+        return copy(CODE_TITLE);
+    }
+
+    public static SimpleAttributeSet flowTitle() {
+        return copy(FLOW_TITLE);
+    }
+
+    public static SimpleAttributeSet mistakesTitle() {
+        return copy(MISTAKES_TITLE);
+    }
+
+    public static SimpleAttributeSet nextStepTitle() {
+        return copy(NEXT_STEP_TITLE);
+    }
+
+    public static SimpleAttributeSet referenceTitle() {
+        return copy(REFERENCE_TITLE);
+    }
+
     public static SimpleAttributeSet body() {
         return copy(BODY);
     }
@@ -131,6 +192,10 @@ public final class LearningDocumentStyle {
         return copy(BULLET);
     }
 
+    public static SimpleAttributeSet mistake() {
+        return copy(MISTAKE);
+    }
+
     public static SimpleAttributeSet link() {
         return copy(LINK);
     }
@@ -141,6 +206,22 @@ public final class LearningDocumentStyle {
 
     public static SimpleAttributeSet divider() {
         return copy(DIVIDER);
+    }
+
+    public static SimpleAttributeSet codeKeyword() {
+        return copy(CODE_KEYWORD);
+    }
+
+    public static SimpleAttributeSet codeType() {
+        return copy(CODE_TYPE);
+    }
+
+    public static SimpleAttributeSet codeString() {
+        return copy(CODE_STRING);
+    }
+
+    public static SimpleAttributeSet codeComment() {
+        return copy(CODE_COMMENT);
     }
 
     public static SimpleAttributeSet dividerLeft() {
@@ -207,6 +288,14 @@ public final class LearningDocumentStyle {
         return DOCUMENT_SCROLL_UNIT;
     }
 
+    public static int codeBlockHorizontalPadding() {
+        return CODE_BLOCK_HORIZONTAL_PADDING;
+    }
+
+    public static int codeBlockMinimumColumns() {
+        return CODE_BLOCK_MINIMUM_COLUMNS;
+    }
+
     public static Border footerBorder() {
         return BorderFactory.createEmptyBorder(FOOTER_TOP, FOOTER_LEFT, FOOTER_BOTTOM, FOOTER_RIGHT);
     }
@@ -244,7 +333,7 @@ public final class LearningDocumentStyle {
     }
 
     public static Font codeFont() {
-        return TypographyManager.monoRegular(BODY_FONT_SIZE);
+        return TypographyManager.monoRegular(CODE_FONT_SIZE);
     }
 
     public static Font bulletFont() {
@@ -332,6 +421,19 @@ public final class LearningDocumentStyle {
         StyleConstants.setRightIndent(attrs, rightIndent);
         StyleConstants.setFirstLineIndent(attrs, 0);
         StyleConstants.setLineSpacing(attrs, lineSpacing);
+        return attrs;
+    }
+
+    private static SimpleAttributeSet sectionTitle(Color color) {
+        return create(sectionTitleFont(), color, null, 18, 10, TITLE_LEFT_INDENT, TITLE_RIGHT_INDENT, 0.0f);
+    }
+
+    private static SimpleAttributeSet syntax(Color color, boolean bold) {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setFontFamily(attrs, codeFont().getFamily());
+        StyleConstants.setFontSize(attrs, codeFont().getSize());
+        StyleConstants.setBold(attrs, bold);
+        StyleConstants.setForeground(attrs, color);
         return attrs;
     }
 
