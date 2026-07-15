@@ -74,16 +74,18 @@ public final class LearningHoverController {
 
         lastOffset = offset;
         HoverSnapshot snapshot = resolveCurrentHover(offset);
-        currentSnapshot = snapshot;
 
         if (snapshot != null) {
+            currentSnapshot = snapshot;
             stateMachine.enter(snapshot.symbolKey());
 
             if (stateMachine.getState() == HoverState.WAITING) {
                 scheduler.restartHover(this::tryShow);
             }
 
-            if ((stateMachine.getState() == HoverState.VISIBLE || stateMachine.getState() == HoverState.INTERACTING)
+            if ((stateMachine.getState() == HoverState.VISIBLE
+                    || stateMachine.getState() == HoverState.INTERACTING
+                    || stateMachine.getState() == HoverState.HIDING)
                     && popup.isVisible()
                     && !Objects.equals(visibleSymbolKey, snapshot.symbolKey())) {
                 popup.update(snapshot.concept());
@@ -92,7 +94,7 @@ public final class LearningHoverController {
             return;
         }
 
-        stateMachine.enter(null);
+        stateMachine.leave();
         if (stateMachine.getState() == HoverState.IDLE) {
             scheduler.stopHover();
         }
@@ -104,12 +106,6 @@ public final class LearningHoverController {
         popup.hide();
         resetHover();
     }
-
-    private void checkShow() {
-    if(stateMachine.canShow()) {
-        tryShow();
-    }
-}
 
     private void monitorHover() {
         Point mouse = surface.pointerScreenLocation();
@@ -139,25 +135,22 @@ public final class LearningHoverController {
             return;
         }
 
-        if (stateMachine.getState() == HoverState.WAITING) {
-            scheduler.startMonitor(this::tryShow);
+        if (stateMachine.getState() == HoverState.IDLE) {
+            scheduler.stopHover();
         }
     }
 
     private void tryShow() {
-
-        if(!stateMachine.canShow()){
+        if (!stateMachine.canShow()) {
             return;
         }
 
         HoverSnapshot snapshot = currentSnapshot;
-
-        if(snapshot == null){
+        if (snapshot == null) {
             return;
         }
 
         popup.show(snapshot.concept());
-
         visibleSymbolKey = snapshot.symbolKey();
     }
 

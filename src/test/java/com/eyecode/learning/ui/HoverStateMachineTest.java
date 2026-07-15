@@ -72,6 +72,22 @@ class HoverStateMachineTest {
     }
 
     @Test
+    void leavingTheHoveredSymbolStartsTheHideCountdown() {
+        HoverStateMachine machine = new HoverStateMachine(supplier);
+
+        machine.enter("class:1:6");
+        clock.addAndGet(500L);
+        assertTrue(machine.canShow());
+
+        machine.leave();
+        assertEquals(HoverState.HIDING, machine.getState());
+
+        clock.addAndGet(300L);
+        assertTrue(machine.canHide());
+        assertEquals(HoverState.IDLE, machine.getState());
+    }
+
+    @Test
     void resetClearsStateImmediately() {
         HoverStateMachine machine = new HoverStateMachine(supplier);
 

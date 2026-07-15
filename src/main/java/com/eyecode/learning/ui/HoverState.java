@@ -4,5 +4,6 @@ public enum HoverState {
     IDLE,
     WAITING,
     VISIBLE,
-    INTERACTING
+    INTERACTING,
+    HIDING
 }

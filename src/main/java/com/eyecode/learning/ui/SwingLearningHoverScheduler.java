@@ -4,7 +4,7 @@ import javax.swing.Timer;
 
 public final class SwingLearningHoverScheduler implements LearningHoverScheduler {
 
-    private static final int HOVER_DELAY_MS = 40;
+    private static final int HOVER_DELAY_MS = 500;
     private static final int MONITOR_INTERVAL_MS = 40;
 
     private final Timer hoverTimer;
@@ -14,7 +14,7 @@ public final class SwingLearningHoverScheduler implements LearningHoverScheduler
     private Runnable monitorTask;
 
     public SwingLearningHoverScheduler() {
-        hoverTimer = new Timer(40, event -> runHoverTask());
+        hoverTimer = new Timer(HOVER_DELAY_MS, event -> runHoverTask());
         hoverTimer.setRepeats(false);
 
         monitorTimer = new Timer(MONITOR_INTERVAL_MS, event -> runMonitorTask());

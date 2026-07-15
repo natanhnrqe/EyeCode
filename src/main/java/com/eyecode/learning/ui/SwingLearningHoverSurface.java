@@ -13,12 +13,15 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.util.function.IntConsumer;
 
 public final class SwingLearningHoverSurface implements LearningHoverSurface {
 
     private final JTextPane textPane;
     private final MouseMotionAdapter motionListener;
+    private final MouseWheelListener wheelListener;
     private final MouseAdapter mouseListener;
     private final KeyAdapter keyListener;
     private final FocusAdapter focusListener;
@@ -32,11 +35,11 @@ public final class SwingLearningHoverSurface implements LearningHoverSurface {
         motionListener = new MouseMotionAdapter() {
             @Override
             public void mouseMoved(MouseEvent event) {
-                if (moveListener != null) {
-                    moveListener.accept(textPane.viewToModel2D(event.getPoint()));
-                }
+                notifyMove(event);
             }
         };
+
+        wheelListener = event -> notifyMove(event);
 
         mouseListener = new MouseAdapter() {
             @Override
@@ -60,6 +63,7 @@ public final class SwingLearningHoverSurface implements LearningHoverSurface {
         };
 
         textPane.addMouseMotionListener(motionListener);
+        textPane.addMouseWheelListener(wheelListener);
         textPane.addMouseListener(mouseListener);
         textPane.addKeyListener(keyListener);
         textPane.addFocusListener(focusListener);
@@ -110,11 +114,18 @@ public final class SwingLearningHoverSurface implements LearningHoverSurface {
     @Override
     public void dispose() {
         textPane.removeMouseMotionListener(motionListener);
+        textPane.removeMouseWheelListener(wheelListener);
         textPane.removeMouseListener(mouseListener);
         textPane.removeKeyListener(keyListener);
         textPane.removeFocusListener(focusListener);
         moveListener = null;
         cancelListener = null;
+    }
+
+    private void notifyMove(MouseEvent event) {
+        if (moveListener != null) {
+            moveListener.accept(textPane.viewToModel2D(event.getPoint()));
+        }
     }
 
     private void cancelHover() {
