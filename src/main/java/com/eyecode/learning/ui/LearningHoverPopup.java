@@ -2,8 +2,9 @@ package com.eyecode.learning.ui;
 
 import com.eyecode.learning.document.LearningDocumentStyle;
 import com.eyecode.learning.model.LearningConcept;
+import com.eyecode.ui.core.UIPopup;
+import com.eyecode.ui.swing.SwingPopup;
 
-import javax.swing.JWindow;
 import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
@@ -16,85 +17,59 @@ import java.awt.Toolkit;
 
 public final class LearningHoverPopup {
 
-    private JWindow window;
+    private UIPopup popup;
     private LearningCard card;
 
     public LearningHoverPopup() {
     }
 
     public void setCard(LearningCard card) {
-        log("setCard:start card=" + describe(card) + " window=" + describe(window));
         this.card = card;
-        if (window != null) {
-            log("setCard:rebind-content-pane window=" + describe(window));
-            window.setContentPane(card);
-            window.setSize(LearningDocumentStyle.popupSize());
-            log("setCard:rebind-done size=" + LearningDocumentStyle.popupSize().width + "x" + LearningDocumentStyle.popupSize().height);
+        if (popup != null) {
+            popup.setContent(card);
+            popup.setSize(LearningDocumentStyle.popupSize().width, LearningDocumentStyle.popupSize().height);
         }
-        log("setCard:end");
     }
 
     public void show(LearningConcept concept) {
-        log("SHOW ENTER concept=" + describe(concept) + " card=" + describe(card) + " window=" + describe(window));
         if (card == null) {
-            log("show:aborted reason=card-null");
             return;
         }
 
         Point screenLocation = pointerScreenLocation();
-        log("show:pointer screenLocation=" + describe(screenLocation));
         if (screenLocation == null) {
-            log("show:aborted reason=pointer-null");
             return;
         }
-        log("show:ensure-window");
-        ensureWindow();
-        log("show:set-concept concept=" + describe(concept));
+
+        ensurePopup();
         card.setConcept(concept);
         Dimension size = LearningDocumentStyle.popupSize();
-        log("show:set-size size=" + size.width + "x" + size.height);
-        window.setSize(size);
+        popup.setSize(size.width, size.height);
         Point location = adjustedPosition(screenLocation, size);
-        log("show:set-location location=" + location.x + "," + location.y);
-        window.setLocation(location);
-        log("show:set-visible true window=" + describe(window));
-        window.setVisible(true);
-        log("show:end visible=" + isVisible() + " bounds=" + getScreenBounds());
+        popup.setLocation(location.x, location.y);
+        popup.show();
     }
 
     public void update(LearningConcept concept) {
-        log("update:start concept=" + describe(concept) + " card=" + describe(card) + " window=" + describe(window));
         if (card == null) {
-            log("update:aborted reason=card-null");
             return;
         }
 
-        log("update:set-concept concept=" + describe(concept));
         card.setConcept(concept);
-        if (window != null && window.isVisible()) {
-            log("update:refresh-window visible=true");
-            window.revalidate();
-            window.repaint();
-            log("update:refresh-done");
-        } else {
-            log("update:skip-refresh visible=false window=" + describe(window));
+        if (popup != null && popup.isVisible()) {
+            popup.revalidate();
+            popup.repaint();
         }
-        log("update:end");
     }
 
     public void hide() {
-        log("hide:start window=" + describe(window) + " visible=" + isVisible());
-        if (window != null) {
-            log("hide:set-visible false");
-            window.setVisible(false);
-        } else {
-            log("hide:skipped reason=window-null");
+        if (popup != null) {
+            popup.hide();
         }
-        log("hide:end visible=" + isVisible());
     }
 
     public boolean isVisible() {
-        return window != null && window.isVisible();
+        return popup != null && popup.isVisible();
     }
 
     public boolean containsScreen(Point screenPoint) {
@@ -102,23 +77,20 @@ public final class LearningHoverPopup {
     }
 
     public Rectangle getScreenBounds() {
-        return window != null ? window.getBounds() : new Rectangle();
+        return popup != null ? popup.getBounds() : new Rectangle();
     }
 
-    private void ensureWindow() {
-        log("ensureWindow:enter window=" + describe(window));
-        if (window != null) {
-            log("ensureWindow:reuse window=" + describe(window));
+    private void ensurePopup() {
+        if (popup != null) {
             return;
         }
 
-        log("ensureWindow:create");
-        window = new JWindow();
-        window.setFocusableWindowState(false);
-        window.setBackground(LearningDocumentStyle.transparent());
-        window.setContentPane(card);
-        window.setSize(LearningDocumentStyle.popupSize());
-        log("ensureWindow:created window=" + describe(window) + " size=" + LearningDocumentStyle.popupSize().width + "x" + LearningDocumentStyle.popupSize().height);
+        SwingPopup swingPopup = new SwingPopup();
+        swingPopup.setFocusableWindowState(false);
+        swingPopup.setBackground(LearningDocumentStyle.transparent());
+        swingPopup.setContent(card);
+        swingPopup.setSize(LearningDocumentStyle.popupSize().width, LearningDocumentStyle.popupSize().height);
+        popup = swingPopup;
     }
 
     private static Point adjustedPosition(Point mouse, Dimension popupSize) {
@@ -147,16 +119,5 @@ public final class LearningHoverPopup {
     private static Point pointerScreenLocation() {
         PointerInfo pointerInfo = MouseInfo.getPointerInfo();
         return pointerInfo != null ? pointerInfo.getLocation() : null;
-    }
-
-    private static void log(String message) {
-        System.out.println("[LearningHoverPopup] " + message);
-    }
-
-    private static String describe(Object value) {
-        if (value == null) {
-            return "null";
-        }
-        return value.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(value));
     }
 }
