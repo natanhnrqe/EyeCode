@@ -28,7 +28,7 @@ public final class LearningHoverPopup {
     public void setCard(LearningCard card) {
         this.card = card;
         if (popup != null) {
-            popup.setContent(card);
+            popup.setContent(card.getComponent());
             popup.setSize(LearningDocumentStyle.popupSize().width, LearningDocumentStyle.popupSize().height);
         }
     }
@@ -90,7 +90,7 @@ public final class LearningHoverPopup {
         popup = uiFactory.createPopup();
         popup.setFocusableWindowState(false);
         popup.setBackground(LearningDocumentStyle.transparent());
-        popup.setContent(card);
+        popup.setContent(card.getComponent());
         popup.setSize(LearningDocumentStyle.popupSize().width, LearningDocumentStyle.popupSize().height);
     }
 

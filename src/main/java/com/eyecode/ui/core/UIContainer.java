@@ -1,8 +1,14 @@
 package com.eyecode.ui.core;
 
+import java.awt.Component;
+
 public interface UIContainer extends UIView {
 
     void add(UIComponent component);
+
+    void add(Component component);
+
+    void add(Component component, Object constraints);
 
     void remove(UIComponent component);
 
@@ -11,4 +17,6 @@ public interface UIContainer extends UIView {
     void revalidate();
 
     void repaint();
+
+    Component getComponent();
 }

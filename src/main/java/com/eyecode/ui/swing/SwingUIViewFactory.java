@@ -1,6 +1,7 @@
 package com.eyecode.ui.swing;
 
 import com.eyecode.ui.core.UIButton;
+import com.eyecode.ui.core.UIContainer;
 import com.eyecode.ui.core.UIPopup;
 import com.eyecode.ui.core.UIScrollPane;
 import com.eyecode.ui.core.UITextComponent;
@@ -18,6 +19,11 @@ public final class SwingUIViewFactory implements UIViewFactory {
     @Override
     public UIView createView() {
         return new SwingView();
+    }
+
+    @Override
+    public UIContainer createContainer() {
+        return new SwingContainer();
     }
 
     @Override

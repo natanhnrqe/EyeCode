@@ -4,13 +4,29 @@ import com.eyecode.ui.core.UIComponent;
 import com.eyecode.ui.core.UIContainer;
 
 import javax.swing.JPanel;
+import java.awt.Component;
+import java.awt.Graphics;
+import java.util.function.Consumer;
 
 public final class SwingContainer implements UIContainer {
 
     private final JPanel panel;
+    private Consumer<Graphics> paintDelegate;
 
     public SwingContainer() {
-        this.panel = new JPanel();
+        this.panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                if (paintDelegate != null) {
+                    paintDelegate.accept(g);
+                }
+                super.paintComponent(g);
+            }
+        };
+    }
+
+    public void setPaintDelegate(Consumer<Graphics> delegate) {
+        this.paintDelegate = delegate;
     }
 
     @Override
@@ -18,6 +34,16 @@ public final class SwingContainer implements UIContainer {
         if (component instanceof SwingContainer c) {
             panel.add(c.getPanel());
         }
+    }
+
+    @Override
+    public void add(Component component) {
+        panel.add(component);
+    }
+
+    @Override
+    public void add(Component component, Object constraints) {
+        panel.add(component, constraints);
     }
 
     @Override
@@ -40,6 +66,11 @@ public final class SwingContainer implements UIContainer {
     @Override
     public void repaint() {
         panel.repaint();
+    }
+
+    @Override
+    public Component getComponent() {
+        return panel;
     }
 
     public JPanel getPanel() {

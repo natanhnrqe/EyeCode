@@ -6,6 +6,8 @@ public interface UIViewFactory {
 
     UIView createView();
 
+    UIContainer createContainer();
+
     UITextComponent createTextComponent();
 
     UITextPane createTextPane();
