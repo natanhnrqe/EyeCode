@@ -15,8 +15,8 @@ import java.awt.Insets;
 public final class LearningDocumentStyle {
 
     private static final int POPUP_CURSOR_OFFSET = 12;
-    private static final int POPUP_WIDTH = 400;
-    private static final int POPUP_HEIGHT = 480;
+    private static final int POPUP_WIDTH = 500;
+    private static final int POPUP_HEIGHT = 500;
     private static final int CARD_ARC = 10;
     private static final int CARD_ORIGIN = 0;
     private static final int CARD_BORDER_INSET = 1;
@@ -62,10 +62,10 @@ public final class LearningDocumentStyle {
     private static final int BODY_RIGHT_INDENT = 0;
     private static final int BULLET_LEFT_INDENT = 14;
     private static final int BULLET_RIGHT_INDENT = 0;
-    private static final int CODE_LEFT_INDENT = 4;
-    private static final int CODE_RIGHT_INDENT = 4;
-    private static final int CODE_BLOCK_HORIZONTAL_PADDING = 4;
-    private static final int CODE_BLOCK_MINIMUM_COLUMNS = 46;
+    private static final int CODE_LEFT_INDENT = 24;
+    private static final int CODE_RIGHT_INDENT = 0;
+    private static final int CODE_BLOCK_HORIZONTAL_PADDING = 0;
+    private static final int CODE_BLOCK_MINIMUM_COLUMNS = 0;
 
     private static final float BODY_LINE_SPACING = 0.18f;
     private static final float BULLET_LINE_SPACING = 0.20f;
@@ -98,6 +98,7 @@ public final class LearningDocumentStyle {
     private static final SimpleAttributeSet CODE_TYPE;
     private static final SimpleAttributeSet CODE_STRING;
     private static final SimpleAttributeSet CODE_COMMENT;
+    private static final SimpleAttributeSet CODE_PARAGRAPH;
 
     static {
         PAGE_TITLE = create(pageTitleFont(), ColorManager.TEXT_PRIMARY, null, 0, 6, TITLE_LEFT_INDENT, TITLE_RIGHT_INDENT, 0.0f);
@@ -113,7 +114,7 @@ public final class LearningDocumentStyle {
         NEXT_STEP_TITLE = sectionTitle(ColorManager.ACCENT_BLUE_LIGHT);
         REFERENCE_TITLE = sectionTitle(ColorManager.TEXT_TERTIARY);
         BODY = create(bodyFont(), ColorManager.TEXT_SECONDARY, null, 0, 9, BODY_LEFT_INDENT, BODY_RIGHT_INDENT, BODY_LINE_SPACING);
-        CODE = create(codeFont(), ColorManager.EDITOR_FOREGROUND, ColorManager.EDITOR_BG, 0, 0, CODE_LEFT_INDENT, CODE_RIGHT_INDENT, CODE_LINE_SPACING);
+        CODE = create(codeFont(), ColorManager.EDITOR_FOREGROUND, null, 0, 0, CODE_LEFT_INDENT, CODE_RIGHT_INDENT, CODE_LINE_SPACING);
         BULLET = create(bulletFont(), ColorManager.TEXT_PRIMARY, null, 0, 7, BULLET_LEFT_INDENT, BULLET_RIGHT_INDENT, BULLET_LINE_SPACING);
         MISTAKE = create(bulletFont(), ColorManager.TEXT_PRIMARY, null, 0, 7, BULLET_LEFT_INDENT, BULLET_RIGHT_INDENT, BULLET_LINE_SPACING);
         LINK = create(linkFont(), ColorManager.ACCENT_BLUE_LIGHT, null, 12, 6, TITLE_LEFT_INDENT, TITLE_RIGHT_INDENT, 0.0f);
@@ -123,6 +124,8 @@ public final class LearningDocumentStyle {
         CODE_TYPE = syntax(ColorManager.SYNTAX_CLASS, false);
         CODE_STRING = syntax(ColorManager.SYNTAX_STRING, false);
         CODE_COMMENT = syntax(ColorManager.TEXT_MUTED, false);
+        CODE_PARAGRAPH = new SimpleAttributeSet();
+        StyleConstants.setBackground(CODE_PARAGRAPH, ColorManager.EDITOR_BG);
     }
 
     private LearningDocumentStyle() {
@@ -294,6 +297,10 @@ public final class LearningDocumentStyle {
 
     public static int codeBlockMinimumColumns() {
         return CODE_BLOCK_MINIMUM_COLUMNS;
+    }
+
+    public static SimpleAttributeSet codeParagraph() {
+        return copy(CODE_PARAGRAPH);
     }
 
     public static Border footerBorder() {

@@ -47,6 +47,7 @@ public final class LearningDocumentRenderer {
     private final SimpleAttributeSet codeTypeStyle;
     private final SimpleAttributeSet codeStringStyle;
     private final SimpleAttributeSet codeCommentStyle;
+    private final SimpleAttributeSet codeParagraphStyle;
 
     public LearningDocumentRenderer() {
         this.doc = new DefaultStyledDocument();
@@ -73,6 +74,7 @@ public final class LearningDocumentRenderer {
         this.codeTypeStyle = LearningDocumentStyle.codeType();
         this.codeStringStyle = LearningDocumentStyle.codeString();
         this.codeCommentStyle = LearningDocumentStyle.codeComment();
+        this.codeParagraphStyle = LearningDocumentStyle.codeParagraph();
     }
 
     public StyledDocument render(LearningPage page) {
@@ -248,8 +250,12 @@ public final class LearningDocumentRenderer {
     }
 
     private void renderNarrative(String content) throws BadLocationException {
-        for (String block : splitBlocks(content)) {
-            renderSentences(block);
+        List<String> blocks = splitBlocks(content);
+        for (int i = 0; i < blocks.size(); i++) {
+            if (i > 0) {
+                append("\n", bodyStyle);
+            }
+            renderSentences(blocks.get(i));
         }
     }
 
@@ -262,15 +268,14 @@ public final class LearningDocumentRenderer {
 
     private void renderCodeBlock(String code) throws BadLocationException {
         append("\n", bodyStyle);
-        int padding = LearningDocumentStyle.codeBlockHorizontalPadding();
-        String horizontalPadding = " ".repeat(padding);
-        int blockWidth = Math.max(longestLineLength(code), LearningDocumentStyle.codeBlockMinimumColumns());
-
         for (String line : code.split("\n", -1)) {
             int lineStart = doc.getLength();
-            append(horizontalPadding + padRight(line, blockWidth) + horizontalPadding, codeStyle);
-            applyCodeSyntax(lineStart + padding, line);
+            if (!line.isEmpty()) {
+                append(line, codeStyle);
+                applyCodeSyntax(lineStart, line);
+            }
             append("\n", codeStyle);
+            doc.setParagraphAttributes(lineStart, 1, codeParagraphStyle, false);
         }
         append("\n", bodyStyle);
     }
@@ -475,18 +480,6 @@ public final class LearningDocumentRenderer {
         for (int index = start; index < end; index++) {
             protectedRanges[index] = true;
         }
-    }
-
-    private static int longestLineLength(String text) {
-        int longest = 0;
-        for (String line : text.split("\n", -1)) {
-            longest = Math.max(longest, line.length());
-        }
-        return longest;
-    }
-
-    private static String padRight(String text, int length) {
-        return text + " ".repeat(Math.max(0, length - text.length()));
     }
 
     private static String difficultyLabel(DifficultyLevel difficulty) {

@@ -1,6 +1,9 @@
 package com.eyecode.learning.document;
 
 import com.eyecode.learning.content.LearningPage;
+import com.eyecode.learning.markdown.MarkdownBuilder;
+import com.eyecode.learning.markdown.MarkdownDocument;
+import com.eyecode.learning.markdown.MarkdownRenderer;
 
 import javax.swing.*;
 import java.awt.*;
@@ -9,16 +12,18 @@ public final class LearningDocumentView extends JPanel {
 
     private final JTextPane textPane;
     private final JScrollPane scrollPane;
-    private final LearningDocumentRenderer renderer;
+    private final MarkdownBuilder builder;
+    private final MarkdownRenderer renderer;
 
     public LearningDocumentView() {
         setLayout(new BorderLayout());
         setOpaque(false);
 
-        renderer = new LearningDocumentRenderer();
+        builder = new MarkdownBuilder();
+        renderer = new MarkdownRenderer();
 
         textPane = new JTextPane();
-        textPane.setDocument(renderer.getDocument());
+        textPane.setDocument(renderer.render(null));
 
         textPane.setEditable(false);
         textPane.setFocusable(false);
@@ -41,14 +46,14 @@ public final class LearningDocumentView extends JPanel {
     }
 
     public void setPage(LearningPage page) {
-        textPane.setDocument(renderer.render(page));
+        MarkdownDocument document = builder.build(page);
+        textPane.setDocument(renderer.render(document));
         textPane.setCaretPosition(0);
         repaint();
     }
 
     public void clear() {
-        renderer.clear();
-        textPane.setDocument(renderer.getDocument());
+        textPane.setDocument(renderer.render(null));
         textPane.setCaretPosition(0);
         repaint();
     }
