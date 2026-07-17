@@ -2,6 +2,7 @@ package com.eyecode.ui.swing;
 
 import com.eyecode.ui.core.UIButton;
 import com.eyecode.ui.core.UIPopup;
+import com.eyecode.ui.core.UIScrollPane;
 import com.eyecode.ui.core.UITextComponent;
 import com.eyecode.ui.core.UITextPane;
 import com.eyecode.ui.core.UIView;
@@ -27,6 +28,11 @@ public final class SwingUIViewFactory implements UIViewFactory {
     @Override
     public UITextPane createTextPane() {
         return new SwingTextPane();
+    }
+
+    @Override
+    public UIScrollPane createScrollPane() {
+        return new SwingScrollPane();
     }
 
     @Override

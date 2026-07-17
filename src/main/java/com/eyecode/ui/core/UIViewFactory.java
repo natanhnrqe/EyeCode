@@ -10,5 +10,7 @@ public interface UIViewFactory {
 
     UITextPane createTextPane();
 
+    UIScrollPane createScrollPane();
+
     UIButton createButton();
 }
