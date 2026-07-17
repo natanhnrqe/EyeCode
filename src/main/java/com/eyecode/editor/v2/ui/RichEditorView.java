@@ -50,7 +50,7 @@ import com.eyecode.learning.ui.SwingLearningHoverScheduler;
 import com.eyecode.learning.ui.SwingLearningHoverSurface;
 import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.TypographyManager;
-import com.eyecode.ui.swing.SwingUIFactory;
+import com.eyecode.ui.swing.SwingUIViewFactory;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -308,7 +308,7 @@ public final class RichEditorView extends JPanel {
         ClassConceptProvider classProvider = new ClassConceptProvider(catalog);
         LearningConceptEngine conceptEngine = new DefaultLearningConceptEngine(List.of(classProvider));
         HoverEngine hoverEngine = new DefaultHoverEngine(List.of(new ConceptHoverProvider(conceptEngine)));
-        LearningHoverPopup learningHoverPopup = new LearningHoverPopup(new SwingUIFactory());
+        LearningHoverPopup learningHoverPopup = new LearningHoverPopup(new SwingUIViewFactory());
         learningHoverPopup.setCard(new LearningCard());
         this.learningHoverController = new LearningHoverController(
                 new SwingLearningHoverSurface(textPane),

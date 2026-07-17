@@ -2,8 +2,8 @@ package com.eyecode.learning.ui;
 
 import com.eyecode.learning.document.LearningDocumentStyle;
 import com.eyecode.learning.model.LearningConcept;
-import com.eyecode.ui.core.UIFactory;
 import com.eyecode.ui.core.UIPopup;
+import com.eyecode.ui.core.UIViewFactory;
 
 import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
@@ -17,11 +17,11 @@ import java.awt.Toolkit;
 
 public final class LearningHoverPopup {
 
-    private final UIFactory uiFactory;
+    private final UIViewFactory uiFactory;
     private UIPopup popup;
     private LearningCard card;
 
-    public LearningHoverPopup(UIFactory uiFactory) {
+    public LearningHoverPopup(UIViewFactory uiFactory) {
         this.uiFactory = uiFactory;
     }
 
