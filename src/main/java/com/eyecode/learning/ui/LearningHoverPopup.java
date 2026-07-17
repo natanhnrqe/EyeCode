@@ -2,8 +2,8 @@ package com.eyecode.learning.ui;
 
 import com.eyecode.learning.document.LearningDocumentStyle;
 import com.eyecode.learning.model.LearningConcept;
+import com.eyecode.ui.core.UIFactory;
 import com.eyecode.ui.core.UIPopup;
-import com.eyecode.ui.swing.SwingPopup;
 
 import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
@@ -17,10 +17,12 @@ import java.awt.Toolkit;
 
 public final class LearningHoverPopup {
 
+    private final UIFactory uiFactory;
     private UIPopup popup;
     private LearningCard card;
 
-    public LearningHoverPopup() {
+    public LearningHoverPopup(UIFactory uiFactory) {
+        this.uiFactory = uiFactory;
     }
 
     public void setCard(LearningCard card) {
@@ -85,12 +87,11 @@ public final class LearningHoverPopup {
             return;
         }
 
-        SwingPopup swingPopup = new SwingPopup();
-        swingPopup.setFocusableWindowState(false);
-        swingPopup.setBackground(LearningDocumentStyle.transparent());
-        swingPopup.setContent(card);
-        swingPopup.setSize(LearningDocumentStyle.popupSize().width, LearningDocumentStyle.popupSize().height);
-        popup = swingPopup;
+        popup = uiFactory.createPopup();
+        popup.setFocusableWindowState(false);
+        popup.setBackground(LearningDocumentStyle.transparent());
+        popup.setContent(card);
+        popup.setSize(LearningDocumentStyle.popupSize().width, LearningDocumentStyle.popupSize().height);
     }
 
     private static Point adjustedPosition(Point mouse, Dimension popupSize) {

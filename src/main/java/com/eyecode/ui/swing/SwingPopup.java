@@ -70,6 +70,7 @@ public final class SwingPopup implements UIPopup {
         window.repaint();
     }
 
+    @Override
     public void setFocusableWindowState(boolean focusable) {
         window.setFocusableWindowState(focusable);
     }

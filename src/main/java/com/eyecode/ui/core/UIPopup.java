@@ -20,6 +20,8 @@ public interface UIPopup extends UIComponent {
 
     void setBackground(Color color);
 
+    void setFocusableWindowState(boolean focusable);
+
     Rectangle getBounds();
 
     void revalidate();
