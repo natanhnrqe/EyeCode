@@ -8,5 +8,7 @@ public interface UIViewFactory {
 
     UITextComponent createTextComponent();
 
+    UITextPane createTextPane();
+
     UIButton createButton();
 }
