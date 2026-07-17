@@ -2,6 +2,7 @@ package com.eyecode.ui.swing;
 
 import com.eyecode.ui.core.UIScrollPane;
 
+import java.awt.Component;
 import javax.swing.JScrollPane;
 
 public final class SwingScrollPane implements UIScrollPane {
@@ -10,6 +11,10 @@ public final class SwingScrollPane implements UIScrollPane {
 
     public SwingScrollPane() {
         this.scrollPane = new JScrollPane();
+    }
+
+    public SwingScrollPane(Component view) {
+        this.scrollPane = new JScrollPane(view);
     }
 
     public JScrollPane getScrollPane() {
