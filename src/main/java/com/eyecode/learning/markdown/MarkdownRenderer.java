@@ -1,5 +1,7 @@
 package com.eyecode.learning.markdown;
 
+import com.eyecode.ui.designsystem.ColorManager;
+
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.SimpleAttributeSet;
@@ -8,6 +10,8 @@ import javax.swing.text.StyledDocument;
 import java.awt.Color;
 
 public final class MarkdownRenderer {
+
+    private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
 
     private StyledDocument doc;
 
@@ -40,11 +44,7 @@ public final class MarkdownRenderer {
     private void renderHeading(HeadingNode heading) throws BadLocationException {
         SimpleAttributeSet style = switch (heading.level()) {
             case 1 -> MarkdownTheme.h1();
-            case 2 -> {
-                Color color = MarkdownTheme.sectionColor(heading.text().isEmpty()
-                        ? "" : heading.text().substring(0, Math.min(2, heading.text().length())));
-                yield MarkdownTheme.h2Colored(color);
-            }
+            case 2 -> MarkdownTheme.h2Colored(sectionColor(heading.text()));
             default -> MarkdownTheme.h2();
         };
         append(heading.text(), style);
@@ -66,17 +66,21 @@ public final class MarkdownRenderer {
     }
 
     private void renderCodeBlock(CodeBlockNode codeBlock) throws BadLocationException {
-        int blockStart = doc.getLength();
         append("\n", MarkdownTheme.body());
 
-        for (String line : codeBlock.code().split("\n", -1)) {
-            int lineStart = doc.getLength();
-            if (!line.isEmpty()) {
-                append(line, MarkdownTheme.codeBlock());
-                MarkdownCodeHighlighter.highlightJava(doc, line, lineStart);
-            }
-            append("\n", MarkdownTheme.codeBlock());
-            doc.setParagraphAttributes(lineStart, 1, MarkdownTheme.codeParagraph(), false);
+        int blockStart = doc.getLength();
+        String code = codeBlock.code();
+
+        if (!code.isEmpty()) {
+            append(code, MarkdownTheme.codeBlock());
+            MarkdownCodeHighlighter.highlight(doc, blockStart, code, codeBlock.language());
+        }
+        append("\n", MarkdownTheme.codeBlock());
+
+        int paraOffset = blockStart;
+        for (String line : code.split("\n", -1)) {
+            doc.setParagraphAttributes(paraOffset, 1, MarkdownTheme.codeParagraph(), false);
+            paraOffset += line.length() + 1;
         }
 
         append("\n", MarkdownTheme.body());
@@ -88,18 +92,16 @@ public final class MarkdownRenderer {
     }
 
     private void renderCallout(CalloutNode callout) throws BadLocationException {
-        Color bg = MarkdownTheme.calloutBackground(callout.type());
-        int blockStart = doc.getLength();
+        Color bg = calloutBackground(callout.type());
 
         append("\n", MarkdownTheme.body());
         int start = doc.getLength();
         append(callout.text(), MarkdownTheme.callout());
         append("\n", MarkdownTheme.body());
 
-        if (bg != null) {
+        if (bg != null && !bg.equals(TRANSPARENT)) {
             SimpleAttributeSet calloutBg = new SimpleAttributeSet();
             StyleConstants.setBackground(calloutBg, bg);
-            // apply paragraph background to the callout paragraph
             doc.setParagraphAttributes(start, 1, calloutBg, false);
         }
     }
@@ -111,6 +113,35 @@ public final class MarkdownRenderer {
             case ITALIC -> MarkdownTheme.italic();
             case CODE -> MarkdownTheme.codeInline();
             case LINK -> MarkdownTheme.link();
+        };
+    }
+
+    private Color sectionColor(String headingText) {
+        String emoji = headingText.isEmpty()
+                ? "" : headingText.substring(0, Math.min(2, headingText.length()));
+        return switch (emoji) {
+            case "\uD83D\uDCA1" -> ColorManager.ACCENT_BLUE_LIGHT;
+            case "\uD83C\uDFE0" -> ColorManager.SYNTAX_CLASS;
+            case "\uD83C\uDF0E" -> ColorManager.SUCCESS_GREEN;
+            case "\uD83D\uDCBB" -> ColorManager.SYNTAX_KEYWORD;
+            case "\uD83E\uDDE0" -> ColorManager.SYNTAX_CLASS;
+            case "\u26A0\uFE0F" -> ColorManager.ERROR_RED;
+            case "\uD83D\uDE80" -> ColorManager.TEXT_PRIMARY;
+            case "\u27A1\uFE0F" -> ColorManager.ACCENT_BLUE_LIGHT;
+            case "\uD83D\uDCDA" -> ColorManager.TEXT_TERTIARY;
+            default -> ColorManager.TEXT_PRIMARY;
+        };
+    }
+
+    private Color calloutBackground(String type) {
+        if (type == null) {
+            return TRANSPARENT;
+        }
+        return switch (type.toLowerCase()) {
+            case "info" -> MarkdownTheme.calloutInfoBg();
+            case "warning" -> MarkdownTheme.calloutWarningBg();
+            case "tip" -> MarkdownTheme.calloutTipBg();
+            default -> TRANSPARENT;
         };
     }
 

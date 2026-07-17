@@ -32,7 +32,23 @@ public final class MarkdownCodeHighlighter {
     private MarkdownCodeHighlighter() {
     }
 
-    public static void highlightJava(StyledDocument doc, String line, int offset) {
+    public static void highlight(StyledDocument doc, int startOffset, String code, String language) {
+        if ("java".equalsIgnoreCase(language)) {
+            highlightJava(doc, startOffset, code);
+        }
+    }
+
+    private static void highlightJava(StyledDocument doc, int startOffset, String code) {
+        int offset = startOffset;
+        for (String line : code.split("\n", -1)) {
+            if (!line.isEmpty()) {
+                applyToLine(doc, offset, line);
+            }
+            offset += line.length() + 1;
+        }
+    }
+
+    private static void applyToLine(StyledDocument doc, int offset, String line) {
         boolean[] protectedRanges = new boolean[line.length()];
         applyProtectedPattern(doc, offset, line, STRING_PATTERN, STRING_STYLE, protectedRanges);
         applyProtectedPattern(doc, offset, line, COMMENT_PATTERN, COMMENT_STYLE, protectedRanges);

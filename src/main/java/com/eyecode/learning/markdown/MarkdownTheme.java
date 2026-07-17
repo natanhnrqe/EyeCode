@@ -128,38 +128,20 @@ public final class MarkdownTheme {
                 ColorManager.TEXT_SECONDARY, null, 0, CALLOUT_SPACE_BELOW, 0, 0, 0.0f);
     }
 
-    public static Color calloutBackground(String type) {
-        if (type == null) {
-            return TRANSPARENT;
-        }
-        return switch (type.toLowerCase()) {
-            case "info" -> CALLOUT_INFO_BG;
-            case "warning" -> CALLOUT_WARN_BG;
-            case "tip" -> CALLOUT_TIP_BG;
-            default -> TRANSPARENT;
-        };
+    public static Color calloutInfoBg() {
+        return CALLOUT_INFO_BG;
+    }
+
+    public static Color calloutWarningBg() {
+        return CALLOUT_WARN_BG;
+    }
+
+    public static Color calloutTipBg() {
+        return CALLOUT_TIP_BG;
     }
 
     public static Color transparent() {
         return TRANSPARENT;
-    }
-
-    public static Color sectionColor(String emojiPrefix) {
-        if (emojiPrefix == null || emojiPrefix.isEmpty()) {
-            return ColorManager.TEXT_PRIMARY;
-        }
-        return switch (emojiPrefix) {
-            case "\uD83D\uDCA1" -> ColorManager.ACCENT_BLUE_LIGHT;
-            case "\uD83C\uDFE0" -> ColorManager.SYNTAX_CLASS;
-            case "\uD83C\uDF0E" -> ColorManager.SUCCESS_GREEN;
-            case "\uD83D\uDCBB" -> ColorManager.SYNTAX_KEYWORD;
-            case "\uD83E\uDDE0" -> ColorManager.SYNTAX_CLASS;
-            case "\u26A0\uFE0F" -> ColorManager.ERROR_RED;
-            case "\uD83D\uDE80" -> ColorManager.TEXT_PRIMARY;
-            case "\u27A1\uFE0F" -> ColorManager.ACCENT_BLUE_LIGHT;
-            case "\uD83D\uDCDA" -> ColorManager.TEXT_TERTIARY;
-            default -> ColorManager.TEXT_PRIMARY;
-        };
     }
 
     public static String dividerText() {
