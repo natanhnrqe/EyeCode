@@ -94,6 +94,7 @@ public final class MarkdownRenderer {
         }
 
         append("\n", MarkdownTheme.body());
+        doc.setParagraphAttributes(doc.getLength() - 1, 1, MarkdownTheme.body(), true);
 
         int blockStart = doc.getLength();
         append(code, MarkdownTheme.codeBlock());
@@ -104,8 +105,8 @@ public final class MarkdownRenderer {
         for (int i = 0; i < lines.length; i++) {
             boolean firstLine = (i == 0);
             boolean lastLine = (i == lines.length - 1);
-                doc.setParagraphAttributes(paraOffset, 1,
-                        MarkdownTheme.codeBlockParagraph(firstLine, lastLine), false);
+            doc.setParagraphAttributes(paraOffset, 1,
+                    MarkdownTheme.codeBlockParagraph(firstLine, lastLine), false);
             paraOffset += lines[i].length() + 1;
         }
 
@@ -130,6 +131,7 @@ public final class MarkdownRenderer {
         };
 
         append("\n", MarkdownTheme.body());
+        doc.setParagraphAttributes(doc.getLength() - 1, 1, MarkdownTheme.body(), true);
         int start = doc.getLength();
         append(prefix, MarkdownTheme.calloutTitle(type));
         append(text, MarkdownTheme.calloutBody());

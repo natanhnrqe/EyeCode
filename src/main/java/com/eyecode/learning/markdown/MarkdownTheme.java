@@ -11,7 +11,7 @@ import java.awt.Font;
 public final class MarkdownTheme {
 
     private static final int H1_SIZE = 24;
-    private static final int H2_SIZE = 16;
+    private static final int H2_SIZE = 15;
     private static final int BODY_SIZE = 13;
     private static final int CODE_SIZE = 13;
     private static final int BULLET_SIZE = 13;
@@ -19,36 +19,36 @@ public final class MarkdownTheme {
     private static final int ARROW_SIZE = 14;
     private static final int CALLOUT_SIZE = 13;
 
-    private static final int H1_SPACE_BELOW = 12;
-    private static final int H2_SPACE_ABOVE = 28;
-    private static final int H2_SPACE_BELOW = 16;
-    private static final int BODY_SPACE_BELOW = 18;
+    private static final int H1_SPACE_BELOW = 10;
+    private static final int H2_SPACE_ABOVE = 20;
+    private static final int H2_SPACE_BELOW = 10;
+    private static final int BODY_SPACE_BELOW = 22;
     private static final int BULLET_SPACE_BELOW = 14;
     private static final int LINK_SPACE_ABOVE = 12;
     private static final int LINK_SPACE_BELOW = 6;
     private static final int ARROW_SPACE_ABOVE = 10;
     private static final int ARROW_SPACE_BELOW = 10;
-    private static final int CALLOUT_SPACE_BELOW = 18;
-    private static final int CALLOUT_LEFT_INDENT = 20;
-    private static final int CALLOUT_SPACE_ABOVE = 8;
-    private static final int CALLOUT_SPACE_BELOW_PARAGRAPH = 6;
-    private static final int CODE_LEFT_INDENT = 28;
-    private static final int CODE_RIGHT_INDENT = 28;
+    private static final int CALLOUT_SPACE_BELOW = 22;
+    private static final int CALLOUT_LEFT_INDENT = 0;
+    private static final int CALLOUT_SPACE_ABOVE = 10;
+    private static final int CALLOUT_SPACE_BELOW_PARAGRAPH = 8;
+    private static final int CODE_LEFT_INDENT = 20;
+    private static final int CODE_RIGHT_INDENT = 20;
     private static final int CODE_PADDING_TOP = 10;
     private static final int CODE_PADDING_BOTTOM = 10;
-    private static final int BULLET_LEFT_INDENT = 28;
-    private static final int DIVIDER_SPACE_ABOVE = 24;
-    private static final int DIVIDER_SPACE_BELOW = 24;
+    private static final int BULLET_LEFT_INDENT = 16;
+    private static final int DIVIDER_SPACE_ABOVE = 14;
+    private static final int DIVIDER_SPACE_BELOW = 14;
 
-    private static final float BODY_LINE_SPACING = 0.22f;
-    private static final float BULLET_LINE_SPACING = 0.22f;
+    private static final float BODY_LINE_SPACING = 0.30f;
+    private static final float BULLET_LINE_SPACING = 0.25f;
 
-    private static final String DIVIDER_TEXT = "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500";
+    private static final String DIVIDER_TEXT = "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500";
     private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
-    private static final Color H2_BG = new Color(0x1A, 0x73, 0xE8, 0x0C);
-    private static final Color CALLOUT_INFO_BG = new Color(0x1A, 0x73, 0xE8, 0x18);
-    private static final Color CALLOUT_WARN_BG = new Color(0xFF, 0xA0, 0x00, 0x20);
-    private static final Color CALLOUT_TIP_BG = new Color(0x00, 0xA8, 0x6B, 0x20);
+    private static final Color H2_BG = new Color(0x1A, 0x73, 0xE8, 0x14);
+    private static final Color CALLOUT_INFO_BG = new Color(0x1A, 0x73, 0xE8, 0x28);
+    private static final Color CALLOUT_WARN_BG = new Color(0xFF, 0xA0, 0x00, 0x30);
+    private static final Color CALLOUT_TIP_BG = new Color(0x00, 0xA8, 0x6B, 0x30);
 
     private MarkdownTheme() {
     }

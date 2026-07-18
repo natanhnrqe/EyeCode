@@ -51,7 +51,7 @@ class MarkdownRendererTest {
             var md = new MarkdownDocument(List.of(new HeadingNode(2, "Section")));
             StyledDocument doc = renderer.render(md);
             var attrs = doc.getCharacterElement(0).getAttributes();
-            assertEquals(16, StyleConstants.getFontSize(attrs));
+            assertEquals(15, StyleConstants.getFontSize(attrs));
             assertTrue(StyleConstants.isBold(attrs));
             assertEquals(ColorManager.TEXT_PRIMARY, StyleConstants.getForeground(attrs));
         }
@@ -238,8 +238,8 @@ class MarkdownRendererTest {
             int firstLinePos = text.indexOf("line1");
             var firstParaAttrs = doc.getParagraphElement(firstLinePos).getAttributes();
             assertEquals(ColorManager.EDITOR_BG, StyleConstants.getBackground(firstParaAttrs));
-            assertEquals(28.0f, StyleConstants.getLeftIndent(firstParaAttrs), 0.01f);
-            assertEquals(28.0f, StyleConstants.getRightIndent(firstParaAttrs), 0.01f);
+            assertEquals(20.0f, StyleConstants.getLeftIndent(firstParaAttrs), 0.01f);
+            assertEquals(20.0f, StyleConstants.getRightIndent(firstParaAttrs), 0.01f);
         }
 
         @Test
@@ -384,7 +384,7 @@ class MarkdownRendererTest {
             int bodyPos = text.indexOf("text");
             var paraAttrs = doc.getParagraphElement(bodyPos).getAttributes();
             assertNotNull(StyleConstants.getBackground(paraAttrs), "Callout should have background");
-            assertEquals(20.0f, StyleConstants.getLeftIndent(paraAttrs), 0.01f);
+            assertEquals(0.0f, StyleConstants.getLeftIndent(paraAttrs), 0.01f);
         }
 
         @Test
