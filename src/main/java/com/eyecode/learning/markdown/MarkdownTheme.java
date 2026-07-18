@@ -142,8 +142,12 @@ public final class MarkdownTheme {
     // ──────────────────────────────────────────────
 
     public static SimpleAttributeSet codeBlock() {
-        return create(TypographyManager.monoRegular(CODE_SIZE),
-                ColorManager.EDITOR_FOREGROUND, null, 0, 0, 0, 0, 0.0f);
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        Font font = TypographyManager.monoRegular(CODE_SIZE);
+        StyleConstants.setFontFamily(attrs, font.getFamily());
+        StyleConstants.setFontSize(attrs, font.getSize());
+        StyleConstants.setForeground(attrs, ColorManager.EDITOR_FOREGROUND);
+        return attrs;
     }
 
     public static SimpleAttributeSet codeParagraph(boolean firstLine, boolean lastLine) {

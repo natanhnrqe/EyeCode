@@ -90,22 +90,27 @@ public final class MarkdownRenderer {
             return;
         }
 
-        startBodyParagraph();
+        // Insert separator newline to end previous paragraph
+        int sepStart = doc.getLength();
+        append("\n", MarkdownTheme.paragraph());
+        doc.setParagraphAttributes(sepStart, 1, MarkdownTheme.paragraph(), true);
+        doc.setCharacterAttributes(sepStart, 1, MarkdownTheme.paragraph(), true);
 
         int blockStart = doc.getLength();
         append(code, MarkdownTheme.codeBlock());
         MarkdownCodeHighlighter.highlight(doc, blockStart, code, codeBlock.language());
 
         String[] lines = code.split("\n", -1);
-        int paraOffset = blockStart;
+        int offset = blockStart;
         for (int i = 0; i < lines.length; i++) {
             boolean firstLine = (i == 0);
             boolean lastLine = (i == lines.length - 1);
-            doc.setParagraphAttributes(paraOffset, 1,
+            doc.setParagraphAttributes(offset, 1,
                     MarkdownTheme.codeBlockParagraph(firstLine, lastLine), false);
-            paraOffset += lines[i].length() + 1;
+            offset += lines[i].length() + 1;
         }
 
+        // Trailing newline — ensures next paragraph starts with clean body attributes
         append("\n", MarkdownTheme.body());
     }
 
