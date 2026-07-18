@@ -3,6 +3,7 @@ package com.eyecode.learning.document;
 import com.eyecode.learning.content.LearningPage;
 import com.eyecode.learning.markdown.MarkdownBuilder;
 import com.eyecode.learning.markdown.MarkdownDocument;
+import com.eyecode.learning.markdown.MarkdownParser;
 import com.eyecode.learning.markdown.MarkdownRenderer;
 import com.eyecode.ui.core.UIScrollPane;
 import com.eyecode.ui.core.UITextPane;
@@ -20,6 +21,7 @@ public final class LearningDocumentView extends JPanel {
     private final UITextPane uiTextPane;
     private final UIScrollPane uiScrollPane;
     private final MarkdownBuilder builder;
+    private final MarkdownParser parser;
     private final MarkdownRenderer renderer;
 
     public LearningDocumentView() {
@@ -31,6 +33,7 @@ public final class LearningDocumentView extends JPanel {
         setOpaque(false);
 
         builder = new MarkdownBuilder();
+        parser = new MarkdownParser();
         renderer = new MarkdownRenderer();
 
         uiTextPane = viewFactory.createTextPane();
@@ -59,7 +62,8 @@ public final class LearningDocumentView extends JPanel {
     }
 
     public void setPage(LearningPage page) {
-        MarkdownDocument document = builder.build(page);
+        String markdown = builder.build(page);
+        MarkdownDocument document = parser.parse(markdown);
         uiTextPane.getTextPane().setDocument(renderer.render(document));
         uiTextPane.getTextPane().setCaretPosition(0);
         repaint();

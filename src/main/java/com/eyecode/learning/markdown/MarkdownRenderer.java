@@ -66,7 +66,6 @@ public final class MarkdownRenderer {
             return;
         }
 
-        boolean isMistake = firstText.startsWith("\u274C");
         int start = doc.getLength();
 
         for (Segment segment : paragraph.segments()) {
@@ -74,10 +73,6 @@ public final class MarkdownRenderer {
             append(segment.text(), segStyle);
         }
         append("\n", MarkdownTheme.body());
-
-        if (isMistake) {
-            doc.setParagraphAttributes(start, 1, MarkdownTheme.mistakeBackground(), false);
-        }
     }
 
     private void renderBullet(BulletNode bullet) throws BadLocationException {
@@ -113,18 +108,21 @@ public final class MarkdownRenderer {
     }
 
     private void renderCallout(CalloutNode callout) throws BadLocationException {
-        Color bg = calloutBackground(callout.type());
+        String type = callout.type() != null ? callout.type().toLowerCase() : "info";
+        String text = callout.text() != null ? callout.text() : "";
+
+        String prefix = switch (type) {
+            case "tip" -> "\uD83D\uDCA1 Dica: ";
+            case "warning" -> "\u26A0\uFE0F Aten\u00E7\u00E3o: ";
+            default -> "\uD83D\uDCD8 Informa\u00E7\u00E3o: ";
+        };
 
         append("\n", MarkdownTheme.body());
         int start = doc.getLength();
-        append(callout.text(), MarkdownTheme.callout());
+        append(prefix, MarkdownTheme.calloutTitle(type));
+        append(text, MarkdownTheme.calloutBody());
         append("\n", MarkdownTheme.body());
-
-        if (bg != null && !bg.equals(TRANSPARENT)) {
-            SimpleAttributeSet calloutBg = new SimpleAttributeSet();
-            StyleConstants.setBackground(calloutBg, bg);
-            doc.setParagraphAttributes(start, 1, calloutBg, false);
-        }
+        doc.setParagraphAttributes(start, 1, MarkdownTheme.calloutContainer(type), false);
     }
 
     private SimpleAttributeSet segmentStyle(Segment segment) {
@@ -151,18 +149,6 @@ public final class MarkdownRenderer {
             case "\u27A1\uFE0F" -> ColorManager.ACCENT_BLUE_LIGHT;
             case "\uD83D\uDCDA" -> ColorManager.TEXT_TERTIARY;
             default -> ColorManager.TEXT_PRIMARY;
-        };
-    }
-
-    private Color calloutBackground(String type) {
-        if (type == null) {
-            return TRANSPARENT;
-        }
-        return switch (type.toLowerCase()) {
-            case "info" -> MarkdownTheme.calloutInfoBg();
-            case "warning" -> MarkdownTheme.calloutWarningBg();
-            case "tip" -> MarkdownTheme.calloutTipBg();
-            default -> TRANSPARENT;
         };
     }
 

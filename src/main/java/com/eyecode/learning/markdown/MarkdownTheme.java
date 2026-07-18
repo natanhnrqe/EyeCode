@@ -29,6 +29,9 @@ public final class MarkdownTheme {
     private static final int ARROW_SPACE_ABOVE = 8;
     private static final int ARROW_SPACE_BELOW = 8;
     private static final int CALLOUT_SPACE_BELOW = 14;
+    private static final int CALLOUT_LEFT_INDENT = 16;
+    private static final int CALLOUT_SPACE_ABOVE = 4;
+    private static final int CALLOUT_SPACE_BELOW_PARAGRAPH = 6;
     private static final int CODE_LEFT_INDENT = 28;
     private static final int CODE_RIGHT_INDENT = 0;
     private static final int CODE_SPACE_ABOVE = 10;
@@ -140,9 +143,31 @@ public final class MarkdownTheme {
                 ColorManager.TEXT_SECONDARY, null, 0, CALLOUT_SPACE_BELOW, 0, 0, 0.0f);
     }
 
-    public static SimpleAttributeSet mistakeBackground() {
+    public static SimpleAttributeSet calloutTitle(String type) {
+        Color fg = switch (type.toLowerCase()) {
+            case "tip" -> ColorManager.SUCCESS_GREEN;
+            case "warning" -> ColorManager.ERROR_RED;
+            default -> ColorManager.ACCENT_BLUE_LIGHT;
+        };
+        return create(TypographyManager.monoBold(CALLOUT_SIZE), fg, null, 0, 0, 0, 0, 0.0f);
+    }
+
+    public static SimpleAttributeSet calloutBody() {
+        return create(TypographyManager.monoRegular(BODY_SIZE),
+                ColorManager.TEXT_SECONDARY, null, 0, 0, 0, 0, 0.0f);
+    }
+
+    public static SimpleAttributeSet calloutContainer(String type) {
+        Color bg = switch (type.toLowerCase()) {
+            case "tip" -> CALLOUT_TIP_BG;
+            case "warning" -> CALLOUT_WARN_BG;
+            default -> CALLOUT_INFO_BG;
+        };
         SimpleAttributeSet attrs = new SimpleAttributeSet();
-        StyleConstants.setBackground(attrs, MISTAKE_BG);
+        StyleConstants.setBackground(attrs, bg);
+        StyleConstants.setLeftIndent(attrs, CALLOUT_LEFT_INDENT);
+        StyleConstants.setSpaceAbove(attrs, CALLOUT_SPACE_ABOVE);
+        StyleConstants.setSpaceBelow(attrs, CALLOUT_SPACE_BELOW_PARAGRAPH);
         return attrs;
     }
 

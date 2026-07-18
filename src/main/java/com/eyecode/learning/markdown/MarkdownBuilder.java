@@ -8,60 +8,48 @@ import com.eyecode.learning.model.DifficultyLevel;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public final class MarkdownBuilder {
 
-    private static final Pattern BOLD_PATTERN = Pattern.compile("\\*\\*(.+?)\\*\\*");
-    private static final Pattern ITALIC_PATTERN = Pattern.compile("(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)");
-    private static final Pattern CODE_PATTERN = Pattern.compile("`([^`]+)`");
-    private static final Pattern LINK_PATTERN = Pattern.compile("\\[([^\\]]+)\\]\\(([^)]+)\\)");
-
-    public MarkdownDocument build(LearningPage page) {
-        List<MarkdownNode> nodes = new ArrayList<>();
+    public String build(LearningPage page) {
+        StringBuilder sb = new StringBuilder();
 
         if (page == null) {
-            return new MarkdownDocument(nodes);
+            return "";
         }
 
-        nodes.add(new HeadingNode(1, nullToEmpty(page.getTitle())));
+        sb.append("# ").append(nullToEmpty(page.getTitle())).append("\n");
 
         String difficulty = difficultyLabel(page.getDifficulty());
         String estimate = estimateLabel(page);
-        nodes.add(new ParagraphNode(List.of(
-                Segment.text(difficulty),
-                Segment.text(" \u2022 "),
-                Segment.text(estimate)
-        )));
+        sb.append(difficulty).append(" \u2022 ").append(estimate).append("\n");
 
-        nodes.add(new DividerNode());
+        sb.append("---\n");
 
         List<LearningContentSection> sections = orderedSections(page);
         for (int i = 0; i < sections.size(); i++) {
             LearningContentSection section = sections.get(i);
             if (section != null) {
-                renderSection(section, nodes);
+                renderSection(section, sb);
             }
             if (i < sections.size() - 1) {
-                nodes.add(new DividerNode());
+                sb.append("---\n");
             }
         }
 
-        return new MarkdownDocument(nodes);
+        return sb.toString().trim();
     }
 
-    private void renderSection(LearningContentSection section, List<MarkdownNode> nodes) {
+    private void renderSection(LearningContentSection section, StringBuilder sb) {
         LearningContentType type = section.getType();
         if (type == null) {
-            renderGenericSection(section.getTitle(), section.getContent(), nodes);
+            renderGenericSection(section.getTitle(), section.getContent(), sb);
             return;
         }
 
         String icon = sectionIcon(type);
         String title = sectionTitle(type);
-        String heading = icon + " " + title;
-        nodes.add(new HeadingNode(2, heading));
+        sb.append("\n## ").append(icon).append(" ").append(title).append("\n");
 
         String content = section.getContent();
         if (content == null || content.isBlank()) {
@@ -69,187 +57,126 @@ public final class MarkdownBuilder {
         }
 
         switch (type) {
-            case CODE_EXAMPLE -> renderCodeContent(content, nodes);
-            case HOW_IT_WORKS -> renderFlowContent(content, nodes);
-            case COMMON_MISTAKES -> renderMistakesContent(content, nodes);
-            case TECHNICAL_REFERENCE -> renderReferenceContent(content, nodes);
-            default -> renderBodyContent(content, nodes);
+            case CODE_EXAMPLE -> renderCodeContent(content, sb);
+            case HOW_IT_WORKS -> renderFlowContent(content, sb);
+            case COMMON_MISTAKES -> renderMistakesContent(content, sb);
+            case TECHNICAL_REFERENCE -> renderReferenceContent(content, sb);
+            case CURIOSITY -> sb.append("\n:::tip\n").append(content.trim()).append("\n:::\n");
+            case ANALOGY -> sb.append("\n:::info\n").append(content.trim()).append("\n:::\n");
+            default -> renderBodyContent(content, sb);
         }
     }
 
-    private void renderGenericSection(String title, String content, List<MarkdownNode> nodes) {
+    private void renderGenericSection(String title, String content, StringBuilder sb) {
         if (title != null && !title.isBlank()) {
-            nodes.add(new HeadingNode(2, title));
+            sb.append("\n## ").append(title).append("\n");
         }
-        renderBodyContent(content, nodes);
+        renderBodyContent(content, sb);
     }
 
-    private void renderCodeContent(String content, List<MarkdownNode> nodes) {
+    private void renderCodeContent(String content, StringBuilder sb) {
         List<String> blocks = splitBlocks(content);
         boolean renderedCode = false;
         for (String block : blocks) {
             if (!renderedCode && looksLikeCode(block)) {
-                nodes.add(new CodeBlockNode("java", block.trim()));
+                sb.append("\n```java\n").append(block.trim()).append("\n```\n");
                 renderedCode = true;
             } else {
-                nodes.addAll(splitSentencesAsParagraphs(block));
+                splitSentencesAsParagraphs(block, sb);
             }
         }
     }
 
-    private void renderFlowContent(String content, List<MarkdownNode> nodes) {
+    private void renderFlowContent(String content, StringBuilder sb) {
         boolean renderedNarrative = false;
         for (String block : splitBlocks(content)) {
             if (!hasText(block)) {
                 continue;
             }
             if (isBulletBlock(block)) {
-                renderBulletLines(block, nodes);
+                renderBulletLines(block, sb);
                 continue;
             }
             if (renderedNarrative) {
-                nodes.add(new ParagraphNode(List.of(Segment.text("\u2193"))));
+                sb.append("\u2193\n");
             }
-            nodes.addAll(splitSentencesAsParagraphs(block));
+            splitSentencesAsParagraphs(block, sb);
             renderedNarrative = true;
         }
     }
 
-    private void renderMistakesContent(String content, List<MarkdownNode> nodes) {
+    private void renderMistakesContent(String content, StringBuilder sb) {
         for (String block : splitBlocks(content)) {
             if (!hasText(block)) {
                 continue;
             }
             if (isNumberedBlock(block)) {
-                String mistakeText = "\u274C " + stripNumberPrefix(firstLine(block));
-                nodes.add(new ParagraphNode(parseInline(mistakeText)));
+                sb.append("\n:::warning\n").append(stripNumberPrefix(firstLine(block))).append("\n:::\n");
                 String rest = remainderAfterFirstLine(block);
                 if (hasText(rest)) {
-                    nodes.addAll(splitSentencesAsParagraphs(rest));
+                    splitSentencesAsParagraphs(rest, sb);
                 }
             } else if (isBulletBlock(block)) {
-                renderMistakeBullets(block, nodes);
+                renderMistakeBullets(block, sb);
             } else {
-                nodes.addAll(splitSentencesAsParagraphs(block));
+                splitSentencesAsParagraphs(block, sb);
             }
         }
     }
 
-    private void renderReferenceContent(String content, List<MarkdownNode> nodes) {
+    private void renderReferenceContent(String content, StringBuilder sb) {
         for (String sentence : splitSentences(content)) {
-            nodes.add(new ParagraphNode(parseInline(sentence)));
+            sb.append(sentence).append("\n");
         }
     }
 
-    private void renderBodyContent(String content, List<MarkdownNode> nodes) {
+    private void renderBodyContent(String content, StringBuilder sb) {
         for (String block : splitBlocks(content)) {
             if (!hasText(block)) {
                 continue;
             }
             if (isBulletBlock(block)) {
-                renderBulletLines(block, nodes);
+                renderBulletLines(block, sb);
             } else {
-                nodes.addAll(splitSentencesAsParagraphs(block));
+                splitSentencesAsParagraphs(block, sb);
             }
         }
     }
 
-    private void renderBulletLines(String block, List<MarkdownNode> nodes) {
+    private void renderBulletLines(String block, StringBuilder sb) {
         for (String line : block.split("\\n")) {
             String trimmed = line.trim();
             if (trimmed.startsWith("- ")) {
-                nodes.add(new BulletNode(trimmed.substring(2).trim(), false));
+                sb.append("- ").append(trimmed.substring(2).trim()).append("\n");
             } else if (trimmed.startsWith("\u2022 ")) {
-                nodes.add(new BulletNode(trimmed.substring(2).trim(), false));
+                sb.append("- ").append(trimmed.substring(2).trim()).append("\n");
             } else if (trimmed.matches("^\\d+\\.\\s.*")) {
-                nodes.add(new BulletNode(stripNumberPrefix(trimmed), false));
+                sb.append("- ").append(stripNumberPrefix(trimmed)).append("\n");
             }
         }
     }
 
-    private void renderMistakeBullets(String block, List<MarkdownNode> nodes) {
+    private void renderMistakeBullets(String block, StringBuilder sb) {
         for (String line : block.split("\\n")) {
             String trimmed = line.trim();
             if (trimmed.startsWith("- ") || trimmed.startsWith("\u2022 ")) {
                 String bulletText = trimmed.startsWith("- ")
                         ? trimmed.substring(2).trim()
                         : trimmed.substring(2).trim();
-                nodes.add(new ParagraphNode(parseInline("\u274C " + bulletText)));
+                sb.append("\n:::warning\n").append(bulletText).append("\n:::\n");
             } else if (trimmed.matches("^\\d+\\.\\s.*")) {
-                nodes.add(new ParagraphNode(parseInline("\u274C " + stripNumberPrefix(trimmed))));
+                sb.append("\n:::warning\n").append(stripNumberPrefix(trimmed)).append("\n:::\n");
             }
         }
     }
 
-    private List<MarkdownNode> splitSentencesAsParagraphs(String block) {
-        List<MarkdownNode> result = new ArrayList<>();
+    private void splitSentencesAsParagraphs(String block, StringBuilder sb) {
         if (!hasText(block)) {
-            return result;
+            return;
         }
         for (String sentence : splitSentences(block)) {
-            result.add(new ParagraphNode(parseInline(sentence)));
+            sb.append(sentence).append("\n\n");
         }
-        return result;
-    }
-
-    static List<Segment> parseInline(String text) {
-        if (text == null || text.isBlank()) {
-            return List.of(Segment.text(text != null ? text : ""));
-        }
-
-        List<Segment> segments = new ArrayList<>();
-        int pos = 0;
-
-        while (pos < text.length()) {
-            Matcher linkMatcher = LINK_PATTERN.matcher(text).region(pos, text.length());
-            if (linkMatcher.find() && linkMatcher.start() == pos) {
-                segments.add(Segment.link(linkMatcher.group(1), linkMatcher.group(2)));
-                pos = linkMatcher.end();
-                continue;
-            }
-
-            Matcher boldMatcher = BOLD_PATTERN.matcher(text).region(pos, text.length());
-            if (boldMatcher.find() && boldMatcher.start() == pos) {
-                segments.add(Segment.bold(boldMatcher.group(1)));
-                pos = boldMatcher.end();
-                continue;
-            }
-
-            Matcher italicMatcher = ITALIC_PATTERN.matcher(text).region(pos, text.length());
-            if (italicMatcher.find() && italicMatcher.start() == pos) {
-                segments.add(Segment.italic(italicMatcher.group(1)));
-                pos = italicMatcher.end();
-                continue;
-            }
-
-            Matcher codeMatcher = CODE_PATTERN.matcher(text).region(pos, text.length());
-            if (codeMatcher.find() && codeMatcher.start() == pos) {
-                segments.add(Segment.code(codeMatcher.group(1)));
-                pos = codeMatcher.end();
-                continue;
-            }
-
-            int nextPos = findNextSpecial(text, pos + 1);
-            if (nextPos < 0) {
-                segments.add(Segment.text(text.substring(pos)));
-                pos = text.length();
-            } else {
-                segments.add(Segment.text(text.substring(pos, nextPos)));
-                pos = nextPos;
-            }
-        }
-
-        return segments;
-    }
-
-    private static int findNextSpecial(String text, int from) {
-        for (int i = from; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '*' || c == '`' || c == '[') {
-                return i;
-            }
-        }
-        return -1;
     }
 
     private static List<String> splitBlocks(String content) {
