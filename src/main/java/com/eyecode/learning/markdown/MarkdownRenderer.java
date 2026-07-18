@@ -49,6 +49,7 @@ public final class MarkdownRenderer {
         int start = doc.getLength();
         append(heading.text(), style);
         append("\n", MarkdownTheme.body());
+        doc.setParagraphAttributes(start, 1, style, false);
         if (heading.level() == 2) {
             doc.setParagraphAttributes(start, 1, MarkdownTheme.h2Background(), false);
         }
@@ -59,23 +60,31 @@ public final class MarkdownRenderer {
                 ? "" : paragraph.segments().getFirst().text();
 
         if (firstText.equals("\u2193")) {
+            int start = doc.getLength();
             for (Segment segment : paragraph.segments()) {
                 append(segment.text(), MarkdownTheme.arrow());
             }
             append("\n", MarkdownTheme.arrow());
+            doc.setParagraphAttributes(start, 1, MarkdownTheme.arrow(), false);
             return;
         }
+
+        int start = doc.getLength();
 
         for (Segment segment : paragraph.segments()) {
             append(segment.text(), segmentStyle(segment));
         }
         append("\n", MarkdownTheme.body());
+        doc.setParagraphAttributes(start, 1, MarkdownTheme.body(), false);
     }
 
     private void renderBullet(BulletNode bullet) throws BadLocationException {
         String prefix = bullet.checked() ? "\u2611 " : "\u2022 ";
+
+        int start = doc.getLength();
         append(prefix + bullet.text(), MarkdownTheme.bullet());
         append("\n", MarkdownTheme.body());
+        doc.setParagraphAttributes(start, 1, MarkdownTheme.bullet(), false);
     }
 
     private void renderCodeBlock(CodeBlockNode codeBlock) throws BadLocationException {
@@ -104,8 +113,10 @@ public final class MarkdownRenderer {
     }
 
     private void renderDivider() throws BadLocationException {
+        int start = doc.getLength();
         append(MarkdownTheme.dividerText(), MarkdownTheme.divider());
         append("\n", MarkdownTheme.body());
+        doc.setParagraphAttributes(start, 1, MarkdownTheme.divider(), false);
     }
 
     private void renderCallout(CalloutNode callout) throws BadLocationException {
