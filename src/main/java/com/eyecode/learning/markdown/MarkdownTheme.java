@@ -10,8 +10,8 @@ import java.awt.Font;
 
 public final class MarkdownTheme {
 
-    private static final int H1_SIZE = 18;
-    private static final int H2_SIZE = 13;
+    private static final int H1_SIZE = 22;
+    private static final int H2_SIZE = 15;
     private static final int BODY_SIZE = 12;
     private static final int CODE_SIZE = 12;
     private static final int BULLET_SIZE = 12;
@@ -19,21 +19,23 @@ public final class MarkdownTheme {
     private static final int ARROW_SIZE = 14;
     private static final int CALLOUT_SIZE = 12;
 
-    private static final int H1_SPACE_BELOW = 6;
-    private static final int H2_SPACE_ABOVE = 18;
-    private static final int H2_SPACE_BELOW = 10;
-    private static final int BODY_SPACE_BELOW = 9;
-    private static final int BULLET_SPACE_BELOW = 7;
+    private static final int H1_SPACE_BELOW = 10;
+    private static final int H2_SPACE_ABOVE = 22;
+    private static final int H2_SPACE_BELOW = 14;
+    private static final int BODY_SPACE_BELOW = 14;
+    private static final int BULLET_SPACE_BELOW = 10;
     private static final int LINK_SPACE_ABOVE = 12;
     private static final int LINK_SPACE_BELOW = 6;
     private static final int ARROW_SPACE_ABOVE = 0;
     private static final int ARROW_SPACE_BELOW = 0;
-    private static final int CALLOUT_SPACE_BELOW = 9;
-    private static final int CODE_LEFT_INDENT = 24;
+    private static final int CALLOUT_SPACE_BELOW = 12;
+    private static final int CODE_LEFT_INDENT = 28;
     private static final int CODE_RIGHT_INDENT = 0;
-    private static final int BULLET_LEFT_INDENT = 14;
-    private static final int DIVIDER_SPACE_ABOVE = 18;
-    private static final int DIVIDER_SPACE_BELOW = 18;
+    private static final int CODE_SPACE_ABOVE = 6;
+    private static final int CODE_SPACE_BELOW = 6;
+    private static final int BULLET_LEFT_INDENT = 22;
+    private static final int DIVIDER_SPACE_ABOVE = 24;
+    private static final int DIVIDER_SPACE_BELOW = 24;
 
     private static final float BODY_LINE_SPACING = 0.18f;
     private static final float CODE_LINE_SPACING = 0.08f;
@@ -96,6 +98,8 @@ public final class MarkdownTheme {
     public static SimpleAttributeSet codeParagraph() {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
         StyleConstants.setBackground(attrs, ColorManager.EDITOR_BG);
+        StyleConstants.setSpaceAbove(attrs, CODE_SPACE_ABOVE);
+        StyleConstants.setSpaceBelow(attrs, CODE_SPACE_BELOW);
         return attrs;
     }
 
