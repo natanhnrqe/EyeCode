@@ -66,11 +66,8 @@ public final class MarkdownRenderer {
             return;
         }
 
-        int start = doc.getLength();
-
         for (Segment segment : paragraph.segments()) {
-            SimpleAttributeSet segStyle = segmentStyle(segment);
-            append(segment.text(), segStyle);
+            append(segment.text(), segmentStyle(segment));
         }
         append("\n", MarkdownTheme.body());
     }
@@ -82,21 +79,25 @@ public final class MarkdownRenderer {
     }
 
     private void renderCodeBlock(CodeBlockNode codeBlock) throws BadLocationException {
+        String code = codeBlock.code();
+        if (code.isEmpty()) {
+            return;
+        }
+
         append("\n", MarkdownTheme.body());
 
         int blockStart = doc.getLength();
-        String code = codeBlock.code();
+        append(code, MarkdownTheme.codeBlock());
+        MarkdownCodeHighlighter.highlight(doc, blockStart, code, codeBlock.language());
 
-        if (!code.isEmpty()) {
-            append(code, MarkdownTheme.codeBlock());
-            MarkdownCodeHighlighter.highlight(doc, blockStart, code, codeBlock.language());
-        }
-        append("\n", MarkdownTheme.codeBlock());
-
+        String[] lines = code.split("\n", -1);
         int paraOffset = blockStart;
-        for (String line : code.split("\n", -1)) {
-            doc.setParagraphAttributes(paraOffset, 1, MarkdownTheme.codeParagraph(), false);
-            paraOffset += line.length() + 1;
+        for (int i = 0; i < lines.length; i++) {
+            boolean firstLine = (i == 0);
+            boolean lastLine = (i == lines.length - 1);
+            doc.setParagraphAttributes(paraOffset, 1,
+                    MarkdownTheme.codeParagraph(firstLine, lastLine), false);
+            paraOffset += lines[i].length() + 1;
         }
 
         append("\n", MarkdownTheme.body());

@@ -22,7 +22,10 @@ public final class MarkdownBuilder {
 
         String difficulty = difficultyLabel(page.getDifficulty());
         String estimate = estimateLabel(page);
-        sb.append(difficulty).append(" \u2022 ").append(estimate).append("\n");
+        if (!difficulty.isEmpty()) {
+            sb.append(difficulty).append(" \u2022 ");
+        }
+        sb.append(estimate).append("\n");
 
         sb.append("---\n");
 
@@ -75,12 +78,9 @@ public final class MarkdownBuilder {
     }
 
     private void renderCodeContent(String content, StringBuilder sb) {
-        List<String> blocks = splitBlocks(content);
-        boolean renderedCode = false;
-        for (String block : blocks) {
-            if (!renderedCode && looksLikeCode(block)) {
+        for (String block : splitBlocks(content)) {
+            if (looksLikeCode(block)) {
                 sb.append("\n```java\n").append(block.trim()).append("\n```\n");
-                renderedCode = true;
             } else {
                 splitSentencesAsParagraphs(block, sb);
             }
@@ -144,15 +144,32 @@ public final class MarkdownBuilder {
     }
 
     private void renderBulletLines(String block, StringBuilder sb) {
+        StringBuilder current = new StringBuilder();
+        boolean inBullet = false;
         for (String line : block.split("\\n")) {
             String trimmed = line.trim();
-            if (trimmed.startsWith("- ")) {
-                sb.append("- ").append(trimmed.substring(2).trim()).append("\n");
-            } else if (trimmed.startsWith("\u2022 ")) {
-                sb.append("- ").append(trimmed.substring(2).trim()).append("\n");
+            if (trimmed.startsWith("- ") || trimmed.startsWith("\u2022 ")) {
+                if (inBullet) {
+                    sb.append("- ").append(current).append("\n");
+                }
+                String text = trimmed.startsWith("- ")
+                        ? trimmed.substring(2).trim()
+                        : trimmed.substring(2).trim();
+                current = new StringBuilder(text);
+                inBullet = true;
             } else if (trimmed.matches("^\\d+\\.\\s.*")) {
-                sb.append("- ").append(stripNumberPrefix(trimmed)).append("\n");
+                if (inBullet) {
+                    sb.append("- ").append(current).append("\n");
+                }
+                current = new StringBuilder(stripNumberPrefix(trimmed));
+                inBullet = true;
+            } else if (inBullet && !trimmed.isEmpty()) {
+                if (current.length() > 0) current.append(" ");
+                current.append(trimmed);
             }
+        }
+        if (inBullet) {
+            sb.append("- ").append(current).append("\n");
         }
     }
 
@@ -198,7 +215,7 @@ public final class MarkdownBuilder {
         if (!hasText(block)) {
             return sentences;
         }
-        for (String part : block.split("(?<=[.!?])\\s+|\\n+")) {
+        for (String part : block.split("(?<=[.!?])\\s+")) {
             String trimmed = part.trim();
             if (!trimmed.isBlank()) {
                 sentences.add(trimmed);

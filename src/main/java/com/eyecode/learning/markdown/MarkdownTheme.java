@@ -10,47 +10,45 @@ import java.awt.Font;
 
 public final class MarkdownTheme {
 
-    private static final int H1_SIZE = 22;
-    private static final int H2_SIZE = 15;
-    private static final int BODY_SIZE = 12;
-    private static final int CODE_SIZE = 12;
-    private static final int BULLET_SIZE = 12;
-    private static final int LINK_SIZE = 12;
+    private static final int H1_SIZE = 24;
+    private static final int H2_SIZE = 16;
+    private static final int BODY_SIZE = 13;
+    private static final int CODE_SIZE = 13;
+    private static final int BULLET_SIZE = 13;
+    private static final int LINK_SIZE = 13;
     private static final int ARROW_SIZE = 14;
-    private static final int CALLOUT_SIZE = 12;
+    private static final int CALLOUT_SIZE = 13;
 
-    private static final int H1_SPACE_BELOW = 10;
-    private static final int H2_SPACE_ABOVE = 22;
-    private static final int H2_SPACE_BELOW = 14;
-    private static final int BODY_SPACE_BELOW = 14;
-    private static final int BULLET_SPACE_BELOW = 10;
+    private static final int H1_SPACE_BELOW = 12;
+    private static final int H2_SPACE_ABOVE = 28;
+    private static final int H2_SPACE_BELOW = 16;
+    private static final int BODY_SPACE_BELOW = 18;
+    private static final int BULLET_SPACE_BELOW = 14;
     private static final int LINK_SPACE_ABOVE = 12;
     private static final int LINK_SPACE_BELOW = 6;
-    private static final int ARROW_SPACE_ABOVE = 8;
-    private static final int ARROW_SPACE_BELOW = 8;
-    private static final int CALLOUT_SPACE_BELOW = 14;
-    private static final int CALLOUT_LEFT_INDENT = 16;
-    private static final int CALLOUT_SPACE_ABOVE = 4;
+    private static final int ARROW_SPACE_ABOVE = 10;
+    private static final int ARROW_SPACE_BELOW = 10;
+    private static final int CALLOUT_SPACE_BELOW = 18;
+    private static final int CALLOUT_LEFT_INDENT = 20;
+    private static final int CALLOUT_SPACE_ABOVE = 8;
     private static final int CALLOUT_SPACE_BELOW_PARAGRAPH = 6;
     private static final int CODE_LEFT_INDENT = 28;
-    private static final int CODE_RIGHT_INDENT = 0;
-    private static final int CODE_SPACE_ABOVE = 10;
-    private static final int CODE_SPACE_BELOW = 10;
-    private static final int BULLET_LEFT_INDENT = 22;
+    private static final int CODE_RIGHT_INDENT = 28;
+    private static final int CODE_PADDING_TOP = 10;
+    private static final int CODE_PADDING_BOTTOM = 10;
+    private static final int BULLET_LEFT_INDENT = 28;
     private static final int DIVIDER_SPACE_ABOVE = 24;
     private static final int DIVIDER_SPACE_BELOW = 24;
 
-    private static final float BODY_LINE_SPACING = 0.18f;
-    private static final float CODE_LINE_SPACING = 0.08f;
-    private static final float BULLET_LINE_SPACING = 0.20f;
+    private static final float BODY_LINE_SPACING = 0.22f;
+    private static final float BULLET_LINE_SPACING = 0.22f;
 
     private static final String DIVIDER_TEXT = "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500";
     private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
-    private static final Color H2_BG = new Color(0x1A, 0x73, 0xE8, 0x08);
-    private static final Color MISTAKE_BG = new Color(0xE8, 0x1A, 0x1A, 0x08);
-    private static final Color CALLOUT_INFO_BG = new Color(0x1A, 0x73, 0xE8, 0x0F);
-    private static final Color CALLOUT_WARN_BG = new Color(0xFF, 0xA0, 0x00, 0x0F);
-    private static final Color CALLOUT_TIP_BG = new Color(0x00, 0xA8, 0x6B, 0x0F);
+    private static final Color H2_BG = new Color(0x1A, 0x73, 0xE8, 0x0C);
+    private static final Color CALLOUT_INFO_BG = new Color(0x1A, 0x73, 0xE8, 0x18);
+    private static final Color CALLOUT_WARN_BG = new Color(0xFF, 0xA0, 0x00, 0x20);
+    private static final Color CALLOUT_TIP_BG = new Color(0x00, 0xA8, 0x6B, 0x20);
 
     private MarkdownTheme() {
     }
@@ -103,14 +101,16 @@ public final class MarkdownTheme {
     public static SimpleAttributeSet codeBlock() {
         return create(TypographyManager.monoRegular(CODE_SIZE),
                 ColorManager.EDITOR_FOREGROUND, null, 0, 0,
-                CODE_LEFT_INDENT, CODE_RIGHT_INDENT, CODE_LINE_SPACING);
+                CODE_LEFT_INDENT, CODE_RIGHT_INDENT, 0.0f);
     }
 
-    public static SimpleAttributeSet codeParagraph() {
+    public static SimpleAttributeSet codeParagraph(boolean firstLine, boolean lastLine) {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
         StyleConstants.setBackground(attrs, ColorManager.EDITOR_BG);
-        StyleConstants.setSpaceAbove(attrs, CODE_SPACE_ABOVE);
-        StyleConstants.setSpaceBelow(attrs, CODE_SPACE_BELOW);
+        StyleConstants.setLeftIndent(attrs, CODE_LEFT_INDENT);
+        StyleConstants.setRightIndent(attrs, CODE_RIGHT_INDENT);
+        StyleConstants.setSpaceAbove(attrs, firstLine ? CODE_PADDING_TOP : 0);
+        StyleConstants.setSpaceBelow(attrs, lastLine ? CODE_PADDING_BOTTOM : 0);
         return attrs;
     }
 
@@ -121,9 +121,11 @@ public final class MarkdownTheme {
     }
 
     public static SimpleAttributeSet link() {
-        return create(TypographyManager.monoRegular(LINK_SIZE),
+        SimpleAttributeSet attrs = create(TypographyManager.monoRegular(LINK_SIZE),
                 ColorManager.ACCENT_BLUE_LIGHT, null,
                 LINK_SPACE_ABOVE, LINK_SPACE_BELOW, 0, 0, 0.0f);
+        StyleConstants.setUnderline(attrs, true);
+        return attrs;
     }
 
     public static SimpleAttributeSet arrow() {

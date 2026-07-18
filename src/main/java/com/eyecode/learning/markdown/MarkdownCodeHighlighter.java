@@ -12,21 +12,34 @@ import java.util.regex.Pattern;
 
 public final class MarkdownCodeHighlighter {
 
-    private static final Pattern KEYWORD_PATTERN = Pattern.compile("\\b(?:class|interface|enum|record|public|private|protected|static|final|void|new|return)\\b");
-    private static final Pattern TYPE_PATTERN = Pattern.compile("\\b(?:String|Integer|Boolean|Object|Pessoa|Cliente)\\b");
+    private static final Pattern KEYWORD_PATTERN = Pattern.compile(
+            "\\b(?:abstract|break|case|catch|class|continue|default|do|else|enum|extends|" +
+            "finally|final|for|if|implements|import|interface|instanceof|native|new|package|" +
+            "private|protected|public|record|return|static|strictfp|super|switch|" +
+            "synchronized|this|throw|throws|transient|try|void|volatile|while)\\b");
+    private static final Pattern TYPE_PATTERN = Pattern.compile(
+            "\\b(?:String|Integer|Boolean|Object|Pessoa|Cliente|int|long|double|float|" +
+            "char|byte|short|boolean|void|List|Set|Map|ArrayList|HashMap|HashSet|" +
+            "Optional|Collection|Stream|Runnable|Thread)\\b");
     private static final Pattern STRING_PATTERN = Pattern.compile("\"(?:\\\\.|[^\"\\\\])*\"");
+    private static final Pattern NUMBER_PATTERN = Pattern.compile("\\b\\d+[lLfFdD]?(?:\\.\\d+[fFdD]?)?\\b");
+    private static final Pattern ANNOTATION_PATTERN = Pattern.compile("@\\w+");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("//.*");
 
     private static final SimpleAttributeSet KEYWORD_STYLE;
     private static final SimpleAttributeSet TYPE_STYLE;
     private static final SimpleAttributeSet STRING_STYLE;
+    private static final SimpleAttributeSet NUMBER_STYLE;
+    private static final SimpleAttributeSet ANNOTATION_STYLE;
     private static final SimpleAttributeSet COMMENT_STYLE;
 
     static {
         KEYWORD_STYLE = syntax(ColorManager.SYNTAX_KEYWORD, true);
         TYPE_STYLE = syntax(ColorManager.SYNTAX_CLASS, false);
         STRING_STYLE = syntax(ColorManager.SYNTAX_STRING, false);
-        COMMENT_STYLE = syntax(ColorManager.TEXT_MUTED, false);
+        NUMBER_STYLE = syntax(ColorManager.SYNTAX_NUMBER, false);
+        ANNOTATION_STYLE = syntax(ColorManager.SYNTAX_ANNOTATION, false);
+        COMMENT_STYLE = syntax(ColorManager.SYNTAX_COMMENT, false);
     }
 
     private MarkdownCodeHighlighter() {
@@ -54,6 +67,8 @@ public final class MarkdownCodeHighlighter {
         applyProtectedPattern(doc, offset, line, COMMENT_PATTERN, COMMENT_STYLE, protectedRanges);
         applyTokenPattern(doc, offset, line, KEYWORD_PATTERN, KEYWORD_STYLE, protectedRanges);
         applyTokenPattern(doc, offset, line, TYPE_PATTERN, TYPE_STYLE, protectedRanges);
+        applyTokenPattern(doc, offset, line, NUMBER_PATTERN, NUMBER_STYLE, protectedRanges);
+        applyTokenPattern(doc, offset, line, ANNOTATION_PATTERN, ANNOTATION_STYLE, protectedRanges);
     }
 
     private static void applyProtectedPattern(
