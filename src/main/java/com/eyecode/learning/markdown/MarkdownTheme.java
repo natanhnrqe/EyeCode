@@ -12,16 +12,20 @@ public final class MarkdownTheme {
 
     private static final int H1_SIZE = 24;
     private static final int H2_SIZE = 15;
+    private static final int H3_SIZE = 13;
     private static final int BODY_SIZE = 13;
     private static final int CODE_SIZE = 13;
     private static final int BULLET_SIZE = 13;
     private static final int LINK_SIZE = 13;
     private static final int ARROW_SIZE = 14;
     private static final int CALLOUT_SIZE = 13;
+    private static final int CHECKBOX_SIZE = 13;
 
     private static final int H1_SPACE_BELOW = 10;
     private static final int H2_SPACE_ABOVE = 0;
     private static final int H2_SPACE_BELOW = 10;
+    private static final int H3_SPACE_ABOVE = 0;
+    private static final int H3_SPACE_BELOW = 8;
     private static final int BODY_SPACE_BELOW = 22;
     private static final int BULLET_SPACE_BELOW = 14;
     private static final int LINK_SPACE_ABOVE = 12;
@@ -53,6 +57,10 @@ public final class MarkdownTheme {
     private MarkdownTheme() {
     }
 
+    // ──────────────────────────────────────────────
+    // HeadingStyles
+    // ──────────────────────────────────────────────
+
     public static SimpleAttributeSet h1() {
         return create(TypographyManager.monoBold(H1_SIZE),
                 ColorManager.TEXT_PRIMARY, null, 0, H1_SPACE_BELOW, 0, 0, 0.0f);
@@ -74,19 +82,78 @@ public final class MarkdownTheme {
         return attrs;
     }
 
-    public static SimpleAttributeSet body() {
+    public static SimpleAttributeSet h3() {
+        return create(TypographyManager.monoBold(H3_SIZE),
+                ColorManager.TEXT_PRIMARY, null, H3_SPACE_ABOVE, H3_SPACE_BELOW, 0, 0, 0.0f);
+    }
+
+    // ──────────────────────────────────────────────
+    // ParagraphStyles
+    // ──────────────────────────────────────────────
+
+    public static SimpleAttributeSet paragraph() {
         return create(TypographyManager.monoRegular(BODY_SIZE),
                 ColorManager.TEXT_SECONDARY, null, 0, BODY_SPACE_BELOW, 0, 0, BODY_LINE_SPACING);
     }
 
-    public static SimpleAttributeSet bold() {
-        return create(TypographyManager.monoBold(BODY_SIZE),
-                ColorManager.TEXT_SECONDARY, null, 0, 0, 0, 0, 0.0f);
+    public static SimpleAttributeSet paragraphMuted() {
+        return create(TypographyManager.monoRegular(BODY_SIZE),
+                ColorManager.TEXT_TERTIARY, null, 0, BODY_SPACE_BELOW, 0, 0, BODY_LINE_SPACING);
     }
 
-    public static SimpleAttributeSet italic() {
+    // ──────────────────────────────────────────────
+    // ListStyles
+    // ──────────────────────────────────────────────
+
+    public static SimpleAttributeSet bullet() {
+        return create(TypographyManager.monoRegular(BULLET_SIZE),
+                ColorManager.TEXT_PRIMARY, null, 0, BULLET_SPACE_BELOW,
+                BULLET_LEFT_INDENT, 0, BULLET_LINE_SPACING);
+    }
+
+    public static SimpleAttributeSet checkbox() {
+        return create(TypographyManager.monoRegular(CHECKBOX_SIZE),
+                ColorManager.TEXT_PRIMARY, null, 0, BULLET_SPACE_BELOW,
+                BULLET_LEFT_INDENT, 0, BULLET_LINE_SPACING);
+    }
+
+    public static SimpleAttributeSet flowArrow() {
+        return create(TypographyManager.monoBold(ARROW_SIZE),
+                ColorManager.TEXT_TERTIARY, null,
+                ARROW_SPACE_ABOVE, ARROW_SPACE_BELOW, 0, 0, 0.0f);
+    }
+
+    // ──────────────────────────────────────────────
+    // DividerStyles
+    // ──────────────────────────────────────────────
+
+    public static SimpleAttributeSet divider() {
         return create(TypographyManager.monoRegular(BODY_SIZE),
-                ColorManager.TEXT_SECONDARY, null, 0, 0, 0, 0, 0.0f);
+                ColorManager.BORDER_CARD, null,
+                DIVIDER_SPACE_ABOVE, DIVIDER_SPACE_BELOW, 0, 0, 0.0f);
+    }
+
+    public static String dividerText() {
+        return DIVIDER_TEXT;
+    }
+
+    // ──────────────────────────────────────────────
+    // CodeStyles
+    // ──────────────────────────────────────────────
+
+    public static SimpleAttributeSet codeBlock() {
+        return create(TypographyManager.monoRegular(CODE_SIZE),
+                ColorManager.EDITOR_FOREGROUND, null, 0, 0, 0, 0, 0.0f);
+    }
+
+    public static SimpleAttributeSet codeParagraph(boolean firstLine, boolean lastLine) {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setBackground(attrs, ColorManager.EDITOR_BG);
+        StyleConstants.setLeftIndent(attrs, CODE_LEFT_INDENT);
+        StyleConstants.setRightIndent(attrs, CODE_RIGHT_INDENT);
+        StyleConstants.setSpaceAbove(attrs, firstLine ? CODE_PADDING_TOP : 0);
+        StyleConstants.setSpaceBelow(attrs, lastLine ? CODE_PADDING_BOTTOM : 0);
+        return attrs;
     }
 
     public static SimpleAttributeSet codeInline() {
@@ -95,22 +162,6 @@ public final class MarkdownTheme {
         StyleConstants.setFontSize(attrs, CODE_SIZE);
         StyleConstants.setForeground(attrs, ColorManager.SYNTAX_KEYWORD);
         StyleConstants.setBackground(attrs, ColorManager.PANEL_BG);
-        return attrs;
-    }
-
-    public static SimpleAttributeSet codeBlock() {
-        return create(TypographyManager.monoRegular(CODE_SIZE),
-                ColorManager.EDITOR_FOREGROUND, null, 0, 0,
-                0, 0, 0.0f);
-    }
-
-    public static SimpleAttributeSet codeBlockParagraph(boolean firstLine, boolean lastLine) {
-        SimpleAttributeSet attrs = new SimpleAttributeSet();
-        StyleConstants.setBackground(attrs, ColorManager.EDITOR_BG);
-        StyleConstants.setLeftIndent(attrs, 0);
-        StyleConstants.setRightIndent(attrs, 0);
-        StyleConstants.setSpaceAbove(attrs, firstLine ? CODE_PADDING_TOP : 0);
-        StyleConstants.setSpaceBelow(attrs, lastLine ? CODE_PADDING_BOTTOM : 0);
         return attrs;
     }
 
@@ -150,35 +201,34 @@ public final class MarkdownTheme {
         return attrs;
     }
 
-    public static SimpleAttributeSet bullet() {
-        return create(TypographyManager.monoRegular(BULLET_SIZE),
-                ColorManager.TEXT_PRIMARY, null, 0, BULLET_SPACE_BELOW,
-                BULLET_LEFT_INDENT, 0, BULLET_LINE_SPACING);
-    }
+    // ──────────────────────────────────────────────
+    // CalloutStyles
+    // ──────────────────────────────────────────────
 
-    public static SimpleAttributeSet link() {
-        SimpleAttributeSet attrs = create(TypographyManager.monoRegular(LINK_SIZE),
-                ColorManager.ACCENT_BLUE_LIGHT, null,
-                LINK_SPACE_ABOVE, LINK_SPACE_BELOW, 0, 0, 0.0f);
-        StyleConstants.setUnderline(attrs, true);
+    public static SimpleAttributeSet calloutContainer(String type) {
+        Color bg = switch (type.toLowerCase()) {
+            case "tip" -> CALLOUT_TIP_BG;
+            case "warning" -> CALLOUT_WARN_BG;
+            default -> CALLOUT_INFO_BG;
+        };
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setBackground(attrs, bg);
+        StyleConstants.setLeftIndent(attrs, CALLOUT_LEFT_INDENT);
+        StyleConstants.setSpaceAbove(attrs, CALLOUT_SPACE_ABOVE);
+        StyleConstants.setSpaceBelow(attrs, CALLOUT_SPACE_BELOW_PARAGRAPH);
         return attrs;
     }
 
-    public static SimpleAttributeSet arrow() {
-        return create(TypographyManager.monoBold(ARROW_SIZE),
-                ColorManager.TEXT_TERTIARY, null,
-                ARROW_SPACE_ABOVE, ARROW_SPACE_BELOW, 0, 0, 0.0f);
+    public static SimpleAttributeSet calloutInfo() {
+        return calloutContainer("info");
     }
 
-    public static SimpleAttributeSet divider() {
-        return create(TypographyManager.monoRegular(BODY_SIZE),
-                ColorManager.BORDER_CARD, null,
-                DIVIDER_SPACE_ABOVE, 0, 0, 0, 0.0f);
+    public static SimpleAttributeSet calloutWarning() {
+        return calloutContainer("warning");
     }
 
-    public static SimpleAttributeSet callout() {
-        return create(TypographyManager.monoRegular(CALLOUT_SIZE),
-                ColorManager.TEXT_SECONDARY, null, 0, CALLOUT_SPACE_BELOW, 0, 0, 0.0f);
+    public static SimpleAttributeSet calloutTip() {
+        return calloutContainer("tip");
     }
 
     public static SimpleAttributeSet calloutTitle(String type) {
@@ -195,18 +245,47 @@ public final class MarkdownTheme {
                 ColorManager.TEXT_SECONDARY, null, 0, 0, 0, 0, 0.0f);
     }
 
-    public static SimpleAttributeSet calloutContainer(String type) {
-        Color bg = switch (type.toLowerCase()) {
-            case "tip" -> CALLOUT_TIP_BG;
-            case "warning" -> CALLOUT_WARN_BG;
-            default -> CALLOUT_INFO_BG;
-        };
-        SimpleAttributeSet attrs = new SimpleAttributeSet();
-        StyleConstants.setBackground(attrs, bg);
-        StyleConstants.setLeftIndent(attrs, CALLOUT_LEFT_INDENT);
-        StyleConstants.setSpaceAbove(attrs, CALLOUT_SPACE_ABOVE);
-        StyleConstants.setSpaceBelow(attrs, CALLOUT_SPACE_BELOW_PARAGRAPH);
+    // ──────────────────────────────────────────────
+    // InlineStyles
+    // ──────────────────────────────────────────────
+
+    public static SimpleAttributeSet body() {
+        return paragraph();
+    }
+
+    public static SimpleAttributeSet bold() {
+        return create(TypographyManager.monoBold(BODY_SIZE),
+                ColorManager.TEXT_SECONDARY, null, 0, 0, 0, 0, 0.0f);
+    }
+
+    public static SimpleAttributeSet italic() {
+        return create(TypographyManager.monoRegular(BODY_SIZE),
+                ColorManager.TEXT_SECONDARY, null, 0, 0, 0, 0, 0.0f);
+    }
+
+    public static SimpleAttributeSet link() {
+        SimpleAttributeSet attrs = create(TypographyManager.monoRegular(LINK_SIZE),
+                ColorManager.ACCENT_BLUE_LIGHT, null,
+                LINK_SPACE_ABOVE, LINK_SPACE_BELOW, 0, 0, 0.0f);
+        StyleConstants.setUnderline(attrs, true);
         return attrs;
+    }
+
+    public static SimpleAttributeSet arrow() {
+        return flowArrow();
+    }
+
+    // ──────────────────────────────────────────────
+    // Legacy / Transition
+    // ──────────────────────────────────────────────
+
+    public static SimpleAttributeSet callout() {
+        return create(TypographyManager.monoRegular(CALLOUT_SIZE),
+                ColorManager.TEXT_SECONDARY, null, 0, CALLOUT_SPACE_BELOW, 0, 0, 0.0f);
+    }
+
+    public static SimpleAttributeSet codeBlockParagraph(boolean firstLine, boolean lastLine) {
+        return codeParagraph(firstLine, lastLine);
     }
 
     public static Color calloutInfoBg() {
@@ -223,10 +302,6 @@ public final class MarkdownTheme {
 
     public static Color transparent() {
         return TRANSPARENT;
-    }
-
-    public static String dividerText() {
-        return DIVIDER_TEXT;
     }
 
     static SimpleAttributeSet create(Font font, Color fg, Color bg,
