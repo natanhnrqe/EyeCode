@@ -4,8 +4,7 @@ import com.eyecode.learning.document.LearningDocumentStyle;
 import com.eyecode.learning.model.ConceptType;
 import com.eyecode.learning.model.DifficultyLevel;
 import com.eyecode.learning.model.LearningConcept;
-import com.eyecode.learning.ui.components.LearningSubtitle;
-import com.eyecode.learning.ui.components.LearningTitle;
+import com.eyecode.ui.core.UILabel;
 import com.eyecode.ui.core.UIViewFactory;
 import com.eyecode.ui.designsystem.IconManager;
 
@@ -18,26 +17,34 @@ import java.awt.Component;
 
 public final class LearningHeader extends JPanel {
 
-    private final LearningTitle title;
-    private final LearningSubtitle subtitle;
+    private final UILabel titleLabel;
+    private final UILabel subtitleLabel;
 
     public LearningHeader(UIViewFactory viewFactory) {
         super(new BorderLayout());
         setOpaque(false);
 
-        title = new LearningTitle("", IconManager.javaFile());
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        titleLabel = viewFactory.createLabel();
+        titleLabel.getLabel().setFont(LearningDocumentStyle.titleFont());
+        titleLabel.getLabel().setForeground(LearningDocumentStyle.titleColor());
+        titleLabel.getLabel().setIcon(IconManager.javaFile());
+        titleLabel.getLabel().setIconTextGap(LearningDocumentStyle.titleIconTextGap());
+        titleLabel.getLabel().setBorder(LearningDocumentStyle.emptyBorder());
+        titleLabel.getLabel().setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        subtitle = new LearningSubtitle("");
-        subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        subtitleLabel = viewFactory.createLabel();
+        subtitleLabel.getLabel().setFont(LearningDocumentStyle.subtitleFont());
+        subtitleLabel.getLabel().setForeground(LearningDocumentStyle.subtitleColor());
+        subtitleLabel.getLabel().setBorder(LearningDocumentStyle.emptyBorder());
+        subtitleLabel.getLabel().setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel textPanel = (JPanel) viewFactory.createContainer().getComponent();
         textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
         textPanel.setOpaque(false);
         textPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        textPanel.add(title);
+        textPanel.add(titleLabel.getLabel());
         textPanel.add(Box.createVerticalStrut(LearningDocumentStyle.headerTextGap()));
-        textPanel.add(subtitle);
+        textPanel.add(subtitleLabel.getLabel());
 
         JPanel content = (JPanel) viewFactory.createContainer().getComponent();
         content.setLayout(new BorderLayout());
@@ -54,13 +61,13 @@ public final class LearningHeader extends JPanel {
 
     public void setConcept(LearningConcept concept) {
         if (concept == null) {
-            title.setText("");
-            subtitle.setText("");
+            titleLabel.getLabel().setText("");
+            subtitleLabel.getLabel().setText("");
             return;
         }
 
-        title.setText(nullToEmpty(concept.getTitle()));
-        subtitle.setText(typeDisplayName(concept.getType()) + " \u2022 " + difficultyDisplayName(concept.getDifficulty()));
+        titleLabel.getLabel().setText(nullToEmpty(concept.getTitle()));
+        subtitleLabel.getLabel().setText(typeDisplayName(concept.getType()) + " \u2022 " + difficultyDisplayName(concept.getDifficulty()));
     }
 
     private static String typeDisplayName(ConceptType type) {

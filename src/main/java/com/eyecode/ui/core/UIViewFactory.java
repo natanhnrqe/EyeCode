@@ -14,5 +14,7 @@ public interface UIViewFactory {
 
     UIScrollPane createScrollPane();
 
+    UILabel createLabel();
+
     UIButton createButton();
 }
