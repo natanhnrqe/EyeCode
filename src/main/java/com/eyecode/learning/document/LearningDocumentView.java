@@ -1,6 +1,7 @@
 package com.eyecode.learning.document;
 
 import com.eyecode.learning.content.LearningPage;
+import com.eyecode.learning.content.LearningResourceLoader;
 import com.eyecode.learning.markdown.MarkdownBuilder;
 import com.eyecode.learning.markdown.MarkdownDocument;
 import com.eyecode.learning.markdown.MarkdownParser;
@@ -23,6 +24,7 @@ public final class LearningDocumentView extends JPanel {
     private final MarkdownBuilder builder;
     private final MarkdownParser parser;
     private final MarkdownRenderer renderer;
+    private final LearningResourceLoader resourceLoader;
 
     public LearningDocumentView() {
         this(new SwingUIViewFactory());
@@ -35,6 +37,7 @@ public final class LearningDocumentView extends JPanel {
         builder = new MarkdownBuilder();
         parser = new MarkdownParser();
         renderer = new MarkdownRenderer();
+        resourceLoader = new LearningResourceLoader();
 
         uiTextPane = viewFactory.createTextPane();
         uiTextPane.getTextPane().setDocument(renderer.render(null));
@@ -62,7 +65,12 @@ public final class LearningDocumentView extends JPanel {
     }
 
     public void setPage(LearningPage page) {
-        String markdown = builder.build(page);
+        String markdown;
+        if (page.getResourcePath() != null) {
+            markdown = resourceLoader.load(page.getResourcePath());
+        } else {
+            markdown = builder.build(page);
+        }
         MarkdownDocument document = parser.parse(markdown);
         uiTextPane.getTextPane().setDocument(renderer.render(document));
         uiTextPane.getTextPane().setCaretPosition(0);
