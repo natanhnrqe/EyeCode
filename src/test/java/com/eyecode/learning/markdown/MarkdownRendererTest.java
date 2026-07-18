@@ -288,7 +288,8 @@ class MarkdownRendererTest {
             assertTrue(classPos >= 0);
             var attrs = doc.getCharacterElement(classPos).getAttributes();
             assertEquals(ColorManager.SYNTAX_KEYWORD, StyleConstants.getForeground(attrs));
-            assertTrue(StyleConstants.isBold(attrs));
+            assertEquals(13, StyleConstants.getFontSize(attrs),
+                    "Keyword must share same font size as base code text");
         }
 
         @Test

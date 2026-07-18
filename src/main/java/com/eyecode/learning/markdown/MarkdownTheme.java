@@ -104,13 +104,49 @@ public final class MarkdownTheme {
                 CODE_LEFT_INDENT, CODE_RIGHT_INDENT, 0.0f);
     }
 
-    public static SimpleAttributeSet codeParagraph(boolean firstLine, boolean lastLine) {
+    public static SimpleAttributeSet codeBlockParagraph(boolean firstLine, boolean lastLine) {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
         StyleConstants.setBackground(attrs, ColorManager.EDITOR_BG);
         StyleConstants.setLeftIndent(attrs, CODE_LEFT_INDENT);
         StyleConstants.setRightIndent(attrs, CODE_RIGHT_INDENT);
         StyleConstants.setSpaceAbove(attrs, firstLine ? CODE_PADDING_TOP : 0);
         StyleConstants.setSpaceBelow(attrs, lastLine ? CODE_PADDING_BOTTOM : 0);
+        return attrs;
+    }
+
+    public static SimpleAttributeSet codeKeyword() {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setForeground(attrs, ColorManager.SYNTAX_KEYWORD);
+        return attrs;
+    }
+
+    public static SimpleAttributeSet codeType() {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setForeground(attrs, ColorManager.SYNTAX_CLASS);
+        return attrs;
+    }
+
+    public static SimpleAttributeSet codeString() {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setForeground(attrs, ColorManager.SYNTAX_STRING);
+        return attrs;
+    }
+
+    public static SimpleAttributeSet codeComment() {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setForeground(attrs, ColorManager.SYNTAX_COMMENT);
+        return attrs;
+    }
+
+    public static SimpleAttributeSet codeAnnotation() {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setForeground(attrs, ColorManager.SYNTAX_ANNOTATION);
+        return attrs;
+    }
+
+    public static SimpleAttributeSet codeNumber() {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setForeground(attrs, ColorManager.SYNTAX_NUMBER);
         return attrs;
     }
 

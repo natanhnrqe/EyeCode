@@ -1,12 +1,8 @@
 package com.eyecode.learning.markdown;
 
-import com.eyecode.ui.designsystem.ColorManager;
-import com.eyecode.ui.designsystem.TypographyManager;
-
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
-import java.awt.Color;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,22 +21,6 @@ public final class MarkdownCodeHighlighter {
     private static final Pattern NUMBER_PATTERN = Pattern.compile("\\b\\d+[lLfFdD]?(?:\\.\\d+[fFdD]?)?\\b");
     private static final Pattern ANNOTATION_PATTERN = Pattern.compile("@\\w+");
     private static final Pattern COMMENT_PATTERN = Pattern.compile("//.*");
-
-    private static final SimpleAttributeSet KEYWORD_STYLE;
-    private static final SimpleAttributeSet TYPE_STYLE;
-    private static final SimpleAttributeSet STRING_STYLE;
-    private static final SimpleAttributeSet NUMBER_STYLE;
-    private static final SimpleAttributeSet ANNOTATION_STYLE;
-    private static final SimpleAttributeSet COMMENT_STYLE;
-
-    static {
-        KEYWORD_STYLE = syntax(ColorManager.SYNTAX_KEYWORD, true);
-        TYPE_STYLE = syntax(ColorManager.SYNTAX_CLASS, false);
-        STRING_STYLE = syntax(ColorManager.SYNTAX_STRING, false);
-        NUMBER_STYLE = syntax(ColorManager.SYNTAX_NUMBER, false);
-        ANNOTATION_STYLE = syntax(ColorManager.SYNTAX_ANNOTATION, false);
-        COMMENT_STYLE = syntax(ColorManager.SYNTAX_COMMENT, false);
-    }
 
     private MarkdownCodeHighlighter() {
     }
@@ -63,12 +43,12 @@ public final class MarkdownCodeHighlighter {
 
     private static void applyToLine(StyledDocument doc, int offset, String line) {
         boolean[] protectedRanges = new boolean[line.length()];
-        applyProtectedPattern(doc, offset, line, STRING_PATTERN, STRING_STYLE, protectedRanges);
-        applyProtectedPattern(doc, offset, line, COMMENT_PATTERN, COMMENT_STYLE, protectedRanges);
-        applyTokenPattern(doc, offset, line, KEYWORD_PATTERN, KEYWORD_STYLE, protectedRanges);
-        applyTokenPattern(doc, offset, line, TYPE_PATTERN, TYPE_STYLE, protectedRanges);
-        applyTokenPattern(doc, offset, line, NUMBER_PATTERN, NUMBER_STYLE, protectedRanges);
-        applyTokenPattern(doc, offset, line, ANNOTATION_PATTERN, ANNOTATION_STYLE, protectedRanges);
+        applyProtectedPattern(doc, offset, line, STRING_PATTERN, MarkdownTheme.codeString(), protectedRanges);
+        applyProtectedPattern(doc, offset, line, COMMENT_PATTERN, MarkdownTheme.codeComment(), protectedRanges);
+        applyTokenPattern(doc, offset, line, KEYWORD_PATTERN, MarkdownTheme.codeKeyword(), protectedRanges);
+        applyTokenPattern(doc, offset, line, TYPE_PATTERN, MarkdownTheme.codeType(), protectedRanges);
+        applyTokenPattern(doc, offset, line, NUMBER_PATTERN, MarkdownTheme.codeNumber(), protectedRanges);
+        applyTokenPattern(doc, offset, line, ANNOTATION_PATTERN, MarkdownTheme.codeAnnotation(), protectedRanges);
     }
 
     private static void applyProtectedPattern(
@@ -112,14 +92,5 @@ public final class MarkdownCodeHighlighter {
         for (int i = start; i < end; i++) {
             protectedRanges[i] = true;
         }
-    }
-
-    private static SimpleAttributeSet syntax(Color color, boolean bold) {
-        SimpleAttributeSet attrs = new SimpleAttributeSet();
-        StyleConstants.setFontFamily(attrs, TypographyManager.monoRegular(12).getFamily());
-        StyleConstants.setFontSize(attrs, 12);
-        StyleConstants.setBold(attrs, bold);
-        StyleConstants.setForeground(attrs, color);
-        return attrs;
     }
 }

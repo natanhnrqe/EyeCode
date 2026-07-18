@@ -104,8 +104,8 @@ public final class MarkdownRenderer {
         for (int i = 0; i < lines.length; i++) {
             boolean firstLine = (i == 0);
             boolean lastLine = (i == lines.length - 1);
-            doc.setParagraphAttributes(paraOffset, 1,
-                    MarkdownTheme.codeParagraph(firstLine, lastLine), false);
+                doc.setParagraphAttributes(paraOffset, 1,
+                        MarkdownTheme.codeBlockParagraph(firstLine, lastLine), false);
             paraOffset += lines[i].length() + 1;
         }
 
