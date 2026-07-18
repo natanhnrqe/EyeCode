@@ -25,7 +25,6 @@ public final class MarkdownRenderer {
                 renderNode(node);
             }
         } catch (BadLocationException e) {
-            // should not happen with append-only mutations
         }
         return doc;
     }
@@ -47,16 +46,38 @@ public final class MarkdownRenderer {
             case 2 -> MarkdownTheme.h2Colored(sectionColor(heading.text()));
             default -> MarkdownTheme.h2();
         };
+        int start = doc.getLength();
         append(heading.text(), style);
         append("\n", MarkdownTheme.body());
+        if (heading.level() == 2) {
+            doc.setParagraphAttributes(start, 1, MarkdownTheme.h2Background(), false);
+        }
     }
 
     private void renderParagraph(ParagraphNode paragraph) throws BadLocationException {
+        String firstText = paragraph.segments().isEmpty()
+                ? "" : paragraph.segments().getFirst().text();
+
+        if (firstText.equals("\u2193")) {
+            for (Segment segment : paragraph.segments()) {
+                append(segment.text(), MarkdownTheme.arrow());
+            }
+            append("\n", MarkdownTheme.arrow());
+            return;
+        }
+
+        boolean isMistake = firstText.startsWith("\u274C");
+        int start = doc.getLength();
+
         for (Segment segment : paragraph.segments()) {
             SimpleAttributeSet segStyle = segmentStyle(segment);
             append(segment.text(), segStyle);
         }
         append("\n", MarkdownTheme.body());
+
+        if (isMistake) {
+            doc.setParagraphAttributes(start, 1, MarkdownTheme.mistakeBackground(), false);
+        }
     }
 
     private void renderBullet(BulletNode bullet) throws BadLocationException {

@@ -26,13 +26,13 @@ public final class MarkdownTheme {
     private static final int BULLET_SPACE_BELOW = 10;
     private static final int LINK_SPACE_ABOVE = 12;
     private static final int LINK_SPACE_BELOW = 6;
-    private static final int ARROW_SPACE_ABOVE = 0;
-    private static final int ARROW_SPACE_BELOW = 0;
-    private static final int CALLOUT_SPACE_BELOW = 12;
+    private static final int ARROW_SPACE_ABOVE = 8;
+    private static final int ARROW_SPACE_BELOW = 8;
+    private static final int CALLOUT_SPACE_BELOW = 14;
     private static final int CODE_LEFT_INDENT = 28;
     private static final int CODE_RIGHT_INDENT = 0;
-    private static final int CODE_SPACE_ABOVE = 6;
-    private static final int CODE_SPACE_BELOW = 6;
+    private static final int CODE_SPACE_ABOVE = 10;
+    private static final int CODE_SPACE_BELOW = 10;
     private static final int BULLET_LEFT_INDENT = 22;
     private static final int DIVIDER_SPACE_ABOVE = 24;
     private static final int DIVIDER_SPACE_BELOW = 24;
@@ -43,6 +43,8 @@ public final class MarkdownTheme {
 
     private static final String DIVIDER_TEXT = "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500";
     private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
+    private static final Color H2_BG = new Color(0x1A, 0x73, 0xE8, 0x08);
+    private static final Color MISTAKE_BG = new Color(0xE8, 0x1A, 0x1A, 0x08);
     private static final Color CALLOUT_INFO_BG = new Color(0x1A, 0x73, 0xE8, 0x0F);
     private static final Color CALLOUT_WARN_BG = new Color(0xFF, 0xA0, 0x00, 0x0F);
     private static final Color CALLOUT_TIP_BG = new Color(0x00, 0xA8, 0x6B, 0x0F);
@@ -63,6 +65,12 @@ public final class MarkdownTheme {
     public static SimpleAttributeSet h2Colored(Color color) {
         return create(TypographyManager.monoBold(H2_SIZE),
                 color, null, H2_SPACE_ABOVE, H2_SPACE_BELOW, 0, 0, 0.0f);
+    }
+
+    public static SimpleAttributeSet h2Background() {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setBackground(attrs, H2_BG);
+        return attrs;
     }
 
     public static SimpleAttributeSet body() {
@@ -130,6 +138,12 @@ public final class MarkdownTheme {
     public static SimpleAttributeSet callout() {
         return create(TypographyManager.monoRegular(CALLOUT_SIZE),
                 ColorManager.TEXT_SECONDARY, null, 0, CALLOUT_SPACE_BELOW, 0, 0, 0.0f);
+    }
+
+    public static SimpleAttributeSet mistakeBackground() {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setBackground(attrs, MISTAKE_BG);
+        return attrs;
     }
 
     public static Color calloutInfoBg() {
