@@ -1,15 +1,7 @@
 package com.eyecode.learning.markdown;
 
-import com.eyecode.learning.content.LearningContentSection;
-import com.eyecode.learning.content.LearningContentType;
-import com.eyecode.learning.content.LearningPage;
-import com.eyecode.learning.model.DifficultyLevel;
-
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -497,30 +489,32 @@ class MarkdownParserTest {
     @Nested
     class Roundtrip {
 
-        private final MarkdownBuilder builder = new MarkdownBuilder();
-
-        private LearningPage createMinimalPage() {
-            List<LearningContentSection> sections = new ArrayList<>();
-            sections.add(section("intro", "Intro", LearningContentType.INTRODUCTION, 1,
-                    "Um texto introdut\u00F3rio.\n\nCom duas senten\u00E7as."));
-            sections.add(section("code", "Code", LearningContentType.CODE_EXAMPLE, 2,
-                    "class A {\n    void run() {}\n}\n\nExplicando o c\u00F3digo."));
-            sections.add(section("mistakes", "Erros", LearningContentType.COMMON_MISTAKES, 3,
-                    "1. Erro um\n\nDetalhe do erro.\n\n2. Erro dois\n\nMais detalhe."));
-            sections.add(section("tip", "Dica", LearningContentType.CURIOSITY, 4,
-                    "Uma curiosidade interessante."));
-            LearningPage page = new LearningPage();
-            page.setId("test");
-            page.setTitle("Test Page");
-            page.setDifficulty(DifficultyLevel.BEGINNER);
-            page.setSections(sections);
-            return page;
+        private static String sampleMarkdown() {
+            return "# Test Page\n" +
+                    "\n" +
+                    "Some paragraph text.\n" +
+                    "\n" +
+                    "---\n" +
+                    "\n" +
+                    "## Section\n" +
+                    "\n" +
+                    "```java\n" +
+                    "class A {}\n" +
+                    "```\n" +
+                    "\n" +
+                    "More text.\n" +
+                    "\n" +
+                    "- Item one\n" +
+                    "- Item two\n" +
+                    "\n" +
+                    ":::warning\n" +
+                    "A warning\n" +
+                    ":::";
         }
 
         @Test
         void fullPageRoundtrip() {
-            LearningPage page = createMinimalPage();
-            String markdown = builder.build(page);
+            String markdown = sampleMarkdown();
             MarkdownDocument doc = parser.parse(markdown);
 
             assertNotNull(doc);
@@ -549,8 +543,7 @@ class MarkdownParserTest {
 
         @Test
         void reparseIsDeterministic() {
-            LearningPage page = createMinimalPage();
-            String markdown = builder.build(page);
+            String markdown = sampleMarkdown();
             MarkdownDocument first = parser.parse(markdown);
             MarkdownDocument second = parser.parse(markdown);
 
@@ -565,8 +558,7 @@ class MarkdownParserTest {
 
         @Test
         void builderOutputParsesWithoutLoss() {
-            LearningPage page = createMinimalPage();
-            String markdown = builder.build(page);
+            String markdown = sampleMarkdown();
             MarkdownDocument doc = parser.parse(markdown);
 
             int headings = 0, paragraphs = 0, dividers = 0,
@@ -661,16 +653,5 @@ class MarkdownParserTest {
 
     private static <T> void assertNodeType(MarkdownNode node, Class<T> expectedType) {
         assertInstanceOf(expectedType, node);
-    }
-
-    private static LearningContentSection section(String id, String title,
-                                                  LearningContentType type, int order, String content) {
-        LearningContentSection s = new LearningContentSection();
-        s.setId(id);
-        s.setTitle(title);
-        s.setContent(content);
-        s.setType(type);
-        s.setOrder(order);
-        return s;
     }
 }

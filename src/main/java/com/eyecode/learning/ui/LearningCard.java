@@ -83,10 +83,6 @@ public final class LearningCard {
     }
 
     private static LearningPage pageFor(LearningConcept concept) {
-        LearningPage page = concept.getPage();
-        if (page == null || page.getSections() == null || page.getSections().isEmpty()) {
-            return null;
-        }
-        return page;
+        return concept.getPage();
     }
 }

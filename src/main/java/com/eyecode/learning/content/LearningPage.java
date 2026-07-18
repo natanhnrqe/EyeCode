@@ -13,10 +13,6 @@ public final class LearningPage {
     private DifficultyLevel difficulty;
     private List<LearningContentSection> sections;
 
-    public LearningPage() {
-        this(null);
-    }
-
     public LearningPage(String resourcePath) {
         this.resourcePath = resourcePath;
     }

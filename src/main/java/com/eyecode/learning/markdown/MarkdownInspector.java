@@ -1,9 +1,7 @@
 package com.eyecode.learning.markdown;
 
-import com.eyecode.learning.content.LearningContentSection;
-import com.eyecode.learning.content.LearningContentType;
 import com.eyecode.learning.content.LearningPage;
-import com.eyecode.learning.model.DifficultyLevel;
+import com.eyecode.learning.content.LearningResourceLoader;
 import com.eyecode.ui.designsystem.ColorManager;
 
 import javax.swing.JFrame;
@@ -14,18 +12,14 @@ import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.text.StyledDocument;
 import java.awt.BorderLayout;
-import java.util.ArrayList;
-import java.util.List;
 
 public final class MarkdownInspector extends JFrame {
 
-    private final MarkdownBuilder builder;
     private final MarkdownParser parser;
     private final MarkdownRenderer renderer;
 
     public MarkdownInspector() {
         super("Markdown Inspector");
-        builder = new MarkdownBuilder();
         parser = new MarkdownParser();
         renderer = new MarkdownRenderer();
         setupWindow();
@@ -39,7 +33,7 @@ public final class MarkdownInspector extends JFrame {
     }
 
     public void inspect(LearningPage page) {
-        String markdown = builder.build(page);
+        String markdown = new LearningResourceLoader().load(page.getResourcePath());
         MarkdownDocument doc = parser.parse(markdown);
 
         JTabbedPane tabs = new JTabbedPane();
@@ -170,57 +164,6 @@ public final class MarkdownInspector extends JFrame {
     }
 
     static LearningPage createSamplePage() {
-        List<LearningContentSection> sections = new ArrayList<>();
-        sections.add(section("intro", "O que \u00E9 uma classe?", LearningContentType.INTRODUCTION, 1,
-                "Uma classe \u00E9 como um molde ou uma receita.\n\n" +
-                "Ela define como algo ser\u00E1 criado, quais informa\u00E7\u00F5es esse algo ter\u00E1 " +
-                "e o que ele ser\u00E1 capaz de fazer."));
-        sections.add(section("analogy", "Analogia", LearningContentType.ANALOGY, 2,
-                "Imagine que voc\u00EA quer fazer bolos de chocolate.\n\n" +
-                "Antes de colocar a m\u00E3o na massa, voc\u00EA precisa de uma receita. " +
-                "A receita diz quais ingredientes usar."));
-        sections.add(section("code", "Exemplo", LearningContentType.CODE_EXAMPLE, 4,
-                "class Pessoa {\n" +
-                "    String nome;\n" +
-                "    int idade;\n" +
-                "\n" +
-                "    void apresentar() {\n" +
-                "        System.out.println(\"Ol\u00E1, eu sou \" + nome);\n" +
-                "    }\n" +
-                "}\n\n" +
-                "A palavra class diz ao Java que estamos criando uma classe."));
-        sections.add(section("flow", "Como funciona internamente", LearningContentType.HOW_IT_WORKS, 5,
-                "Quando voc\u00EA compila um arquivo .java, o Java transforma sua classe em um arquivo .class.\n\n" +
-                "Esse arquivo .class cont\u00E9m bytecode.\n\n" +
-                "- A classe \u00E9 o plano.\n" +
-                "- O objeto \u00E9 a constru\u00E7\u00E3o real.\n" +
-                "- A JVM \u00E9 a f\u00E1brica."));
-        sections.add(section("mistakes", "Erros comuns", LearningContentType.COMMON_MISTAKES, 6,
-                "1. Achar que classe e objeto s\u00E3o a mesma coisa\n\n" +
-                "A classe \u00E9 o molde. O objeto \u00E9 o resultado.\n\n" +
-                "2. Colocar tudo dentro do m\u00E9todo main\n\n" +
-                "Muitos iniciantes escrevem o programa inteiro dentro do main."));
-        sections.add(section("dica", "Curiosidade", LearningContentType.CURIOSITY, 7,
-                "Toda classe em Java herda de Object automaticamente. " +
-                "Isso significa que toda classe j\u00E1 vem com m\u00E9todos como toString e equals."));
-
-        LearningPage page = new LearningPage();
-        page.setId("class-page");
-        page.setTitle("Classes em Java");
-        page.setShortDescription("Classes s\u00E3o modelos utilizados para criar objetos em Java.");
-        page.setDifficulty(DifficultyLevel.BEGINNER);
-        page.setSections(sections);
-        return page;
-    }
-
-    private static LearningContentSection section(String id, String title,
-                                                  LearningContentType type, int order, String content) {
-        LearningContentSection s = new LearningContentSection();
-        s.setId(id);
-        s.setTitle(title);
-        s.setContent(content);
-        s.setType(type);
-        s.setOrder(order);
-        return s;
+        return new LearningPage("/learning/class.md");
     }
 }
