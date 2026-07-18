@@ -129,7 +129,7 @@ public final class DefaultLearningCatalog implements LearningCatalog {
         sections.add(section("reference",   "Documentação oficial",      LearningContentType.TECHNICAL_REFERENCE, 8,
                 "A documentação oficial da Oracle será integrada futuramente."));
 
-        LearningPage page = new LearningPage();
+        LearningPage page = new LearningPage("/learning/class.md");
         page.setId("class-page");
         page.setTitle("Classes em Java");
         page.setShortDescription("Classes são modelos utilizados para criar objetos em Java.");

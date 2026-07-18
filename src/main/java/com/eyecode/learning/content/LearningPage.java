@@ -6,11 +6,24 @@ import java.util.List;
 
 public final class LearningPage {
 
+    private final String resourcePath;
     private String id;
     private String title;
     private String shortDescription;
     private DifficultyLevel difficulty;
     private List<LearningContentSection> sections;
+
+    public LearningPage() {
+        this(null);
+    }
+
+    public LearningPage(String resourcePath) {
+        this.resourcePath = resourcePath;
+    }
+
+    public String getResourcePath() {
+        return resourcePath;
+    }
 
     public String getId() {
         return id;
