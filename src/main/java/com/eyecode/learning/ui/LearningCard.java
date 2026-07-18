@@ -33,7 +33,7 @@ public final class LearningCard {
 
         container.setPaintDelegate(this::paintCard);
 
-        header = new LearningHeader();
+        header = new LearningHeader(viewFactory);
         documentView = new LearningDocumentView();
         footer = new LearningFooter();
 

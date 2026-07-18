@@ -6,6 +6,7 @@ import com.eyecode.learning.model.DifficultyLevel;
 import com.eyecode.learning.model.LearningConcept;
 import com.eyecode.learning.ui.components.LearningSubtitle;
 import com.eyecode.learning.ui.components.LearningTitle;
+import com.eyecode.ui.core.UIViewFactory;
 import com.eyecode.ui.designsystem.IconManager;
 
 import javax.swing.Box;
@@ -20,7 +21,7 @@ public final class LearningHeader extends JPanel {
     private final LearningTitle title;
     private final LearningSubtitle subtitle;
 
-    public LearningHeader() {
+    public LearningHeader(UIViewFactory viewFactory) {
         super(new BorderLayout());
         setOpaque(false);
 
@@ -30,7 +31,7 @@ public final class LearningHeader extends JPanel {
         subtitle = new LearningSubtitle("");
         subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JPanel textPanel = new JPanel();
+        JPanel textPanel = (JPanel) viewFactory.createContainer().getComponent();
         textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
         textPanel.setOpaque(false);
         textPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -38,7 +39,8 @@ public final class LearningHeader extends JPanel {
         textPanel.add(Box.createVerticalStrut(LearningDocumentStyle.headerTextGap()));
         textPanel.add(subtitle);
 
-        JPanel content = new JPanel(new BorderLayout());
+        JPanel content = (JPanel) viewFactory.createContainer().getComponent();
+        content.setLayout(new BorderLayout());
         content.setOpaque(false);
         content.setBorder(LearningDocumentStyle.headerBorder());
         content.add(textPanel, BorderLayout.CENTER);
