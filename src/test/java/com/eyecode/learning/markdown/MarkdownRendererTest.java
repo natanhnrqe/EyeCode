@@ -238,8 +238,8 @@ class MarkdownRendererTest {
             int firstLinePos = text.indexOf("line1");
             var firstParaAttrs = doc.getParagraphElement(firstLinePos).getAttributes();
             assertEquals(ColorManager.EDITOR_BG, StyleConstants.getBackground(firstParaAttrs));
-            assertEquals(20.0f, StyleConstants.getLeftIndent(firstParaAttrs), 0.01f);
-            assertEquals(20.0f, StyleConstants.getRightIndent(firstParaAttrs), 0.01f);
+            assertEquals(0.0f, StyleConstants.getLeftIndent(firstParaAttrs), 0.01f);
+            assertEquals(0.0f, StyleConstants.getRightIndent(firstParaAttrs), 0.01f);
         }
 
         @Test

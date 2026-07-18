@@ -11,8 +11,6 @@ import java.awt.Color;
 
 public final class MarkdownRenderer {
 
-    private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
-
     private StyledDocument doc;
 
     public StyledDocument render(MarkdownDocument document) {
@@ -70,7 +68,6 @@ public final class MarkdownRenderer {
         }
 
         int start = doc.getLength();
-
         for (Segment segment : paragraph.segments()) {
             append(segment.text(), segmentStyle(segment));
         }
@@ -93,8 +90,7 @@ public final class MarkdownRenderer {
             return;
         }
 
-        append("\n", MarkdownTheme.body());
-        doc.setParagraphAttributes(doc.getLength() - 1, 1, MarkdownTheme.body(), true);
+        startBodyParagraph();
 
         int blockStart = doc.getLength();
         append(code, MarkdownTheme.codeBlock());
@@ -130,13 +126,22 @@ public final class MarkdownRenderer {
             default -> "\uD83D\uDCD8 Informa\u00E7\u00E3o: ";
         };
 
-        append("\n", MarkdownTheme.body());
-        doc.setParagraphAttributes(doc.getLength() - 1, 1, MarkdownTheme.body(), true);
+        startBodyParagraph();
         int start = doc.getLength();
         append(prefix, MarkdownTheme.calloutTitle(type));
         append(text, MarkdownTheme.calloutBody());
         append("\n", MarkdownTheme.body());
         doc.setParagraphAttributes(start, 1, MarkdownTheme.calloutContainer(type), false);
+    }
+
+    private void resetParagraph() throws BadLocationException {
+    }
+
+    private void startBodyParagraph() throws BadLocationException {
+        int start = doc.getLength();
+        append("\n", MarkdownTheme.body());
+        doc.setParagraphAttributes(start, 1, MarkdownTheme.body(), true);
+        doc.setCharacterAttributes(start, 1, MarkdownTheme.body(), true);
     }
 
     private SimpleAttributeSet segmentStyle(Segment segment) {

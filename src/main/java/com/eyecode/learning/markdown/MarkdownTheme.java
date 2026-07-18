@@ -20,7 +20,7 @@ public final class MarkdownTheme {
     private static final int CALLOUT_SIZE = 13;
 
     private static final int H1_SPACE_BELOW = 10;
-    private static final int H2_SPACE_ABOVE = 20;
+    private static final int H2_SPACE_ABOVE = 0;
     private static final int H2_SPACE_BELOW = 10;
     private static final int BODY_SPACE_BELOW = 22;
     private static final int BULLET_SPACE_BELOW = 14;
@@ -32,13 +32,13 @@ public final class MarkdownTheme {
     private static final int CALLOUT_LEFT_INDENT = 0;
     private static final int CALLOUT_SPACE_ABOVE = 10;
     private static final int CALLOUT_SPACE_BELOW_PARAGRAPH = 8;
-    private static final int CODE_LEFT_INDENT = 20;
-    private static final int CODE_RIGHT_INDENT = 20;
+    private static final int CODE_LEFT_INDENT = 0;
+    private static final int CODE_RIGHT_INDENT = 0;
     private static final int CODE_PADDING_TOP = 10;
     private static final int CODE_PADDING_BOTTOM = 10;
     private static final int BULLET_LEFT_INDENT = 16;
     private static final int DIVIDER_SPACE_ABOVE = 14;
-    private static final int DIVIDER_SPACE_BELOW = 14;
+    private static final int DIVIDER_SPACE_BELOW = 0;
 
     private static final float BODY_LINE_SPACING = 0.30f;
     private static final float BULLET_LINE_SPACING = 0.25f;
@@ -60,12 +60,12 @@ public final class MarkdownTheme {
 
     public static SimpleAttributeSet h2() {
         return create(TypographyManager.monoBold(H2_SIZE),
-                ColorManager.TEXT_PRIMARY, null, H2_SPACE_ABOVE, H2_SPACE_BELOW, 0, 0, 0.0f);
+                ColorManager.TEXT_PRIMARY, null, 0, H2_SPACE_BELOW, 0, 0, 0.0f);
     }
 
     public static SimpleAttributeSet h2Colored(Color color) {
         return create(TypographyManager.monoBold(H2_SIZE),
-                color, null, H2_SPACE_ABOVE, H2_SPACE_BELOW, 0, 0, 0.0f);
+                color, null, 0, H2_SPACE_BELOW, 0, 0, 0.0f);
     }
 
     public static SimpleAttributeSet h2Background() {
@@ -101,14 +101,14 @@ public final class MarkdownTheme {
     public static SimpleAttributeSet codeBlock() {
         return create(TypographyManager.monoRegular(CODE_SIZE),
                 ColorManager.EDITOR_FOREGROUND, null, 0, 0,
-                CODE_LEFT_INDENT, CODE_RIGHT_INDENT, 0.0f);
+                0, 0, 0.0f);
     }
 
     public static SimpleAttributeSet codeBlockParagraph(boolean firstLine, boolean lastLine) {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
         StyleConstants.setBackground(attrs, ColorManager.EDITOR_BG);
-        StyleConstants.setLeftIndent(attrs, CODE_LEFT_INDENT);
-        StyleConstants.setRightIndent(attrs, CODE_RIGHT_INDENT);
+        StyleConstants.setLeftIndent(attrs, 0);
+        StyleConstants.setRightIndent(attrs, 0);
         StyleConstants.setSpaceAbove(attrs, firstLine ? CODE_PADDING_TOP : 0);
         StyleConstants.setSpaceBelow(attrs, lastLine ? CODE_PADDING_BOTTOM : 0);
         return attrs;
@@ -173,7 +173,7 @@ public final class MarkdownTheme {
     public static SimpleAttributeSet divider() {
         return create(TypographyManager.monoRegular(BODY_SIZE),
                 ColorManager.BORDER_CARD, null,
-                DIVIDER_SPACE_ABOVE, DIVIDER_SPACE_BELOW, 0, 0, 0.0f);
+                DIVIDER_SPACE_ABOVE, 0, 0, 0, 0.0f);
     }
 
     public static SimpleAttributeSet callout() {
