@@ -384,7 +384,7 @@ class MarkdownRendererTest {
             int bodyPos = text.indexOf("text");
             var paraAttrs = doc.getParagraphElement(bodyPos).getAttributes();
             assertNotNull(StyleConstants.getBackground(paraAttrs), "Callout should have background");
-            assertEquals(0.0f, StyleConstants.getLeftIndent(paraAttrs), 0.01f);
+            assertEquals(16.0f, StyleConstants.getLeftIndent(paraAttrs), 0.01f);
         }
 
         @Test

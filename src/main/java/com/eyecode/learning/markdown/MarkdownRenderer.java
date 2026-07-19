@@ -131,22 +131,36 @@ public final class MarkdownRenderer {
             default -> "\uD83D\uDCD8 Informa\u00E7\u00E3o: ";
         };
 
-        startBodyParagraph();
-        int start = doc.getLength();
+        // Leading separator — end previous paragraph and reset to body defaults
+        int sepStart = doc.getLength();
+        append("\n", MarkdownTheme.body());
+        doc.setParagraphAttributes(sepStart, 1, MarkdownTheme.body(), true);
+        doc.setCharacterAttributes(sepStart, 1, MarkdownTheme.body(), true);
+
+        // Title paragraph
+        SimpleAttributeSet titlePara = new SimpleAttributeSet();
+        titlePara.addAttributes(MarkdownTheme.calloutContainer(type));
+        titlePara.addAttributes(MarkdownTheme.calloutTitleParagraph());
+        int titleStart = doc.getLength();
         append(prefix, MarkdownTheme.calloutTitle(type));
-        append(text, MarkdownTheme.calloutBody());
         append("\n", MarkdownTheme.body());
-        doc.setParagraphAttributes(start, 1, MarkdownTheme.calloutContainer(type), false);
-    }
+        doc.setParagraphAttributes(titleStart, 1, titlePara, false);
 
-    private void resetParagraph() throws BadLocationException {
-    }
+        // Body paragraph
+        if (!text.isEmpty()) {
+            SimpleAttributeSet bodyPara = new SimpleAttributeSet();
+            bodyPara.addAttributes(MarkdownTheme.calloutContainer(type));
+            bodyPara.addAttributes(MarkdownTheme.calloutBodyParagraph());
+            int bodyStart = doc.getLength();
+            append(text, MarkdownTheme.calloutBody());
+            append("\n", MarkdownTheme.body());
+            doc.setParagraphAttributes(bodyStart, 1, bodyPara, false);
+        }
 
-    private void startBodyParagraph() throws BadLocationException {
-        int start = doc.getLength();
+        // Trailing separator — restore next paragraph to normal body
+        int afterStart = doc.getLength();
         append("\n", MarkdownTheme.body());
-        doc.setParagraphAttributes(start, 1, MarkdownTheme.body(), true);
-        doc.setCharacterAttributes(start, 1, MarkdownTheme.body(), true);
+        doc.setParagraphAttributes(afterStart, 1, MarkdownTheme.body(), true);
     }
 
     private SimpleAttributeSet segmentStyle(Segment segment) {

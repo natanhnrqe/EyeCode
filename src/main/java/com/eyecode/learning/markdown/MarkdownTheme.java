@@ -33,9 +33,11 @@ public final class MarkdownTheme {
     private static final int ARROW_SPACE_ABOVE = 10;
     private static final int ARROW_SPACE_BELOW = 10;
     private static final int CALLOUT_SPACE_BELOW = 22;
-    private static final int CALLOUT_LEFT_INDENT = 0;
-    private static final int CALLOUT_SPACE_ABOVE = 10;
-    private static final int CALLOUT_SPACE_BELOW_PARAGRAPH = 8;
+    private static final int CALLOUT_LEFT_INDENT = 16;
+    private static final int CALLOUT_TITLE_SPACE_ABOVE = 10;
+    private static final int CALLOUT_TITLE_SPACE_BELOW = 2;
+    private static final int CALLOUT_BODY_SPACE_ABOVE = 2;
+    private static final int CALLOUT_BODY_SPACE_BELOW = 10;
     private static final int CODE_LEFT_INDENT = 0;
     private static final int CODE_RIGHT_INDENT = 0;
     private static final int CODE_PADDING_TOP = 10;
@@ -218,8 +220,6 @@ public final class MarkdownTheme {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
         StyleConstants.setBackground(attrs, bg);
         StyleConstants.setLeftIndent(attrs, CALLOUT_LEFT_INDENT);
-        StyleConstants.setSpaceAbove(attrs, CALLOUT_SPACE_ABOVE);
-        StyleConstants.setSpaceBelow(attrs, CALLOUT_SPACE_BELOW_PARAGRAPH);
         return attrs;
     }
 
@@ -233,6 +233,20 @@ public final class MarkdownTheme {
 
     public static SimpleAttributeSet calloutTip() {
         return calloutContainer("tip");
+    }
+
+    public static SimpleAttributeSet calloutTitleParagraph() {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setSpaceAbove(attrs, CALLOUT_TITLE_SPACE_ABOVE);
+        StyleConstants.setSpaceBelow(attrs, CALLOUT_TITLE_SPACE_BELOW);
+        return attrs;
+    }
+
+    public static SimpleAttributeSet calloutBodyParagraph() {
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setSpaceAbove(attrs, CALLOUT_BODY_SPACE_ABOVE);
+        StyleConstants.setSpaceBelow(attrs, CALLOUT_BODY_SPACE_BELOW);
+        return attrs;
     }
 
     public static SimpleAttributeSet calloutTitle(String type) {
