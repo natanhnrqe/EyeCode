@@ -38,6 +38,29 @@ public final class MarkdownRenderer {
     }
 
     private void renderHeading(HeadingNode heading) throws BadLocationException {
+        if (heading.level() == 2) {
+            String text = heading.text();
+            if (isInformationHeading(text)) {
+                renderInformationHeading(heading);
+                return;
+            }
+            if (isWarningHeading(text)) {
+                renderWarningHeading(heading);
+                return;
+            }
+            if (isTipHeading(text)) {
+                renderTipHeading(heading);
+                return;
+            }
+            if (isNextStepHeading(text)) {
+                renderNextStepHeading(heading);
+                return;
+            }
+        }
+        renderDefaultHeading(heading);
+    }
+
+    private void renderDefaultHeading(HeadingNode heading) throws BadLocationException {
         SimpleAttributeSet style = switch (heading.level()) {
             case 1 -> MarkdownTheme.h1();
             case 2 -> MarkdownTheme.h2Colored(sectionColor(heading.text()));
@@ -50,6 +73,22 @@ public final class MarkdownRenderer {
         if (heading.level() == 2) {
             doc.setParagraphAttributes(start, 1, MarkdownTheme.h2Background(), false);
         }
+    }
+
+    private void renderInformationHeading(HeadingNode heading) throws BadLocationException {
+        renderDefaultHeading(heading);
+    }
+
+    private void renderWarningHeading(HeadingNode heading) throws BadLocationException {
+        renderDefaultHeading(heading);
+    }
+
+    private void renderTipHeading(HeadingNode heading) throws BadLocationException {
+        renderDefaultHeading(heading);
+    }
+
+    private void renderNextStepHeading(HeadingNode heading) throws BadLocationException {
+        renderDefaultHeading(heading);
     }
 
     private void renderParagraph(ParagraphNode paragraph) throws BadLocationException {
@@ -124,6 +163,22 @@ public final class MarkdownRenderer {
             case CODE -> MarkdownTheme.codeInline();
             case LINK -> MarkdownTheme.link();
         };
+    }
+
+    private static boolean isInformationHeading(String text) {
+        return text.startsWith("\uD83D\uDCD8 Informa\u00E7\u00E3o");
+    }
+
+    private static boolean isWarningHeading(String text) {
+        return text.startsWith("\u26A0\uFE0F Aten\u00E7\u00E3o");
+    }
+
+    private static boolean isTipHeading(String text) {
+        return text.startsWith("\uD83D\uDCA1 Dica");
+    }
+
+    private static boolean isNextStepHeading(String text) {
+        return text.startsWith("\u27A1\uFE0F Pr\u00F3ximo passo");
     }
 
     private Color sectionColor(String headingText) {
