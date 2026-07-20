@@ -1,22 +1,12 @@
 package com.eyecode.learning.markdown.layout;
 
+import static com.eyecode.learning.markdown.theme.MarkdownDesignTokens.*;
+
 import com.eyecode.learning.markdown.component.*;
 
 public final class MarkdownLayoutEngine {
 
     private static final int DEFAULT_VIEWPORT_WIDTH = 800;
-
-    private static final int H1_SPACE_BELOW = 14;
-    private static final int H2_SPACE_BELOW = 12;
-    private static final int H3_SPACE_BELOW = 10;
-    private static final int BODY_SPACE_BELOW = 14;
-    private static final float BODY_LINE_SPACING = 0.30f;
-    private static final int BULLET_SPACE_BELOW = 14;
-    private static final int BULLET_LEFT_INDENT = 16;
-    private static final float BULLET_LINE_SPACING = 0.25f;
-    private static final int CODE_PADDING_TOP = 10;
-    private static final int CODE_PADDING_BOTTOM = 14;
-    private static final int DIVIDER_SPACE_BELOW = 14;
 
     public ComponentLayout layout(MarkdownComponent component) {
         return layout(component, DEFAULT_VIEWPORT_WIDTH);
