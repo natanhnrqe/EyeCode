@@ -4,6 +4,8 @@ import com.eyecode.learning.markdown.*;
 import com.eyecode.learning.markdown.component.*;
 import com.eyecode.learning.markdown.layout.ComponentLayout;
 import com.eyecode.learning.markdown.layout.MarkdownLayoutEngine;
+import com.eyecode.learning.markdown.theme.DefaultMarkdownThemeProvider;
+import com.eyecode.learning.markdown.theme.MarkdownThemeProvider;
 import com.eyecode.ui.designsystem.ColorManager;
 
 import javax.swing.text.BadLocationException;
@@ -16,11 +18,17 @@ import java.util.List;
 
 public final class SwingMarkdownRenderer {
 
+    private final MarkdownThemeProvider themeProvider;
     private final MarkdownLayoutEngine layoutEngine;
     private StyledDocument doc;
     private int viewportWidth;
 
     public SwingMarkdownRenderer() {
+        this(new DefaultMarkdownThemeProvider());
+    }
+
+    public SwingMarkdownRenderer(MarkdownThemeProvider themeProvider) {
+        this.themeProvider = themeProvider;
         this.layoutEngine = new MarkdownLayoutEngine();
     }
 
@@ -78,9 +86,9 @@ public final class SwingMarkdownRenderer {
 
     private void renderDefaultHeading(HeadingComponent heading) throws BadLocationException {
         SimpleAttributeSet style = switch (heading.level()) {
-            case 1 -> MarkdownTheme.h1();
-            case 2 -> MarkdownTheme.h2Colored(sectionColor(heading.text()));
-            default -> MarkdownTheme.h2();
+            case 1 -> themeProvider.h1();
+            case 2 -> themeProvider.h2Colored(sectionColor(heading.text()));
+            default -> themeProvider.h2();
         };
         ComponentLayout layout = layoutEngine.layout(heading, viewportWidth);
         StyleConstants.setSpaceAbove(style, layout.spaceAbove());
@@ -89,10 +97,10 @@ public final class SwingMarkdownRenderer {
         StyleConstants.setRightIndent(style, layout.rightIndent());
         int start = doc.getLength();
         append(heading.text(), style);
-        append("\n", MarkdownTheme.body());
+        append("\n", themeProvider.body());
         doc.setParagraphAttributes(start, 1, style, false);
         if (heading.level() == 2) {
-            doc.setParagraphAttributes(start, 1, MarkdownTheme.h2Background(), false);
+            doc.setParagraphAttributes(start, 1, themeProvider.h2Background(), false);
         }
     }
 
@@ -119,11 +127,11 @@ public final class SwingMarkdownRenderer {
         if (firstText.equals("\u2193")) {
             int start = doc.getLength();
             for (Segment segment : segments) {
-                append(segment.text(), MarkdownTheme.arrow());
+                append(segment.text(), themeProvider.arrow());
             }
-            append("\n", MarkdownTheme.arrow());
+            append("\n", themeProvider.arrow());
             ComponentLayout arrowLayout = layoutEngine.arrowLayout(viewportWidth);
-            SimpleAttributeSet arrowStyle = MarkdownTheme.arrow();
+            SimpleAttributeSet arrowStyle = themeProvider.arrow();
             StyleConstants.setSpaceAbove(arrowStyle, arrowLayout.spaceAbove());
             StyleConstants.setSpaceBelow(arrowStyle, arrowLayout.spaceBelow());
             StyleConstants.setLeftIndent(arrowStyle, arrowLayout.leftIndent());
@@ -136,9 +144,9 @@ public final class SwingMarkdownRenderer {
         for (Segment segment : segments) {
             append(segment.text(), segmentStyle(segment));
         }
-        append("\n", MarkdownTheme.body());
+        append("\n", themeProvider.body());
         ComponentLayout layout = layoutEngine.layout(paragraph, viewportWidth);
-        SimpleAttributeSet style = MarkdownTheme.body();
+        SimpleAttributeSet style = themeProvider.body();
         StyleConstants.setSpaceAbove(style, layout.spaceAbove());
         StyleConstants.setSpaceBelow(style, layout.spaceBelow());
         StyleConstants.setLeftIndent(style, layout.leftIndent());
@@ -149,7 +157,7 @@ public final class SwingMarkdownRenderer {
 
     private void renderList(ListComponent list) throws BadLocationException {
         ComponentLayout layout = layoutEngine.layout(list, viewportWidth);
-        SimpleAttributeSet baseStyle = MarkdownTheme.bullet();
+        SimpleAttributeSet baseStyle = themeProvider.bullet();
         StyleConstants.setSpaceAbove(baseStyle, layout.spaceAbove());
         StyleConstants.setSpaceBelow(baseStyle, layout.spaceBelow());
         StyleConstants.setLeftIndent(baseStyle, layout.leftIndent());
@@ -162,7 +170,7 @@ public final class SwingMarkdownRenderer {
                     : "\u2022 ";
             int start = doc.getLength();
             append(prefix + list.items().get(i), baseStyle);
-            append("\n", MarkdownTheme.body());
+            append("\n", themeProvider.body());
             doc.setParagraphAttributes(start, 1, baseStyle, false);
         }
     }
@@ -174,7 +182,7 @@ public final class SwingMarkdownRenderer {
         }
 
         int blockStart = doc.getLength();
-        append(code, MarkdownTheme.codeBlock());
+        append(code, themeProvider.codeBlock());
         MarkdownCodeHighlighter.highlight(doc, blockStart, code, codeBlock.language());
 
         ComponentLayout layout = layoutEngine.layout(codeBlock, viewportWidth);
@@ -184,7 +192,7 @@ public final class SwingMarkdownRenderer {
         for (int i = 0; i < lineCount; i++) {
             boolean firstLine = (i == 0);
             boolean lastLine = (i == lineCount - 1);
-            SimpleAttributeSet lineStyle = MarkdownTheme.codeBlockParagraph(firstLine, lastLine);
+            SimpleAttributeSet lineStyle = themeProvider.codeBlockParagraph(firstLine, lastLine);
             StyleConstants.setSpaceAbove(lineStyle, firstLine ? layout.paddingTop() : 0);
             StyleConstants.setSpaceBelow(lineStyle, lastLine ? layout.paddingBottom() : 0);
             StyleConstants.setLeftIndent(lineStyle, layout.leftIndent());
@@ -194,30 +202,30 @@ public final class SwingMarkdownRenderer {
         }
 
         if (!code.endsWith("\n")) {
-            append("\n", MarkdownTheme.codeBlock());
+            append("\n", themeProvider.codeBlock());
         }
     }
 
     private void renderDivider() throws BadLocationException {
         int start = doc.getLength();
         ComponentLayout layout = layoutEngine.layout(new DividerComponent(), viewportWidth);
-        SimpleAttributeSet style = MarkdownTheme.divider();
+        SimpleAttributeSet style = themeProvider.divider();
         StyleConstants.setSpaceAbove(style, layout.spaceAbove());
         StyleConstants.setSpaceBelow(style, layout.spaceBelow());
         StyleConstants.setLeftIndent(style, layout.leftIndent());
         StyleConstants.setRightIndent(style, layout.rightIndent());
-        append(MarkdownTheme.dividerText(), style);
-        append("\n", MarkdownTheme.body());
+        append(themeProvider.dividerText(), style);
+        append("\n", themeProvider.body());
         doc.setParagraphAttributes(start, 1, style, false);
     }
 
     private SimpleAttributeSet segmentStyle(Segment segment) {
         return switch (segment.type()) {
-            case TEXT -> MarkdownTheme.body();
-            case BOLD -> MarkdownTheme.bold();
-            case ITALIC -> MarkdownTheme.italic();
-            case CODE -> MarkdownTheme.codeInline();
-            case LINK -> MarkdownTheme.link();
+            case TEXT -> themeProvider.body();
+            case BOLD -> themeProvider.bold();
+            case ITALIC -> themeProvider.italic();
+            case CODE -> themeProvider.codeInline();
+            case LINK -> themeProvider.link();
         };
     }
 
