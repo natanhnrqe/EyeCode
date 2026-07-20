@@ -1,5 +1,6 @@
 package com.eyecode.learning.markdown;
 
+import com.eyecode.learning.markdown.theme.MarkdownColorPalette;
 import com.eyecode.learning.markdown.theme.MarkdownDesignTokens;
 import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.TypographyManager;
@@ -12,11 +13,6 @@ import java.awt.Font;
 public final class MarkdownTheme {
 
     private static final int CHECKBOX_SIZE = 13;
-    private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
-    private static final Color H2_BG = new Color(0x1A, 0x73, 0xE8, 0x14);
-    private static final Color CALLOUT_INFO_BG = new Color(0x1A, 0x73, 0xE8, 0x28);
-    private static final Color CALLOUT_WARN_BG = new Color(0xFF, 0xA0, 0x00, 0x30);
-    private static final Color CALLOUT_TIP_BG = new Color(0x00, 0xA8, 0x6B, 0x30);
 
     private MarkdownTheme() {
     }
@@ -42,7 +38,7 @@ public final class MarkdownTheme {
 
     public static SimpleAttributeSet h2Background() {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
-        StyleConstants.setBackground(attrs, H2_BG);
+        StyleConstants.setBackground(attrs, MarkdownColorPalette.H2_BG);
         return attrs;
     }
 
@@ -175,9 +171,9 @@ public final class MarkdownTheme {
 
     public static SimpleAttributeSet calloutContainer(String type) {
         Color bg = switch (type.toLowerCase()) {
-            case "tip" -> CALLOUT_TIP_BG;
-            case "warning" -> CALLOUT_WARN_BG;
-            default -> CALLOUT_INFO_BG;
+            case "tip" -> MarkdownColorPalette.CALLOUT_TIP_BG;
+            case "warning" -> MarkdownColorPalette.CALLOUT_WARN_BG;
+            default -> MarkdownColorPalette.CALLOUT_INFO_BG;
         };
         SimpleAttributeSet attrs = new SimpleAttributeSet();
         StyleConstants.setBackground(attrs, bg);
@@ -269,19 +265,19 @@ public final class MarkdownTheme {
     }
 
     public static Color calloutInfoBg() {
-        return CALLOUT_INFO_BG;
+        return MarkdownColorPalette.CALLOUT_INFO_BG;
     }
 
     public static Color calloutWarningBg() {
-        return CALLOUT_WARN_BG;
+        return MarkdownColorPalette.CALLOUT_WARN_BG;
     }
 
     public static Color calloutTipBg() {
-        return CALLOUT_TIP_BG;
+        return MarkdownColorPalette.CALLOUT_TIP_BG;
     }
 
     public static Color transparent() {
-        return TRANSPARENT;
+        return MarkdownColorPalette.TRANSPARENT;
     }
 
     static SimpleAttributeSet create(Font font, Color fg, Color bg,
