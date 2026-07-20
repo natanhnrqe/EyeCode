@@ -74,7 +74,8 @@ public final class LearningDocumentView extends JPanel {
         String markdown = resourceLoader.load(page.getResourcePath());
         MarkdownDocument document = parser.parse(markdown);
         List<MarkdownComponent> components = componentRenderer.render(document);
-        uiTextPane.getTextPane().setDocument(swingRenderer.render(components));
+        int width = uiTextPane.getTextPane().getWidth();
+        uiTextPane.getTextPane().setDocument(swingRenderer.render(components, width));
         uiTextPane.getTextPane().setCaretPosition(0);
         repaint();
     }

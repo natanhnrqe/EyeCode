@@ -18,12 +18,18 @@ public final class SwingMarkdownRenderer {
 
     private final MarkdownLayoutEngine layoutEngine;
     private StyledDocument doc;
+    private int viewportWidth;
 
     public SwingMarkdownRenderer() {
         this.layoutEngine = new MarkdownLayoutEngine();
     }
 
     public StyledDocument render(List<MarkdownComponent> components) {
+        return render(components, 0);
+    }
+
+    public StyledDocument render(List<MarkdownComponent> components, int viewportWidth) {
+        this.viewportWidth = viewportWidth;
         doc = new DefaultStyledDocument();
         if (components == null) {
             return doc;
@@ -76,7 +82,7 @@ public final class SwingMarkdownRenderer {
             case 2 -> MarkdownTheme.h2Colored(sectionColor(heading.text()));
             default -> MarkdownTheme.h2();
         };
-        ComponentLayout layout = layoutEngine.layout(heading);
+        ComponentLayout layout = layoutEngine.layout(heading, viewportWidth);
         StyleConstants.setSpaceAbove(style, layout.spaceAbove());
         StyleConstants.setSpaceBelow(style, layout.spaceBelow());
         StyleConstants.setLeftIndent(style, layout.leftIndent());
@@ -116,7 +122,7 @@ public final class SwingMarkdownRenderer {
                 append(segment.text(), MarkdownTheme.arrow());
             }
             append("\n", MarkdownTheme.arrow());
-            ComponentLayout arrowLayout = layoutEngine.arrowLayout();
+            ComponentLayout arrowLayout = layoutEngine.arrowLayout(viewportWidth);
             SimpleAttributeSet arrowStyle = MarkdownTheme.arrow();
             StyleConstants.setSpaceAbove(arrowStyle, arrowLayout.spaceAbove());
             StyleConstants.setSpaceBelow(arrowStyle, arrowLayout.spaceBelow());
@@ -131,7 +137,7 @@ public final class SwingMarkdownRenderer {
             append(segment.text(), segmentStyle(segment));
         }
         append("\n", MarkdownTheme.body());
-        ComponentLayout layout = layoutEngine.layout(paragraph);
+        ComponentLayout layout = layoutEngine.layout(paragraph, viewportWidth);
         SimpleAttributeSet style = MarkdownTheme.body();
         StyleConstants.setSpaceAbove(style, layout.spaceAbove());
         StyleConstants.setSpaceBelow(style, layout.spaceBelow());
@@ -142,7 +148,7 @@ public final class SwingMarkdownRenderer {
     }
 
     private void renderList(ListComponent list) throws BadLocationException {
-        ComponentLayout layout = layoutEngine.layout(list);
+        ComponentLayout layout = layoutEngine.layout(list, viewportWidth);
         SimpleAttributeSet baseStyle = MarkdownTheme.bullet();
         StyleConstants.setSpaceAbove(baseStyle, layout.spaceAbove());
         StyleConstants.setSpaceBelow(baseStyle, layout.spaceBelow());
@@ -171,7 +177,7 @@ public final class SwingMarkdownRenderer {
         append(code, MarkdownTheme.codeBlock());
         MarkdownCodeHighlighter.highlight(doc, blockStart, code, codeBlock.language());
 
-        ComponentLayout layout = layoutEngine.layout(codeBlock);
+        ComponentLayout layout = layoutEngine.layout(codeBlock, viewportWidth);
         String[] lines = code.split("\n", -1);
         int lineCount = code.endsWith("\n") ? lines.length - 1 : lines.length;
         int offset = blockStart;
@@ -194,7 +200,7 @@ public final class SwingMarkdownRenderer {
 
     private void renderDivider() throws BadLocationException {
         int start = doc.getLength();
-        ComponentLayout layout = layoutEngine.layout(new DividerComponent());
+        ComponentLayout layout = layoutEngine.layout(new DividerComponent(), viewportWidth);
         SimpleAttributeSet style = MarkdownTheme.divider();
         StyleConstants.setSpaceAbove(style, layout.spaceAbove());
         StyleConstants.setSpaceBelow(style, layout.spaceBelow());
