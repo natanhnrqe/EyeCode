@@ -17,7 +17,7 @@ No Java, tudo começa com uma classe. Até o seu primeiro programa usa uma class
 
 ## 🏠 Analogia
 
-:::info
+## 📘 Informação
 Imagine que você quer fazer bolos de chocolate.
 
 Antes de colocar a mão na massa, você precisa de uma receita. A receita diz quais ingredientes usar e em qual ordem misturá-los.
@@ -27,7 +27,7 @@ A receita é a classe. Cada bolo que você faz seguindo essa receita é um objet
 Você pode fazer vários bolos diferentes usando a mesma receita. Cada bolo pode ter uma cobertura diferente, mas todos seguem a mesma estrutura base.
 
 É exatamente assim que classe e objeto funcionam em Java.
-:::
+
 
 ---
 
@@ -98,21 +98,21 @@ Você não precisa entender bytecode agora. O importante é saber que:
 
 ## ⚠️ Erros comuns
 
-:::warning
+## ⚠️ Atenção
 Achar que classe e objeto são a mesma coisa.
-:::
+
 
 A classe é o molde. O objeto é o resultado. Confundir os dois é como confundir a receita de bolo com o bolo pronto.
 
-:::warning
+## ⚠️ Atenção
 Colocar tudo dentro do método `main`.
-:::
+
 
 Muitos iniciantes escrevem o programa inteiro dentro do `main`. O `main` é só o ponto de entrada. A lógica deve ficar organizada dentro de métodos e classes.
 
-:::warning
+## ⚠️ Atenção
 Usar nomes confusos para as classes.
-:::
+
 
 O nome da classe deve ser claro: `Cliente`, `Produto`, `Pedido`. Evite nomes como `Coisa`, `Executar`, `Teste123`. Um bom nome faz o código virar uma leitura natural.
 

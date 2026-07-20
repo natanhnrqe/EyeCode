@@ -252,65 +252,6 @@ class MarkdownParserTest {
     }
 
     @Nested
-    class Callouts {
-
-        @Test
-        void infoCallout() {
-            MarkdownDocument doc = parser.parse(":::info\nsome text\n:::");
-            assertEquals(1, doc.nodes().size());
-            CalloutNode c = (CalloutNode) doc.nodes().get(0);
-            assertEquals("info", c.type());
-            assertEquals("some text", c.text());
-        }
-
-        @Test
-        void tipCallout() {
-            MarkdownDocument doc = parser.parse(":::tip\ndica\n:::");
-            CalloutNode c = (CalloutNode) doc.nodes().get(0);
-            assertEquals("tip", c.type());
-            assertEquals("dica", c.text());
-        }
-
-        @Test
-        void warningCallout() {
-            MarkdownDocument doc = parser.parse(":::warning\naten\u00E7\u00E3o\n:::");
-            CalloutNode c = (CalloutNode) doc.nodes().get(0);
-            assertEquals("warning", c.type());
-            assertEquals("aten\u00E7\u00E3o", c.text());
-        }
-
-        @Test
-        void multiLineContent() {
-            MarkdownDocument doc = parser.parse(":::tip\nline one\nline two\n:::");
-            CalloutNode c = (CalloutNode) doc.nodes().get(0);
-            assertEquals("line one\nline two", c.text());
-        }
-
-        @Test
-        void withoutClosingFence() {
-            MarkdownDocument doc = parser.parse(":::info\ntext");
-            CalloutNode c = (CalloutNode) doc.nodes().get(0);
-            assertEquals("info", c.type());
-            assertEquals("text", c.text());
-        }
-
-        @Test
-        void multipleCallouts() {
-            MarkdownDocument doc = parser.parse(":::tip\nfirst\n:::\n\n:::warning\nsecond\n:::");
-            assertEquals(2, doc.nodes().size());
-            assertEquals("tip", ((CalloutNode) doc.nodes().get(0)).type());
-            assertEquals("warning", ((CalloutNode) doc.nodes().get(1)).type());
-        }
-
-        @Test
-        void calloutWithSpecialCharsInText() {
-            MarkdownDocument doc = parser.parse(":::info\n**bold** *italic* `code`\n:::");
-            CalloutNode c = (CalloutNode) doc.nodes().get(0);
-            assertTrue(c.text().contains("**bold**"));
-        }
-    }
-
-    @Nested
     class InlineFormatting {
 
         @Test
@@ -441,18 +382,19 @@ class MarkdownParserTest {
                     "class A {}\n" +
                     "```\n" +
                     "\n" +
-                    ":::tip\n" +
-                    "helpful tip\n" +
-                    ":::";
+                    "## \uD83D\uDCA1 Dica\n" +
+                    "\n" +
+                    "helpful tip";
             MarkdownDocument doc = parser.parse(md);
-            assertEquals(7, doc.nodes().size());
+            assertEquals(8, doc.nodes().size());
             assertInstanceOf(HeadingNode.class, doc.nodes().get(0));
             assertInstanceOf(ParagraphNode.class, doc.nodes().get(1));
             assertInstanceOf(DividerNode.class, doc.nodes().get(2));
             assertInstanceOf(BulletNode.class, doc.nodes().get(3));
             assertInstanceOf(BulletNode.class, doc.nodes().get(4));
             assertInstanceOf(CodeBlockNode.class, doc.nodes().get(5));
-            assertInstanceOf(CalloutNode.class, doc.nodes().get(6));
+            assertInstanceOf(HeadingNode.class, doc.nodes().get(6));
+            assertInstanceOf(ParagraphNode.class, doc.nodes().get(7));
 
             HeadingNode h = (HeadingNode) doc.nodes().get(0);
             assertEquals(1, h.level());
@@ -507,9 +449,9 @@ class MarkdownParserTest {
                     "- Item one\n" +
                     "- Item two\n" +
                     "\n" +
-                    ":::warning\n" +
-                    "A warning\n" +
-                    ":::";
+                    "## \u26A0\uFE0F Aten\u00E7\u00E3o\n" +
+                    "\n" +
+                    "A warning";
         }
 
         @Test
@@ -536,9 +478,9 @@ class MarkdownParserTest {
                     .filter(n -> n instanceof CodeBlockNode).count();
             assertTrue(codeBlockCount > 0, "Should have a code block");
 
-            long calloutCount = doc.nodes().stream()
-                    .filter(n -> n instanceof CalloutNode).count();
-            assertTrue(calloutCount > 0, "Should have callouts for mistakes and tips");
+            long headingCount2 = doc.nodes().stream()
+                    .filter(n -> n instanceof HeadingNode h && h.level() == 2).count();
+            assertTrue(headingCount2 > 0, "Should have H2 headings");
         }
 
         @Test
@@ -562,7 +504,7 @@ class MarkdownParserTest {
             MarkdownDocument doc = parser.parse(markdown);
 
             int headings = 0, paragraphs = 0, dividers = 0,
-                    bullets = 0, codeBlocks = 0, callouts = 0;
+                    bullets = 0, codeBlocks = 0;
             for (MarkdownNode node : doc.nodes()) {
                 switch (node) {
                     case HeadingNode h -> {
@@ -579,17 +521,12 @@ class MarkdownParserTest {
                         codeBlocks++;
                         assertFalse(c.code().isEmpty(), "Code should not be empty");
                     }
-                    case CalloutNode c -> {
-                        callouts++;
-                        assertFalse(c.type().isEmpty(), "Callout type should not be empty");
-                    }
                 }
             }
             assertTrue(headings > 0);
             assertTrue(paragraphs > 0);
             assertTrue(dividers > 0);
             assertTrue(codeBlocks > 0);
-            assertTrue(callouts > 0);
         }
     }
 

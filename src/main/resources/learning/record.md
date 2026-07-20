@@ -13,13 +13,13 @@ Introduzido no Java 14 (oficial no Java 16), o record elimina cerimônia: você 
 
 ## 🏠 Analogia
 
-:::info
+## 📘 Informação
 Pense em um formulário de cadastro pré-preenchido.
 
 Você só preenche os campos obrigatórios e pronto — o sistema já sabe que o formulário tem nome, data e assinatura. Não precisa desenhar o formulário do zero.
 
 O record funciona igual: você lista os componentes e o Java cuida de todo o resto. Não precisa escrever construtor manual, getters ou `toString`.
-:::
+
 
 ---
 
@@ -80,21 +80,21 @@ O record não pode estender outra classe (mas implementa interfaces normalmente)
 
 ## ⚠️ Erros comuns
 
-:::warning
+## ⚠️ Atenção
 Tentar modificar um campo do record depois de criado.
-:::
+
 
 Records são imutáveis. Se você precisa modificar dados, crie um novo record ou use uma classe normal.
 
-:::warning
+## ⚠️ Atenção
 Adicionar lógica complexa no record.
-:::
+
 
 Record é para dados. Lógica de negócio complexa deve ficar em classes separadas (serviços, validadores).
 
-:::warning
+## ⚠️ Atenção
 Usar record para classes que precisam de herança.
-:::
+
 
 Record é `final` e não pode estender outras classes. Se você precisa de herança, use uma classe abstrata ou interface.
 

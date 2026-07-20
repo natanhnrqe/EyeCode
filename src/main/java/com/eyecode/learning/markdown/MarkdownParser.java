@@ -30,8 +30,6 @@ public final class MarkdownParser {
 
             if (line.startsWith("```")) {
                 i = parseCodeBlock(lines, i, nodes);
-            } else if (line.startsWith(":::")) {
-                i = parseCallout(lines, i, nodes);
             } else if (line.startsWith("# ")) {
                 nodes.add(new HeadingNode(1, line.substring(2).trim()));
                 i++;
@@ -75,27 +73,6 @@ public final class MarkdownParser {
         return i;
     }
 
-    private int parseCallout(String[] lines, int start, List<MarkdownNode> nodes) {
-        String firstLine = lines[start].trim();
-        String type = firstLine.length() > 3 ? firstLine.substring(3).trim() : "info";
-        StringBuilder content = new StringBuilder();
-        int i = start + 1;
-        while (i < lines.length) {
-            String line = lines[i];
-            if (line.trim().equals(":::")) {
-                i++;
-                break;
-            }
-            if (content.length() > 0) {
-                content.append("\n");
-            }
-            content.append(line);
-            i++;
-        }
-        nodes.add(new CalloutNode(type, content.toString().trim()));
-        return i;
-    }
-
     private int parseBulletLines(String[] lines, int start, List<MarkdownNode> nodes) {
         int i = start;
         while (i < lines.length) {
@@ -122,7 +99,7 @@ public final class MarkdownParser {
                 break;
             }
             String trimmed = line.trim();
-            if (trimmed.startsWith("```") || trimmed.startsWith(":::")
+            if (trimmed.startsWith("```")
                     || trimmed.startsWith("#") || trimmed.equals("---")) {
                 break;
             }

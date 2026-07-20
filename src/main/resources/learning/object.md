@@ -15,7 +15,7 @@ No Java, objetos são criados com a palavra `new`. Eles ocupam memória, têm id
 
 ## 🏠 Analogia
 
-:::info
+## 📘 Informação
 Imagine uma fábrica de carros.
 
 O projeto do carro (a planta com todas as especificações) é a classe. Cada carro que sai da linha de montagem seguindo esse projeto é um objeto.
@@ -23,7 +23,7 @@ O projeto do carro (a planta com todas as especificações) é a classe. Cada ca
 Um carro pode ser vermelho, outro azul. Um pode ter câmbio automático, outro manual. Mesmo sendo diferentes, todos seguem o mesmo projeto.
 
 Da mesma forma, dois objetos da mesma classe podem ter valores diferentes nos campos, mas compartilham a mesma estrutura de métodos.
-:::
+
 
 ---
 
@@ -83,21 +83,21 @@ A referência ao objeto é devolvida e armazenada na variável.
 
 ## ⚠️ Erros comuns
 
-:::warning
+## ⚠️ Atenção
 Esquecer de usar `new` e tentar acessar um objeto nulo.
-:::
+
 
 Toda variável de objeto que não foi inicializada vale `null`. Acessar `pessoa.nome` quando `pessoa` é `null` causa `NullPointerException`.
 
-:::warning
+## ⚠️ Atenção
 Achar que a variável é o objeto.
-:::
+
 
 A variável é apenas uma referência. Atribuir `pessoa1 = pessoa2` não copia o objeto. As duas variáveis passam a apontar para o mesmo objeto na memória.
 
-:::warning
+## ⚠️ Atenção
 Criar objetos desnecessários dentro de loops.
-:::
+
 
 Se um objeto pode ser reutilizado, não crie um novo a cada iteração. Isso sobrecarrega o garbage collector e deixa o programa lento.
 

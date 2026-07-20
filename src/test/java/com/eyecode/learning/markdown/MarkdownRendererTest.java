@@ -251,7 +251,7 @@ class MarkdownRendererTest {
             int pos = text.indexOf("line1");
             var paraAttrs = doc.getParagraphElement(pos).getAttributes();
             assertEquals(10.0f, StyleConstants.getSpaceAbove(paraAttrs), 0.01f);
-            assertEquals(10.0f, StyleConstants.getSpaceBelow(paraAttrs), 0.01f);
+            assertEquals(14.0f, StyleConstants.getSpaceBelow(paraAttrs), 0.01f);
         }
 
         @Test
@@ -275,7 +275,7 @@ class MarkdownRendererTest {
             int lastPos = text.indexOf("line2");
             var lastAttrs = doc.getParagraphElement(lastPos).getAttributes();
             assertEquals(0.0f, StyleConstants.getSpaceAbove(lastAttrs), 0.01f);
-            assertEquals(10.0f, StyleConstants.getSpaceBelow(lastAttrs), 0.01f);
+            assertEquals(14.0f, StyleConstants.getSpaceBelow(lastAttrs), 0.01f);
         }
 
         @Test
@@ -320,115 +320,6 @@ class MarkdownRendererTest {
     }
 
     @Nested
-    class Callouts {
-
-        @Test
-        void infoCallout() throws BadLocationException {
-            var md = new MarkdownDocument(List.of(
-                    new CalloutNode("info", "some info")));
-            StyledDocument doc = renderer.render(md);
-            String text = doc.getText(0, doc.getLength());
-            assertTrue(text.contains("\uD83D\uDCD8"), "Should contain info emoji");
-            assertTrue(text.contains("some info"), "Should contain callout text");
-        }
-
-        @Test
-        void tipCallout() throws BadLocationException {
-            var md = new MarkdownDocument(List.of(
-                    new CalloutNode("tip", "a tip")));
-            StyledDocument doc = renderer.render(md);
-            String text = doc.getText(0, doc.getLength());
-            assertTrue(text.contains("\uD83D\uDCA1"), "Should contain tip emoji");
-            assertTrue(text.contains("a tip"));
-        }
-
-        @Test
-        void warningCallout() throws BadLocationException {
-            var md = new MarkdownDocument(List.of(
-                    new CalloutNode("warning", "caution")));
-            StyledDocument doc = renderer.render(md);
-            String text = doc.getText(0, doc.getLength());
-            assertTrue(text.contains("\u26A0\uFE0F"), "Should contain warning emoji");
-            assertTrue(text.contains("caution"));
-        }
-
-        @Test
-        void calloutTitleColor() throws BadLocationException {
-            var md = new MarkdownDocument(List.of(
-                    new CalloutNode("tip", "text")));
-            StyledDocument doc = renderer.render(md);
-            String text = doc.getText(0, doc.getLength());
-            int titlePos = text.indexOf("\uD83D\uDCA1");
-            var attrs = doc.getCharacterElement(titlePos).getAttributes();
-            assertEquals(ColorManager.SUCCESS_GREEN, StyleConstants.getForeground(attrs));
-            assertTrue(StyleConstants.isBold(attrs));
-        }
-
-        @Test
-        void calloutWarningRedTitle() throws BadLocationException {
-            var md = new MarkdownDocument(List.of(
-                    new CalloutNode("warning", "text")));
-            StyledDocument doc = renderer.render(md);
-            String text = doc.getText(0, doc.getLength());
-            int titlePos = text.indexOf("\u26A0\uFE0F");
-            var attrs = doc.getCharacterElement(titlePos).getAttributes();
-            assertEquals(ColorManager.ERROR_RED, StyleConstants.getForeground(attrs));
-        }
-
-        @Test
-        void calloutContainerHasBackgroundAndIndent() throws BadLocationException {
-            var md = new MarkdownDocument(List.of(
-                    new CalloutNode("info", "text")));
-            StyledDocument doc = renderer.render(md);
-            String text = doc.getText(0, doc.getLength());
-            int bodyPos = text.indexOf("text");
-            var paraAttrs = doc.getParagraphElement(bodyPos).getAttributes();
-            assertNotNull(StyleConstants.getBackground(paraAttrs), "Callout should have background");
-            assertEquals(16.0f, StyleConstants.getLeftIndent(paraAttrs), 0.01f);
-        }
-
-        @Test
-        void calloutBodyStyle() throws BadLocationException {
-            var md = new MarkdownDocument(List.of(
-                    new CalloutNode("tip", "body text")));
-            StyledDocument doc = renderer.render(md);
-            String text = doc.getText(0, doc.getLength());
-            int bodyPos = text.indexOf("body text");
-            var attrs = doc.getCharacterElement(bodyPos).getAttributes();
-            assertEquals(ColorManager.TEXT_SECONDARY, StyleConstants.getForeground(attrs));
-            assertEquals(13, StyleConstants.getFontSize(attrs));
-            assertFalse(StyleConstants.isBold(attrs));
-        }
-
-        @Test
-        void defaultCalloutTypeUsesInfo() throws BadLocationException {
-            var md = new MarkdownDocument(List.of(
-                    new CalloutNode("unknown", "text")));
-            StyledDocument doc = renderer.render(md);
-            String text = doc.getText(0, doc.getLength());
-            assertTrue(text.contains("\uD83D\uDCD8"), "Default type should use info emoji");
-        }
-
-        @Test
-        void nullCalloutTypeUsesInfo() throws BadLocationException {
-            var md = new MarkdownDocument(List.of(
-                    new CalloutNode(null, "text")));
-            StyledDocument doc = renderer.render(md);
-            String text = doc.getText(0, doc.getLength());
-            assertTrue(text.contains("\uD83D\uDCD8"));
-        }
-
-        @Test
-        void nullCalloutTextRendersPrefixOnly() throws BadLocationException {
-            var md = new MarkdownDocument(List.of(
-                    new CalloutNode("tip", null)));
-            StyledDocument doc = renderer.render(md);
-            String text = doc.getText(0, doc.getLength());
-            assertTrue(text.contains("Dica"));
-        }
-    }
-
-    @Nested
     class Arrow {
 
         @Test
@@ -458,7 +349,6 @@ class MarkdownRendererTest {
                     new DividerNode(),
                     new BulletNode("item", false),
                     new CodeBlockNode("java", "code"),
-                    new CalloutNode("tip", "tip text"),
                     new ParagraphNode(List.of(Segment.text("\u2193")))));
             StyledDocument doc = renderer.render(md);
             String text = doc.getText(0, doc.getLength());
@@ -468,7 +358,6 @@ class MarkdownRendererTest {
             assertTrue(text.contains("\u2022"));
             assertTrue(text.contains("item"));
             assertTrue(text.contains("code"));
-            assertTrue(text.contains("tip"));
             assertTrue(text.contains("\u2193"));
 
             int titlePos = text.indexOf("Title");
@@ -476,15 +365,13 @@ class MarkdownRendererTest {
             int dividerPos = text.indexOf("\u2500");
             int bulletPos = text.indexOf("item");
             int codePos = text.indexOf("code");
-            int calloutPos = text.indexOf("tip");
             int arrowPos = text.indexOf("\u2193");
 
             assertTrue(titlePos < bodyPos, "Title before body");
             assertTrue(bodyPos < dividerPos, "Body before divider");
             assertTrue(dividerPos < bulletPos, "Divider before bullet");
             assertTrue(bulletPos < codePos, "Bullet before code");
-            assertTrue(codePos < calloutPos, "Code before callout");
-            assertTrue(calloutPos < arrowPos, "Callout before arrow");
+            assertTrue(codePos < arrowPos, "Code before arrow");
         }
     }
 }

@@ -13,7 +13,7 @@ Diferente de constantes soltas (`static final`), um enum agrupa valores relacion
 
 ## 🏠 Analogia
 
-:::info
+## 📘 Informação
 Pense nos dias da semana.
 
 Existem exatamente 7 dias: segunda, terça, quarta, quinta, sexta, sábado e domingo. Não há um oitavo dia. Esse conjunto fixo e bem definido é uma enumeração.
@@ -21,7 +21,7 @@ Existem exatamente 7 dias: segunda, terça, quarta, quinta, sexta, sábado e dom
 Em Java, um enum funciona da mesma forma: você lista todos os valores possíveis e o compilador garante que ninguém use um valor fora dessa lista.
 
 Usar `String` para representar dias da semana abre espaço para erros de digitação ("Segunda", "segunda", "SEGUNDA"). Com enum, o valor é exato e conhecido.
-:::
+
 
 ---
 
@@ -95,21 +95,21 @@ Enum pode implementar interfaces, mas não pode estender outra classe (todo enum
 
 ## ⚠️ Erros comuns
 
-:::warning
+## ⚠️ Atenção
 Usar `String` ou `int` quando um enum seria mais seguro.
-:::
+
 
 Constantes soltas permitem valores inválidos. Um enum restringe as opções e centraliza a definição.
 
-:::warning
+## ⚠️ Atenção
 Comparar enums com `equals` em vez de `==`.
-:::
+
 
 Enums podem ser comparados com `==` porque cada constante é um singleton. Isso é mais seguro e mais performático que `equals`.
 
-:::warning
+## ⚠️ Atenção
 Colocar lógica complexa dentro do enum.
-:::
+
 
 Enums devem representar valores e comportamentos simples. Lógica de negócio complexa deve ficar em classes separadas.
 

@@ -15,7 +15,7 @@ Desde o Java 8, interfaces também podem conter métodos `default` e `static` co
 
 ## 🏠 Analogia
 
-:::info
+## 📘 Informação
 Pense em uma tomada elétrica.
 
 A tomada é uma interface: ela define um padrão (dois ou três pinos, voltagem, formato) que qualquer aparelho deve seguir para se conectar à rede elétrica.
@@ -23,7 +23,7 @@ A tomada é uma interface: ela define um padrão (dois ou três pinos, voltagem,
 Não importa se o aparelho é um ventilador, um carregador ou uma lava-louças. Se ele segue o padrão da tomada, ele funciona.
 
 Em Java é a mesma ideia: se uma classe implementa uma interface, ela garante que tem os métodos que a interface exige. O código que usa a interface não precisa saber qual classe concreta está por trás.
-:::
+
 
 ---
 
@@ -98,21 +98,21 @@ Variáveis declaradas com o tipo da interface podem receber qualquer objeto que 
 
 ## ⚠️ Erros comuns
 
-:::warning
+## ⚠️ Atenção
 Implementar a interface mas esquecer um método.
-:::
+
 
 O compilador aponta o erro na hora. Se a classe não implementa todos os métodos da interface, ela precisa ser declarada como `abstract`.
 
-:::warning
+## ⚠️ Atenção
 Usar interface quando uma classe abstrata seria mais adequada.
-:::
+
 
 Se você precisa compartilhar estado (campos) ou construtores, prefira uma classe abstrata. Interface é apenas contrato.
 
-:::warning
+## ⚠️ Atenção
 Criar interfaces muito grandes ("interface God").
-:::
+
 
 Uma interface deve ter uma responsabilidade bem definida. Vários métodos não relacionados em uma mesma interface dificultam a implementação e a manutenção.
 

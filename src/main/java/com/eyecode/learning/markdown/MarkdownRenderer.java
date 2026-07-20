@@ -5,7 +5,6 @@ import com.eyecode.ui.designsystem.ColorManager;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.SimpleAttributeSet;
-import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import java.awt.Color;
 
@@ -34,7 +33,7 @@ public final class MarkdownRenderer {
             case BulletNode b -> renderBullet(b);
             case CodeBlockNode c -> renderCodeBlock(c);
             case DividerNode d -> renderDivider();
-            case CalloutNode c -> renderCallout(c);
+
         }
     }
 
@@ -90,28 +89,24 @@ public final class MarkdownRenderer {
             return;
         }
 
-        // Insert separator newline to end previous paragraph
-        int sepStart = doc.getLength();
-        append("\n", MarkdownTheme.paragraph());
-        doc.setParagraphAttributes(sepStart, 1, MarkdownTheme.paragraph(), true);
-        doc.setCharacterAttributes(sepStart, 1, MarkdownTheme.paragraph(), true);
-
         int blockStart = doc.getLength();
         append(code, MarkdownTheme.codeBlock());
         MarkdownCodeHighlighter.highlight(doc, blockStart, code, codeBlock.language());
 
         String[] lines = code.split("\n", -1);
+        int lineCount = code.endsWith("\n") ? lines.length - 1 : lines.length;
         int offset = blockStart;
-        for (int i = 0; i < lines.length; i++) {
+        for (int i = 0; i < lineCount; i++) {
             boolean firstLine = (i == 0);
-            boolean lastLine = (i == lines.length - 1);
+            boolean lastLine = (i == lineCount - 1);
             doc.setParagraphAttributes(offset, 1,
                     MarkdownTheme.codeBlockParagraph(firstLine, lastLine), false);
             offset += lines[i].length() + 1;
         }
 
-        // Trailing newline — ensures next paragraph starts with clean body attributes
-        append("\n", MarkdownTheme.body());
+        if (!code.endsWith("\n")) {
+            append("\n", MarkdownTheme.codeBlock());
+        }
     }
 
     private void renderDivider() throws BadLocationException {
@@ -119,48 +114,6 @@ public final class MarkdownRenderer {
         append(MarkdownTheme.dividerText(), MarkdownTheme.divider());
         append("\n", MarkdownTheme.body());
         doc.setParagraphAttributes(start, 1, MarkdownTheme.divider(), false);
-    }
-
-    private void renderCallout(CalloutNode callout) throws BadLocationException {
-        String type = callout.type() != null ? callout.type().toLowerCase() : "info";
-        String text = callout.text() != null ? callout.text() : "";
-
-        String prefix = switch (type) {
-            case "tip" -> "\uD83D\uDCA1 Dica: ";
-            case "warning" -> "\u26A0\uFE0F Aten\u00E7\u00E3o: ";
-            default -> "\uD83D\uDCD8 Informa\u00E7\u00E3o: ";
-        };
-
-        // Leading separator — end previous paragraph and reset to body defaults
-        int sepStart = doc.getLength();
-        append("\n", MarkdownTheme.body());
-        doc.setParagraphAttributes(sepStart, 1, MarkdownTheme.body(), true);
-        doc.setCharacterAttributes(sepStart, 1, MarkdownTheme.body(), true);
-
-        // Title paragraph
-        SimpleAttributeSet titlePara = new SimpleAttributeSet();
-        titlePara.addAttributes(MarkdownTheme.calloutContainer(type));
-        titlePara.addAttributes(MarkdownTheme.calloutTitleParagraph());
-        int titleStart = doc.getLength();
-        append(prefix, MarkdownTheme.calloutTitle(type));
-        append("\n", MarkdownTheme.body());
-        doc.setParagraphAttributes(titleStart, 1, titlePara, false);
-
-        // Body paragraph
-        if (!text.isEmpty()) {
-            SimpleAttributeSet bodyPara = new SimpleAttributeSet();
-            bodyPara.addAttributes(MarkdownTheme.calloutContainer(type));
-            bodyPara.addAttributes(MarkdownTheme.calloutBodyParagraph());
-            int bodyStart = doc.getLength();
-            append(text, MarkdownTheme.calloutBody());
-            append("\n", MarkdownTheme.body());
-            doc.setParagraphAttributes(bodyStart, 1, bodyPara, false);
-        }
-
-        // Trailing separator — restore next paragraph to normal body
-        int afterStart = doc.getLength();
-        append("\n", MarkdownTheme.body());
-        doc.setParagraphAttributes(afterStart, 1, MarkdownTheme.body(), true);
     }
 
     private SimpleAttributeSet segmentStyle(Segment segment) {

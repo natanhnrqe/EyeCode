@@ -116,7 +116,6 @@ public final class MarkdownInspector extends JFrame {
             case BulletNode b -> "BulletNode(text=\"" + b.text() + "\", checked=" + b.checked() + ")";
             case CodeBlockNode c -> "CodeBlockNode(language=" + (c.language().isEmpty() ? "none" : c.language()) + ", code=\"" + abbreviate(c.code()) + "\")";
             case DividerNode d -> "DividerNode()";
-            case CalloutNode c -> "CalloutNode(type=" + c.type() + ", text=\"" + abbreviate(c.text()) + "\")";
         };
     }
 
