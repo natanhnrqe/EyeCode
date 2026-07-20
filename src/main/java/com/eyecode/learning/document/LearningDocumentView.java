@@ -4,7 +4,9 @@ import com.eyecode.learning.content.LearningPage;
 import com.eyecode.learning.content.LearningResourceLoader;
 import com.eyecode.learning.markdown.MarkdownDocument;
 import com.eyecode.learning.markdown.MarkdownParser;
-import com.eyecode.learning.markdown.MarkdownRenderer;
+import com.eyecode.learning.markdown.component.MarkdownComponent;
+import com.eyecode.learning.markdown.component.MarkdownComponentRenderer;
+import com.eyecode.learning.markdown.swing.SwingMarkdownRenderer;
 import com.eyecode.ui.core.UIScrollPane;
 import com.eyecode.ui.core.UITextPane;
 import com.eyecode.ui.core.UIViewFactory;
@@ -15,13 +17,15 @@ import javax.swing.JPanel;
 import javax.swing.JTextPane;
 import javax.swing.ScrollPaneConstants;
 import java.awt.BorderLayout;
+import java.util.List;
 
 public final class LearningDocumentView extends JPanel {
 
     private final UITextPane uiTextPane;
     private final UIScrollPane uiScrollPane;
     private final MarkdownParser parser;
-    private final MarkdownRenderer renderer;
+    private final MarkdownComponentRenderer componentRenderer;
+    private final SwingMarkdownRenderer swingRenderer;
     private final LearningResourceLoader resourceLoader;
 
     public LearningDocumentView() {
@@ -33,11 +37,12 @@ public final class LearningDocumentView extends JPanel {
         setOpaque(false);
 
         parser = new MarkdownParser();
-        renderer = new MarkdownRenderer();
+        componentRenderer = new MarkdownComponentRenderer();
+        swingRenderer = new SwingMarkdownRenderer();
         resourceLoader = new LearningResourceLoader();
 
         uiTextPane = viewFactory.createTextPane();
-        uiTextPane.getTextPane().setDocument(renderer.render(null));
+        uiTextPane.getTextPane().setDocument(swingRenderer.render(null));
 
         JTextPane textPane = uiTextPane.getTextPane();
         textPane.setEditable(false);
@@ -68,13 +73,14 @@ public final class LearningDocumentView extends JPanel {
         }
         String markdown = resourceLoader.load(page.getResourcePath());
         MarkdownDocument document = parser.parse(markdown);
-        uiTextPane.getTextPane().setDocument(renderer.render(document));
+        List<MarkdownComponent> components = componentRenderer.render(document);
+        uiTextPane.getTextPane().setDocument(swingRenderer.render(components));
         uiTextPane.getTextPane().setCaretPosition(0);
         repaint();
     }
 
     public void clear() {
-        uiTextPane.getTextPane().setDocument(renderer.render(null));
+        uiTextPane.getTextPane().setDocument(swingRenderer.render(null));
         uiTextPane.getTextPane().setCaretPosition(0);
         repaint();
     }

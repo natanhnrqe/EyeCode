@@ -2,18 +2,26 @@ package com.eyecode.learning.markdown.swing;
 
 import com.eyecode.learning.markdown.*;
 import com.eyecode.learning.markdown.component.*;
+import com.eyecode.learning.markdown.layout.ComponentLayout;
+import com.eyecode.learning.markdown.layout.MarkdownLayoutEngine;
 import com.eyecode.ui.designsystem.ColorManager;
 
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import java.awt.Color;
 import java.util.List;
 
 public final class SwingMarkdownRenderer {
 
+    private final MarkdownLayoutEngine layoutEngine;
     private StyledDocument doc;
+
+    public SwingMarkdownRenderer() {
+        this.layoutEngine = new MarkdownLayoutEngine();
+    }
 
     public StyledDocument render(List<MarkdownComponent> components) {
         doc = new DefaultStyledDocument();
@@ -68,6 +76,11 @@ public final class SwingMarkdownRenderer {
             case 2 -> MarkdownTheme.h2Colored(sectionColor(heading.text()));
             default -> MarkdownTheme.h2();
         };
+        ComponentLayout layout = layoutEngine.layout(heading);
+        StyleConstants.setSpaceAbove(style, layout.spaceAbove());
+        StyleConstants.setSpaceBelow(style, layout.spaceBelow());
+        StyleConstants.setLeftIndent(style, layout.leftIndent());
+        StyleConstants.setRightIndent(style, layout.rightIndent());
         int start = doc.getLength();
         append(heading.text(), style);
         append("\n", MarkdownTheme.body());
@@ -103,7 +116,11 @@ public final class SwingMarkdownRenderer {
                 append(segment.text(), MarkdownTheme.arrow());
             }
             append("\n", MarkdownTheme.arrow());
-            doc.setParagraphAttributes(start, 1, MarkdownTheme.arrow(), false);
+            ComponentLayout arrowLayout = layoutEngine.arrowLayout();
+            SimpleAttributeSet arrowStyle = MarkdownTheme.arrow();
+            StyleConstants.setSpaceAbove(arrowStyle, arrowLayout.spaceAbove());
+            StyleConstants.setSpaceBelow(arrowStyle, arrowLayout.spaceBelow());
+            doc.setParagraphAttributes(start, 1, arrowStyle, false);
             return;
         }
 
@@ -112,19 +129,33 @@ public final class SwingMarkdownRenderer {
             append(segment.text(), segmentStyle(segment));
         }
         append("\n", MarkdownTheme.body());
-        doc.setParagraphAttributes(start, 1, MarkdownTheme.body(), false);
+        ComponentLayout layout = layoutEngine.layout(paragraph);
+        SimpleAttributeSet style = MarkdownTheme.body();
+        StyleConstants.setSpaceAbove(style, layout.spaceAbove());
+        StyleConstants.setSpaceBelow(style, layout.spaceBelow());
+        StyleConstants.setLeftIndent(style, layout.leftIndent());
+        StyleConstants.setRightIndent(style, layout.rightIndent());
+        StyleConstants.setLineSpacing(style, layout.lineSpacing());
+        doc.setParagraphAttributes(start, 1, style, false);
     }
 
     private void renderList(ListComponent list) throws BadLocationException {
+        ComponentLayout layout = layoutEngine.layout(list);
+        SimpleAttributeSet baseStyle = MarkdownTheme.bullet();
+        StyleConstants.setSpaceAbove(baseStyle, layout.spaceAbove());
+        StyleConstants.setSpaceBelow(baseStyle, layout.spaceBelow());
+        StyleConstants.setLeftIndent(baseStyle, layout.leftIndent());
+        StyleConstants.setRightIndent(baseStyle, layout.rightIndent());
+        StyleConstants.setLineSpacing(baseStyle, layout.lineSpacing());
         boolean ordered = list.ordered();
         for (int i = 0; i < list.items().size(); i++) {
             String prefix = ordered
                     ? (i + 1) + ". "
                     : "\u2022 ";
             int start = doc.getLength();
-            append(prefix + list.items().get(i), MarkdownTheme.bullet());
+            append(prefix + list.items().get(i), baseStyle);
             append("\n", MarkdownTheme.body());
-            doc.setParagraphAttributes(start, 1, MarkdownTheme.bullet(), false);
+            doc.setParagraphAttributes(start, 1, baseStyle, false);
         }
     }
 
@@ -138,14 +169,19 @@ public final class SwingMarkdownRenderer {
         append(code, MarkdownTheme.codeBlock());
         MarkdownCodeHighlighter.highlight(doc, blockStart, code, codeBlock.language());
 
+        ComponentLayout layout = layoutEngine.layout(codeBlock);
         String[] lines = code.split("\n", -1);
         int lineCount = code.endsWith("\n") ? lines.length - 1 : lines.length;
         int offset = blockStart;
         for (int i = 0; i < lineCount; i++) {
             boolean firstLine = (i == 0);
             boolean lastLine = (i == lineCount - 1);
-            doc.setParagraphAttributes(offset, 1,
-                    MarkdownTheme.codeBlockParagraph(firstLine, lastLine), false);
+            SimpleAttributeSet lineStyle = MarkdownTheme.codeBlockParagraph(firstLine, lastLine);
+            StyleConstants.setSpaceAbove(lineStyle, firstLine ? layout.paddingTop() : 0);
+            StyleConstants.setSpaceBelow(lineStyle, lastLine ? layout.paddingBottom() : 0);
+            StyleConstants.setLeftIndent(lineStyle, layout.leftIndent());
+            StyleConstants.setRightIndent(lineStyle, layout.rightIndent());
+            doc.setParagraphAttributes(offset, 1, lineStyle, false);
             offset += lines[i].length() + 1;
         }
 
@@ -156,9 +192,13 @@ public final class SwingMarkdownRenderer {
 
     private void renderDivider() throws BadLocationException {
         int start = doc.getLength();
-        append(MarkdownTheme.dividerText(), MarkdownTheme.divider());
+        ComponentLayout layout = layoutEngine.layout(new DividerComponent());
+        SimpleAttributeSet style = MarkdownTheme.divider();
+        StyleConstants.setSpaceAbove(style, layout.spaceAbove());
+        StyleConstants.setSpaceBelow(style, layout.spaceBelow());
+        append(MarkdownTheme.dividerText(), style);
         append("\n", MarkdownTheme.body());
-        doc.setParagraphAttributes(start, 1, MarkdownTheme.divider(), false);
+        doc.setParagraphAttributes(start, 1, style, false);
     }
 
     private SimpleAttributeSet segmentStyle(Segment segment) {
