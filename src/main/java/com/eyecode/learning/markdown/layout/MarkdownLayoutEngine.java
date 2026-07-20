@@ -4,6 +4,9 @@ import com.eyecode.learning.markdown.component.*;
 
 public final class MarkdownLayoutEngine {
 
+    private static final int CONTENT_LEFT_MARGIN = 16;
+    private static final int CONTENT_RIGHT_MARGIN = 24;
+
     private static final int H1_SPACE_BELOW = 14;
     private static final int H2_SPACE_BELOW = 12;
     private static final int H3_SPACE_BELOW = 10;
@@ -14,8 +17,6 @@ public final class MarkdownLayoutEngine {
     private static final float BULLET_LINE_SPACING = 0.25f;
     private static final int CODE_PADDING_TOP = 10;
     private static final int CODE_PADDING_BOTTOM = 14;
-    private static final int CODE_LEFT_INDENT = 0;
-    private static final int CODE_RIGHT_INDENT = 0;
     private static final int DIVIDER_SPACE_BELOW = 14;
 
     public ComponentLayout layout(MarkdownComponent component) {
@@ -34,27 +35,35 @@ public final class MarkdownLayoutEngine {
             case 2 -> H2_SPACE_BELOW;
             default -> H3_SPACE_BELOW;
         };
-        return new ComponentLayout(0, spaceBelow, 0, 0, 0f, 0, 0);
+        return new ComponentLayout(0, spaceBelow,
+                CONTENT_LEFT_MARGIN, CONTENT_RIGHT_MARGIN, 0f, 0, 0);
     }
 
     private ComponentLayout paragraphLayout(ParagraphComponent paragraph) {
-        return new ComponentLayout(0, BODY_SPACE_BELOW, 0, 0, BODY_LINE_SPACING, 0, 0);
+        return new ComponentLayout(0, BODY_SPACE_BELOW,
+                CONTENT_LEFT_MARGIN, CONTENT_RIGHT_MARGIN, BODY_LINE_SPACING, 0, 0);
     }
 
     private ComponentLayout listLayout(ListComponent list) {
-        return new ComponentLayout(0, BULLET_SPACE_BELOW, BULLET_LEFT_INDENT, 0, BULLET_LINE_SPACING, 0, 0);
+        return new ComponentLayout(0, BULLET_SPACE_BELOW,
+                CONTENT_LEFT_MARGIN + BULLET_LEFT_INDENT, CONTENT_RIGHT_MARGIN,
+                BULLET_LINE_SPACING, 0, 0);
     }
 
     private ComponentLayout codeLayout(CodeBlockComponent codeBlock) {
-        return new ComponentLayout(0, 0, CODE_LEFT_INDENT, CODE_RIGHT_INDENT, 0f, CODE_PADDING_TOP, CODE_PADDING_BOTTOM);
+        return new ComponentLayout(0, 0,
+                CONTENT_LEFT_MARGIN, CONTENT_RIGHT_MARGIN,
+                0f, CODE_PADDING_TOP, CODE_PADDING_BOTTOM);
     }
 
     private ComponentLayout dividerLayout(DividerComponent divider) {
-        return new ComponentLayout(0, DIVIDER_SPACE_BELOW, 0, 0, 0f, 0, 0);
+        return new ComponentLayout(0, DIVIDER_SPACE_BELOW,
+                CONTENT_LEFT_MARGIN, CONTENT_RIGHT_MARGIN, 0f, 0, 0);
     }
 
     public ComponentLayout arrowLayout() {
-        return new ComponentLayout(10, 10, 0, 0, 0f, 0, 0);
+        return new ComponentLayout(10, 10,
+                CONTENT_LEFT_MARGIN, CONTENT_RIGHT_MARGIN, 0f, 0, 0);
     }
 
     public ComponentLayout linkLayout() {

@@ -120,6 +120,8 @@ public final class SwingMarkdownRenderer {
             SimpleAttributeSet arrowStyle = MarkdownTheme.arrow();
             StyleConstants.setSpaceAbove(arrowStyle, arrowLayout.spaceAbove());
             StyleConstants.setSpaceBelow(arrowStyle, arrowLayout.spaceBelow());
+            StyleConstants.setLeftIndent(arrowStyle, arrowLayout.leftIndent());
+            StyleConstants.setRightIndent(arrowStyle, arrowLayout.rightIndent());
             doc.setParagraphAttributes(start, 1, arrowStyle, false);
             return;
         }
@@ -196,6 +198,8 @@ public final class SwingMarkdownRenderer {
         SimpleAttributeSet style = MarkdownTheme.divider();
         StyleConstants.setSpaceAbove(style, layout.spaceAbove());
         StyleConstants.setSpaceBelow(style, layout.spaceBelow());
+        StyleConstants.setLeftIndent(style, layout.leftIndent());
+        StyleConstants.setRightIndent(style, layout.rightIndent());
         append(MarkdownTheme.dividerText(), style);
         append("\n", MarkdownTheme.body());
         doc.setParagraphAttributes(start, 1, style, false);
