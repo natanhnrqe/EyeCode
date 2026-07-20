@@ -139,7 +139,7 @@ class MarkdownRendererTest {
             var attrs = doc.getCharacterElement(0).getAttributes();
             assertEquals(ColorManager.SYNTAX_KEYWORD, StyleConstants.getForeground(attrs));
             assertEquals(ColorManager.PANEL_BG, StyleConstants.getBackground(attrs));
-            assertEquals(13, StyleConstants.getFontSize(attrs));
+            assertEquals(12, StyleConstants.getFontSize(attrs));
         }
 
         @Test
@@ -226,7 +226,7 @@ class MarkdownRendererTest {
             assertTrue(codePos >= 0);
             var attrs = doc.getCharacterElement(codePos).getAttributes();
             assertEquals(ColorManager.EDITOR_FOREGROUND, StyleConstants.getForeground(attrs));
-            assertEquals(13, StyleConstants.getFontSize(attrs));
+            assertEquals(12, StyleConstants.getFontSize(attrs));
         }
 
         @Test
@@ -238,8 +238,8 @@ class MarkdownRendererTest {
             int firstLinePos = text.indexOf("line1");
             var firstParaAttrs = doc.getParagraphElement(firstLinePos).getAttributes();
             assertEquals(ColorManager.EDITOR_BG, StyleConstants.getBackground(firstParaAttrs));
-            assertEquals(0.0f, StyleConstants.getLeftIndent(firstParaAttrs), 0.01f);
-            assertEquals(0.0f, StyleConstants.getRightIndent(firstParaAttrs), 0.01f);
+            assertEquals(24.0f, StyleConstants.getLeftIndent(firstParaAttrs), 0.01f);
+            assertEquals(24.0f, StyleConstants.getRightIndent(firstParaAttrs), 0.01f);
         }
 
         @Test
@@ -250,8 +250,8 @@ class MarkdownRendererTest {
             String text = doc.getText(0, doc.getLength());
             int pos = text.indexOf("line1");
             var paraAttrs = doc.getParagraphElement(pos).getAttributes();
-            assertEquals(10.0f, StyleConstants.getSpaceAbove(paraAttrs), 0.01f);
-            assertEquals(14.0f, StyleConstants.getSpaceBelow(paraAttrs), 0.01f);
+            assertEquals(16.0f, StyleConstants.getSpaceAbove(paraAttrs), 0.01f);
+            assertEquals(16.0f, StyleConstants.getSpaceBelow(paraAttrs), 0.01f);
         }
 
         @Test
@@ -275,7 +275,7 @@ class MarkdownRendererTest {
             int lastPos = text.indexOf("line2");
             var lastAttrs = doc.getParagraphElement(lastPos).getAttributes();
             assertEquals(0.0f, StyleConstants.getSpaceAbove(lastAttrs), 0.01f);
-            assertEquals(14.0f, StyleConstants.getSpaceBelow(lastAttrs), 0.01f);
+            assertEquals(16.0f, StyleConstants.getSpaceBelow(lastAttrs), 0.01f);
         }
 
         @Test
@@ -288,7 +288,7 @@ class MarkdownRendererTest {
             assertTrue(classPos >= 0);
             var attrs = doc.getCharacterElement(classPos).getAttributes();
             assertEquals(ColorManager.SYNTAX_KEYWORD, StyleConstants.getForeground(attrs));
-            assertEquals(13, StyleConstants.getFontSize(attrs),
+            assertEquals(12, StyleConstants.getFontSize(attrs),
                     "Keyword must share same font size as base code text");
         }
 

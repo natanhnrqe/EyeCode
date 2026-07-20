@@ -11,7 +11,6 @@ public final class MarkdownDesignTokens {
     public static final int HEADING2_SIZE = 15;
     public static final int HEADING3_SIZE = 13;
     public static final int BODY_SIZE = 13;
-    public static final int CODE_SIZE = 13;
     public static final int BULLET_SIZE = 13;
     public static final int LINK_SIZE = 13;
     public static final int ARROW_SIZE = 14;
@@ -54,8 +53,11 @@ public final class MarkdownDesignTokens {
 
     // ── Code Block ──────────────────────────────────
 
-    public static final int CODE_PADDING_TOP = 10;
-    public static final int CODE_PADDING_BOTTOM = 14;
+    public static final int CODE_SIZE = 12;
+    public static final int CODE_PADDING_TOP = 16;
+    public static final int CODE_PADDING_BOTTOM = 16;
+    public static final int CODE_PADDING_LEFT = 24;
+    public static final int CODE_PADDING_RIGHT = 24;
 
     // ── Callout ─────────────────────────────────────
 

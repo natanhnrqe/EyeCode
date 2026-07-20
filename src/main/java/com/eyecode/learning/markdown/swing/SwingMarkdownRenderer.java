@@ -5,6 +5,7 @@ import com.eyecode.learning.markdown.component.*;
 import com.eyecode.learning.markdown.layout.ComponentLayout;
 import com.eyecode.learning.markdown.layout.MarkdownLayoutEngine;
 import com.eyecode.learning.markdown.theme.DefaultMarkdownThemeProvider;
+import com.eyecode.learning.markdown.theme.MarkdownDesignTokens;
 import com.eyecode.learning.markdown.theme.MarkdownThemeProvider;
 import com.eyecode.ui.designsystem.ColorManager;
 
@@ -195,8 +196,8 @@ public final class SwingMarkdownRenderer {
             SimpleAttributeSet lineStyle = themeProvider.codeBlockParagraph(firstLine, lastLine);
             StyleConstants.setSpaceAbove(lineStyle, firstLine ? layout.paddingTop() : 0);
             StyleConstants.setSpaceBelow(lineStyle, lastLine ? layout.paddingBottom() : 0);
-            StyleConstants.setLeftIndent(lineStyle, layout.leftIndent());
-            StyleConstants.setRightIndent(lineStyle, layout.rightIndent());
+            StyleConstants.setLeftIndent(lineStyle, layout.leftIndent() + MarkdownDesignTokens.CODE_PADDING_LEFT);
+            StyleConstants.setRightIndent(lineStyle, layout.rightIndent() + MarkdownDesignTokens.CODE_PADDING_RIGHT);
             doc.setParagraphAttributes(offset, 1, lineStyle, false);
             offset += lines[i].length() + 1;
         }

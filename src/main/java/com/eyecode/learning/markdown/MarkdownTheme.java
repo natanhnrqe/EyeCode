@@ -113,8 +113,8 @@ public final class MarkdownTheme {
     public static SimpleAttributeSet codeParagraph(boolean firstLine, boolean lastLine) {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
         StyleConstants.setBackground(attrs, ColorManager.EDITOR_BG);
-        StyleConstants.setLeftIndent(attrs, 0);
-        StyleConstants.setRightIndent(attrs, 0);
+        StyleConstants.setLeftIndent(attrs, MarkdownDesignTokens.CODE_PADDING_LEFT);
+        StyleConstants.setRightIndent(attrs, MarkdownDesignTokens.CODE_PADDING_RIGHT);
         StyleConstants.setSpaceAbove(attrs, firstLine ? MarkdownDesignTokens.CODE_PADDING_TOP : 0);
         StyleConstants.setSpaceBelow(attrs, lastLine ? MarkdownDesignTokens.CODE_PADDING_BOTTOM : 0);
         return attrs;
