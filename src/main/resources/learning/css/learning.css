@@ -1,76 +1,87 @@
-body {
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html {
     background: transparent;
-    margin: 24px;
-    padding: 0;
-    font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+body {
+    background: #2B2D30;
+    font-family: "Inter", "Segoe UI", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
     font-size: 14px;
     line-height: 1.6;
     color: #D4D4D4;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px;
 }
 
 h1 {
-    font-size: 30px;
+    font-size: 32px;
     font-weight: 700;
-    margin-bottom: 20px;
+    margin-top: 0;
+    margin-bottom: 24px;
 }
 
 h2 {
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 600;
-    margin-top: 32px;
-    margin-bottom: 14px;
+    padding-bottom: 8px;
     border-bottom: 1px solid rgba(255,255,255,.08);
-    padding-bottom: 6px;
+    margin-top: 40px;
+    margin-bottom: 20px;
 }
 
 h3 {
     font-size: 18px;
     font-weight: 600;
-    margin-top: 24px;
-    margin-bottom: 10px;
+    margin-top: 28px;
+    margin-bottom: 12px;
 }
 
 p {
-    margin: 10px 0;
+    margin: 14px 0;
 }
 
-ul {
-    margin-top: 8px;
-    margin-bottom: 16px;
+ul, ol {
     padding-left: 24px;
 }
 
 li {
-    margin-bottom: 4px;
+    margin: 6px 0;
 }
 
 hr {
-    border: none;
-    height: 1px;
+    margin: 32px 0;
     background: rgba(255,255,255,.08);
-    margin: 28px 0;
+    height: 1px;
+    border: none;
 }
 
 code {
     font-family: "JetBrains Mono", monospace;
-    font-size: .92em;
-    background: rgba(255,255,255,.06);
+    font-size: 13px;
     padding: 2px 6px;
     border-radius: 6px;
+    background: rgba(255,255,255,.08);
 }
 
 pre {
     background: #252526;
+    border: 1px solid rgba(255,255,255,.08);
     border-radius: 8px;
     padding: 16px;
     overflow-x: auto;
-    margin: 18px 0;
+    margin: 20px 0;
 }
 
 pre code {
-    background: transparent;
-    padding: 0;
+    font-family: "JetBrains Mono", monospace;
     font-size: 13px;
+    line-height: 1.55;
+    background: none;
+    padding: 0;
 }
 
 a {
@@ -80,4 +91,37 @@ a {
 
 a:hover {
     text-decoration: underline;
+}
+
+blockquote {
+    border-left: 4px solid rgba(255,255,255,.2);
+    padding-left: 16px;
+    margin: 16px 0;
+    color: rgba(255,255,255,.6);
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+}
+
+th, td {
+    border: 1px solid rgba(255,255,255,.12);
+    padding: 8px 12px;
+    text-align: left;
+}
+
+th {
+    font-weight: 600;
+    background: rgba(255,255,255,.04);
+}
+
+tr:nth-child(even) {
+    background: rgba(255,255,255,.02);
+}
+
+img {
+    max-width: 100%;
+    border-radius: 8px;
 }

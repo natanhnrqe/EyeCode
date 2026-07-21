@@ -65,14 +65,16 @@ public final class LearningDocumentView extends JPanel {
         uiScrollPane = viewFactory.createScrollPane();
         if (USE_WEBVIEW) {
             uiScrollPane.getScrollPane().setViewportView(webView);
+            uiScrollPane.getScrollPane().setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+            uiScrollPane.getScrollPane().setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
         } else {
             uiScrollPane.getScrollPane().setViewportView(textPane);
+            uiScrollPane.getScrollPane().setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+            uiScrollPane.getScrollPane().setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         }
         uiScrollPane.getScrollPane().setBorder(null);
         uiScrollPane.getScrollPane().setOpaque(false);
         uiScrollPane.getScrollPane().getViewport().setOpaque(false);
-        uiScrollPane.getScrollPane().setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        uiScrollPane.getScrollPane().setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         uiScrollPane.getScrollPane().getVerticalScrollBar().setUnitIncrement(LearningDocumentStyle.documentScrollUnit());
 
         add(uiScrollPane.getScrollPane(), BorderLayout.CENTER);
