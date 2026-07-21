@@ -2,11 +2,13 @@ package com.eyecode.learning.document;
 
 import com.eyecode.learning.content.LearningPage;
 import com.eyecode.learning.content.LearningResourceLoader;
+import com.eyecode.learning.html.MarkdownToHtmlConverter;
 import com.eyecode.learning.markdown.MarkdownDocument;
 import com.eyecode.learning.markdown.MarkdownParser;
 import com.eyecode.learning.markdown.component.MarkdownComponent;
 import com.eyecode.learning.markdown.component.MarkdownComponentRenderer;
 import com.eyecode.learning.markdown.swing.SwingMarkdownRenderer;
+import com.eyecode.learning.web.LearningWebView;
 import com.eyecode.ui.core.UIScrollPane;
 import com.eyecode.ui.core.UITextPane;
 import com.eyecode.ui.core.UIViewFactory;
@@ -21,12 +23,16 @@ import java.util.List;
 
 public final class LearningDocumentView extends JPanel {
 
+    private static final boolean USE_WEBVIEW = true;
+
     private final UITextPane uiTextPane;
     private final UIScrollPane uiScrollPane;
     private final MarkdownParser parser;
     private final MarkdownComponentRenderer componentRenderer;
     private final SwingMarkdownRenderer swingRenderer;
     private final LearningResourceLoader resourceLoader;
+    private final MarkdownToHtmlConverter htmlConverter;
+    private final LearningWebView webView;
 
     public LearningDocumentView() {
         this(new SwingUIViewFactory());
@@ -40,6 +46,8 @@ public final class LearningDocumentView extends JPanel {
         componentRenderer = new MarkdownComponentRenderer();
         swingRenderer = new SwingMarkdownRenderer();
         resourceLoader = new LearningResourceLoader();
+        htmlConverter = new MarkdownToHtmlConverter();
+        webView = new LearningWebView();
 
         uiTextPane = viewFactory.createTextPane();
         uiTextPane.getTextPane().setDocument(swingRenderer.render(null));
@@ -55,7 +63,11 @@ public final class LearningDocumentView extends JPanel {
         textPane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
 
         uiScrollPane = viewFactory.createScrollPane();
-        uiScrollPane.getScrollPane().setViewportView(textPane);
+        if (USE_WEBVIEW) {
+            uiScrollPane.getScrollPane().setViewportView(webView);
+        } else {
+            uiScrollPane.getScrollPane().setViewportView(textPane);
+        }
         uiScrollPane.getScrollPane().setBorder(null);
         uiScrollPane.getScrollPane().setOpaque(false);
         uiScrollPane.getScrollPane().getViewport().setOpaque(false);
@@ -71,18 +83,29 @@ public final class LearningDocumentView extends JPanel {
             clear();
             return;
         }
-        String markdown = resourceLoader.load(page.getResourcePath());
-        MarkdownDocument document = parser.parse(markdown);
-        List<MarkdownComponent> components = componentRenderer.render(document);
-        int width = uiTextPane.getTextPane().getWidth();
-        uiTextPane.getTextPane().setDocument(swingRenderer.render(components, width));
-        uiTextPane.getTextPane().setCaretPosition(0);
+        if (USE_WEBVIEW) {
+            String markdown = resourceLoader.load(page.getResourcePath());
+            MarkdownDocument document = parser.parse(markdown);
+            String html = htmlConverter.convert(document);
+            webView.loadDocument(html);
+        } else {
+            String markdown = resourceLoader.load(page.getResourcePath());
+            MarkdownDocument document = parser.parse(markdown);
+            List<MarkdownComponent> components = componentRenderer.render(document);
+            int width = uiTextPane.getTextPane().getWidth();
+            uiTextPane.getTextPane().setDocument(swingRenderer.render(components, width));
+            uiTextPane.getTextPane().setCaretPosition(0);
+        }
         repaint();
     }
 
     public void clear() {
-        uiTextPane.getTextPane().setDocument(swingRenderer.render(null));
-        uiTextPane.getTextPane().setCaretPosition(0);
+        if (USE_WEBVIEW) {
+            webView.loadDocument("");
+        } else {
+            uiTextPane.getTextPane().setDocument(swingRenderer.render(null));
+            uiTextPane.getTextPane().setCaretPosition(0);
+        }
         repaint();
     }
 
