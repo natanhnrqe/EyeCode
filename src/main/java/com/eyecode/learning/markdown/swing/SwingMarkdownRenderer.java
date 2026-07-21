@@ -128,6 +128,10 @@ public final class SwingMarkdownRenderer {
             int start = doc.getLength();
             append(prefix + list.items().get(i), baseStyle);
             append("\n", themeProvider.body());
+            int itemSpaceBelow = (i == list.items().size() - 1)
+                    ? MarkdownDesignTokens.LIST_SPACE_BELOW
+                    : MarkdownDesignTokens.BULLET_SPACE_BELOW;
+            StyleConstants.setSpaceBelow(baseStyle, itemSpaceBelow);
             doc.setParagraphAttributes(start, 1, baseStyle, false);
         }
     }
@@ -154,6 +158,7 @@ public final class SwingMarkdownRenderer {
             StyleConstants.setSpaceBelow(lineStyle, lastLine ? layout.paddingBottom() : 0);
             StyleConstants.setLeftIndent(lineStyle, layout.leftIndent() + MarkdownDesignTokens.CODE_PADDING_LEFT);
             StyleConstants.setRightIndent(lineStyle, layout.rightIndent() + MarkdownDesignTokens.CODE_PADDING_RIGHT);
+            StyleConstants.setLineSpacing(lineStyle, layout.lineSpacing());
             doc.setParagraphAttributes(offset, 1, lineStyle, false);
             offset += lines[i].length() + 1;
         }

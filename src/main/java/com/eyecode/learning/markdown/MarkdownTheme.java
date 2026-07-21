@@ -15,6 +15,10 @@ public final class MarkdownTheme {
     private MarkdownTheme() {
     }
 
+    private static final Color CODE_BLOCK_KEYWORD = new Color(204, 120, 50);
+    private static final Color CODE_BLOCK_TYPE = new Color(106, 135, 89);
+    private static final Color CODE_BLOCK_NUMBER = new Color(104, 151, 187);
+
     // ──────────────────────────────────────────────
     // HeadingStyles
     // ──────────────────────────────────────────────
@@ -103,22 +107,23 @@ public final class MarkdownTheme {
 
     public static SimpleAttributeSet codeInline() {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
-        StyleConstants.setFontFamily(attrs, TypographyManager.monoRegular(MarkdownDesignTokens.BODY_SIZE).getFamily());
-        StyleConstants.setFontSize(attrs, MarkdownDesignTokens.BODY_SIZE);
+        Font font = TypographyManager.monoRegular(MarkdownDesignTokens.INLINE_CODE_SIZE);
+        StyleConstants.setFontFamily(attrs, font.getFamily());
+        StyleConstants.setFontSize(attrs, font.getSize());
         StyleConstants.setForeground(attrs, ColorManager.TEXT_SECONDARY);
-        StyleConstants.setBackground(attrs, ColorManager.PANEL_BG);
+        StyleConstants.setBackground(attrs, ColorManager.SURFACE_BG);
         return attrs;
     }
 
     public static SimpleAttributeSet codeKeyword() {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
-        StyleConstants.setForeground(attrs, ColorManager.SYNTAX_KEYWORD);
+        StyleConstants.setForeground(attrs, CODE_BLOCK_KEYWORD);
         return attrs;
     }
 
     public static SimpleAttributeSet codeType() {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
-        StyleConstants.setForeground(attrs, ColorManager.SYNTAX_CLASS);
+        StyleConstants.setForeground(attrs, CODE_BLOCK_TYPE);
         return attrs;
     }
 
@@ -142,7 +147,7 @@ public final class MarkdownTheme {
 
     public static SimpleAttributeSet codeNumber() {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
-        StyleConstants.setForeground(attrs, ColorManager.SYNTAX_NUMBER);
+        StyleConstants.setForeground(attrs, CODE_BLOCK_NUMBER);
         return attrs;
     }
 
