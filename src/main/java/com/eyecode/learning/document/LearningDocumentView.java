@@ -88,6 +88,7 @@ public final class LearningDocumentView extends JPanel {
             MarkdownDocument document = parser.parse(markdown);
             String html = htmlConverter.convert(document);
             webView.loadDocument(html);
+            webView.scrollToTop();
         } else {
             String markdown = resourceLoader.load(page.getResourcePath());
             MarkdownDocument document = parser.parse(markdown);

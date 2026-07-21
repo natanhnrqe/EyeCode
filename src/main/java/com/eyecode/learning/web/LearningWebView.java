@@ -18,8 +18,10 @@ import java.util.stream.Collectors;
 public final class LearningWebView extends JPanel {
 
     private static final String CSS_RESOURCE = "/learning/css/learning.css";
+    private static final String JS_RESOURCE = "/learning/js/learning.js";
 
     private final WebEngine webEngine;
+    private final WebView view;
 
     public LearningWebView() {
         setLayout(new BorderLayout());
@@ -28,17 +30,25 @@ public final class LearningWebView extends JPanel {
         JFXPanel fxPanel = new JFXPanel();
         add(fxPanel, BorderLayout.CENTER);
 
-        WebView view = new WebView();
+        view = new WebView();
         webEngine = view.getEngine();
 
-        Platform.runLater(() -> fxPanel.setScene(new Scene(view)));
+        webEngine.setJavaScriptEnabled(true);
+        view.setContextMenuEnabled(false);
+        view.setZoom(1.0);
+        view.setFocusTraversable(true);
+
+        Platform.runLater(() -> {
+            fxPanel.setScene(new Scene(view));
+            view.setStyle("-fx-background-color: transparent;");
+        });
     }
 
     public void loadHtml(String html) {
         if (html == null) {
             return;
         }
-        var finalHtml = injectCss(html);
+        var finalHtml = injectResources(html);
         Platform.runLater(() -> webEngine.loadContent(finalHtml, "text/html"));
     }
 
@@ -46,47 +56,55 @@ public final class LearningWebView extends JPanel {
         if (html == null) {
             return;
         }
-        var css = loadCss();
-        var finalHtml = injectCss(html, css);
+        var finalHtml = injectResources(html);
         Platform.runLater(() -> webEngine.loadContent(finalHtml, "text/html"));
     }
 
-    private String injectCss(String html) {
-        var css = loadCss();
-        return injectCss(html, css);
+    public void scrollToTop() {
+        Platform.runLater(() ->
+                webEngine.executeScript("window.scrollTo(0,0)"));
     }
 
-    private String injectCss(String html, String css) {
+    private String injectResources(String html) {
         if (html == null || html.isBlank()) {
             return "";
         }
-        if (css == null || css.isBlank()) {
-            return html;
+        var css = loadCss();
+        var js = loadJs();
+        var result = html;
+        if (css != null && !css.isBlank() && !result.contains("<style>")) {
+            var styleTag = "<style>" + System.lineSeparator()
+                    + css + System.lineSeparator()
+                    + "</style>" + System.lineSeparator();
+            result = result.replace("</head>", styleTag + "</head>");
         }
-        if (html.contains("<style>")) {
-            return html;
+        if (js != null && !js.isBlank() && !result.contains("<script>")) {
+            var scriptTag = "<script>" + System.lineSeparator()
+                    + js + System.lineSeparator()
+                    + "</script>" + System.lineSeparator();
+            result = result.replace("</body>", scriptTag + "</body>");
         }
-        var styleTag = "<style>" + System.lineSeparator()
-                + css + System.lineSeparator()
-                + "</style>";
-        var headClose = "</head>";
-        var idx = html.indexOf(headClose);
-        if (idx == -1) {
-            return html;
-        }
-        return html.substring(0, idx) + styleTag + System.lineSeparator() + html.substring(idx);
+        return result;
     }
 
     private String loadCss() {
-        var stream = getClass().getResourceAsStream(CSS_RESOURCE);
+        return loadResource(CSS_RESOURCE);
+    }
+
+    private String loadJs() {
+        return loadResource(JS_RESOURCE);
+    }
+
+    private String loadResource(String path) {
+        InputStream stream = getClass().getResourceAsStream(path);
         if (stream == null) {
-            throw new IllegalStateException("CSS resource not found: " + CSS_RESOURCE);
+            throw new IllegalStateException("Resource not found: " + path);
         }
         try (var reader = new BufferedReader(
                 new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             return reader.lines().collect(Collectors.joining(System.lineSeparator()));
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to read CSS resource: " + CSS_RESOURCE, e);
+            throw new IllegalStateException("Failed to read resource: " + path, e);
         }
     }
 }
