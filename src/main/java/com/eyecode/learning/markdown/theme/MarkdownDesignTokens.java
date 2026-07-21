@@ -8,31 +8,29 @@ public final class MarkdownDesignTokens {
     // ── Typography ──────────────────────────────────
 
     public static final int HEADING1_SIZE = 24;
-    public static final int HEADING2_SIZE = 15;
-    public static final int HEADING3_SIZE = 13;
-    public static final int BODY_SIZE = 13;
-    public static final int BULLET_SIZE = 13;
-    public static final int LINK_SIZE = 13;
+    public static final int HEADING2_SIZE = 16;
+    public static final int HEADING3_SIZE = 14;
+    public static final int BODY_SIZE = 14;
     public static final int ARROW_SIZE = 14;
-    public static final int CALLOUT_SIZE = 13;
+    public static final int CALLOUT_SIZE = 12;
 
     // ── Heading Spacing ─────────────────────────────
 
-    public static final int H1_SPACE_BELOW = 14;
+    public static final int H1_SPACE_BELOW = 16;
     public static final int H2_SPACE_BELOW = 12;
     public static final int H3_SPACE_ABOVE = 0;
     public static final int H3_SPACE_BELOW = 10;
 
     // ── Body / Paragraph ────────────────────────────
 
-    public static final int BODY_SPACE_BELOW = 14;
-    public static final float BODY_LINE_SPACING = 0.30f;
+    public static final int BODY_SPACE_BELOW = 10;
+    public static final float BODY_LINE_SPACING = 0.20f;
 
     // ── List ────────────────────────────────────────
 
-    public static final int BULLET_SPACE_BELOW = 14;
-    public static final int BULLET_LEFT_INDENT = 16;
-    public static final float BULLET_LINE_SPACING = 0.25f;
+    public static final int BULLET_SPACE_BELOW = 10;
+    public static final int BULLET_LEFT_INDENT = 24;
+    public static final float BULLET_LINE_SPACING = 0.20f;
 
     // ── Link / Arrow ────────────────────────────────
 
@@ -43,17 +41,13 @@ public final class MarkdownDesignTokens {
 
     // ── Divider ─────────────────────────────────────
 
-    public static final int DIVIDER_SPACE_ABOVE = 0;
-    public static final int DIVIDER_SPACE_BELOW = 14;
-    public static final String DIVIDER_TEXT =
-            "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
-                    + "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
-                    + "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
-                    + "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500";
+    public static final int DIVIDER_SPACE_ABOVE = 8;
+    public static final int DIVIDER_SPACE_BELOW = 8;
+    public static final String DIVIDER_TEXT = "\u2500\u2500\u2500";
 
     // ── Code Block ──────────────────────────────────
 
-    public static final int CODE_SIZE = 12;
+    public static final int CODE_SIZE = 14;
     public static final int CODE_PADDING_TOP = 16;
     public static final int CODE_PADDING_BOTTOM = 16;
     public static final int CODE_PADDING_LEFT = 24;

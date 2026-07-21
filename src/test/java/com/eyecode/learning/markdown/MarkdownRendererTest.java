@@ -51,26 +51,27 @@ class MarkdownRendererTest {
             var md = new MarkdownDocument(List.of(new HeadingNode(2, "Section")));
             StyledDocument doc = renderer.render(md);
             var attrs = doc.getCharacterElement(0).getAttributes();
-            assertEquals(15, StyleConstants.getFontSize(attrs));
+            assertEquals(16, StyleConstants.getFontSize(attrs));
             assertTrue(StyleConstants.isBold(attrs));
             assertEquals(ColorManager.TEXT_PRIMARY, StyleConstants.getForeground(attrs));
         }
 
         @Test
-        void h2WithEmojiColor() throws BadLocationException {
+        void h2WithEmojiUsesDefaultColor() throws BadLocationException {
             var md = new MarkdownDocument(List.of(
                     new HeadingNode(2, "\uD83D\uDCA1 Dica")));
             StyledDocument doc = renderer.render(md);
             var attrs = doc.getCharacterElement(0).getAttributes();
-            assertEquals(ColorManager.ACCENT_BLUE_LIGHT, StyleConstants.getForeground(attrs));
+            assertEquals(ColorManager.TEXT_PRIMARY, StyleConstants.getForeground(attrs));
         }
 
         @Test
-        void h2BackgroundApplied() throws BadLocationException {
+        void h2HasNoBackground() throws BadLocationException {
             var md = new MarkdownDocument(List.of(new HeadingNode(2, "Section")));
             StyledDocument doc = renderer.render(md);
             var paraAttrs = doc.getParagraphElement(0).getAttributes();
-            assertNotNull(StyleConstants.getBackground(paraAttrs));
+            Color bg = StyleConstants.getBackground(paraAttrs);
+            assertEquals(Color.black, bg, "H2 should have no custom background");
         }
 
         @Test
@@ -79,7 +80,7 @@ class MarkdownRendererTest {
             StyledDocument doc = renderer.render(md);
             var paraAttrs = doc.getParagraphElement(0).getAttributes();
             Color bg = StyleConstants.getBackground(paraAttrs);
-            assertNotEquals(new Color(0x1A, 0x73, 0xE8, 0x0C), bg, "H1 should not have H2 background");
+            assertEquals(Color.black, bg, "H1 should have no custom background");
         }
     }
 
@@ -92,7 +93,7 @@ class MarkdownRendererTest {
                     new ParagraphNode(List.of(Segment.text("Hello.")))));
             StyledDocument doc = renderer.render(md);
             var attrs = doc.getCharacterElement(0).getAttributes();
-            assertEquals(13, StyleConstants.getFontSize(attrs));
+            assertEquals(14, StyleConstants.getFontSize(attrs));
             assertEquals(ColorManager.TEXT_SECONDARY, StyleConstants.getForeground(attrs));
         }
 
@@ -118,7 +119,7 @@ class MarkdownRendererTest {
             var attrs = doc.getCharacterElement(0).getAttributes();
             assertTrue(StyleConstants.isBold(attrs));
             assertEquals(ColorManager.TEXT_SECONDARY, StyleConstants.getForeground(attrs));
-            assertEquals(13, StyleConstants.getFontSize(attrs));
+            assertEquals(14, StyleConstants.getFontSize(attrs));
         }
 
         @Test
@@ -128,7 +129,7 @@ class MarkdownRendererTest {
             StyledDocument doc = renderer.render(md);
             var attrs = doc.getCharacterElement(0).getAttributes();
             assertFalse(StyleConstants.isBold(attrs));
-            assertEquals(13, StyleConstants.getFontSize(attrs));
+            assertEquals(14, StyleConstants.getFontSize(attrs));
         }
 
         @Test
@@ -137,9 +138,9 @@ class MarkdownRendererTest {
                     new ParagraphNode(List.of(Segment.code("code()")))));
             StyledDocument doc = renderer.render(md);
             var attrs = doc.getCharacterElement(0).getAttributes();
-            assertEquals(ColorManager.SYNTAX_KEYWORD, StyleConstants.getForeground(attrs));
+            assertEquals(ColorManager.TEXT_SECONDARY, StyleConstants.getForeground(attrs));
             assertEquals(ColorManager.PANEL_BG, StyleConstants.getBackground(attrs));
-            assertEquals(12, StyleConstants.getFontSize(attrs));
+            assertEquals(14, StyleConstants.getFontSize(attrs));
         }
 
         @Test
@@ -150,7 +151,7 @@ class MarkdownRendererTest {
             var attrs = doc.getCharacterElement(0).getAttributes();
             assertEquals(ColorManager.ACCENT_BLUE_LIGHT, StyleConstants.getForeground(attrs));
             assertTrue(StyleConstants.isUnderline(attrs));
-            assertEquals(13, StyleConstants.getFontSize(attrs));
+            assertEquals(14, StyleConstants.getFontSize(attrs));
         }
 
         @Test
@@ -184,7 +185,7 @@ class MarkdownRendererTest {
 
             var attrs = doc.getCharacterElement(0).getAttributes();
             assertEquals(ColorManager.TEXT_PRIMARY, StyleConstants.getForeground(attrs));
-            assertEquals(13, StyleConstants.getFontSize(attrs));
+            assertEquals(14, StyleConstants.getFontSize(attrs));
         }
 
         @Test
@@ -226,7 +227,7 @@ class MarkdownRendererTest {
             assertTrue(codePos >= 0);
             var attrs = doc.getCharacterElement(codePos).getAttributes();
             assertEquals(ColorManager.EDITOR_FOREGROUND, StyleConstants.getForeground(attrs));
-            assertEquals(12, StyleConstants.getFontSize(attrs));
+            assertEquals(14, StyleConstants.getFontSize(attrs));
         }
 
         @Test
@@ -288,7 +289,7 @@ class MarkdownRendererTest {
             assertTrue(classPos >= 0);
             var attrs = doc.getCharacterElement(classPos).getAttributes();
             assertEquals(ColorManager.SYNTAX_KEYWORD, StyleConstants.getForeground(attrs));
-            assertEquals(12, StyleConstants.getFontSize(attrs),
+            assertEquals(14, StyleConstants.getFontSize(attrs),
                     "Keyword must share same font size as base code text");
         }
 

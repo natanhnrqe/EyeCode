@@ -3,7 +3,6 @@ package com.eyecode.learning.markdown.theme;
 import com.eyecode.learning.markdown.MarkdownTheme;
 
 import javax.swing.text.SimpleAttributeSet;
-import java.awt.Color;
 
 public final class DefaultMarkdownThemeProvider implements MarkdownThemeProvider {
 
@@ -15,16 +14,6 @@ public final class DefaultMarkdownThemeProvider implements MarkdownThemeProvider
     @Override
     public SimpleAttributeSet h2() {
         return MarkdownTheme.h2();
-    }
-
-    @Override
-    public SimpleAttributeSet h2Colored(Color color) {
-        return MarkdownTheme.h2Colored(color);
-    }
-
-    @Override
-    public SimpleAttributeSet h2Background() {
-        return MarkdownTheme.h2Background();
     }
 
     @Override

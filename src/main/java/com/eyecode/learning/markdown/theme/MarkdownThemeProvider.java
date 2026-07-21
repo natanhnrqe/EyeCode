@@ -9,10 +9,6 @@ public interface MarkdownThemeProvider {
 
     SimpleAttributeSet h2();
 
-    SimpleAttributeSet h2Colored(Color color);
-
-    SimpleAttributeSet h2Background();
-
     SimpleAttributeSet body();
 
     SimpleAttributeSet bold();

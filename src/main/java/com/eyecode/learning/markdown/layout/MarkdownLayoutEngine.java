@@ -62,7 +62,7 @@ public final class MarkdownLayoutEngine {
     }
 
     private ComponentLayout dividerLayout(DividerComponent divider, int margin) {
-        return new ComponentLayout(0, DIVIDER_SPACE_BELOW,
+        return new ComponentLayout(DIVIDER_SPACE_ABOVE, DIVIDER_SPACE_BELOW,
                 margin, margin, 0f, 0, 0);
     }
 

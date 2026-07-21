@@ -14,7 +14,6 @@ import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
-import java.awt.Color;
 import java.util.List;
 
 public final class SwingMarkdownRenderer {
@@ -63,32 +62,8 @@ public final class SwingMarkdownRenderer {
     }
 
     private void renderHeading(HeadingComponent heading) throws BadLocationException {
-        if (heading.level() == 2) {
-            String text = heading.text();
-            if (isInformationHeading(text)) {
-                renderInformationHeading(heading);
-                return;
-            }
-            if (isWarningHeading(text)) {
-                renderWarningHeading(heading);
-                return;
-            }
-            if (isTipHeading(text)) {
-                renderTipHeading(heading);
-                return;
-            }
-            if (isNextStepHeading(text)) {
-                renderNextStepHeading(heading);
-                return;
-            }
-        }
-        renderDefaultHeading(heading);
-    }
-
-    private void renderDefaultHeading(HeadingComponent heading) throws BadLocationException {
         SimpleAttributeSet style = switch (heading.level()) {
             case 1 -> themeProvider.h1();
-            case 2 -> themeProvider.h2Colored(sectionColor(heading.text()));
             default -> themeProvider.h2();
         };
         ComponentLayout layout = layoutEngine.layout(heading, viewportWidth);
@@ -100,25 +75,6 @@ public final class SwingMarkdownRenderer {
         append(heading.text(), style);
         append("\n", themeProvider.body());
         doc.setParagraphAttributes(start, 1, style, false);
-        if (heading.level() == 2) {
-            doc.setParagraphAttributes(start, 1, themeProvider.h2Background(), false);
-        }
-    }
-
-    private void renderInformationHeading(HeadingComponent heading) throws BadLocationException {
-        renderDefaultHeading(heading);
-    }
-
-    private void renderWarningHeading(HeadingComponent heading) throws BadLocationException {
-        renderDefaultHeading(heading);
-    }
-
-    private void renderTipHeading(HeadingComponent heading) throws BadLocationException {
-        renderDefaultHeading(heading);
-    }
-
-    private void renderNextStepHeading(HeadingComponent heading) throws BadLocationException {
-        renderDefaultHeading(heading);
     }
 
     private void renderParagraph(ParagraphComponent paragraph) throws BadLocationException {
@@ -227,39 +183,6 @@ public final class SwingMarkdownRenderer {
             case ITALIC -> themeProvider.italic();
             case CODE -> themeProvider.codeInline();
             case LINK -> themeProvider.link();
-        };
-    }
-
-    private static boolean isInformationHeading(String text) {
-        return text.startsWith("\uD83D\uDCD8 Informa\u00E7\u00E3o");
-    }
-
-    private static boolean isWarningHeading(String text) {
-        return text.startsWith("\u26A0\uFE0F Aten\u00E7\u00E3o");
-    }
-
-    private static boolean isTipHeading(String text) {
-        return text.startsWith("\uD83D\uDCA1 Dica");
-    }
-
-    private static boolean isNextStepHeading(String text) {
-        return text.startsWith("\u27A1\uFE0F Pr\u00F3ximo passo");
-    }
-
-    private Color sectionColor(String headingText) {
-        String emoji = headingText.isEmpty()
-                ? "" : headingText.substring(0, Math.min(2, headingText.length()));
-        return switch (emoji) {
-            case "\uD83D\uDCA1" -> ColorManager.ACCENT_BLUE_LIGHT;
-            case "\uD83C\uDFE0" -> ColorManager.SYNTAX_CLASS;
-            case "\uD83C\uDF0E" -> ColorManager.SUCCESS_GREEN;
-            case "\uD83D\uDCBB" -> ColorManager.SYNTAX_KEYWORD;
-            case "\uD83E\uDDE0" -> ColorManager.SYNTAX_CLASS;
-            case "\u26A0\uFE0F" -> ColorManager.ERROR_RED;
-            case "\uD83D\uDE80" -> ColorManager.TEXT_PRIMARY;
-            case "\u27A1\uFE0F" -> ColorManager.ACCENT_BLUE_LIGHT;
-            case "\uD83D\uDCDA" -> ColorManager.TEXT_TERTIARY;
-            default -> ColorManager.TEXT_PRIMARY;
         };
     }
 
