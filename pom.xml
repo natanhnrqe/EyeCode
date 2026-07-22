@@ -32,6 +32,14 @@
     <dependencies>
 
         <dependency>
+            <groupId>org.cef</groupId>
+            <artifactId>jcef</artifactId>
+            <version>jbr-25.0.3</version>
+            <scope>system</scope>
+            <systemPath>C:/Users/JoyBoy/Downloads/springboot/EyeCode/lib/jcef.jar</systemPath>
+        </dependency>
+
+        <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>
             <version>3.4</version>
@@ -62,6 +70,30 @@
             <artifactId>javafx-swing</artifactId>
             <version>${javafx.version}</version>
             <classifier>win</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark</artifactId>
+            <version>0.64.8</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-ext-autolink</artifactId>
+            <version>0.64.8</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-ext-emoji</artifactId>
+            <version>0.64.8</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-ext-tables</artifactId>
+            <version>0.64.8</version>
         </dependency>
 
         <dependency>
@@ -98,5 +130,42 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <plugins>
+           <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <executable>C:/jdk/jbrsdk_jcef-25.0.3/bin/java.exe</executable>
+                    <arguments>
+                        <argument>-Djava.library.path=C:/jdk/jbrsdk_jcef-25.0.3/bin</argument>
+                        <argument>--add-opens</argument>
+                        <argument>java.desktop/sun.awt=ALL-UNNAMED</argument>
+                        <argument>--add-opens</argument>
+                        <argument>java.desktop/java.awt.peer=ALL-UNNAMED</argument>
+                        <argument>-classpath</argument>
+                        <classpath/>
+                        <argument>com.eyecode.Main</argument>
+                        <argument>--no-sandbox</argument>
+                        <argument>--disable-gpu-sandbox</argument>
+                        <argument>--disable-gpu</argument>
+                        <argument>--disable-gpu-compositing</argument>
+                        <argument>--disable-direct-composition</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+                <configuration>
+                    <release>21</release>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

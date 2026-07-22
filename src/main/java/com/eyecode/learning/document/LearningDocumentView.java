@@ -1,83 +1,31 @@
 package com.eyecode.learning.document;
 
+import com.eyecode.learning.content.LearningContentEngine;
 import com.eyecode.learning.content.LearningPage;
-import com.eyecode.learning.content.LearningResourceLoader;
-import com.eyecode.learning.html.MarkdownToHtmlConverter;
-import com.eyecode.learning.markdown.MarkdownDocument;
-import com.eyecode.learning.markdown.MarkdownParser;
-import com.eyecode.learning.markdown.component.MarkdownComponent;
-import com.eyecode.learning.markdown.component.MarkdownComponentRenderer;
-import com.eyecode.learning.markdown.swing.SwingMarkdownRenderer;
-import com.eyecode.learning.web.LearningWebView;
-import com.eyecode.ui.core.UIScrollPane;
-import com.eyecode.ui.core.UITextPane;
+import com.eyecode.learning.web.LearningChromiumView;
 import com.eyecode.ui.core.UIViewFactory;
-import com.eyecode.ui.swing.SwingUIViewFactory;
 
-import javax.swing.JEditorPane;
 import javax.swing.JPanel;
-import javax.swing.JTextPane;
-import javax.swing.ScrollPaneConstants;
 import java.awt.BorderLayout;
-import java.util.List;
 
 public final class LearningDocumentView extends JPanel {
 
-    private static final boolean USE_WEBVIEW = true;
-
-    private final UITextPane uiTextPane;
-    private final UIScrollPane uiScrollPane;
-    private final MarkdownParser parser;
-    private final MarkdownComponentRenderer componentRenderer;
-    private final SwingMarkdownRenderer swingRenderer;
-    private final LearningResourceLoader resourceLoader;
-    private final MarkdownToHtmlConverter htmlConverter;
-    private final LearningWebView webView;
+    private final LearningContentEngine contentEngine;
+    private final LearningChromiumView chromiumView;
 
     public LearningDocumentView() {
-        this(new SwingUIViewFactory());
+        this(null);
     }
 
     public LearningDocumentView(UIViewFactory viewFactory) {
         setLayout(new BorderLayout());
         setOpaque(false);
 
-        parser = new MarkdownParser();
-        componentRenderer = new MarkdownComponentRenderer();
-        swingRenderer = new SwingMarkdownRenderer();
-        resourceLoader = new LearningResourceLoader();
-        htmlConverter = new MarkdownToHtmlConverter();
-        webView = new LearningWebView();
+        contentEngine = new LearningContentEngine();
+        chromiumView = new LearningChromiumView();
 
-        uiTextPane = viewFactory.createTextPane();
-        uiTextPane.getTextPane().setDocument(swingRenderer.render(null));
-
-        JTextPane textPane = uiTextPane.getTextPane();
-        textPane.setEditable(false);
-        textPane.setFocusable(false);
-        textPane.setOpaque(false);
-        textPane.setBackground(LearningDocumentStyle.transparent());
-        textPane.setCaretColor(LearningDocumentStyle.bodyColor());
-        textPane.setBorder(LearningDocumentStyle.documentBorder());
-        textPane.setMargin(LearningDocumentStyle.zeroInsets());
-        textPane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
-
-        uiScrollPane = viewFactory.createScrollPane();
-        if (USE_WEBVIEW) {
-            uiScrollPane.getScrollPane().setViewportView(webView);
-            uiScrollPane.getScrollPane().setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-            uiScrollPane.getScrollPane().setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
-        } else {
-            uiScrollPane.getScrollPane().setViewportView(textPane);
-            uiScrollPane.getScrollPane().setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-            uiScrollPane.getScrollPane().setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
-        }
-        uiScrollPane.getScrollPane().setBorder(null);
-        uiScrollPane.getScrollPane().setOpaque(false);
-        uiScrollPane.getScrollPane().getViewport().setOpaque(false);
-        uiScrollPane.getScrollPane().getVerticalScrollBar().setUnitIncrement(LearningDocumentStyle.documentScrollUnit());
-
-        add(uiScrollPane.getScrollPane(), BorderLayout.CENTER);
+        chromiumView.setOpaque(false);
+        add(chromiumView, BorderLayout.CENTER);
     }
 
     public void setPage(LearningPage page) {
@@ -85,34 +33,34 @@ public final class LearningDocumentView extends JPanel {
             clear();
             return;
         }
-        if (USE_WEBVIEW) {
-            String markdown = resourceLoader.load(page.getResourcePath());
-            MarkdownDocument document = parser.parse(markdown);
-            String html = htmlConverter.convert(document);
-            webView.loadDocument(html);
-            webView.scrollToTop();
-        } else {
-            String markdown = resourceLoader.load(page.getResourcePath());
-            MarkdownDocument document = parser.parse(markdown);
-            List<MarkdownComponent> components = componentRenderer.render(document);
-            int width = uiTextPane.getTextPane().getWidth();
-            uiTextPane.getTextPane().setDocument(swingRenderer.render(components, width));
-            uiTextPane.getTextPane().setCaretPosition(0);
-        }
+        String html = contentEngine.loadHtml(page.getResourcePath());
+        chromiumView.loadHtml(html);
         repaint();
     }
 
     public void clear() {
-        if (USE_WEBVIEW) {
-            webView.loadDocument("");
-        } else {
-            uiTextPane.getTextPane().setDocument(swingRenderer.render(null));
-            uiTextPane.getTextPane().setCaretPosition(0);
-        }
+        chromiumView.loadHtml(blankHtml());
         repaint();
     }
 
-    public JTextPane getTextPane() {
-        return uiTextPane.getTextPane();
+    public void dispose() {
+        chromiumView.dispose();
+    }
+
+    @Override
+    public void removeNotify() {
+        dispose();
+        super.removeNotify();
+    }
+
+    private String blankHtml() {
+        return "<!DOCTYPE html>\n"
+                + "<html>\n"
+                + "<head>\n"
+                + "<meta charset=\"UTF-8\">\n"
+                + "</head>\n"
+                + "<body>\n"
+                + "</body>\n"
+                + "</html>\n";
     }
 }

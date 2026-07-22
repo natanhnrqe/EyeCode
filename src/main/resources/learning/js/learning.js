@@ -1,3 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("Learning document loaded.");
+    if (window.hljs && typeof window.hljs.highlightAll === "function") {
+        window.hljs.highlightAll();
+    }
 });
