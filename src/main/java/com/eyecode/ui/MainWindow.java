@@ -1,5 +1,8 @@
 package com.eyecode.ui;
 
+import com.eyecode.browser.BrowserPanel;
+import com.eyecode.browser.BrowserService;
+import com.eyecode.browser.preview.HtmlPreviewController;
 import com.eyecode.command.CommandContext;
 import com.eyecode.autosave.AutoSaveManager;
 import com.eyecode.editor.Document;
@@ -59,6 +62,10 @@ public class MainWindow extends JFrame {
     private final CardLayout editorCards;
     private final WelcomePanel welcomePanel;
 
+    private BrowserPanel browserPanel;
+    private HtmlPreviewController previewController;
+    private JSplitPane editorPreviewSplit;
+
     private final ProjectService projectService;
     private final ProjectTemplateService templateService;
     private final EventBus eventBus;
@@ -116,6 +123,7 @@ public class MainWindow extends JFrame {
         editorStack.add(welcomePanel, WELCOME_VIEW);
         editorStack.add(tabbedPane, EDITOR_VIEW);
 
+        initPreview();
         configureActions();
         configureLayout();
         configureTabs();
@@ -139,6 +147,51 @@ public class MainWindow extends JFrame {
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setMinimumSize(new Dimension(UIConstants.WINDOW_MIN_WIDTH, UIConstants.WINDOW_MIN_HEIGHT));
         setVisible(true);
+    }
+
+    private void initPreview() {
+        var service = BrowserService.create();
+        browserPanel = new BrowserPanel(service);
+        previewController = new HtmlPreviewController(service);
+    }
+
+    private JPanel createPreviewContainer() {
+        JPanel container = new JPanel(new BorderLayout());
+        container.setOpaque(false);
+
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, SpacingSystem.XS, 0));
+        header.setOpaque(false);
+        header.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XXS, SpacingSystem.XS, SpacingSystem.XXS, SpacingSystem.XS));
+
+        JLabel title = new JLabel("Preview");
+        title.setFont(TypographyManager.UI_LABEL());
+        title.setForeground(ColorManager.TEXT_TERTIARY);
+
+        JButton loadBtn = new JButton("Carregar Preview");
+        loadBtn.setFont(TypographyManager.UI_TAB());
+        loadBtn.setFocusPainted(false);
+        loadBtn.setBorderPainted(false);
+        loadBtn.setContentAreaFilled(false);
+        loadBtn.setForeground(ColorManager.ACCENT_BLUE);
+        loadBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        loadBtn.addActionListener(e -> previewController.previewHtml(previewController.getTestHtml()));
+
+        header.add(title);
+        header.add(Box.createHorizontalStrut(SpacingSystem.SM));
+        header.add(loadBtn);
+
+        RoundedPanel previewArea = new RoundedPanel(
+                new BorderLayout(),
+                ColorManager.EDITOR_BG,
+                ColorManager.BORDER_EDITOR,
+                UIConstants.BORDER_RADIUS_PANEL
+        );
+        previewArea.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        previewArea.add(browserPanel, BorderLayout.CENTER);
+
+        container.add(header, BorderLayout.NORTH);
+        container.add(previewArea, BorderLayout.CENTER);
+        return container;
     }
 
     private void configureActions() {
@@ -288,6 +341,7 @@ public class MainWindow extends JFrame {
                 autoSaveManager.saveAll();
                 autoSaveManager.shutdown();
                 if (projectRefreshService != null) projectRefreshService.stop();
+                if (previewController != null) previewController.getBrowserService().dispose();
             }
         });
     }
@@ -334,7 +388,16 @@ public class MainWindow extends JFrame {
         editorArea.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XS, SpacingSystem.XS, SpacingSystem.XS, SpacingSystem.XS));
         editorArea.add(editorStack, BorderLayout.CENTER);
 
-        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftArea, editorArea);
+        JPanel previewContainer = createPreviewContainer();
+
+        editorPreviewSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, editorArea, previewContainer);
+        editorPreviewSplit.setResizeWeight(0.65);
+        editorPreviewSplit.setDividerSize(UIConstants.SPLIT_DIVIDER_SIZE);
+        editorPreviewSplit.setBorder(null);
+        editorPreviewSplit.setOpaque(false);
+        editorPreviewSplit.setBackground(ColorManager.WINDOW_BG);
+
+        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftArea, editorPreviewSplit);
         rootSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, centerSplit, bottomTool);
 
         centerSplit.setResizeWeight(UIConstants.SPLIT_EXPLORER_WEIGHT);

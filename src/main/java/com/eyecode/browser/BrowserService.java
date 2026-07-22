@@ -15,6 +15,12 @@ public final class BrowserService {
         this.browser = browser;
     }
 
+    public static BrowserService create() {
+        var client = BrowserManager.getInstance().getClient();
+        var browser = client.createBrowser("about:blank", false, false);
+        return new BrowserService(browser);
+    }
+
     public void loadUrl(String url) {
         if (url != null) {
             browser.loadURL(url);
@@ -24,6 +30,10 @@ public final class BrowserService {
     public void loadHtml(String html) {
         String encoded = Base64.getEncoder().encodeToString(normalizeHtml(html).getBytes(StandardCharsets.UTF_8));
         browser.loadURL("data:text/html;charset=UTF-8;base64," + encoded);
+    }
+
+    public void previewHtml(String html) {
+        loadHtml(html);
     }
 
     public void reload() {
