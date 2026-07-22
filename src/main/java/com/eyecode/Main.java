@@ -1,55 +1,46 @@
 package com.eyecode;
 
-import com.eyecode.chromium.ChromiumDemoFrame;
+
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.TypographyManager;
+import com.eyecode.ui.designsystem.UIConstants;
 import com.formdev.flatlaf.FlatDarkLaf;
+import com.eyecode.ui.MainWindow;
 
-import org.cef.CefApp;
-import org.cef.CefSettings;
-
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
-import java.io.File;
+import javax.swing.*;
+import java.awt.*;
 
 public class Main {
     public static void main(String[] args) {
-        String javaHome = System.getProperty("java.home");
+        FlatDarkLaf.setup();
 
-        if (Boolean.getBoolean("eyecode.system.laf")) {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception e) {
-                FlatDarkLaf.setup();
-            }
-        } else {
-            FlatDarkLaf.setup();
-        }
+        UIManager.put("defaultFont", TypographyManager.UI_DEFAULT());
+        UIManager.put("Tree.rowHeight", UIConstants.TREE_ROW_HEIGHT);
+        UIManager.put("TabbedPane.tabInsets", new Insets(5,10,5,10));
+        UIManager.put("Tree.paintLines", false);
+        UIManager.put("Panel.background", ColorManager.PANEL_BG);
+        UIManager.put("TabbedPane.background", ColorManager.PANEL_BG);
+        UIManager.put("TabbedPane.selectedBackground", ColorManager.SELECTED_TAB_BG);
+        UIManager.put("SplitPane.background", ColorManager.PANEL_BG);
+        UIManager.put("Tree.background", ColorManager.PANEL_BG);
+        UIManager.put("Viewport.background", ColorManager.PANEL_BG);
+        UIManager.put("ScrollPane.background", ColorManager.PANEL_BG);
+        UIManager.put("ToolBar.background", ColorManager.TOOLBAR_BG);
+        UIManager.put("MenuBar.background", ColorManager.TOOLBAR_BG);
+        UIManager.put("Menu.background", ColorManager.TOOLBAR_BG);
+        UIManager.put("MenuItem.background", ColorManager.TOOLBAR_BG);
 
-        if (Boolean.getBoolean("eyecode.swing.only")) {
-            SwingUtilities.invokeLater(() -> ChromiumDemoFrame.main(new String[]{"--swing-only"}));
-            return;
-        }
+        UIManager.put("SplitPaneDivider.style", "plain");
+        UIManager.put("SplitPaneDivider.gripColor", ColorManager.DIVIDER_COLOR);
 
-        String[] cefArgs = {"--no-sandbox"};
 
-        if (!CefApp.startup(cefArgs)) {
-            System.err.println("JCEF startup() failed");
-            System.exit(1);
-        }
 
-        CefSettings settings = new CefSettings();
-        settings.windowless_rendering_enabled = false;
-        settings.browser_subprocess_path = javaHome + "/bin/jcef_helper.exe";
-        settings.log_file = new File(System.getProperty("java.io.tmpdir"), "cef_debug.log").getAbsolutePath();
-        settings.log_severity = CefSettings.LogSeverity.LOGSEVERITY_VERBOSE;
-        settings.cache_path = new File(System.getProperty("java.io.tmpdir"), "eyecode-jcef-cache").getAbsolutePath();
-        new File(settings.cache_path).mkdirs();
 
-        CefApp cefApp = CefApp.getInstance(cefArgs, settings);
+        SwingUtilities.invokeLater(() -> {
+            new MainWindow();
 
-        cefApp.onInitialization(state -> {
-            if (state == CefApp.CefAppState.INITIALIZED) {
-                SwingUtilities.invokeLater(() -> new ChromiumDemoFrame(cefApp));
-            }
         });
+
     }
+
 }

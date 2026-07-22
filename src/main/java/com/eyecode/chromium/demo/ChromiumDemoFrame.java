@@ -1,4 +1,4 @@
-package com.eyecode.chromium;
+package com.eyecode.chromium.demo;
 
 import org.cef.CefApp;
 import org.cef.CefClient;
@@ -30,7 +30,7 @@ public final class ChromiumDemoFrame extends JFrame {
     private Component browserComponent;
 
     public ChromiumDemoFrame(CefApp cefApp) {
-        super("EyeCode");
+        super("EyeCode - Demo");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
         setSize(1280, 800);
