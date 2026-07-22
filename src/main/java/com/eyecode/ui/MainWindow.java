@@ -2,6 +2,7 @@ package com.eyecode.ui;
 
 import com.eyecode.browser.BrowserPanel;
 import com.eyecode.browser.BrowserService;
+import com.eyecode.browser.BrowserToolWindow;
 import com.eyecode.browser.preview.HtmlPreviewController;
 import com.eyecode.browser.preview.LivePreviewController;
 import com.eyecode.command.CommandContext;
@@ -65,7 +66,7 @@ public class MainWindow extends JFrame {
 
     private BrowserPanel browserPanel;
     private HtmlPreviewController previewController;
-    private JSplitPane editorPreviewSplit;
+    private BrowserToolWindow browserToolWindow;
 
     private final ProjectService projectService;
     private final ProjectTemplateService templateService;
@@ -154,35 +155,8 @@ public class MainWindow extends JFrame {
         var service = BrowserService.create();
         browserPanel = new BrowserPanel(service);
         previewController = new HtmlPreviewController(service);
+        browserToolWindow = new BrowserToolWindow(browserPanel);
         new LivePreviewController(service, tabbedPane);
-    }
-
-    private JPanel createPreviewContainer() {
-        JPanel container = new JPanel(new BorderLayout());
-        container.setOpaque(false);
-
-        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, SpacingSystem.XS, 0));
-        header.setOpaque(false);
-        header.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XXS, SpacingSystem.XS, SpacingSystem.XXS, SpacingSystem.XS));
-
-        JLabel title = new JLabel("Preview");
-        title.setFont(TypographyManager.UI_LABEL());
-        title.setForeground(ColorManager.TEXT_TERTIARY);
-
-        header.add(title);
-
-        RoundedPanel previewArea = new RoundedPanel(
-                new BorderLayout(),
-                ColorManager.EDITOR_BG,
-                ColorManager.BORDER_EDITOR,
-                UIConstants.BORDER_RADIUS_PANEL
-        );
-        previewArea.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        previewArea.add(browserPanel, BorderLayout.CENTER);
-
-        container.add(header, BorderLayout.NORTH);
-        container.add(previewArea, BorderLayout.CENTER);
-        return container;
     }
 
     private void configureActions() {
@@ -379,16 +353,7 @@ public class MainWindow extends JFrame {
         editorArea.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.XS, SpacingSystem.XS, SpacingSystem.XS, SpacingSystem.XS));
         editorArea.add(editorStack, BorderLayout.CENTER);
 
-        JPanel previewContainer = createPreviewContainer();
-
-        editorPreviewSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, editorArea, previewContainer);
-        editorPreviewSplit.setResizeWeight(0.65);
-        editorPreviewSplit.setDividerSize(UIConstants.SPLIT_DIVIDER_SIZE);
-        editorPreviewSplit.setBorder(null);
-        editorPreviewSplit.setOpaque(false);
-        editorPreviewSplit.setBackground(ColorManager.WINDOW_BG);
-
-        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftArea, editorPreviewSplit);
+        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftArea, editorArea);
         rootSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, centerSplit, bottomTool);
 
         centerSplit.setResizeWeight(UIConstants.SPLIT_EXPLORER_WEIGHT);
@@ -407,6 +372,7 @@ public class MainWindow extends JFrame {
         workspace.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.MD, 0, 6, 0));
         workspace.add(toolWindowBar, BorderLayout.WEST);
         workspace.add(rootSplit, BorderLayout.CENTER);
+        workspace.add(browserToolWindow, BorderLayout.EAST);
 
         add(statusBar, BorderLayout.SOUTH);
         add(workspace, BorderLayout.CENTER);
