@@ -27,18 +27,6 @@ public final class HtmlPreviewController {
             </html>
             """;
 
-    private static final String TEST_HTML = """
-            <html>
-            <head>
-            <title>Preview</title>
-            </head>
-            <body>
-            <h1>Hello EyeCode</h1>
-            <p>Primeiro Preview HTML.</p>
-            </body>
-            </html>
-            """;
-
     private final BrowserService browserService;
 
     public HtmlPreviewController(BrowserService browserService) {
@@ -52,9 +40,5 @@ public final class HtmlPreviewController {
 
     public BrowserService getBrowserService() {
         return browserService;
-    }
-
-    public String getTestHtml() {
-        return TEST_HTML;
     }
 }

@@ -3,6 +3,7 @@ package com.eyecode.ui;
 import com.eyecode.browser.BrowserPanel;
 import com.eyecode.browser.BrowserService;
 import com.eyecode.browser.preview.HtmlPreviewController;
+import com.eyecode.browser.preview.LivePreviewController;
 import com.eyecode.command.CommandContext;
 import com.eyecode.autosave.AutoSaveManager;
 import com.eyecode.editor.Document;
@@ -153,6 +154,7 @@ public class MainWindow extends JFrame {
         var service = BrowserService.create();
         browserPanel = new BrowserPanel(service);
         previewController = new HtmlPreviewController(service);
+        new LivePreviewController(service, tabbedPane);
     }
 
     private JPanel createPreviewContainer() {
@@ -167,18 +169,7 @@ public class MainWindow extends JFrame {
         title.setFont(TypographyManager.UI_LABEL());
         title.setForeground(ColorManager.TEXT_TERTIARY);
 
-        JButton loadBtn = new JButton("Carregar Preview");
-        loadBtn.setFont(TypographyManager.UI_TAB());
-        loadBtn.setFocusPainted(false);
-        loadBtn.setBorderPainted(false);
-        loadBtn.setContentAreaFilled(false);
-        loadBtn.setForeground(ColorManager.ACCENT_BLUE);
-        loadBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        loadBtn.addActionListener(e -> previewController.previewHtml(previewController.getTestHtml()));
-
         header.add(title);
-        header.add(Box.createHorizontalStrut(SpacingSystem.SM));
-        header.add(loadBtn);
 
         RoundedPanel previewArea = new RoundedPanel(
                 new BorderLayout(),
