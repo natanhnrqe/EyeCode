@@ -1,8 +1,7 @@
 package com.eyecode.learning.ui;
 
-import com.eyecode.learning.content.LearningPage;
+import com.eyecode.learning.browser.LearningChromiumCard;
 import com.eyecode.learning.document.LearningDocumentStyle;
-import com.eyecode.learning.document.LearningDocumentView;
 import com.eyecode.learning.model.LearningConcept;
 import com.eyecode.ui.core.UIContainer;
 import com.eyecode.ui.core.UIViewFactory;
@@ -19,7 +18,7 @@ public final class LearningCard {
 
     private final SwingContainer container;
     private final LearningHeader header;
-    private final LearningDocumentView documentView;
+    private final LearningChromiumCard chromiumCard;
     private final LearningFooter footer;
 
     public LearningCard() {
@@ -34,11 +33,11 @@ public final class LearningCard {
         container.setPaintDelegate(this::paintCard);
 
         header = new LearningHeader(viewFactory);
-        documentView = new LearningDocumentView();
+        chromiumCard = new LearningChromiumCard();
         footer = new LearningFooter();
 
         container.add(header, BorderLayout.NORTH);
-        container.add(documentView, BorderLayout.CENTER);
+        container.add(chromiumCard, BorderLayout.CENTER);
         container.add(footer, BorderLayout.SOUTH);
     }
 
@@ -49,18 +48,24 @@ public final class LearningCard {
         }
 
         header.setConcept(concept);
-        documentView.setPage(pageFor(concept));
         footer.setConcept(concept);
     }
 
     public void clear() {
         header.setConcept(null);
-        documentView.clear();
         footer.setConcept(null);
     }
 
-    public LearningDocumentView getDocumentView() {
-        return documentView;
+    public LearningChromiumCard getChromiumCard() {
+        return chromiumCard;
+    }
+
+    public void loadHtml(String html) {
+        chromiumCard.loadHtml(html);
+    }
+
+    public void scrollToAnchor(String anchor) {
+        chromiumCard.scrollToAnchor(anchor);
     }
 
     public Component getComponent() {
@@ -80,9 +85,5 @@ public final class LearningCard {
         g2.setColor(LearningDocumentStyle.cardBorderColor());
         g2.drawRoundRect(origin, origin, width - borderInset, height - borderInset, arc, arc);
         g2.dispose();
-    }
-
-    private static LearningPage pageFor(LearningConcept concept) {
-        return concept.getPage();
     }
 }
