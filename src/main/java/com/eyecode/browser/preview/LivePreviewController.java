@@ -1,6 +1,6 @@
 package com.eyecode.browser.preview;
 
-import com.eyecode.browser.BrowserService;
+import com.eyecode.browser.preview.PreviewBrowserService;
 import com.eyecode.editor.v2.integration.EditorHostPanel;
 import com.eyecode.editor.v2.ui.RichEditorView;
 
@@ -16,7 +16,7 @@ public final class LivePreviewController {
 
     private static final int DEBOUNCE_MS = 300;
 
-    private final BrowserService browserService;
+    private final PreviewBrowserService browserService;
     private final EditorHostPanel editorHostPanel;
     private final Timer debounceTimer;
     private final ChangeListener tabChangeListener;
@@ -24,7 +24,7 @@ public final class LivePreviewController {
     private DocumentListener currentDocListener;
     private Document currentDocument;
 
-    public LivePreviewController(BrowserService browserService, EditorHostPanel editorHostPanel) {
+    public LivePreviewController(PreviewBrowserService browserService, EditorHostPanel editorHostPanel) {
         this.browserService = browserService;
         this.editorHostPanel = editorHostPanel;
 

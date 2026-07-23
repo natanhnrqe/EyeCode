@@ -1,6 +1,6 @@
 package com.eyecode.browser.preview;
 
-import com.eyecode.browser.BrowserService;
+import com.eyecode.browser.preview.PreviewBrowserService;
 
 public final class HtmlPreviewController {
 
@@ -27,9 +27,9 @@ public final class HtmlPreviewController {
             </html>
             """;
 
-    private final BrowserService browserService;
+    private final PreviewBrowserService browserService;
 
-    public HtmlPreviewController(BrowserService browserService) {
+    public HtmlPreviewController(PreviewBrowserService browserService) {
         this.browserService = browserService;
         this.browserService.previewHtml(INITIAL_PAGE);
     }
@@ -38,7 +38,7 @@ public final class HtmlPreviewController {
         browserService.previewHtml(html);
     }
 
-    public BrowserService getBrowserService() {
+    public PreviewBrowserService getBrowserService() {
         return browserService;
     }
 }

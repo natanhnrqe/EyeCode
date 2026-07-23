@@ -1,4 +1,6 @@
-package com.eyecode.browser;
+package com.eyecode.browser.preview;
+
+import com.eyecode.browser.BrowserManager;
 
 import org.cef.browser.CefBrowser;
 
@@ -7,18 +9,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Locale;
 
-public final class BrowserService {
+public final class PreviewBrowserService {
 
     private final CefBrowser browser;
 
-    public BrowserService(CefBrowser browser) {
+    public PreviewBrowserService(CefBrowser browser) {
         this.browser = browser;
     }
 
-    public static BrowserService create() {
+    public static PreviewBrowserService create() {
         var client = BrowserManager.getInstance().getClient();
         var browser = client.createBrowser("about:blank", false, false);
-        return new BrowserService(browser);
+        return new PreviewBrowserService(browser);
     }
 
     public void loadUrl(String url) {
@@ -36,6 +38,7 @@ public final class BrowserService {
         loadHtml(html);
     }
 
+    @Deprecated(forRemoval = true)
     public void showLearningContent(String html) {
         previewHtml(html);
     }

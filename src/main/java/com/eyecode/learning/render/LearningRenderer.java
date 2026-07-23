@@ -1,19 +1,19 @@
 package com.eyecode.learning.render;
 
-import com.eyecode.browser.BrowserService;
+import com.eyecode.browser.preview.PreviewBrowserService;
 import com.eyecode.browser.BrowserToolWindow;
 import com.eyecode.learning.content.LearningContentEngine;
 
 public final class LearningRenderer {
 
-    private static BrowserService browserService;
+    private static PreviewBrowserService browserService;
     private static BrowserToolWindow browserToolWindow;
     private static LearningContentEngine contentEngine;
 
     private LearningRenderer() {
     }
 
-    public static void initialize(BrowserService bs, BrowserToolWindow btw) {
+    public static void initialize(PreviewBrowserService bs, BrowserToolWindow btw) {
         browserService = bs;
         browserToolWindow = btw;
         contentEngine = new LearningContentEngine();

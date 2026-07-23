@@ -1,7 +1,7 @@
 package com.eyecode.ui;
 
 import com.eyecode.browser.BrowserPanel;
-import com.eyecode.browser.BrowserService;
+import com.eyecode.browser.preview.PreviewBrowserService;
 import com.eyecode.browser.BrowserToolWindow;
 import com.eyecode.browser.preview.HtmlPreviewController;
 import com.eyecode.browser.preview.LivePreviewController;
@@ -153,7 +153,7 @@ public class MainWindow extends JFrame {
     }
 
     private void initPreview() {
-        var service = BrowserService.create();
+        var service = PreviewBrowserService.create();
         browserPanel = new BrowserPanel(service);
         previewController = new HtmlPreviewController(service);
         browserToolWindow = new BrowserToolWindow(browserPanel);
