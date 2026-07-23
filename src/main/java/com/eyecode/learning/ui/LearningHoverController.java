@@ -8,9 +8,11 @@ import com.eyecode.editor.v2.syntax.TokenType;
 import com.eyecode.learning.analysis.DefaultLearningContextResolver;
 import com.eyecode.learning.analysis.LearningAnalysisContext;
 import com.eyecode.learning.analysis.LearningContextResolver;
+import com.eyecode.learning.content.LearningPage;
 import com.eyecode.learning.hover.HoverEngine;
 import com.eyecode.learning.model.LearningConcept;
 import com.eyecode.learning.model.LearningContext;
+import com.eyecode.learning.render.LearningRenderer;
 
 import java.awt.Point;
 import java.util.Objects;
@@ -152,6 +154,13 @@ public final class LearningHoverController {
 
         popup.show(snapshot.concept());
         visibleSymbolKey = snapshot.symbolKey();
+
+        if (LearningRenderer.isInitialized()) {
+            LearningPage page = snapshot.concept().getPage();
+            if (page != null) {
+                LearningRenderer.showLesson(page.getResourcePath());
+            }
+        }
     }
 
     private HoverSnapshot resolveCurrentHover(int offset) {

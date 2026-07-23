@@ -24,6 +24,7 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+@Deprecated(forRemoval = true)
 public final class LearningChromiumView extends JPanel {
 
     private static final String LOADING_CARD = "loading";

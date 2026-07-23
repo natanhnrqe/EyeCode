@@ -36,6 +36,10 @@ public final class BrowserService {
         loadHtml(html);
     }
 
+    public void showLearningContent(String html) {
+        previewHtml(html);
+    }
+
     public void showWelcomePage() {
         loadHtml("""
                 <!doctype html>

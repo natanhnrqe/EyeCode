@@ -8,6 +8,7 @@ import com.eyecode.ui.core.UIViewFactory;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
 
+@Deprecated(forRemoval = true)
 public final class LearningDocumentView extends JPanel {
 
     private final LearningContentEngine contentEngine;

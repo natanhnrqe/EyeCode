@@ -67,4 +67,8 @@ public final class BrowserToolWindow extends JPanel {
     public boolean isOpen() {
         return open;
     }
+
+    public void openIfNecessary() {
+        if (!open) toggle();
+    }
 }

@@ -5,6 +5,7 @@ import com.eyecode.browser.BrowserService;
 import com.eyecode.browser.BrowserToolWindow;
 import com.eyecode.browser.preview.HtmlPreviewController;
 import com.eyecode.browser.preview.LivePreviewController;
+import com.eyecode.learning.render.LearningRenderer;
 import com.eyecode.command.CommandContext;
 import com.eyecode.autosave.AutoSaveManager;
 import com.eyecode.editor.Document;
@@ -157,6 +158,7 @@ public class MainWindow extends JFrame {
         previewController = new HtmlPreviewController(service);
         browserToolWindow = new BrowserToolWindow(browserPanel);
         new LivePreviewController(service, tabbedPane);
+        LearningRenderer.initialize(service, browserToolWindow);
     }
 
     private void configureActions() {

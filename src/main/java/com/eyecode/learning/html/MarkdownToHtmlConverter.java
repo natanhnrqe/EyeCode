@@ -3,6 +3,7 @@ package com.eyecode.learning.html;
 import com.eyecode.learning.markdown.*;
 import java.util.List;
 
+@Deprecated(forRemoval = true)
 public final class MarkdownToHtmlConverter {
 
     public String convert(MarkdownDocument document) {

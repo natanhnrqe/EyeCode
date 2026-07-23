@@ -47,6 +47,11 @@ public final class BrowserManager {
         return cefApp;
     }
 
+    public CefClient createClient() {
+        return cefApp.createClient();
+    }
+
+    @Deprecated(forRemoval = true)
     public CefClient getClient() {
         return cefClient;
     }
