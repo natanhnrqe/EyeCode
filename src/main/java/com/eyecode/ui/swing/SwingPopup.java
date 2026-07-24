@@ -2,7 +2,7 @@ package com.eyecode.ui.swing;
 
 import com.eyecode.ui.core.UIPopup;
 
-import javax.swing.JWindow;
+import javax.swing.JDialog;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -10,10 +10,13 @@ import java.awt.Rectangle;
 
 public final class SwingPopup implements UIPopup {
 
-    private final JWindow window;
+    private final JDialog window;
 
     public SwingPopup() {
-        this.window = new JWindow();
+        this.window = new JDialog();
+        this.window.setUndecorated(true);
+        this.window.setModalityType(JDialog.ModalityType.MODELESS);
+        this.window.setFocusableWindowState(false);
     }
 
     @Override
@@ -75,7 +78,7 @@ public final class SwingPopup implements UIPopup {
         window.setFocusableWindowState(focusable);
     }
 
-    public JWindow getWindow() {
+    public JDialog getWindow() {
         return window;
     }
 }

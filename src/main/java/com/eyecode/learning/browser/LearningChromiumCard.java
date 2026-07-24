@@ -19,10 +19,7 @@ public final class LearningChromiumCard extends JPanel {
         setBackground(new java.awt.Color(0x1e, 0x1e, 0x1e));
         setBorder(javax.swing.BorderFactory.createEmptyBorder());
 
-        if (USE_CEF) {
-            browserService = new LearningBrowserService();
-            add(browserService.getComponent(), BorderLayout.CENTER);
-        } else {
+        if (!USE_CEF) {
             fallbackPane = new JEditorPane("text/html", "<html><body style='color:#ccc;background:#1e1e1e;padding:16px'><p>CEF disabled</p></body></html>");
             fallbackPane.setEditable(false);
             fallbackPane.setBackground(new java.awt.Color(0x1e, 0x1e, 0x1e));
@@ -30,32 +27,43 @@ public final class LearningChromiumCard extends JPanel {
         }
     }
 
+    private void ensureBrowserCreated() {
+        if (browserService != null) return;
+        browserService = new LearningBrowserService();
+        var browserComponent = browserService.getComponent();
+        browserComponent.setFocusable(false);
+        add(browserComponent, BorderLayout.CENTER);
+        revalidate();
+    }
+
     public void loadHtml(String html) {
-        if (browserService != null) {
-            browserService.loadHtml(html);
-        } else if (fallbackPane != null) {
+        if (!USE_CEF && fallbackPane != null) {
             fallbackPane.setText(html);
+            return;
         }
+        ensureBrowserCreated();
+        browserService.loadHtml(html);
     }
 
     public void loadUrl(String url) {
-        if (browserService != null) {
-            browserService.loadUrl(url);
-        }
+        if (!USE_CEF) return;
+        ensureBrowserCreated();
+        browserService.loadUrl(url);
     }
 
     public void reload() {
-        if (browserService != null) {
-            browserService.reload();
-        } else if (fallbackPane != null) {
+        if (!USE_CEF && fallbackPane != null) {
             fallbackPane.setText("<html><body style='color:#ccc;background:#1e1e1e;padding:16px'><p>Reloaded</p></body></html>");
+            return;
         }
+        ensureBrowserCreated();
+        browserService.reload();
     }
 
     public void scrollToAnchor(String anchor) {
-        if (browserService != null) {
-            browserService.scrollToAnchor(anchor);
-        }
+        if (!USE_CEF) return;
+        ensureBrowserCreated();
+        browserService.scrollToAnchor(anchor);
     }
 
     public void dispose() {

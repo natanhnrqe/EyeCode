@@ -13,6 +13,7 @@ import com.eyecode.learning.hover.HoverEngine;
 import com.eyecode.learning.model.LearningConcept;
 import com.eyecode.learning.model.LearningContext;
 import com.eyecode.learning.render.LearningRenderer;
+import com.eyecode.learning.renderer.LearningCardRenderer;
 
 import java.awt.Point;
 import java.util.Objects;
@@ -26,7 +27,7 @@ public final class LearningHoverController {
     private static final Set<String> TYPE_KEYWORDS = Set.of("class", "interface", "enum", "record");
 
     private final LearningHoverSurface surface;
-    private final LearningHoverPopup popup;
+    private final LearningCardRenderer popup;
     private final LearningHoverScheduler scheduler;
     private final HoverStateMachine stateMachine;
     private final HoverEngine hoverEngine;
@@ -46,7 +47,7 @@ public final class LearningHoverController {
 
     public LearningHoverController(
             LearningHoverSurface surface,
-            LearningHoverPopup popup,
+            LearningCardRenderer popup,
             LearningHoverScheduler scheduler,
             HoverEngine hoverEngine,
             Supplier<SyntaxSnapshot> syntaxSupplier

@@ -5,6 +5,7 @@ import com.eyecode.learning.model.LearningConcept;
 import com.eyecode.ui.core.UIPopup;
 import com.eyecode.ui.core.UIViewFactory;
 
+import javax.swing.Timer;
 import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
@@ -34,9 +35,10 @@ public final class LearningHoverPopup {
     }
 
     public void loadHtml(String html) {
-        if (card != null) {
-            card.loadHtml(html);
-        }
+        if (card == null) return;
+        var timer = new Timer(100, e -> card.loadHtml(html));
+        timer.setRepeats(false);
+        timer.start();
     }
 
     public void show(LearningConcept concept) {
