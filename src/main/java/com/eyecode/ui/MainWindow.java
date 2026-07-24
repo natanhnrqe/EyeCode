@@ -1,11 +1,5 @@
 package com.eyecode.ui;
 
-import com.eyecode.browser.BrowserPanel;
-import com.eyecode.browser.preview.PreviewBrowserService;
-import com.eyecode.browser.BrowserToolWindow;
-import com.eyecode.browser.preview.HtmlPreviewController;
-import com.eyecode.browser.preview.LivePreviewController;
-import com.eyecode.learning.render.LearningRenderer;
 import com.eyecode.command.CommandContext;
 import com.eyecode.autosave.AutoSaveManager;
 import com.eyecode.editor.Document;
@@ -65,10 +59,6 @@ public class MainWindow extends JFrame {
     private final CardLayout editorCards;
     private final WelcomePanel welcomePanel;
 
-    private BrowserPanel browserPanel;
-    private HtmlPreviewController previewController;
-    private BrowserToolWindow browserToolWindow;
-
     private final ProjectService projectService;
     private final ProjectTemplateService templateService;
     private final EventBus eventBus;
@@ -126,7 +116,6 @@ public class MainWindow extends JFrame {
         editorStack.add(welcomePanel, WELCOME_VIEW);
         editorStack.add(tabbedPane, EDITOR_VIEW);
 
-        initPreview();
         configureActions();
         configureLayout();
         configureTabs();
@@ -150,15 +139,6 @@ public class MainWindow extends JFrame {
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setMinimumSize(new Dimension(UIConstants.WINDOW_MIN_WIDTH, UIConstants.WINDOW_MIN_HEIGHT));
         setVisible(true);
-    }
-
-    private void initPreview() {
-        var service = PreviewBrowserService.create();
-        browserPanel = new BrowserPanel(service);
-        previewController = new HtmlPreviewController(service);
-        browserToolWindow = new BrowserToolWindow(browserPanel);
-        new LivePreviewController(service, tabbedPane);
-        LearningRenderer.initialize(service, browserToolWindow);
     }
 
     private void configureActions() {
@@ -308,7 +288,6 @@ public class MainWindow extends JFrame {
                 autoSaveManager.saveAll();
                 autoSaveManager.shutdown();
                 if (projectRefreshService != null) projectRefreshService.stop();
-                if (previewController != null) previewController.getBrowserService().dispose();
             }
         });
     }
@@ -374,7 +353,6 @@ public class MainWindow extends JFrame {
         workspace.setBorder(BorderFactory.createEmptyBorder(SpacingSystem.MD, 0, 6, 0));
         workspace.add(toolWindowBar, BorderLayout.WEST);
         workspace.add(rootSplit, BorderLayout.CENTER);
-        workspace.add(browserToolWindow, BorderLayout.EAST);
 
         add(statusBar, BorderLayout.SOUTH);
         add(workspace, BorderLayout.CENTER);

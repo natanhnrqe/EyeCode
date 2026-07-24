@@ -33,6 +33,12 @@ public final class LearningHoverPopup {
         }
     }
 
+    public void loadHtml(String html) {
+        if (card != null) {
+            card.loadHtml(html);
+        }
+    }
+
     public void show(LearningConcept concept) {
         if (card == null) {
             return;

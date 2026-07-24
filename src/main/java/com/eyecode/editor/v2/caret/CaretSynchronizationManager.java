@@ -13,6 +13,9 @@ import javax.swing.text.Element;
 
 public final class CaretSynchronizationManager {
 
+    // TEMP EXPERIMENT FLAG: set false to skip caret→textPane sync
+    public static boolean SYNC_ENABLED = true;
+
     private final JTextPane textPane;
     private final EditorBuffer buffer;
     private final CaretListener caretListener;
@@ -25,14 +28,17 @@ public final class CaretSynchronizationManager {
         this.buffer = buffer;
         this.caretListener = this::syncFromSwing;
         this.bufferCaretListener = this::syncCaretToSwing;
-        this.textPane.addCaretListener(caretListener);
-        this.buffer.addCaretChangeListener(bufferCaretListener);
-
+        if (SYNC_ENABLED) {
+            this.textPane.addCaretListener(caretListener);
+            this.buffer.addCaretChangeListener(bufferCaretListener);
+        }
     }
 
     public void dispose() {
-        textPane.removeCaretListener(caretListener);
-        buffer.removeCaretChangeListener(bufferCaretListener);
+        if (SYNC_ENABLED) {
+            textPane.removeCaretListener(caretListener);
+            buffer.removeCaretChangeListener(bufferCaretListener);
+        }
     }
 
     public void setRefreshing(boolean refreshing) {

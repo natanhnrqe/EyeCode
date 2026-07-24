@@ -19,6 +19,14 @@ import java.util.function.IntConsumer;
 
 public final class SwingLearningHoverSurface implements LearningHoverSurface {
 
+    // TEMP EXPERIMENT FLAGS — isolamento binário de listeners
+    public static boolean REGISTER_LISTENERS = true;
+    public static boolean REGISTER_MOTION = true;
+    public static boolean REGISTER_WHEEL = false;  // DESLIGADO: mata o scroll do editor
+    public static boolean REGISTER_MOUSE = true;
+    public static boolean REGISTER_KEY = true;
+    public static boolean REGISTER_FOCUS = true;
+
     private final JTextPane textPane;
     private final MouseMotionAdapter motionListener;
     private final MouseWheelListener wheelListener;
@@ -62,11 +70,13 @@ public final class SwingLearningHoverSurface implements LearningHoverSurface {
             }
         };
 
-        textPane.addMouseMotionListener(motionListener);
-        textPane.addMouseWheelListener(wheelListener);
-        textPane.addMouseListener(mouseListener);
-        textPane.addKeyListener(keyListener);
-        textPane.addFocusListener(focusListener);
+        if (REGISTER_LISTENERS) {
+            if (REGISTER_MOTION) textPane.addMouseMotionListener(motionListener);
+            if (REGISTER_WHEEL) textPane.addMouseWheelListener(wheelListener);
+            if (REGISTER_MOUSE) textPane.addMouseListener(mouseListener);
+            if (REGISTER_KEY) textPane.addKeyListener(keyListener);
+            if (REGISTER_FOCUS) textPane.addFocusListener(focusListener);
+        }
     }
 
     @Override
@@ -113,11 +123,13 @@ public final class SwingLearningHoverSurface implements LearningHoverSurface {
 
     @Override
     public void dispose() {
-        textPane.removeMouseMotionListener(motionListener);
-        textPane.removeMouseWheelListener(wheelListener);
-        textPane.removeMouseListener(mouseListener);
-        textPane.removeKeyListener(keyListener);
-        textPane.removeFocusListener(focusListener);
+        if (REGISTER_LISTENERS) {
+            if (REGISTER_MOTION) textPane.removeMouseMotionListener(motionListener);
+            if (REGISTER_WHEEL) textPane.removeMouseWheelListener(wheelListener);
+            if (REGISTER_MOUSE) textPane.removeMouseListener(mouseListener);
+            if (REGISTER_KEY) textPane.removeKeyListener(keyListener);
+            if (REGISTER_FOCUS) textPane.removeFocusListener(focusListener);
+        }
         moveListener = null;
         cancelListener = null;
     }

@@ -12,6 +12,7 @@ public final class SwingLearningHoverScheduler implements LearningHoverScheduler
 
     private Runnable hoverTask;
     private Runnable monitorTask;
+    private boolean monitorRunning;
 
     public SwingLearningHoverScheduler() {
         hoverTimer = new Timer(HOVER_DELAY_MS, event -> runHoverTask());
@@ -34,12 +35,16 @@ public final class SwingLearningHoverScheduler implements LearningHoverScheduler
 
     @Override
     public void startMonitor(Runnable task) {
+        if (monitorRunning) return;
         monitorTask = task;
+        monitorRunning = true;
         monitorTimer.start();
     }
 
     @Override
     public void stopMonitor() {
+        if (!monitorRunning) return;
+        monitorRunning = false;
         monitorTimer.stop();
         monitorTask = null;
     }

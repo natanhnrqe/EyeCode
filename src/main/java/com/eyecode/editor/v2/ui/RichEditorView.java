@@ -136,7 +136,9 @@ public final class RichEditorView extends JPanel {
     private boolean renderPending;
     private int currentSearchIndex = -1;
     private boolean replaceMode;
-    private final LearningHoverController learningHoverController;
+    private LearningHoverController learningHoverController;
+    // TEMP EXPERIMENT FLAG: set true to skip hover (used by Experiment D)
+    public static boolean SKIP_HOVER;
 
     public RichEditorView(EditorBuffer buffer) {
         this(buffer, null, null);
@@ -304,19 +306,21 @@ public final class RichEditorView extends JPanel {
         };
         textPane.addFocusListener(focusListener);
 
-        LearningCatalog catalog = new DefaultLearningCatalog();
-        ClassConceptProvider classProvider = new ClassConceptProvider(catalog);
-        LearningConceptEngine conceptEngine = new DefaultLearningConceptEngine(List.of(classProvider));
-        HoverEngine hoverEngine = new DefaultHoverEngine(List.of(new ConceptHoverProvider(conceptEngine)));
-        LearningHoverPopup learningHoverPopup = new LearningHoverPopup(new SwingUIViewFactory());
-        learningHoverPopup.setCard(new LearningCard());
-        this.learningHoverController = new LearningHoverController(
-                new SwingLearningHoverSurface(textPane),
-                learningHoverPopup,
-                new SwingLearningHoverScheduler(),
-                hoverEngine,
-                () -> latestSyntaxSnapshot
-        );
+        if (!SKIP_HOVER) {
+            LearningCatalog catalog = new DefaultLearningCatalog();
+            ClassConceptProvider classProvider = new ClassConceptProvider(catalog);
+            LearningConceptEngine conceptEngine = new DefaultLearningConceptEngine(List.of(classProvider));
+            HoverEngine hoverEngine = new DefaultHoverEngine(List.of(new ConceptHoverProvider(conceptEngine)));
+            LearningHoverPopup learningHoverPopup = new LearningHoverPopup(new SwingUIViewFactory());
+            learningHoverPopup.setCard(new LearningCard());
+            this.learningHoverController = new LearningHoverController(
+                    new SwingLearningHoverSurface(textPane),
+                    learningHoverPopup,
+                    new SwingLearningHoverScheduler(),
+                    hoverEngine,
+                    () -> latestSyntaxSnapshot
+            );
+        }
 
         renderSyntax();
         refreshDiagnostics();
@@ -1407,7 +1411,7 @@ public final class RichEditorView extends JPanel {
         caretSync.dispose();
         buffer.clearListeners();
         completionPopup.hide();
-        learningHoverController.dispose();
+        if (learningHoverController != null) learningHoverController.dispose();
         clearSearchHighlights();
     }
 
