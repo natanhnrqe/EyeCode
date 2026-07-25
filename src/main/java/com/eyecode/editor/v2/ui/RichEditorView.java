@@ -138,6 +138,7 @@ public final class RichEditorView extends JPanel {
     // TEMP EXPERIMENT FLAG: set true to skip hover (used by Experiment D)
     public static boolean SKIP_HOVER;
 
+
     public RichEditorView(EditorBuffer buffer) {
         this(buffer, null, null);
     }
@@ -309,9 +310,10 @@ public final class RichEditorView extends JPanel {
             ClassConceptProvider classProvider = new ClassConceptProvider(catalog);
             LearningConceptEngine conceptEngine = new DefaultLearningConceptEngine(List.of(classProvider));
             HoverEngine hoverEngine = new DefaultHoverEngine(List.of(new ConceptHoverProvider(conceptEngine)));
+            var renderer = new ChromiumLearningCardRenderer();
             this.learningHoverController = new LearningHoverController(
                     new SwingLearningHoverSurface(textPane),
-                    new ChromiumLearningCardRenderer(),
+                    renderer,
                     new SwingLearningHoverScheduler(),
                     hoverEngine,
                     () -> latestSyntaxSnapshot

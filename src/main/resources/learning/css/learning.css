@@ -1,3 +1,12 @@
+@font-face {
+    font-family: "Emoji";
+    src: local("Segoe UI Emoji"),
+         local("Apple Color Emoji"),
+         local("Noto Color Emoji"),
+         local("Segoe UI Symbol");
+    unicode-range: U+2000-2BFF, U+1F000-1FFFF, U+2600-26FF, U+2700-27BF, U+3000-30FF, U+FE00-FE0F, U+200D, U+231A-23FF;
+}
+
 *,
 *::before,
 *::after {
@@ -12,10 +21,10 @@ html {
 body.learning-markdown {
     margin: 0 auto;
     max-width: 920px;
-    padding: 28px 40px 36px;
+    padding: 20px 24px 24px;
     background: #2b2b2b;
     color: #a9b7c6;
-    font-family: "Inter", "Segoe UI", "Noto Sans", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+    font-family: "Inter", "Segoe UI", "Noto Sans", "Emoji", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Segoe UI Symbol", sans-serif;
     font-size: 14px;
     line-height: 1.62;
     text-rendering: optimizeLegibility;
@@ -273,4 +282,26 @@ strong {
 img.emoji {
     display: inline;
     vertical-align: -0.12em;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #2b2b2b;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #5a5f61;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #73787a;
+}
+
+::-webkit-scrollbar-corner {
+    background: #2b2b2b;
 }

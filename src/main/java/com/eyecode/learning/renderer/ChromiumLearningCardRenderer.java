@@ -1,5 +1,6 @@
 package com.eyecode.learning.renderer;
 
+import com.eyecode.learning.diagnostic.LifecycleLogger;
 import com.eyecode.learning.model.LearningConcept;
 import com.eyecode.learning.ui.LearningCard;
 import com.eyecode.learning.ui.LearningHoverPopup;
@@ -18,11 +19,13 @@ public final class ChromiumLearningCardRenderer implements LearningCardRenderer 
 
     @Override
     public void show(LearningConcept concept) {
+        LifecycleLogger.show(this, concept);
         popup.show(concept);
     }
 
     @Override
     public void hide() {
+        LifecycleLogger.hide(this);
         popup.hide();
     }
 
@@ -48,6 +51,7 @@ public final class ChromiumLearningCardRenderer implements LearningCardRenderer 
 
     @Override
     public void dispose() {
+        LifecycleLogger.dispose(this);
         popup.hide();
     }
 

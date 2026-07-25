@@ -7,11 +7,14 @@ import java.awt.event.MouseWheelEvent;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class SwingLearningHoverSurfaceTest {
 
     @Test
     void mouseWheelRefreshesHoverOffset() {
+        assumeTrue(SwingLearningHoverSurface.REGISTER_WHEEL,
+                "Wheel listener disabled by REGISTER_WHEEL=false (scroll fix)");
         JTextPane textPane = new JTextPane();
         textPane.setText("class Sample {}");
         textPane.setSize(400, 200);

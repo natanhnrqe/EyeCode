@@ -12,12 +12,10 @@ import com.eyecode.learning.concepts.providers.ClassConceptProvider;
 import com.eyecode.learning.hover.ConceptHoverProvider;
 import com.eyecode.learning.hover.DefaultHoverEngine;
 import com.eyecode.learning.hover.HoverEngine;
-import com.eyecode.learning.ui.LearningCard;
+import com.eyecode.learning.renderer.ChromiumLearningCardRenderer;
 import com.eyecode.learning.ui.LearningHoverController;
-import com.eyecode.learning.ui.LearningHoverPopup;
 import com.eyecode.learning.ui.SwingLearningHoverScheduler;
 import com.eyecode.learning.ui.SwingLearningHoverSurface;
-import com.eyecode.ui.swing.SwingUIViewFactory;
 
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
@@ -61,8 +59,7 @@ public final class ExperimentB_NoCEF {
             JScrollPane scrollPane = new JScrollPane(textPane);
             frame.add(scrollPane);
 
-            LearningHoverPopup popup = new LearningHoverPopup(new SwingUIViewFactory());
-            popup.setCard(new LearningCard());
+            ChromiumLearningCardRenderer renderer = new ChromiumLearningCardRenderer();
 
             LearningCatalog catalog = new DefaultLearningCatalog();
             ClassConceptProvider classProvider = new ClassConceptProvider(catalog);
@@ -71,7 +68,7 @@ public final class ExperimentB_NoCEF {
 
             new LearningHoverController(
                     new SwingLearningHoverSurface(textPane),
-                    popup,
+                    renderer,
                     new SwingLearningHoverScheduler(),
                     hoverEngine,
                     () -> snapshotFromText(textPane.getText())
