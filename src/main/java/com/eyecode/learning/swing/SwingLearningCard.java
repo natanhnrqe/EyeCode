@@ -17,10 +17,8 @@ public final class SwingLearningCard extends JPanel {
         super(new BorderLayout());
         setOpaque(true);
         setBackground(LearningDocumentStyle.cardBackground());
-        setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(LearningDocumentStyle.cardBorderColor(), 1),
-                BorderFactory.createEmptyBorder(0, 0, 0, 0)
-        ));
+        setBorder(BorderFactory.createLineBorder(
+                LearningDocumentStyle.cardBorderColor(), 1));
 
         header = new SwingLearningHeader();
         body = new SwingLearningBody();
