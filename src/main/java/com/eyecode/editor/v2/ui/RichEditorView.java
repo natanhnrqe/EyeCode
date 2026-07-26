@@ -310,7 +310,7 @@ public final class RichEditorView extends JPanel {
             ClassConceptProvider classProvider = new ClassConceptProvider(catalog);
             LearningConceptEngine conceptEngine = new DefaultLearningConceptEngine(List.of(classProvider));
             HoverEngine hoverEngine = new DefaultHoverEngine(List.of(new ConceptHoverProvider(conceptEngine)));
-            var renderer = new ChromiumLearningCardRenderer();
+            var renderer = new com.eyecode.learning.renderer.SwingLearningCardRenderer();
             this.learningHoverController = new LearningHoverController(
                     new SwingLearningHoverSurface(textPane),
                     renderer,

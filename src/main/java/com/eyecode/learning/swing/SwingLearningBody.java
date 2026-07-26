@@ -55,6 +55,7 @@ public final class SwingLearningBody extends JScrollPane {
 
     public void addCodeBlock(String language, String code) {
         SwingCodeBlock block = new SwingCodeBlock(language, code);
+        block.setAlignmentX(Component.LEFT_ALIGNMENT);
         contentPanel.add(block);
         contentPanel.add(Box.createVerticalStrut(14));
     }
