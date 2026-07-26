@@ -46,6 +46,15 @@ public final class SwingLearningActionBar extends JPanel {
         add(Box.createHorizontalGlue());
     }
 
+    public void setDocumentationAction(Runnable action) {
+        for (java.awt.event.ActionListener al : openDocsButton.getActionListeners()) {
+            openDocsButton.removeActionListener(al);
+        }
+        openDocsButton.addActionListener(e -> {
+            if (action != null) action.run();
+        });
+    }
+
     private JButton createButton(String text, Runnable action) {
         JButton btn = new JButton(text);
         btn.setFont(TypographyManager.UI_SMALL());

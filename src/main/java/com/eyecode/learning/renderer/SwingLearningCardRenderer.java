@@ -3,6 +3,7 @@ package com.eyecode.learning.renderer;
 import com.eyecode.learning.model.LearningCardDocument;
 import com.eyecode.learning.model.LearningCardDocumentAdapter;
 import com.eyecode.learning.model.LearningConcept;
+import com.eyecode.learning.service.LearningDocumentationWindowService;
 import com.eyecode.learning.swing.SwingLearningCard;
 import com.eyecode.ui.swing.SwingPopup;
 import com.eyecode.learning.model.ConceptType;
@@ -14,11 +15,13 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
 
     private final SwingPopup popup;
     private final SwingLearningCard card;
+    private final LearningDocumentationWindowService docService;
     private boolean visible;
 
     public SwingLearningCardRenderer() {
         this.popup = new SwingPopup();
         this.card = new SwingLearningCard();
+        this.docService = new LearningDocumentationWindowService();
         this.popup.setContent(card);
         this.popup.setFocusableWindowState(false);
         this.visible = false;
@@ -27,6 +30,11 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
     @Override
     public void show(LearningConcept concept) {
         LearningCardDocument document = buildDocument(concept);
+        card.getActionBar().setDocumentationAction(() -> {
+            if (concept != null) {
+                docService.open(concept);
+            }
+        });
         card.render(document);
         popup.show();
         visible = true;

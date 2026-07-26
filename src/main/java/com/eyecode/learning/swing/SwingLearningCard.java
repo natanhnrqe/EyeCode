@@ -11,10 +11,12 @@ import com.eyecode.learning.model.LearningCardFooterData;
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
+import java.util.function.Supplier;
 
 public final class SwingLearningCard extends JPanel {
 
     private final SwingLearningHeader header;
+    private final SwingLearningActionBar actionBar;
     private final SwingLearningBody body;
     private final SwingLearningFooter footer;
 
@@ -28,7 +30,7 @@ public final class SwingLearningCard extends JPanel {
         ));
 
         header = new SwingLearningHeader();
-        SwingLearningActionBar actionBar = new SwingLearningActionBar();
+        actionBar = new SwingLearningActionBar();
         body = new SwingLearningBody();
         footer = new SwingLearningFooter();
 
@@ -52,6 +54,10 @@ public final class SwingLearningCard extends JPanel {
 
     public SwingLearningFooter getFooter() {
         return footer;
+    }
+
+    public SwingLearningActionBar getActionBar() {
+        return actionBar;
     }
 
     public void render(LearningCardDocument document) {
