@@ -28,11 +28,17 @@ public final class SwingLearningCard extends JPanel {
         ));
 
         header = new SwingLearningHeader();
+        SwingLearningActionBar actionBar = new SwingLearningActionBar();
         body = new SwingLearningBody();
         footer = new SwingLearningFooter();
 
+        JPanel centerArea = new JPanel(new BorderLayout());
+        centerArea.setOpaque(false);
+        centerArea.add(actionBar, BorderLayout.NORTH);
+        centerArea.add(body, BorderLayout.CENTER);
+
         add(header, BorderLayout.NORTH);
-        add(body, BorderLayout.CENTER);
+        add(centerArea, BorderLayout.CENTER);
         add(footer, BorderLayout.SOUTH);
     }
 

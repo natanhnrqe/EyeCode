@@ -5,11 +5,13 @@ import com.eyecode.ui.designsystem.ColorManager;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
+import java.awt.Component;
 
 public final class SwingCodeBlock extends JPanel {
 
@@ -25,6 +27,16 @@ public final class SwingCodeBlock extends JPanel {
                 BorderFactory.createEmptyBorder(0, 0, 0, 0)
         ));
 
+        codeArea = new JTextArea(code != null ? code : "");
+        codeArea.setFont(LearningDocumentStyle.codeFont());
+        codeArea.setForeground(ColorManager.EDITOR_FOREGROUND);
+        codeArea.setBackground(ColorManager.EDITOR_BG);
+        codeArea.setBorder(new EmptyBorder(12, 14, 12, 14));
+        codeArea.setEditable(false);
+        codeArea.setFocusable(false);
+        codeArea.setLineWrap(false);
+        codeArea.setWrapStyleWord(false);
+
         headerLabel = new JLabel(language != null ? language : "");
         headerLabel.setFont(LearningDocumentStyle.metaFont());
         headerLabel.setForeground(ColorManager.TEXT_TERTIARY);
@@ -37,15 +49,17 @@ public final class SwingCodeBlock extends JPanel {
         header.setBackground(ColorManager.PANEL_BG);
         header.add(headerLabel, BorderLayout.WEST);
 
-        codeArea = new JTextArea(code != null ? code : "");
-        codeArea.setFont(LearningDocumentStyle.codeFont());
-        codeArea.setForeground(ColorManager.EDITOR_FOREGROUND);
-        codeArea.setBackground(ColorManager.EDITOR_BG);
-        codeArea.setBorder(new EmptyBorder(12, 14, 12, 14));
-        codeArea.setEditable(false);
-        codeArea.setFocusable(false);
-        codeArea.setLineWrap(false);
-        codeArea.setWrapStyleWord(false);
+        JButton copyBtn = new JButton("Copy");
+        copyBtn.setFont(LearningDocumentStyle.buttonFont());
+        copyBtn.setForeground(ColorManager.TEXT_TERTIARY);
+        copyBtn.setBackground(ColorManager.PANEL_BG);
+        copyBtn.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+        copyBtn.setFocusable(false);
+        copyBtn.addActionListener(e -> {
+            java.awt.datatransfer.StringSelection selection = new java.awt.datatransfer.StringSelection(codeArea.getText());
+            java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
+        });
+        header.add(copyBtn, BorderLayout.EAST);
 
         JPanel body = new JPanel(new BorderLayout());
         body.setOpaque(true);
