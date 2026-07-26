@@ -177,6 +177,7 @@ public final class LearningHoverController {
     }
 
     private void tryShow() {
+        HoverDiagnosticLogger.log("controller.tryShow()");
         if (!stateMachine.canShow()) {
             return;
         }
@@ -195,6 +196,7 @@ public final class LearningHoverController {
         lastLessonPath = null;
 
         popup.show(snapshot.concept());
+        HoverDiagnosticLogger.logRendererShow();
         visibleSymbolKey = snapshot.symbolKey();
         popupShownAt = System.currentTimeMillis();
 

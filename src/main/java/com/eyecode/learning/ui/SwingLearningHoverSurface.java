@@ -135,6 +135,7 @@ public final class SwingLearningHoverSurface implements LearningHoverSurface {
     }
 
     private void notifyMove(MouseEvent event) {
+        HoverDiagnosticLogger.logSurfaceMove(textPane.viewToModel2D(event.getPoint()));
         if (moveListener != null) {
             moveListener.accept(textPane.viewToModel2D(event.getPoint()));
         }

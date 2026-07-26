@@ -8,6 +8,8 @@ import javax.swing.JFrame;
 import javax.swing.WindowConstants;
 import java.awt.BorderLayout;
 
+import com.eyecode.learning.service.DocumentationLifecycleLogger;
+
 public final class LearningDocumentationWindowService {
 
     private final JFrame window;
@@ -26,6 +28,7 @@ public final class LearningDocumentationWindowService {
     }
 
     public void open(LearningConcept concept) {
+        DocumentationLifecycleLogger.logOpen();
         if (concept == null || concept.getPage() == null) {
             return;
         }
@@ -34,10 +37,22 @@ public final class LearningDocumentationWindowService {
             return;
         }
         String html = LearningRenderer.renderLesson(resourcePath);
-        card.loadHtml(html);
+        DocumentationLifecycleLogger.logWindowCreated();
+        DocumentationLifecycleLogger.logCardCreated();
         this.open = true;
         window.setVisible(true);
         window.toFront();
+        DocumentationLifecycleLogger.logWindowVisible(true);
+        DocumentationLifecycleLogger.logWindowBounds(window.getWidth(), window.getHeight());
+        window.revalidate();
+        window.repaint();
+        DocumentationLifecycleLogger.logWindowDisplayable();
+        card.loadHtml(html);
+        DocumentationLifecycleLogger.logBrowserCreated();
+        DocumentationLifecycleLogger.logLoadRequested();
+        DocumentationLifecycleLogger.logBrowserComponentDisplayable();
+        DocumentationLifecycleLogger.logBrowserComponentVisible(true);
+        DocumentationLifecycleLogger.logFirstPaint();
     }
 
     public void close() {

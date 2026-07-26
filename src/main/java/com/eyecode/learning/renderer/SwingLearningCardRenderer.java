@@ -4,12 +4,14 @@ import com.eyecode.learning.model.LearningCardDocument;
 import com.eyecode.learning.model.LearningCardDocumentAdapter;
 import com.eyecode.learning.model.LearningConcept;
 import com.eyecode.learning.service.LearningDocumentationWindowService;
+import com.eyecode.learning.ui.HoverDiagnosticLogger;
 import com.eyecode.learning.swing.SwingLearningCard;
 import com.eyecode.ui.swing.SwingPopup;
 import com.eyecode.learning.model.ConceptType;
 import com.eyecode.learning.model.DifficultyLevel;
 
 import java.awt.Point;
+import java.awt.Toolkit;
 
 public final class SwingLearningCardRenderer implements LearningCardRenderer {
 
@@ -29,6 +31,7 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
 
     @Override
     public void show(LearningConcept concept) {
+        HoverDiagnosticLogger.logRendererShow();
         LearningCardDocument document = buildDocument(concept);
         card.getActionBar().setDocumentationAction(() -> {
             if (concept != null) {
@@ -36,12 +39,32 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
             }
         });
         card.render(document);
+        popup.getWindow().pack();
+        java.awt.PointerInfo pointerInfo = java.awt.MouseInfo.getPointerInfo();
+        java.awt.Point mouse = pointerInfo != null ? pointerInfo.getLocation() : new java.awt.Point(200, 200);
+        int x = mouse.x + 12;
+        int y = mouse.y + 12;
+        java.awt.Dimension size = popup.getWindow().getSize();
+        java.awt.Rectangle screen = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getDefaultScreenDevice().getDefaultConfiguration().getBounds();
+        java.awt.Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(
+                java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
+                        .getDefaultScreenDevice().getDefaultConfiguration());
+        if (x + size.width > screen.x + screen.width - insets.right) {
+            x = mouse.x - 12 - size.width;
+        }
+        if (y + size.height > screen.y + screen.height - insets.bottom) {
+            y = mouse.y - 12 - size.height;
+        }
+        popup.setLocation(x, y);
         popup.show();
         visible = true;
     }
 
     private LearningCardDocument buildDocument(LearningConcept concept) {
-        return LearningCardDocumentAdapter.fromConcept(concept);
+        LearningCardDocument doc = LearningCardDocumentAdapter.fromConcept(concept);
+        HoverDiagnosticLogger.logCardRender();
+        return doc;
     }
 
     @Override
@@ -52,7 +75,9 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
 
     @Override
     public boolean isVisible() {
-        return visible && popup.isVisible();
+        boolean result = visible && popup.isVisible();
+        HoverDiagnosticLogger.logCardVisible(result);
+        return result;
     }
 
     @Override

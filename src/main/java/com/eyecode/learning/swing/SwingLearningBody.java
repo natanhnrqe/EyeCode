@@ -23,7 +23,7 @@ public final class SwingLearningBody extends JScrollPane {
         contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         contentPanel.setOpaque(false);
-        contentPanel.setBorder(new EmptyBorder(16, 20, 16, 20));
+        contentPanel.setBorder(new EmptyBorder(12, 16, 12, 16));
 
         setViewportView(contentPanel);
         setBorder(null);

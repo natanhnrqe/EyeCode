@@ -2,6 +2,8 @@ package com.eyecode.ui.swing;
 
 import com.eyecode.ui.core.UIPopup;
 
+import com.eyecode.learning.ui.HoverDiagnosticLogger;
+
 import javax.swing.JDialog;
 import java.awt.Color;
 import java.awt.Component;
@@ -21,17 +23,21 @@ public final class SwingPopup implements UIPopup {
 
     @Override
     public void show() {
+        HoverDiagnosticLogger.logPopupShow();
         window.setVisible(true);
     }
 
     @Override
     public void hide() {
+        HoverDiagnosticLogger.logPopupHide();
         window.setVisible(false);
     }
 
     @Override
     public boolean isVisible() {
-        return window.isVisible();
+        boolean visible = window.isVisible();
+        HoverDiagnosticLogger.logPopupVisible(visible);
+        return visible;
     }
 
     @Override
