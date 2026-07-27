@@ -89,9 +89,10 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
         }
         renderConcept(concept);
         // Manter posição atual quando já visível; não reposicionar ao navegar via Related Concepts
-        popup.getWindow().pack();
-        // NÃO chamar positionPopup() para evitar reposicionar o card quando o usuário está interagindo
+        // NÃO chamar pack() para evitar que o popup mude de tamanho quando já está aberto
         // A posição só é atualizada quando o card é mostrado pela primeira vez (show())
+        popup.getWindow().revalidate();
+        popup.getWindow().repaint();
     }
 
     private void renderConcept(LearningConcept concept) {

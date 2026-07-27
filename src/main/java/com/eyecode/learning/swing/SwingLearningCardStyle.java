@@ -26,9 +26,9 @@ public final class SwingLearningCardStyle {
     public static final int CARD_PADDING_RIGHT  = 12;
 
     public static final int CARD_MIN_WIDTH  = 280;
-    public static final int CARD_MAX_WIDTH  = 460;
+    public static final int CARD_MAX_WIDTH  = 520;
     public static final int CARD_MIN_HEIGHT = 80;
-    public static final int CARD_MAX_HEIGHT = 480;
+    public static final int CARD_MAX_HEIGHT = 520;
 
     public static Border cardBorder() {
         return BorderFactory.createCompoundBorder(

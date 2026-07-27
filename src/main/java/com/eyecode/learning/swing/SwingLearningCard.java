@@ -41,9 +41,12 @@ public final class SwingLearningCard extends JPanel {
         add(centerArea, BorderLayout.CENTER);
         add(footer, BorderLayout.SOUTH);
 
-        setMaximumSize(new Dimension(
+        Dimension preferred = new Dimension(
                 SwingLearningCardStyle.CARD_MAX_WIDTH,
-                SwingLearningCardStyle.CARD_MAX_HEIGHT));
+                SwingLearningCardStyle.CARD_MAX_HEIGHT);
+        setPreferredSize(preferred);
+        setMinimumSize(preferred);
+        setMaximumSize(preferred);
     }
 
     public SwingLearningHeader getHeader() {
