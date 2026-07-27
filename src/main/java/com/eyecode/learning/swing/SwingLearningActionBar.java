@@ -1,7 +1,6 @@
 package com.eyecode.learning.swing;
 
 import com.eyecode.ui.designsystem.ColorManager;
-import com.eyecode.ui.designsystem.IconManager;
 import com.eyecode.ui.designsystem.TypographyManager;
 
 import javax.swing.BorderFactory;
@@ -11,7 +10,6 @@ import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import java.awt.Component;
-import java.awt.event.ActionEvent;
 
 public final class SwingLearningActionBar extends JPanel {
 
@@ -27,14 +25,10 @@ public final class SwingLearningActionBar extends JPanel {
         setBorder(new EmptyBorder(4, 0, 4, 0));
         setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        openDocsButton = createButton("Open Documentation",
-                () -> System.out.println("Documentation action triggered"));
-        explainButton = createButton("Explain More",
-                () -> System.out.println("Explain action triggered"));
-        copyButton = createButton("Copy Code",
-                () -> System.out.println("Copy action triggered"));
-        relatedButton = createButton("Related Concepts",
-                () -> System.out.println("Related concepts action triggered"));
+        openDocsButton = createButton("Open Documentation");
+        explainButton = createButton("Explain More");
+        copyButton = createButton("Copy Code");
+        relatedButton = createButton("Related Concepts");
 
         add(openDocsButton);
         add(Box.createHorizontalStrut(6));
@@ -47,15 +41,38 @@ public final class SwingLearningActionBar extends JPanel {
     }
 
     public void setDocumentationAction(Runnable action) {
-        for (java.awt.event.ActionListener al : openDocsButton.getActionListeners()) {
-            openDocsButton.removeActionListener(al);
-        }
-        openDocsButton.addActionListener(e -> {
-            if (action != null) action.run();
-        });
+        wireAction(openDocsButton, action);
     }
 
-    private JButton createButton(String text, Runnable action) {
+    public void setExplainAction(Runnable action) {
+        wireAction(explainButton, action);
+        explainButton.setEnabled(action != null);
+    }
+
+    public void setCopyAction(Runnable action) {
+        wireAction(copyButton, action);
+        copyButton.setEnabled(action != null);
+    }
+
+    public void setRelatedAction(Runnable action) {
+        wireAction(relatedButton, action);
+        relatedButton.setEnabled(action != null);
+    }
+
+    public void setRelatedEnabled(boolean enabled) {
+        relatedButton.setEnabled(enabled);
+    }
+
+    private void wireAction(JButton button, Runnable action) {
+        for (java.awt.event.ActionListener al : button.getActionListeners()) {
+            button.removeActionListener(al);
+        }
+        if (action != null) {
+            button.addActionListener(e -> action.run());
+        }
+    }
+
+    private JButton createButton(String text) {
         JButton btn = new JButton(text);
         btn.setFont(TypographyManager.UI_SMALL());
         btn.setForeground(ColorManager.TEXT_SECONDARY);
@@ -65,7 +82,6 @@ public final class SwingLearningActionBar extends JPanel {
                 BorderFactory.createEmptyBorder(4, 8, 4, 8)
         ));
         btn.setFocusable(false);
-        btn.addActionListener(e -> action.run());
         return btn;
     }
 }

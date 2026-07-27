@@ -1,5 +1,6 @@
 package com.eyecode.learning.renderer;
 
+import com.eyecode.learning.model.LearningCardBlock;
 import com.eyecode.learning.model.LearningCardDocument;
 import com.eyecode.learning.model.LearningCardDocumentAdapter;
 import com.eyecode.learning.model.LearningConcept;
@@ -7,11 +8,10 @@ import com.eyecode.learning.service.LearningDocumentationWindowService;
 import com.eyecode.learning.ui.HoverDiagnosticLogger;
 import com.eyecode.learning.swing.SwingLearningCard;
 import com.eyecode.ui.swing.SwingPopup;
-import com.eyecode.learning.model.ConceptType;
-import com.eyecode.learning.model.DifficultyLevel;
 
 import java.awt.Point;
 import java.awt.Toolkit;
+import java.util.List;
 
 public final class SwingLearningCardRenderer implements LearningCardRenderer {
 
@@ -33,11 +33,7 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
     public void show(LearningConcept concept) {
         HoverDiagnosticLogger.logRendererShow();
         LearningCardDocument document = buildDocument(concept);
-        card.getActionBar().setDocumentationAction(() -> {
-            if (concept != null) {
-                docService.open(concept);
-            }
-        });
+        wireActions(concept, document);
         card.render(document);
         popup.getWindow().pack();
         java.awt.PointerInfo pointerInfo = java.awt.MouseInfo.getPointerInfo();
@@ -59,6 +55,43 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
         popup.setLocation(x, y);
         popup.show();
         visible = true;
+    }
+
+    private void wireActions(LearningConcept concept, LearningCardDocument document) {
+        card.getActionBar().setDocumentationAction(() -> {
+            if (concept != null) {
+                docService.open(concept);
+            }
+        });
+
+        String code = extractFirstCode(document);
+        card.getActionBar().setCopyAction(code != null ? () -> copyToClipboard(code) : null);
+
+        List<String> related = concept != null ? concept.getRelatedConcepts() : null;
+        boolean hasRelated = related != null && !related.isEmpty();
+        card.getActionBar().setRelatedAction(hasRelated ? () -> showRelatedToast(related) : null);
+        card.getActionBar().setRelatedEnabled(hasRelated);
+
+        card.getActionBar().setExplainAction(concept != null ? () -> docService.open(concept) : null);
+    }
+
+    private String extractFirstCode(LearningCardDocument document) {
+        if (document == null) return null;
+        for (LearningCardBlock block : document.getBlocks()) {
+            if (block instanceof LearningCardBlock.CodeBlock cb) {
+                return cb.code();
+            }
+        }
+        return null;
+    }
+
+    private void copyToClipboard(String text) {
+        java.awt.datatransfer.StringSelection selection = new java.awt.datatransfer.StringSelection(text);
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
+    }
+
+    private void showRelatedToast(List<String> related) {
+        System.out.println("Related concepts: " + String.join(", ", related));
     }
 
     private LearningCardDocument buildDocument(LearningConcept concept) {
