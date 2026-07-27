@@ -7,6 +7,7 @@ import com.eyecode.learning.model.LearningConcept;
 
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
 public final class DefaultLearningCatalog implements LearningCatalog {
@@ -18,35 +19,40 @@ public final class DefaultLearningCatalog implements LearningCatalog {
         register(ConceptType.CLASS, "class", "Class",
                 "A Java class defines a blueprint for creating objects.",
                 DifficultyLevel.BEGINNER,
-                "/learning/class.md");
+                "/learning/class.md",
+                List.of("object", "interface", "record"));
         register(ConceptType.INTERFACE, "interface", "Interface",
                 "A Java interface defines a contract that implementing classes must fulfill.",
                 DifficultyLevel.INTERMEDIATE,
-                "/learning/interface.md");
+                "/learning/interface.md",
+                List.of("class", "object"));
         register(ConceptType.ENUM, "enum", "Enum",
                 "A Java enum defines a fixed set of named constants.",
                 DifficultyLevel.BEGINNER,
-                "/learning/enum.md");
+                "/learning/enum.md",
+                List.of("class"));
         register(ConceptType.RECORD, "record", "Record",
                 "A Java record is a concise way to define immutable data carriers.",
                 DifficultyLevel.INTERMEDIATE,
-                "/learning/record.md");
+                "/learning/record.md",
+                List.of("class", "object"));
         register(ConceptType.OBJECT, "object", "Object",
                 "An object is an instance of a class, with state and behavior.",
                 DifficultyLevel.BEGINNER,
-                "/learning/object.md");
+                "/learning/object.md",
+                List.of("class"));
     }
 
     private void register(ConceptType type, String id, String title,
                           String description, DifficultyLevel difficulty,
-                          String resourcePath) {
+                          String resourcePath, List<String> relatedConceptIds) {
         LearningConcept concept = new LearningConcept();
         concept.setId(id);
         concept.setTitle(title);
         concept.setDescription(description);
         concept.setType(type);
         concept.setDifficulty(difficulty);
-        concept.setRelatedConcepts(Collections.emptyList());
+        concept.setRelatedConcepts(List.copyOf(relatedConceptIds));
         concept.setPage(new LearningPage(resourcePath));
         concepts.put(type, concept);
     }
@@ -59,5 +65,10 @@ public final class DefaultLearningCatalog implements LearningCatalog {
     @Override
     public boolean contains(ConceptType type) {
         return concepts.containsKey(type);
+    }
+
+    @Override
+    public List<LearningConcept> allConcepts() {
+        return List.copyOf(concepts.values());
     }
 }

@@ -5,8 +5,8 @@ import java.util.function.LongSupplier;
 
 public final class HoverStateMachine {
 
-    private static final long SHOW_DELAY_MS = 400L;
-    private static final long HIDE_DELAY_MS = 100L;
+    private static final long SHOW_DELAY_MS = 500L;
+    private static final long HIDE_DELAY_MS = 300L;
 
     private final LongSupplier clock;
 

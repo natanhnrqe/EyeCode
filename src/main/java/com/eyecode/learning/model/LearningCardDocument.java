@@ -3,16 +3,17 @@ package com.eyecode.learning.model;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 public final class LearningCardDocument {
 
     private LearningCardHeaderData header;
     private LearningCardFooterData footer;
     private final List<LearningCardBlock> blocks;
+    private List<RelatedConcept> relatedConcepts;
 
     public LearningCardDocument() {
         this.blocks = new ArrayList<>();
+        this.relatedConcepts = List.of();
     }
 
     public LearningCardDocument(LearningCardHeaderData header, LearningCardFooterData footer) {
@@ -77,7 +78,16 @@ public final class LearningCardDocument {
                 .toList();
     }
 
+    public void setRelatedConcepts(List<RelatedConcept> relatedConcepts) {
+        this.relatedConcepts = relatedConcepts != null ? List.copyOf(relatedConcepts) : List.of();
+    }
+
+    public List<RelatedConcept> getRelatedConcepts() {
+        return relatedConcepts != null ? relatedConcepts : List.of();
+    }
+
     public void clear() {
         blocks.clear();
+        relatedConcepts = List.of();
     }
 }

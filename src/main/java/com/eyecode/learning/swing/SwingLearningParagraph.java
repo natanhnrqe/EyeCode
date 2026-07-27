@@ -1,13 +1,9 @@
 package com.eyecode.learning.swing;
 
-import com.eyecode.ui.designsystem.ColorManager;
-import com.eyecode.ui.designsystem.TypographyManager;
-
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.border.EmptyBorder;
-import java.awt.Font;
 
 public final class SwingLearningParagraph extends JPanel {
 
@@ -19,14 +15,14 @@ public final class SwingLearningParagraph extends JPanel {
         setOpaque(false);
 
         area = new JTextArea(text != null ? text : "");
-        area.setFont(TypographyManager.monoRegular(12));
-        area.setForeground(ColorManager.TEXT_SECONDARY);
-        area.setBackground(ColorManager.CARD_BG);
-        area.setBorder(new EmptyBorder(4, 0, 12, 0));
+        area.setFont(SwingLearningCardStyle.bodyParagraphFont());
+        area.setForeground(SwingLearningCardStyle.BODY_PARAGRAPH_COLOR);
         area.setLineWrap(true);
         area.setWrapStyleWord(true);
         area.setEditable(false);
         area.setOpaque(false);
+        area.setBorder(new EmptyBorder(2, 0,
+                SwingLearningCardStyle.BODY_PARAGRAPH_BOTTOM_GAP, 0));
         area.setAlignmentX(LEFT_ALIGNMENT);
 
         add(area);

@@ -166,6 +166,11 @@ class DefaultLearningConceptEngineTest {
             public boolean contains(ConceptType type) {
                 return false;
             }
+
+            @Override
+            public java.util.List<LearningConcept> allConcepts() {
+                return java.util.List.of();
+            }
         };
 
         ClassConceptProvider provider = new ClassConceptProvider(emptyCatalog);

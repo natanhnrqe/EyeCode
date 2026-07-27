@@ -1,10 +1,8 @@
 package com.eyecode.learning.swing;
 
-import com.eyecode.learning.document.LearningDocumentStyle;
-
 import com.eyecode.learning.model.LearningCardDocument;
-import com.eyecode.learning.model.LearningCardHeaderData;
 import com.eyecode.learning.model.LearningCardFooterData;
+import com.eyecode.learning.model.LearningCardHeaderData;
 import com.eyecode.learning.model.RelatedConcept;
 
 import com.eyecode.ui.designsystem.IconManager;
@@ -12,6 +10,7 @@ import com.eyecode.ui.designsystem.IconManager;
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.util.List;
 
 public final class SwingLearningCard extends JPanel {
@@ -24,16 +23,14 @@ public final class SwingLearningCard extends JPanel {
     public SwingLearningCard() {
         super(new BorderLayout());
         setOpaque(true);
-        setBackground(LearningDocumentStyle.cardBackground());
-        setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(LearningDocumentStyle.cardBorderColor(), 1),
-                BorderFactory.createEmptyBorder(8, 12, 8, 12)
-        ));
+        setBackground(SwingLearningCardStyle.CARD_BACKGROUND);
+        setBorder(SwingLearningCardStyle.cardBorder());
 
         header = new SwingLearningHeader();
         actionBar = new SwingLearningActionBar();
         body = new SwingLearningBody();
         footer = new SwingLearningFooter();
+        footer.setVisible(false);
 
         JPanel centerArea = new JPanel(new BorderLayout());
         centerArea.setOpaque(false);
@@ -43,6 +40,10 @@ public final class SwingLearningCard extends JPanel {
         add(header, BorderLayout.NORTH);
         add(centerArea, BorderLayout.CENTER);
         add(footer, BorderLayout.SOUTH);
+
+        setMaximumSize(new Dimension(
+                SwingLearningCardStyle.CARD_MAX_WIDTH,
+                SwingLearningCardStyle.CARD_MAX_HEIGHT));
     }
 
     public SwingLearningHeader getHeader() {
@@ -68,30 +69,38 @@ public final class SwingLearningCard extends JPanel {
         }
         if (document.getHeader() != null) {
             LearningCardHeaderData headerData = document.getHeader();
-            header.setTitle(headerData.title());
-            header.setSubtitle(headerData.subtitle());
-            header.setIcon(headerData.iconKey() != null ? IconManager.javaFile() : null);
+            header.setTitle(headerData.title() != null ? headerData.title() : "");
+            header.setSubtitle(headerData.subtitle() != null ? headerData.subtitle() : "");
+            header.setIcon(headerData.iconKey() != null && !headerData.iconKey().isBlank()
+                    ? IconManager.javaFile() : null);
         } else {
             header.setTitle("");
             header.setSubtitle("");
+            header.setIcon(null);
         }
 
         body.setDocument(document);
 
         if (document.getFooter() != null) {
             LearningCardFooterData footerData = document.getFooter();
-            footer.setFooterText(footerData.updatedLabel(), footerData.updatedValue());
+            footer.setFooterText(
+                    footerData.updatedLabel() != null ? footerData.updatedLabel() : "",
+                    footerData.updatedValue() != null ? footerData.updatedValue() : "");
+            footer.setVisible(true);
         } else {
-            footer.setFooterText("Updated:", "Today");
+            footer.setFooterText("", "");
+            footer.setVisible(false);
         }
     }
 
     public void bindActions(LearningCardActions actions, List<RelatedConcept> relatedConcepts) {
         actionBar.setActions(actions);
         actionBar.setRelatedConcepts(relatedConcepts);
-        SwingCodeBlock first = body.getFirstCodeBlock();
-        if (first != null) {
-            actionBar.setActiveCodeSupplier(first::code);
+        body.setRelatedConcepts(relatedConcepts);
+        body.setOnRelatedConceptSelect(rc -> actions.showRelatedConcepts(List.of(rc)));
+        String joined = body.getAllCodeJoined();
+        if (!joined.isEmpty()) {
+            actionBar.setActiveCodeSupplier(body::getAllCodeJoined);
         } else {
             actionBar.setActiveCodeSupplier(() -> null);
         }
@@ -100,8 +109,10 @@ public final class SwingLearningCard extends JPanel {
     public void clear() {
         header.setTitle("");
         header.setSubtitle("");
+        header.setIcon(null);
         body.clear();
-        footer.setFooterText("Updated:", "Today");
+        footer.setFooterText("", "");
+        footer.setVisible(false);
         actionBar.clearActions();
     }
 }

@@ -1,20 +1,22 @@
 package com.eyecode.learning.swing;
 
 import com.eyecode.learning.model.RelatedConcept;
-import com.eyecode.ui.designsystem.ColorManager;
-import com.eyecode.ui.designsystem.TypographyManager;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
 import java.awt.Component;
 import java.util.List;
 import java.util.function.Supplier;
 
 public final class SwingLearningActionBar extends JPanel {
+
+    public static final String ACTION_OPEN_DOC = "Open Documentation";
+    public static final String ACTION_EXPLAIN = "Explain More";
+    public static final String ACTION_COPY_CODE = "Copy Code";
+    public static final String ACTION_RELATED = "Related Concepts";
 
     private final JButton openDocsButton;
     private final JButton explainButton;
@@ -29,13 +31,15 @@ public final class SwingLearningActionBar extends JPanel {
         super();
         setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
         setOpaque(false);
-        setBorder(new EmptyBorder(4, 0, 4, 0));
+        setBorder(BorderFactory.createEmptyBorder(
+                SwingLearningCardStyle.ACTION_BAR_PADDING_TOP, 0,
+                SwingLearningCardStyle.ACTION_BAR_PADDING_BOTTOM, 0));
         setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        openDocsButton = createButton("Open Documentation");
-        explainButton = createButton("Explain More");
-        copyButton = createButton("Copy Code");
-        relatedButton = createButton("Related Concepts");
+        openDocsButton = createButton(ACTION_OPEN_DOC);
+        explainButton = createButton(ACTION_EXPLAIN);
+        copyButton = createButton(ACTION_COPY_CODE);
+        relatedButton = createButton(ACTION_RELATED);
 
         openDocsButton.addActionListener(e -> actions.openDocumentation());
         explainButton.addActionListener(e -> actions.explainMore());
@@ -48,13 +52,16 @@ public final class SwingLearningActionBar extends JPanel {
         relatedButton.addActionListener(e -> actions.showRelatedConcepts(relatedConcepts));
 
         add(openDocsButton);
-        add(Box.createHorizontalStrut(6));
+        add(Box.createHorizontalStrut(SwingLearningCardStyle.ACTION_BAR_BUTTON_GAP));
         add(explainButton);
-        add(Box.createHorizontalStrut(6));
+        add(Box.createHorizontalStrut(SwingLearningCardStyle.ACTION_BAR_BUTTON_GAP));
         add(copyButton);
-        add(Box.createHorizontalStrut(6));
+        add(Box.createHorizontalStrut(SwingLearningCardStyle.ACTION_BAR_BUTTON_GAP));
         add(relatedButton);
         add(Box.createHorizontalGlue());
+
+        copyButton.setEnabled(false);
+        relatedButton.setEnabled(false);
     }
 
     public void setActions(LearningCardActions actions) {
@@ -63,8 +70,8 @@ public final class SwingLearningActionBar extends JPanel {
 
     public void setActiveCodeSupplier(Supplier<String> supplier) {
         this.activeCodeSupplier = supplier != null ? supplier : () -> null;
-        copyButton.setEnabled(this.activeCodeSupplier.get() != null
-                && !this.activeCodeSupplier.get().isEmpty());
+        String current = this.activeCodeSupplier.get();
+        copyButton.setEnabled(current != null && !current.isEmpty());
     }
 
     public void setRelatedConcepts(List<RelatedConcept> concepts) {
@@ -131,15 +138,7 @@ public final class SwingLearningActionBar extends JPanel {
     }
 
     private JButton createButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(TypographyManager.UI_SMALL());
-        btn.setForeground(ColorManager.TEXT_SECONDARY);
-        btn.setBackground(ColorManager.SURFACE_BG);
-        btn.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(ColorManager.BORDER, 1),
-                BorderFactory.createEmptyBorder(4, 8, 4, 8)
-        ));
-        btn.setFocusable(false);
+        FlatActionBarButton btn = new FlatActionBarButton(text);
         return btn;
     }
 }

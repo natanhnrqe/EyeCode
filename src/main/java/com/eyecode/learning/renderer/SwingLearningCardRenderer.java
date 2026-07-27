@@ -1,10 +1,16 @@
 package com.eyecode.learning.renderer;
 
+import com.eyecode.learning.catalog.CatalogRelatedConceptResolver;
+import com.eyecode.learning.catalog.LearningCatalog;
 import com.eyecode.learning.model.LearningCardDocument;
 import com.eyecode.learning.model.LearningCardDocumentAdapter;
 import com.eyecode.learning.model.LearningConcept;
 import com.eyecode.learning.model.RelatedConcept;
+import com.eyecode.learning.model.RelatedConceptNavigator;
+import com.eyecode.learning.model.RelatedConceptResolver;
 import com.eyecode.learning.service.DocumentationLearningCardActions;
+import com.eyecode.learning.service.DocumentationOpener;
+import com.eyecode.learning.service.ExplainMoreHandler;
 import com.eyecode.learning.service.LearningDocumentationWindowService;
 import com.eyecode.learning.ui.HoverDiagnosticLogger;
 import com.eyecode.learning.swing.LearningCardActions;
@@ -14,22 +20,55 @@ import com.eyecode.ui.swing.SwingPopup;
 import java.awt.Point;
 import java.awt.Toolkit;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 public final class SwingLearningCardRenderer implements LearningCardRenderer {
 
     private final SwingPopup popup;
     private final SwingLearningCard card;
-    private final LearningDocumentationWindowService docService;
+    private final DocumentationOpener documentationOpener;
+    private final RelatedConceptResolver relatedResolver;
+    private final ExplainMoreHandler explainMoreHandler;
     private boolean visible;
     private LearningCardActions currentActions;
 
     public SwingLearningCardRenderer() {
+        this(new LearningDocumentationWindowService());
+    }
+
+    public SwingLearningCardRenderer(LearningDocumentationWindowService docService) {
+        this(docService::open,
+                RelatedConceptResolver.empty(),
+                ExplainMoreHandler.delegatingTo(docService::open));
+    }
+
+    public SwingLearningCardRenderer(DocumentationOpener documentationOpener,
+                                      RelatedConceptResolver relatedResolver,
+                                      ExplainMoreHandler explainMoreHandler) {
         this.popup = new SwingPopup();
         this.card = new SwingLearningCard();
-        this.docService = new LearningDocumentationWindowService();
+        this.documentationOpener = Objects.requireNonNull(documentationOpener,
+                "documentationOpener must not be null");
+        this.relatedResolver = Objects.requireNonNull(relatedResolver, "relatedResolver must not be null");
+        this.explainMoreHandler = Objects.requireNonNull(explainMoreHandler, "explainMoreHandler must not be null");
         this.popup.setContent(card);
         this.popup.setFocusableWindowState(false);
         this.visible = false;
+    }
+
+    public static SwingLearningCardRenderer withCatalog(LearningCatalog catalog) {
+        Objects.requireNonNull(catalog, "catalog must not be null");
+        LearningDocumentationWindowService docService = new LearningDocumentationWindowService();
+        RelatedConceptResolver resolver = new CatalogRelatedConceptResolver(catalog);
+        ExplainMoreHandler explain = ExplainMoreHandler.delegatingTo(docService::open);
+        return new SwingLearningCardRenderer(docService::open, resolver, explain);
+    }
+
+    public static SwingLearningCardRenderer withOpener(DocumentationOpener opener,
+                                                       RelatedConceptResolver resolver,
+                                                       ExplainMoreHandler explainMoreHandler) {
+        return new SwingLearningCardRenderer(opener, resolver, explainMoreHandler);
     }
 
     @Override
@@ -56,10 +95,17 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
     private void renderConcept(LearningConcept concept) {
         LearningCardDocument document = LearningCardDocumentAdapter.fromConcept(concept);
         HoverDiagnosticLogger.logCardRender();
-        List<RelatedConcept> related = LearningCardDocumentAdapter.relatedConceptsFrom(concept);
-        this.currentActions = new DocumentationLearningCardActions(docService::open, concept, related);
+        List<RelatedConcept> related = document.getRelatedConcepts();
+        Consumer<LearningConcept> onNavigate = this::onRelatedConceptNavigated;
+        RelatedConceptNavigator navigator = new RelatedConceptNavigator(relatedResolver, onNavigate);
+        this.currentActions = new DocumentationLearningCardActions(
+                documentationOpener, explainMoreHandler, navigator, concept, related);
         card.render(document);
         card.bindActions(currentActions, related);
+    }
+
+    private void onRelatedConceptNavigated(LearningConcept concept) {
+        update(concept);
     }
 
     private void positionPopup() {
@@ -112,4 +158,9 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
         this.currentActions = null;
         this.visible = false;
     }
+
+    LearningCardActions currentActionsForTest() {
+        return currentActions;
+    }
 }
+

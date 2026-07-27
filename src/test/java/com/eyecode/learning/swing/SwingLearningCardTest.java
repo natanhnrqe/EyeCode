@@ -23,9 +23,15 @@ class SwingLearningCardTest {
     }
 
     private LearningConcept conceptWith(String title, String description, List<String> related) {
+        return conceptWith(title, description, com.eyecode.learning.model.ConceptType.CLASS, related);
+    }
+
+    private LearningConcept conceptWith(String title, String description,
+                                       com.eyecode.learning.model.ConceptType type, List<String> related) {
         LearningConcept c = new LearningConcept();
         c.setTitle(title);
         c.setDescription(description);
+        c.setType(type);
         c.setRelatedConcepts(related);
         return c;
     }

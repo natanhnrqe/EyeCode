@@ -1,9 +1,6 @@
 package com.eyecode.learning.swing;
 
-import com.eyecode.learning.document.LearningDocumentStyle;
-import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.IconManager;
-import com.eyecode.ui.designsystem.TypographyManager;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
@@ -14,7 +11,6 @@ import javax.swing.JPanel;
 import javax.swing.JSeparator;
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.Font;
 
 public final class SwingLearningHeader extends JPanel {
 
@@ -22,33 +18,34 @@ public final class SwingLearningHeader extends JPanel {
     private final JLabel subtitleLabel;
 
     public SwingLearningHeader() {
-        this(IconManager.javaFile(), "Class", "Class • Inheritance");
+        this(IconManager.javaFile(), "", "");
     }
 
     public SwingLearningHeader(Icon icon, String title, String subtitle) {
         super(new BorderLayout());
         setOpaque(false);
-        setBorder(LearningDocumentStyle.headerBorder());
+        setBorder(SwingLearningCardStyle.headerBorder());
 
-        // Icon + title horizontally
         titleLabel = new JLabel(title != null ? title : "", icon, JLabel.LEFT);
-        titleLabel.setFont(TypographyManager.monoBold(15));
-        titleLabel.setForeground(LearningDocumentStyle.titleColor());
-        titleLabel.setIconTextGap(8);
-        titleLabel.setBorder(LearningDocumentStyle.emptyBorder());
+        titleLabel.setFont(SwingLearningCardStyle.headerTitleFont());
+        titleLabel.setForeground(SwingLearningCardStyle.HEADER_TITLE_COLOR);
+        titleLabel.setIconTextGap(SwingLearningCardStyle.HEADER_ICON_TITLE_GAP);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Subtitle below, indented
         subtitleLabel = new JLabel(subtitle != null ? subtitle : "");
-        subtitleLabel.setFont(TypographyManager.monoRegular(11));
-        subtitleLabel.setForeground(LearningDocumentStyle.subtitleColor());
-        subtitleLabel.setBorder(BorderFactory.createEmptyBorder(2, 22, 0, 0));
+        subtitleLabel.setFont(SwingLearningCardStyle.headerSubtitleFont());
+        subtitleLabel.setForeground(SwingLearningCardStyle.HEADER_SUBTITLE_COLOR);
+        subtitleLabel.setBorder(BorderFactory.createEmptyBorder(
+                SwingLearningCardStyle.HEADER_SUBTITLE_TOP_GAP,
+                SwingLearningCardStyle.HEADER_SUBTITLE_INDENT,
+                0, 0));
         subtitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel textPanel = new JPanel();
         textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
         textPanel.setOpaque(false);
-        textPanel.setBorder(LearningDocumentStyle.emptyBorder());
+        textPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
         textPanel.add(titleLabel);
         textPanel.add(subtitleLabel);
 
@@ -56,8 +53,9 @@ public final class SwingLearningHeader extends JPanel {
         content.setOpaque(false);
         content.add(textPanel, BorderLayout.CENTER);
 
-        JSeparator separator = new JSeparator();
-        separator.setForeground(LearningDocumentStyle.dividerColor());
+        JSeparator separator = new JSeparator(JSeparator.HORIZONTAL);
+        separator.setForeground(SwingLearningCardStyle.HEADER_DIVIDER_COLOR);
+        separator.setBackground(SwingLearningCardStyle.HEADER_DIVIDER_COLOR);
 
         add(content, BorderLayout.CENTER);
         add(separator, BorderLayout.SOUTH);
