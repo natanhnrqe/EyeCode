@@ -1,5 +1,8 @@
 package com.eyecode.learning.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class LearningCardDocumentAdapter {
 
     private LearningCardDocumentAdapter() {}
@@ -36,5 +39,16 @@ public final class LearningCardDocumentAdapter {
 
         document.setFooter(new LearningCardFooterData("Updated:", "Today"));
         return document;
+    }
+
+    public static List<RelatedConcept> relatedConceptsFrom(LearningConcept concept) {
+        if (concept == null || concept.getRelatedConcepts() == null || concept.getRelatedConcepts().isEmpty()) {
+            return List.of();
+        }
+        List<RelatedConcept> result = new ArrayList<>(concept.getRelatedConcepts().size());
+        for (String related : concept.getRelatedConcepts()) {
+            result.add(RelatedConcept.fromTitle(related));
+        }
+        return List.copyOf(result);
     }
 }

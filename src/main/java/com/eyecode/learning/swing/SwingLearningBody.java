@@ -14,10 +14,14 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
 import java.awt.Component;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public final class SwingLearningBody extends JScrollPane {
 
     private final JPanel contentPanel;
+    private final List<SwingCodeBlock> codeBlocks = new ArrayList<>();
 
     public SwingLearningBody() {
         contentPanel = new JPanel();
@@ -34,6 +38,7 @@ public final class SwingLearningBody extends JScrollPane {
 
     public void clear() {
         contentPanel.removeAll();
+        codeBlocks.clear();
         contentPanel.revalidate();
         contentPanel.repaint();
     }
@@ -58,6 +63,7 @@ public final class SwingLearningBody extends JScrollPane {
         block.setAlignmentX(Component.LEFT_ALIGNMENT);
         contentPanel.add(block);
         contentPanel.add(Box.createVerticalStrut(14));
+        codeBlocks.add(block);
     }
 
     public void addBullet(String text) {
@@ -85,6 +91,14 @@ public final class SwingLearningBody extends JScrollPane {
         }
         contentPanel.revalidate();
         contentPanel.repaint();
+    }
+
+    public List<SwingCodeBlock> getCodeBlocks() {
+        return Collections.unmodifiableList(codeBlocks);
+    }
+
+    public SwingCodeBlock getFirstCodeBlock() {
+        return codeBlocks.isEmpty() ? null : codeBlocks.get(0);
     }
 
     public void buildFixture() {

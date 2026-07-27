@@ -1,11 +1,13 @@
 package com.eyecode.learning.renderer;
 
-import com.eyecode.learning.model.LearningCardBlock;
 import com.eyecode.learning.model.LearningCardDocument;
 import com.eyecode.learning.model.LearningCardDocumentAdapter;
 import com.eyecode.learning.model.LearningConcept;
+import com.eyecode.learning.model.RelatedConcept;
+import com.eyecode.learning.service.DocumentationLearningCardActions;
 import com.eyecode.learning.service.LearningDocumentationWindowService;
 import com.eyecode.learning.ui.HoverDiagnosticLogger;
+import com.eyecode.learning.swing.LearningCardActions;
 import com.eyecode.learning.swing.SwingLearningCard;
 import com.eyecode.ui.swing.SwingPopup;
 
@@ -19,6 +21,7 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
     private final SwingLearningCard card;
     private final LearningDocumentationWindowService docService;
     private boolean visible;
+    private LearningCardActions currentActions;
 
     public SwingLearningCardRenderer() {
         this.popup = new SwingPopup();
@@ -32,10 +35,34 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
     @Override
     public void show(LearningConcept concept) {
         HoverDiagnosticLogger.logRendererShow();
-        LearningCardDocument document = buildDocument(concept);
-        wireActions(concept, document);
-        card.render(document);
+        renderConcept(concept);
         popup.getWindow().pack();
+        positionPopup();
+        popup.show();
+        visible = true;
+    }
+
+    @Override
+    public void update(LearningConcept concept) {
+        if (!visible) {
+            show(concept);
+            return;
+        }
+        renderConcept(concept);
+        popup.getWindow().pack();
+        positionPopup();
+    }
+
+    private void renderConcept(LearningConcept concept) {
+        LearningCardDocument document = LearningCardDocumentAdapter.fromConcept(concept);
+        HoverDiagnosticLogger.logCardRender();
+        List<RelatedConcept> related = LearningCardDocumentAdapter.relatedConceptsFrom(concept);
+        this.currentActions = new DocumentationLearningCardActions(docService::open, concept, related);
+        card.render(document);
+        card.bindActions(currentActions, related);
+    }
+
+    private void positionPopup() {
         java.awt.PointerInfo pointerInfo = java.awt.MouseInfo.getPointerInfo();
         java.awt.Point mouse = pointerInfo != null ? pointerInfo.getLocation() : new java.awt.Point(200, 200);
         int x = mouse.x + 12;
@@ -53,51 +80,6 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
             y = mouse.y - 12 - size.height;
         }
         popup.setLocation(x, y);
-        popup.show();
-        visible = true;
-    }
-
-    private void wireActions(LearningConcept concept, LearningCardDocument document) {
-        card.getActionBar().setDocumentationAction(() -> {
-            if (concept != null) {
-                docService.open(concept);
-            }
-        });
-
-        String code = extractFirstCode(document);
-        card.getActionBar().setCopyAction(code != null ? () -> copyToClipboard(code) : null);
-
-        List<String> related = concept != null ? concept.getRelatedConcepts() : null;
-        boolean hasRelated = related != null && !related.isEmpty();
-        card.getActionBar().setRelatedAction(hasRelated ? () -> showRelatedToast(related) : null);
-        card.getActionBar().setRelatedEnabled(hasRelated);
-
-        card.getActionBar().setExplainAction(concept != null ? () -> docService.open(concept) : null);
-    }
-
-    private String extractFirstCode(LearningCardDocument document) {
-        if (document == null) return null;
-        for (LearningCardBlock block : document.getBlocks()) {
-            if (block instanceof LearningCardBlock.CodeBlock cb) {
-                return cb.code();
-            }
-        }
-        return null;
-    }
-
-    private void copyToClipboard(String text) {
-        java.awt.datatransfer.StringSelection selection = new java.awt.datatransfer.StringSelection(text);
-        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
-    }
-
-    private void showRelatedToast(List<String> related) {
-        System.out.println("Related concepts: " + String.join(", ", related));
-    }
-
-    private LearningCardDocument buildDocument(LearningConcept concept) {
-        LearningCardDocument doc = LearningCardDocumentAdapter.fromConcept(concept);
-        HoverDiagnosticLogger.logCardRender();
-        return doc;
     }
 
     @Override
@@ -114,11 +96,6 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
     }
 
     @Override
-    public void update(LearningConcept concept) {
-        show(concept);
-    }
-
-    @Override
     public void loadHtml(String html) {
         // Not supported; ignored in Swing renderer
     }
@@ -131,6 +108,8 @@ public final class SwingLearningCardRenderer implements LearningCardRenderer {
     @Override
     public void dispose() {
         hide();
-        visible = false;
+        card.clear();
+        this.currentActions = null;
+        this.visible = false;
     }
 }

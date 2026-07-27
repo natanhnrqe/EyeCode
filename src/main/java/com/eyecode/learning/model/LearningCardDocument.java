@@ -3,6 +3,7 @@ package com.eyecode.learning.model;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public final class LearningCardDocument {
 
@@ -60,6 +61,20 @@ public final class LearningCardDocument {
 
     public List<LearningCardBlock> getBlocks() {
         return Collections.unmodifiableList(blocks);
+    }
+
+    public List<LearningCardBlock.CodeBlock> getCodeBlocks() {
+        return blocks.stream()
+                .filter(b -> b instanceof LearningCardBlock.CodeBlock)
+                .map(b -> (LearningCardBlock.CodeBlock) b)
+                .toList();
+    }
+
+    public List<LearningCardBlock.BulletBlock> getBullets() {
+        return blocks.stream()
+                .filter(b -> b instanceof LearningCardBlock.BulletBlock)
+                .map(b -> (LearningCardBlock.BulletBlock) b)
+                .toList();
     }
 
     public void clear() {

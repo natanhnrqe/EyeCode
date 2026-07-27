@@ -74,4 +74,12 @@ public final class SwingLearningHeader extends JPanel {
     public void setSubtitle(String subtitle) {
         subtitleLabel.setText(subtitle != null ? subtitle : "");
     }
+
+    public String title() {
+        return titleLabel.getText();
+    }
+
+    public String subtitle() {
+        return subtitleLabel.getText();
+    }
 }

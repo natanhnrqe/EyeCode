@@ -1,17 +1,18 @@
 package com.eyecode.learning.swing;
 
 import com.eyecode.learning.document.LearningDocumentStyle;
-import com.eyecode.ui.designsystem.ColorManager;
-import com.eyecode.ui.designsystem.IconManager;
 
 import com.eyecode.learning.model.LearningCardDocument;
 import com.eyecode.learning.model.LearningCardHeaderData;
 import com.eyecode.learning.model.LearningCardFooterData;
+import com.eyecode.learning.model.RelatedConcept;
+
+import com.eyecode.ui.designsystem.IconManager;
 
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
-import java.util.function.Supplier;
+import java.util.List;
 
 public final class SwingLearningCard extends JPanel {
 
@@ -85,10 +86,22 @@ public final class SwingLearningCard extends JPanel {
         }
     }
 
+    public void bindActions(LearningCardActions actions, List<RelatedConcept> relatedConcepts) {
+        actionBar.setActions(actions);
+        actionBar.setRelatedConcepts(relatedConcepts);
+        SwingCodeBlock first = body.getFirstCodeBlock();
+        if (first != null) {
+            actionBar.setActiveCodeSupplier(first::code);
+        } else {
+            actionBar.setActiveCodeSupplier(() -> null);
+        }
+    }
+
     public void clear() {
         header.setTitle("");
         header.setSubtitle("");
         body.clear();
         footer.setFooterText("Updated:", "Today");
+        actionBar.clearActions();
     }
 }
