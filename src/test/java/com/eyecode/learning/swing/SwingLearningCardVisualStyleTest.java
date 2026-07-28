@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 
 import javax.swing.AbstractButton;
 import javax.swing.JFrame;
+import javax.swing.JScrollPane;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.util.List;
 
@@ -71,7 +73,7 @@ class SwingLearningCardVisualStyleTest {
     }
 
     @Test
-    void codeBlockRespectsMaximumHeightForLongCode() {
+    void codeBlockHasNoInternalScrollPaneForLongCode() {
         SwingLearningCard card = realize();
         StringBuilder sb = new StringBuilder();
         sb.append("public class Big {\n");
@@ -84,9 +86,8 @@ class SwingLearningCardVisualStyleTest {
         card.render(doc);
         SwingCodeBlock block = card.getBody().getFirstCodeBlock();
         assertNotNull(block);
-        Dimension maxSize = block.codeScroll().getMaximumSize();
-        assertTrue(maxSize.height <= SwingLearningCardStyle.CODE_MAX_VISIBLE_HEIGHT,
-                "Long code block scroll area should be bounded, got " + maxSize.height);
+        assertFalse(containsJScrollPane(block),
+                "SwingCodeBlock must not contain an internal JScrollPane, got one for long code");
         assertTrue(block.code().length() > 500,
                 "Long code should be preserved");
     }
@@ -219,9 +220,22 @@ class SwingLearningCardVisualStyleTest {
         card.render(LearningCardDocumentAdapter.fromConcept(c));
         assertEquals("Enum", card.getHeader().title());
         assertTrue(card.getBody().getCodeBlocks().size() == 1);
-        Dimension max = card.getBody().getFirstCodeBlock().codeScroll().getMaximumSize();
-        assertNotNull(max);
-        assertTrue(max.height <= SwingLearningCardStyle.CODE_MAX_VISIBLE_HEIGHT);
+        SwingCodeBlock block = card.getBody().getFirstCodeBlock();
+        assertNotNull(block);
+        assertFalse(containsJScrollPane(block),
+                "SwingCodeBlock must not contain an internal JScrollPane");
+    }
+
+    private boolean containsJScrollPane(Container c) {
+        for (java.awt.Component comp : c.getComponents()) {
+            if (comp instanceof JScrollPane) {
+                return true;
+            }
+            if (comp instanceof Container sub && containsJScrollPane(sub)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Test

@@ -6,13 +6,10 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import javax.swing.ScrollPaneConstants;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -24,7 +21,6 @@ public final class SwingCodeBlock extends JPanel {
     private final JLabel headerLabel;
     private final JTextArea codeArea;
     private final JButton copyBtn;
-    private final JScrollPane codeScroll;
 
     public SwingCodeBlock(String language, String code) {
         super(new BorderLayout());
@@ -39,25 +35,9 @@ public final class SwingCodeBlock extends JPanel {
         codeArea.setBorder(SwingLearningCardStyle.codeAreaBorder());
         codeArea.setEditable(false);
         codeArea.setFocusable(false);
-        codeArea.setLineWrap(false);
-        codeArea.setWrapStyleWord(false);
+        codeArea.setLineWrap(true);
+        codeArea.setWrapStyleWord(true);
         codeArea.setTabSize(4);
-
-        codeScroll = new JScrollPane(codeArea);
-        codeScroll.setBorder(BorderFactory.createEmptyBorder());
-        codeScroll.setOpaque(false);
-        codeScroll.getViewport().setOpaque(false);
-        codeScroll.getViewport().setBackground(SwingLearningCardStyle.CODE_BG);
-        codeScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        codeScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
-        codeScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE,
-                SwingLearningCardStyle.CODE_MAX_VISIBLE_HEIGHT));
-        codeScroll.getHorizontalScrollBar().setPreferredSize(
-                new Dimension(0, SwingLearningCardStyle.SCROLLBAR_WIDTH));
-        codeScroll.getVerticalScrollBar().setPreferredSize(
-                new Dimension(SwingLearningCardStyle.SCROLLBAR_WIDTH, 0));
-        codeScroll.getHorizontalScrollBar().setUnitIncrement(20);
-        codeScroll.getVerticalScrollBar().setUnitIncrement(20);
 
         headerLabel = new JLabel(language != null ? language : "");
         headerLabel.setFont(SwingLearningCardStyle.codeHeaderTextFont());
@@ -79,7 +59,7 @@ public final class SwingCodeBlock extends JPanel {
         header.add(copyBtn, BorderLayout.EAST);
 
         add(header, BorderLayout.NORTH);
-        add(codeScroll, BorderLayout.CENTER);
+        add(codeArea, BorderLayout.CENTER);
     }
 
     private JButton createCopyButton() {
@@ -180,9 +160,5 @@ public final class SwingCodeBlock extends JPanel {
         } else {
             copyBtn.addActionListener(e -> copy());
         }
-    }
-
-    public JScrollPane codeScroll() {
-        return codeScroll;
     }
 }

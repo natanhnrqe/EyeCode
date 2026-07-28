@@ -4,7 +4,8 @@ import com.eyecode.learning.model.LearningCardDocument;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.JFrame;
-import java.awt.Dimension;
+import javax.swing.JScrollPane;
+import java.awt.Container;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -82,7 +83,7 @@ class SwingCodeBlockMultipleTest {
     }
 
     @Test
-    void longCodeDoesNotExpandPopupInfinitely() {
+    void longCodeDoesNotExpandCardWidthAndHasNoInternalScroll() {
         SwingLearningCard card = realize();
         StringBuilder longCode = new StringBuilder();
         longCode.append("public class Big {\n");
@@ -97,11 +98,26 @@ class SwingCodeBlockMultipleTest {
 
         SwingCodeBlock block = card.getBody().getFirstCodeBlock();
         assertNotNull(block);
-        assertNotNull(block.codeScroll());
+        assertFalse(containsJScrollPane(block),
+                "SwingCodeBlock must not contain an internal JScrollPane");
+        assertTrue(block.code().length() > 500,
+                "Long code should be preserved");
 
-        Dimension maxSize = block.codeScroll().getMaximumSize();
-        assertTrue(maxSize.height > 0 && maxSize.height < 600,
-                "Maximum scroll height should be bounded, got " + maxSize.height);
+        int cardWidth = card.getPreferredSize().width;
+        assertTrue(cardWidth <= SwingLearningCardStyle.CARD_MAX_WIDTH,
+                "Card width should remain bounded, got " + cardWidth);
+    }
+
+    private boolean containsJScrollPane(Container c) {
+        for (java.awt.Component comp : c.getComponents()) {
+            if (comp instanceof JScrollPane) {
+                return true;
+            }
+            if (comp instanceof Container sub && containsJScrollPane(sub)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Test
