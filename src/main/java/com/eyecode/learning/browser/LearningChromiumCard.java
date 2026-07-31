@@ -31,9 +31,11 @@ public final class LearningChromiumCard extends JPanel {
         if (browserService != null) return;
         browserService = new LearningBrowserService();
         var browserComponent = browserService.getComponent();
-        browserComponent.setFocusable(false);
-        add(browserComponent, BorderLayout.CENTER);
-        revalidate();
+        if (browserComponent != null) {
+            browserComponent.setFocusable(false);
+            add(browserComponent, BorderLayout.CENTER);
+            revalidate();
+        }
     }
 
     public void loadHtml(String html) {
@@ -69,6 +71,13 @@ public final class LearningChromiumCard extends JPanel {
     public void dispose() {
         if (browserService != null) {
             browserService.dispose();
+            var browserComponent = browserService.getComponent();
+            if (browserComponent != null) {
+                remove(browserComponent);
+            }
+            browserService = null;
+            revalidate();
+            repaint();
         }
     }
 }

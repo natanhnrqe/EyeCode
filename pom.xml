@@ -131,4 +131,31 @@
 
     </dependencies>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.8</version>
+                <configuration>
+                    <mainClass>com.eyecode.javafx.FxApplication</mainClass>
+                    <options>
+                        <option>--add-opens</option>
+                        <option>java.desktop/sun.awt=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>java.desktop/sun.java2d=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>java.desktop/sun.font=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>javafx.graphics/javafx.scene=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>javafx.controls/javafx.scene.control=ALL-UNNAMED</option>
+                        <option>--add-opens</option>
+                        <option>javafx.graphics/javafx.stage=ALL-UNNAMED</option>
+                    </options>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>
