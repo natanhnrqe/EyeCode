@@ -1,4 +1,4 @@
-package com.eyecode.javafx;
+package com.eyecode.javafx.ui;
 
 import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;

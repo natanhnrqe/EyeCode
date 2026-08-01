@@ -1,5 +1,7 @@
-package com.eyecode.javafx;
+package com.eyecode.javafx.ui;
 
+import com.eyecode.javafx.editor.JavaFxEditor;
+import com.eyecode.javafx.editor.JavaFxEditorController;
 import javafx.geometry.Orientation;
 import javafx.scene.control.SplitPane;
 import javafx.scene.layout.BorderPane;

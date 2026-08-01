@@ -1,4 +1,4 @@
-package com.eyecode.javafx;
+package com.eyecode.javafx.ui;
 
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;

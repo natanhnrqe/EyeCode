@@ -30,6 +30,7 @@ public class Main {
         UIManager.put("Menu.background", ColorManager.TOOLBAR_BG);
         UIManager.put("MenuItem.background", ColorManager.TOOLBAR_BG);
 
+
         UIManager.put("SplitPaneDivider.style", "plain");
         UIManager.put("SplitPaneDivider.gripColor", ColorManager.DIVIDER_COLOR);
 

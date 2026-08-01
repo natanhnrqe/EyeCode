@@ -259,6 +259,68 @@
     -fx-pref-height: 16;
 }
 
+/* ===== Editor (CodeArea / RichTextFX) ===== */
+.editor-wrapper {
+    -fx-background-color: rgb(25, 26, 28);
+}
+
+.code-area {
+    -fx-background-color: rgb(25, 26, 28);
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 14;
+    -fx-padding: 12;
+    -fx-border-width: 0;
+}
+.code-area:focused {
+    -fx-background-color: rgb(25, 26, 28);
+    -fx-border-color: rgb(68, 71, 74);
+    -fx-border-width: 1;
+}
+
+.code-area .text {
+    -fx-fill: rgb(188, 190, 196);  /* ColorManager.EDITOR_FOREGROUND */
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 14;
+}
+
+.code-area .caret {
+    -fx-stroke: rgb(255, 255, 255);  /* ColorManager.EDITOR_CARET ~ white */
+    -fx-stroke-width: 2;
+}
+
+.code-area .selection {
+    -fx-fill: rgb(33, 66, 131);  /* ColorManager.EDITOR_SELECTION */
+}
+
+.code-area .paragraph-text {
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 14;
+}
+
+/* ===== Syntax highlighting — EyeCode Design System colors ===== */
+/* NOTE: .code-area prefix ensures specificity >= .code-area .text (0,0,2,0) */
+.code-area .syntax-keyword      { -fx-fill: rgb(207, 142, 109); }  /* SYNTAX_KEYWORD */
+.code-area .syntax-identifier   { -fx-fill: rgb(188, 190, 196); }                          /* SYNTAX_IDENTIFIER */
+.code-area .syntax-string       { -fx-fill: rgb(106, 171, 115); }                          /* SYNTAX_STRING */
+.code-area .syntax-number       { -fx-fill: rgb(42, 172, 184); }                          /* SYNTAX_NUMBER */
+.code-area .syntax-comment      { -fx-fill: rgb(122, 126, 133); -fx-font-style: italic; }  /* SYNTAX_COMMENT */
+.code-area .syntax-operator     { -fx-fill: rgb(188, 190, 196); }                          /* SYNTAX_OPERATOR */
+.code-area .syntax-separator    { -fx-fill: rgb(169, 183, 198); }                          /* SYNTAX_SEPARATOR */
+.code-area .syntax-annotation   { -fx-fill: rgb(179, 174, 96); }                          /* SYNTAX_ANNOTATION */
+.code-area .syntax-whitespace   { -fx-fill: rgb(188, 190, 196); }                          /* WHITESPACE */
+.code-area .syntax-unknown      { -fx-fill: rgb(255, 90, 90); -fx-font-weight: bold; }     /* SYNTAX_UNKNOWN */
+
+/* Additional semantic categories (forward-compatible with future analyzer) */
+.code-area .syntax-type         { -fx-fill: rgb(78, 201, 176); }                          /* SYNTAX_TYPE */
+.code-area .syntax-class        { -fx-fill: rgb(78, 201, 176); }                          /* SYNTAX_CLASS (same as type) */
+.code-area .syntax-interface    { -fx-fill: rgb(78, 201, 176); }                          /* SYNTAX_INTERFACE */
+.code-area .syntax-enum         { -fx-fill: rgb(78, 201, 176); }                          /* SYNTAX_ENUM */
+.code-area .syntax-method       { -fx-fill: rgb(86, 168, 245); }                          /* SYNTAX_METHOD */
+.code-area .syntax-field        { -fx-fill: rgb(188, 190, 196); }                          /* SYNTAX_FIELD (= identifier) */
+.code-area .syntax-constant     { -fx-fill: rgb(199, 125, 187); }                          /* SYNTAX_CONSTANT */
+.code-area .syntax-punctuation  { -fx-fill: rgb(169, 183, 198); }                          /* SYNTAX_PUNCTUATION (= separator) */
+.code-area .syntax-plain        { -fx-fill: rgb(188, 190, 196); }                          /* SYNTAX_PLAIN (= identifier) */
+
 /* ===== Scrollbars ===== */
 .scroll-bar:vertical, .scroll-bar:horizontal {
     -fx-background-color: rgb(30, 30, 30);

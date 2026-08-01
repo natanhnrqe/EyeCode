@@ -1,4 +1,4 @@
-package com.eyecode.javafx;
+package com.eyecode.javafx.ui;
 
 import javafx.application.Platform;
 import javafx.geometry.Rectangle2D;

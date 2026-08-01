@@ -1,5 +1,6 @@
 package com.eyecode.javafx;
 
+import com.eyecode.javafx.ui.FxMainWindow;
 import javafx.application.Application;
 import javafx.stage.Stage;
 
