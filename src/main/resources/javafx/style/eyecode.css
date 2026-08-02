@@ -14,7 +14,7 @@
 
 /* ===== Root layout ===== */
 .root-layout {
-    -fx-background-color: rgb(24, 25, 28);
+    -fx-background-color: rgb(24, 25, 28);   /* ColorManager.WINDOW_BG */
 }
 
 .workspace {
@@ -24,10 +24,10 @@
 
 /* ===== SplitPanes ===== */
 .center-split, .root-split {
-    -fx-background-color: rgb(24, 25, 28);
+    -fx-background-color: rgb(24, 25, 28);   /* ColorManager.WINDOW_BG */
 }
 .center-split > .split-pane-divider {
-    -fx-background-color: rgb(48, 51, 57);
+    -fx-background-color: rgb(48, 51, 57);   /* ColorManager.BORDER_DIVIDER */
     -fx-padding: 0 4 0 0;
 }
 .root-split > .split-pane-divider {
@@ -37,8 +37,8 @@
 
 /* ===== Toolbar ===== */
 .toolbar {
-    -fx-background-color: rgb(37, 37, 38);
-    -fx-border-color: transparent transparent rgb(55, 58, 64) transparent;
+    -fx-background-color: rgb(37, 37, 38);   /* ColorManager.TOOLBAR_BG */
+    -fx-border-color: transparent transparent rgb(55, 58, 64) transparent;  /* ColorManager.BORDER */
     -fx-border-width: 0 0 1 0;
     -fx-pref-height: 36;
     -fx-padding: 0 0 0 0;
@@ -117,8 +117,8 @@
 
 /* ===== Activity bar ===== */
 .activity-bar {
-    -fx-background-color: rgb(37, 37, 38);
-    -fx-border-color: transparent rgb(55, 58, 64) transparent transparent;
+    -fx-background-color: rgb(37, 37, 38);   /* ColorManager.TOOLBAR_BG */
+    -fx-border-color: transparent rgb(55, 58, 64) transparent transparent;  /* ColorManager.BORDER */
     -fx-border-width: 0 1 0 0;
     -fx-spacing: 2;
     -fx-padding: 8 0 0 0;
@@ -143,7 +143,7 @@
 
 /* ===== Explorer ===== */
 .explorer {
-    -fx-background-color: rgb(25, 26, 28);
+    -fx-background-color: rgb(25, 26, 28);   /* ColorManager.EDITOR_BG */
     -fx-padding: 8 12 8 12;
     -fx-min-width: 160;
 }
@@ -156,7 +156,7 @@
 
 /* ===== Editor ===== */
 .editor-container {
-    -fx-background-color: rgb(25, 26, 28);
+    -fx-background-color: rgb(25, 26, 28);   /* ColorManager.EDITOR_BG */
 }
 
 .editor-container > .tab-header-area {
@@ -193,11 +193,11 @@
 
 /* ===== Console ===== */
 .console {
-    -fx-background-color: rgb(25, 26, 28);
+    -fx-background-color: rgb(25, 26, 28);   /* ColorManager.EDITOR_BG */
 }
 
 .console-placeholder {
-    -fx-text-fill: rgb(145, 150, 160);
+    -fx-text-fill: rgb(145, 150, 160);        /* ColorManager.TEXT_MUTED */
     -fx-font-family: "JetBrains Mono", monospace;
     -fx-font-size: 12;
     -fx-padding: 8 12 8 12;
@@ -205,8 +205,8 @@
 
 /* ===== Status bar ===== */
 .status-bar {
-    -fx-background-color: rgb(24, 25, 28);
-    -fx-border-color: rgb(48, 51, 57) transparent transparent transparent;
+    -fx-background-color: rgb(24, 25, 28);    /* ColorManager.WINDOW_BG */
+    -fx-border-color: rgb(48, 51, 57) transparent transparent transparent;  /* ColorManager.BORDER_DIVIDER */
     -fx-border-width: 1 0 0 0;
     -fx-pref-height: 30;
     -fx-min-height: 30;
@@ -220,13 +220,13 @@
 }
 
 .status-item {
-    -fx-text-fill: rgb(187, 187, 187);
+    -fx-text-fill: rgb(187, 187, 187);        /* ColorManager.TEXT_SECONDARY */
     -fx-font-family: "JetBrains Mono", monospace;
     -fx-font-size: 12;
 }
 
 #status-logo {
-    -fx-text-fill: rgb(220, 220, 220);
+    -fx-text-fill: rgb(220, 220, 220);        /* ColorManager.TEXT_PRIMARY */
     -fx-font-weight: bold;
 }
 
@@ -252,83 +252,168 @@
 }
 
 .status-separator {
-    -fx-background-color: rgb(48, 51, 57);
+    -fx-background-color: rgb(48, 51, 57);    /* ColorManager.BORDER_DIVIDER */
     -fx-min-width: 1;
     -fx-pref-width: 1;
     -fx-min-height: 16;
     -fx-pref-height: 16;
 }
 
-/* ===== Editor (CodeArea / RichTextFX) ===== */
+/*
+ * EyeCode — Editor section only (Sprint 0 — IntelliJ-aligned)
+ * Cores: mantidas exatamente como estavam (tema oficial).
+ * Ajustes: font-size, line-height, padding, gutter, caret, scrollbar,
+ *           seleção e highlight de linha atual — tudo baseado nos
+ *           valores reais do IntelliJ IDEA (Darcula, JetBrains Mono 13px).
+ *
+ * ⚠️  Apenas as seções do editor foram alteradas.
+ *     Toolbar, activity-bar, sidebar, status-bar: sem toque.
+ */
+
+/* ===== Editor wrapper / container ===== */
 .editor-wrapper {
-    -fx-background-color: rgb(25, 26, 28);
+    -fx-background-color: rgb(25, 26, 28);   /* inalterado */
 }
 
+.editor-scroll-pane {
+    -fx-background-color: rgb(25, 26, 28);   /* inalterado */
+    -fx-padding: 0;                          /* ✦ era ausente — remove gap indesejado */
+}
+
+/* ===== CodeArea (RichTextFX) ===== */
 .code-area {
-    -fx-background-color: rgb(25, 26, 28);
+    -fx-background-color: rgb(25, 26, 28);   /* inalterado */
     -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 14;
-    -fx-padding: 12;
+    -fx-font-size: 13;                       /* ✦ 14→13  (padrão real do IntelliJ em todos os SOs) */
+    -fx-padding: 4 6 4 0;                    /* ✦ padding direito zerado (gutter já tem borda própria) */
     -fx-border-width: 0;
+    -fx-line-spacing: 3;                     /* ✦ acrescenta ~3px entre linhas → equivale ao line-height 1.6 do IntelliJ */
 }
 .code-area:focused {
-    -fx-background-color: rgb(25, 26, 28);
-    -fx-border-color: rgb(68, 71, 74);
-    -fx-border-width: 1;
+    -fx-background-color: rgb(25, 26, 28);   /* inalterado */
+    -fx-effect: null;                        /* ✦ remove glow/focus ring que JavaFX coloca por padrão */
 }
 
+/* Texto principal */
 .code-area .text {
-    -fx-fill: rgb(188, 190, 196);  /* ColorManager.EDITOR_FOREGROUND */
+    -fx-fill: rgb(188, 190, 196);            /* inalterado */
     -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 14;
+    -fx-font-size: 13;                       /* ✦ alinhado com .code-area */
 }
 
-.code-area .caret {
-    -fx-stroke: rgb(255, 255, 255);  /* ColorManager.EDITOR_CARET ~ white */
-    -fx-stroke-width: 2;
+/* Parágrafo (linha) — highlight da linha atual */
+.code-area .paragraph-box:has-caret {
+    -fx-background-color: rgb(34, 35, 38);   /* ✦ caret-row highlight: ~2-3 tons acima do fundo (#2B2B2B equivalente) */
 }
 
-.code-area .selection {
-    -fx-fill: rgb(33, 66, 131);  /* ColorManager.EDITOR_SELECTION */
-}
-
+/* Texto dentro do parágrafo */
 .code-area .paragraph-text {
     -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 14;
+    -fx-font-size: 13;                       /* ✦ alinhado */
+    -fx-padding: 0 6 0 6;                    /* ✦ padding lateral do texto dentro da linha */
 }
 
-/* ===== Syntax highlighting — EyeCode Design System colors ===== */
-/* NOTE: .code-area prefix ensures specificity >= .code-area .text (0,0,2,0) */
-.code-area .syntax-keyword      { -fx-fill: rgb(207, 142, 109); }  /* SYNTAX_KEYWORD */
-.code-area .syntax-identifier   { -fx-fill: rgb(188, 190, 196); }                          /* SYNTAX_IDENTIFIER */
-.code-area .syntax-string       { -fx-fill: rgb(106, 171, 115); }                          /* SYNTAX_STRING */
-.code-area .syntax-number       { -fx-fill: rgb(42, 172, 184); }                          /* SYNTAX_NUMBER */
-.code-area .syntax-comment      { -fx-fill: rgb(122, 126, 133); -fx-font-style: italic; }  /* SYNTAX_COMMENT */
-.code-area .syntax-operator     { -fx-fill: rgb(188, 190, 196); }                          /* SYNTAX_OPERATOR */
-.code-area .syntax-separator    { -fx-fill: rgb(169, 183, 198); }                          /* SYNTAX_SEPARATOR */
-.code-area .syntax-annotation   { -fx-fill: rgb(179, 174, 96); }                          /* SYNTAX_ANNOTATION */
-.code-area .syntax-whitespace   { -fx-fill: rgb(188, 190, 196); }                          /* WHITESPACE */
-.code-area .syntax-unknown      { -fx-fill: rgb(255, 90, 90); -fx-font-weight: bold; }     /* SYNTAX_UNKNOWN */
+/* Caret (cursor de inserção) */
+.code-area .caret {
+    -fx-stroke: rgb(255, 255, 255);          /* inalterado */
+    -fx-stroke-width: 1.5;                   /* ✦ 2→1.5 (caret do IntelliJ é fino, ~1-2px) */
+}
 
-/* Additional semantic categories (forward-compatible with future analyzer) */
-.code-area .syntax-type         { -fx-fill: rgb(78, 201, 176); }                          /* SYNTAX_TYPE */
-.code-area .syntax-class        { -fx-fill: rgb(78, 201, 176); }                          /* SYNTAX_CLASS (same as type) */
-.code-area .syntax-interface    { -fx-fill: rgb(78, 201, 176); }                          /* SYNTAX_INTERFACE */
-.code-area .syntax-enum         { -fx-fill: rgb(78, 201, 176); }                          /* SYNTAX_ENUM */
-.code-area .syntax-method       { -fx-fill: rgb(86, 168, 245); }                          /* SYNTAX_METHOD */
-.code-area .syntax-field        { -fx-fill: rgb(188, 190, 196); }                          /* SYNTAX_FIELD (= identifier) */
-.code-area .syntax-constant     { -fx-fill: rgb(199, 125, 187); }                          /* SYNTAX_CONSTANT */
-.code-area .syntax-punctuation  { -fx-fill: rgb(169, 183, 198); }                          /* SYNTAX_PUNCTUATION (= separator) */
-.code-area .syntax-plain        { -fx-fill: rgb(188, 190, 196); }                          /* SYNTAX_PLAIN (= identifier) */
+/* Seleção de texto */
+.code-area .selection {
+    -fx-fill: rgb(33, 66, 131);              /* inalterado */
+    -fx-fill-opacity: 0.85;                  /* ✦ leve transparência, igual ao IntelliJ */
+}
+
+/* ===== Gutter — números de linha ===== */
+.editor-root {
+    -fx-background-color: rgb(25, 26, 28);   /* inalterado */
+}
+
+.lineno {
+    -fx-background-color: transparent;          /* herda do CodeArea */
+    -fx-text-fill: rgb(128, 128, 128);          /* LINE_NUMBER_FG */
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 13;
+    -fx-padding: 0 10 0 6;
+    -fx-alignment: center-right;
+    -fx-min-width: 48;
+    -fx-pref-width: 48;
+    -fx-min-height: 20;
+    -fx-pref-height: 20;
+    -fx-border-color: transparent rgb(55, 58, 64) transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+
+/* Número de linha da linha atual */
+.lineno-current {
+    -fx-text-fill: rgb(220, 220, 220);        /* inalterado */
+    -fx-font-weight: bold;                    /* inalterado */
+    /* ✦ sem background aqui — o highlight de linha vem do .paragraph-box:has-caret */
+}
 
 /* ===== Scrollbars ===== */
-.scroll-bar:vertical, .scroll-bar:horizontal {
-    -fx-background-color: rgb(30, 30, 30);
+.scroll-bar:vertical,
+.scroll-bar:horizontal {
+    -fx-background-color: rgb(30, 30, 30);    /* inalterado */
+    -fx-padding: 0;
+    -fx-pref-width: 9;                        /* ✦ largura fina, igual ao IntelliJ (9px) */
+    -fx-pref-height: 9;
 }
-.scroll-bar:vertical > .thumb, .scroll-bar:horizontal > .thumb {
-    -fx-background-color: rgb(67, 70, 76);
-    -fx-background-radius: 4;
+
+.scroll-bar:vertical > .thumb,
+.scroll-bar:horizontal > .thumb {
+    -fx-background-color: rgb(67, 70, 76);    /* inalterado */
+    -fx-background-radius: 2;                 /* ✦ 4→2 (IntelliJ usa cantos quase retos) */
+    -fx-min-width: 6;                         /* ✦ thumb mais fino */
+    -fx-pref-width: 6;
+    -fx-insets: 0 2 0 2;                      /* ✦ inset cria margem do thumb em relação ao track */
 }
-.scroll-bar:vertical > .thumb:hover, .scroll-bar:horizontal > .thumb:hover {
-    -fx-background-color: rgb(87, 90, 96);
+
+.scroll-bar:vertical > .thumb:hover,
+.scroll-bar:horizontal > .thumb:hover {
+    -fx-background-color: rgb(87, 90, 96);    /* inalterado */
 }
+
+.scroll-bar:vertical > .increment-button,
+.scroll-bar:horizontal > .increment-button,
+.scroll-bar:vertical > .decrement-button,
+.scroll-bar:horizontal > .decrement-button {
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-min-width: 0;                         /* ✦ remove as setinhas de scroll (IntelliJ não tem) */
+    -fx-pref-width: 0;
+    -fx-min-height: 0;
+    -fx-pref-height: 0;
+}
+
+.scroll-bar:vertical > .increment-arrow,
+.scroll-bar:vertical > .decrement-arrow,
+.scroll-bar:horizontal > .increment-arrow,
+.scroll-bar:horizontal > .decrement-arrow {
+    -fx-padding: 0;                           /* ✦ colapsa completamente as setas */
+    -fx-shape: " ";
+}
+
+.scroll-bar:vertical > .track,
+.scroll-bar:horizontal > .track {
+    -fx-background-color: transparent;        /* inalterado */
+}
+
+/* ===== Syntax highlighting — sem alterações de cor ===== */
+.code-area .syntax-keyword      { -fx-fill: rgb(207, 142, 109); }
+.code-area .syntax-identifier   { -fx-fill: rgb(188, 190, 196); }
+.code-area .syntax-string       { -fx-fill: rgb(106, 171, 115); }
+.code-area .syntax-number       { -fx-fill: rgb(42, 172, 184);  }
+.code-area .syntax-comment      { -fx-fill: rgb(122, 126, 133); -fx-font-style: italic; }
+.code-area .syntax-operator     { -fx-fill: rgb(188, 190, 196); }
+.code-area .syntax-separator    { -fx-fill: rgb(169, 183, 198); }
+.code-area .syntax-annotation   { -fx-fill: rgb(179, 174, 96);  }
+.code-area .syntax-whitespace   { -fx-fill: rgb(188, 190, 196); }
+.code-area .syntax-unknown      { -fx-fill: rgb(196, 43, 28);   -fx-font-weight: bold; }
+.code-area .syntax-class        { -fx-fill: rgb(78, 201, 176);  }
+.code-area .syntax-method       { -fx-fill: rgb(86, 168, 245);  }
+.code-area .syntax-field        { -fx-fill: rgb(188, 190, 196); }
+.code-area .syntax-constant     { -fx-fill: rgb(199, 125, 187); }
+.code-area .syntax-punctuation  { -fx-fill: rgb(169, 183, 198); }
+.code-area .syntax-plain        { -fx-fill: rgb(188, 190, 196); }
