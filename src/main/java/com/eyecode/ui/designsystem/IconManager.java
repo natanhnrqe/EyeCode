@@ -1,11 +1,13 @@
 package com.eyecode.ui.designsystem;
 
+import com.eyecode.designsystem.icon.EyeCodeIcon;
 import com.eyecode.editor.v2.completion.CompletionItemKind;
 import com.eyecode.project.ProjectType;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,46 +18,55 @@ public final class IconManager {
     private static final int ICON_SIZE = SpacingSystem.ICON_SIZE;
     private static final int COMPLETION_ICON_SIZE = 16;
 
-    private static final Map<String, Icon> CACHE = new HashMap<>();
+    private static final Map<EyeCodeIcon, Icon> CACHE = new EnumMap<>(EyeCodeIcon.class);
+    private static final Map<String, Icon> LEGACY_CACHE = new HashMap<>();
     private static final Map<CompletionItemKind, Icon> COMPLETION_CACHE = new HashMap<>();
 
     private IconManager() {}
 
-    public static Icon folder()      { return load("folder"); }
-    public static Icon folders() {return load("folders");}
-    public static Icon projectDirectory() { return load("projectDirectory"); }
-    public static Icon assets()      { return load("assets"); }
-    public static Icon save()        { return load("save"); }
-    public static Icon run()         { return load("run"); }
-    public static Icon close()       { return load("close"); }
-    public static Icon search()      { return load("search"); }
-    public static Icon terminal()    { return load("terminal"); }
-    public static Icon project()     { return load("project"); }
-    public static Icon clear()       { return load("clear"); }
-    public static Icon settings()    { return load("settings"); }
-    public static Icon minimize()    { return load("minimize"); }
-    public static Icon maximize()    { return load("maximize"); }
-    public static Icon commit()      { return load("commit"); }
-    public static Icon pr()          { return load("pr"); }
-    public static Icon structure()   { return load("structure"); }
-    public static Icon services()    { return load("services"); }
-    public static Icon problem()     { return load("problem"); }
-    public static Icon git()         { return load("git"); }
+    public static Icon folder()             { return icon(EyeCodeIcon.FOLDER); }
+    public static Icon folders()            { return icon(EyeCodeIcon.FOLDERS); }
+    public static Icon projectDirectory()   { return icon(EyeCodeIcon.PROJECT_DIRECTORY); }
+    public static Icon assets()             { return icon(EyeCodeIcon.ASSETS); }
+    public static Icon save()               { return icon(EyeCodeIcon.SAVE); }
+    public static Icon run()                { return icon(EyeCodeIcon.RUN); }
+    public static Icon close()              { return icon(EyeCodeIcon.CLOSE); }
+    public static Icon search()             { return icon(EyeCodeIcon.SEARCH); }
+    public static Icon terminal()           { return icon(EyeCodeIcon.TERMINAL); }
+    public static Icon project()            { return icon(EyeCodeIcon.PROJECT); }
+    public static Icon clear()              { return icon(EyeCodeIcon.CLEAR); }
+    public static Icon settings()           { return icon(EyeCodeIcon.SETTINGS); }
+    public static Icon minimize()           { return icon(EyeCodeIcon.MINIMIZE); }
+    public static Icon maximize()           { return icon(EyeCodeIcon.MAXIMIZE); }
+    public static Icon commit()             { return icon(EyeCodeIcon.COMMIT); }
+    public static Icon pr()                 { return icon(EyeCodeIcon.PR); }
+    public static Icon structure()          { return icon(EyeCodeIcon.STRUCTURE); }
+    public static Icon services()           { return icon(EyeCodeIcon.SERVICES); }
+    public static Icon problem()            { return icon(EyeCodeIcon.PROBLEM); }
+    public static Icon git()                { return icon(EyeCodeIcon.GIT); }
 
-    public static Icon menu()        { return load("hamburger"); }
-    public static Icon newFile()     { return load("newFile"); }
-    public static Icon javaFile()    { return load("java"); }
-    public static Icon textFile()    { return load("file"); }
-    public static Icon modifiedDot() { return load("modifiedDot"); }
+    public static Icon menu()               { return icon(EyeCodeIcon.HAMBURGER); }
+    public static Icon newFile()            { return icon(EyeCodeIcon.NEW_FILE); }
+    public static Icon javaFile()           { return icon(EyeCodeIcon.JAVA_FILE); }
+    public static Icon textFile()           { return icon(EyeCodeIcon.TEXT_FILE); }
+    public static Icon modifiedDot()        { return icon(EyeCodeIcon.MODIFIED_DOT); }
 
     // Sprint 9.2 – Run Controls
-    public static Icon reload()      { return load("reload"); }
-    public static Icon play()        { return load("play"); }
-    public static Icon stop()        { return load("stop"); }
-    public static Icon debug()       { return load("debug"); }
+    public static Icon reload()             { return icon(EyeCodeIcon.RELOAD); }
+    public static Icon play()               { return icon(EyeCodeIcon.PLAY); }
+    public static Icon stop()               { return icon(EyeCodeIcon.STOP); }
+    public static Icon debug()              { return icon(EyeCodeIcon.DEBUG); }
 
-    public static Icon folderOpen()  { return load("folderOpen"); }
-    public static Icon newProject()  { return load("newProject"); }
+    public static Icon folderOpen()         { return icon(EyeCodeIcon.FOLDER_OPEN); }
+    public static Icon newProject()         { return icon(EyeCodeIcon.NEW_PROJECT); }
+
+    private static Icon icon(EyeCodeIcon key) {
+        return CACHE.computeIfAbsent(key, IconManager::loadIcon);
+    }
+
+    private static Icon loadIcon(EyeCodeIcon key) {
+        return new FlatSVGIcon(ICONS_PATH + key.resourceKey() + ".svg", ICON_SIZE, ICON_SIZE);
+    }
 
     public static Icon forFile(String filename) {
 
@@ -147,7 +158,7 @@ public final class IconManager {
     }
 
     private static Icon load(String name) {
-        return CACHE.computeIfAbsent(name, n -> new FlatSVGIcon(ICONS_PATH + n + ".svg", ICON_SIZE, ICON_SIZE));
+        return LEGACY_CACHE.computeIfAbsent(name, n -> new FlatSVGIcon(ICONS_PATH + n + ".svg", ICON_SIZE, ICON_SIZE));
     }
 
     public static Icon forProjectType(ProjectType type) {

@@ -1,5 +1,7 @@
 package com.eyecode.javafx.ui;
 
+import com.eyecode.javafx.designsystem.FxSpacing;
+import javafx.geometry.Insets;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
@@ -9,6 +11,7 @@ public final class FxStatusBar extends HBox {
 
     public FxStatusBar() {
         getStyleClass().add("status-bar");
+        setPadding(new Insets(0, FxSpacing.STATUSBAR_SIDE, 0, FxSpacing.STATUSBAR_SIDE));
 
         HBox left = new HBox();
         left.getStyleClass().add("status-section");

@@ -1,11 +1,14 @@
 package com.eyecode.javafx.ui;
 
+import com.eyecode.designsystem.icon.EyeCodeIcon;
+import com.eyecode.javafx.designsystem.FxSpacing;
+import com.eyecode.javafx.designsystem.JavaFxIconButton;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 
 public final class FxToolbar extends HBox {
 
@@ -15,39 +18,40 @@ public final class FxToolbar extends HBox {
 
     public FxToolbar(Runnable onClose) {
         getStyleClass().add("toolbar");
+        setPadding(new Insets(0, FxSpacing.TOOLBAR_SIDE_PAD, 0, FxSpacing.TOOLBAR_SIDE_PAD));
+        setPrefHeight(FxSpacing.TOOLBAR_HEIGHT);
+        setMinHeight(FxSpacing.TOOLBAR_HEIGHT);
 
         HBox left = new HBox();
         left.getStyleClass().add("toolbar-left");
+        Label logo = logoLabel();
+        HBox.setMargin(logo, new Insets(0, FxSpacing.XXL, 0, FxSpacing.XXL));
         left.getChildren().addAll(
-                iconButton("hamburger", "\u2630"),
-                logoLabel(),
+                JavaFxIconButton.create(EyeCodeIcon.HAMBURGER, "Menu"),
+                logo,
+                JavaFxIconButton.create(EyeCodeIcon.PROJECT, "Project"),
                 projectLabel()
         );
 
         HBox actions = new HBox();
         actions.getStyleClass().add("toolbar-actions");
         actions.getChildren().addAll(
-                iconButton("run", "\u25B6"),
-                iconButton("stop", "\u25A0"),
-                iconButton("debug", "\u25C7"),
+                JavaFxIconButton.create(EyeCodeIcon.SEARCH, "Search"),
+                JavaFxIconButton.create(EyeCodeIcon.GIT, "Git"),
                 separator(),
-                iconButton("open", "\u25C9"),
-                iconButton("save", "\u25C0"),
+                JavaFxIconButton.create(EyeCodeIcon.RUN, "Run"),
+                JavaFxIconButton.create(EyeCodeIcon.DEBUG, "Debug"),
                 separator(),
-                iconButton("search", "\u25C5"),
-                iconButton("settings", "\u2699")
+                JavaFxIconButton.create(EyeCodeIcon.SETTINGS, "Settings")
         );
 
-        Button closeBtn = iconButton("win-close", "\u2715");
-        if (onClose != null) {
-            closeBtn.setOnAction(e -> onClose.run());
-        }
+        Button closeBtn = windowButton(EyeCodeIcon.CLOSE, "win-close", "Close", onClose);
 
         HBox windowControls = new HBox();
         windowControls.getStyleClass().add("toolbar-window");
         windowControls.getChildren().addAll(
-                iconButton("win-min", "\u2014"),
-                iconButton("win-max", "\u25A1"),
+                windowButton(EyeCodeIcon.MINIMIZE, "win-min", "Minimize", null),
+                windowButton(EyeCodeIcon.MAXIMIZE, "win-max", "Maximize", null),
                 closeBtn
         );
 
@@ -61,17 +65,17 @@ public final class FxToolbar extends HBox {
         getChildren().addAll(left, spacer, right);
     }
 
-    private Button iconButton(String id, String glyph) {
-        Button b = new Button(glyph);
-        b.setId(id);
-        b.getStyleClass().add("toolbar-btn");
+    private Button windowButton(EyeCodeIcon icon, String id, String tooltip, Runnable onClose) {
+        Button b = JavaFxIconButton.windowButton(icon, id, tooltip);
+        if (onClose != null) {
+            b.setOnAction(e -> onClose.run());
+        }
         return b;
     }
 
     private Label logoLabel() {
         Label l = new Label("EyeCode");
         l.getStyleClass().add("toolbar-logo");
-        HBox.setMargin(l, new Insets(0, 12, 0, 12));
         return l;
     }
 

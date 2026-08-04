@@ -4,12 +4,12 @@ import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.javafx.editor.JavaFxEditor;
 import com.eyecode.javafx.editor.JavaFxEditorController;
-import javafx.scene.layout.StackPane;
 
-public final class FxEditorContainer extends StackPane {
+public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxCard {
 
     public FxEditorContainer() {
-        getStyleClass().add("editor-container");
+        getStyleClass().add("editor-card");
+        getStyleClass().remove("fx-card");
 
         EditorDocument document = new EditorDocument(
                 java.nio.file.Path.of("src/test/resources/javafx/demo/Animal.java"),
@@ -37,6 +37,6 @@ public final class FxEditorContainer extends StackPane {
         JavaFxEditorController controller = new JavaFxEditorController(editor, buffer);
         controller.loadDocument();
 
-        getChildren().add(editor);
+        setContent(editor);
     }
 }

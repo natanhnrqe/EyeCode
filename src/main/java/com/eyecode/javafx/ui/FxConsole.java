@@ -4,18 +4,26 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 
-public final class FxConsole extends TabPane {
+public final class FxConsole extends com.eyecode.javafx.designsystem.FxCard {
+
+    private final TabPane tabPane;
 
     public FxConsole() {
-        getStyleClass().add("console");
+        getStyleClass().add("terminal-card");
+        getStyleClass().remove("fx-card");
+
+        tabPane = new TabPane();
+        tabPane.getStyleClass().add("console-tabs");
 
         Tab terminalTab = new Tab("Terminal", buildPlaceholder("Terminal placeholder"));
         terminalTab.setClosable(false);
         Tab runTab = new Tab("Run", buildPlaceholder("Run output placeholder"));
         runTab.setClosable(false);
 
-        getTabs().addAll(terminalTab, runTab);
-        setPrefHeight(300);
+        tabPane.getTabs().addAll(terminalTab, runTab);
+        tabPane.setPrefHeight(300);
+
+        setContent(tabPane);
     }
 
     private Label buildPlaceholder(String text) {

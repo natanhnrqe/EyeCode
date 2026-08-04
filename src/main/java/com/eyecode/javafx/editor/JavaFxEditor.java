@@ -18,26 +18,15 @@ public final class JavaFxEditor extends HBox {
 
         codeArea.setParagraphGraphicFactory(new JavaFxGutterFactory(codeArea));
 
-        codeArea.currentParagraphProperty().addListener((obs, old, current) -> {
-            if (old != null) {
-                refreshLineStyle(old.intValue());
-            }
-            if (current != null) {
-                refreshLineStyle(current.intValue());
-            }
-        });
-
         scrollPane = new VirtualizedScrollPane<>(codeArea);
         scrollPane.getStyleClass().add("editor-scroll-pane");
+        HBox.setHgrow(scrollPane, Priority.ALWAYS);
 
         getStyleClass().add("editor-root");
+        setMaxWidth(Double.MAX_VALUE);
+        setMaxHeight(Double.MAX_VALUE);
 
         getChildren().add(scrollPane);
-        HBox.setHgrow(scrollPane, Priority.ALWAYS);
-    }
-
-    private void refreshLineStyle(int lineIndex) {
-        codeArea.recreateParagraphGraphic(lineIndex);
     }
 
     public CodeArea getCodeArea() {
