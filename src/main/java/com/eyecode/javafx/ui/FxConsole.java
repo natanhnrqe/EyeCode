@@ -21,7 +21,6 @@ public final class FxConsole extends com.eyecode.javafx.designsystem.FxCard {
         runTab.setClosable(false);
 
         tabPane.getTabs().addAll(terminalTab, runTab);
-        tabPane.setPrefHeight(300);
 
         setContent(tabPane);
     }

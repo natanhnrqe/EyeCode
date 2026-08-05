@@ -27,6 +27,7 @@ public class FxCard extends VBox {
         VBox body = new VBox();
         body.getStyleClass().add("card-body");
         body.getChildren().add(content);
+        VBox.setVgrow(body, Priority.ALWAYS);
         VBox.setVgrow(content, Priority.ALWAYS);
         return body;
     }
