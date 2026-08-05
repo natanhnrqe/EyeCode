@@ -1,28 +1,99 @@
 /*
- * EyeCode — JavaFX stylesheet (Sprint 2.3 — Layout Polish)
+ * EyeCode — JavaFX stylesheet (Sprint 2.4B — Theme Consolidation)
  *
  * Identidade visual consolidada — referência IntelliJ IDEA (Nova UI).
+ * Toda aparência vem deste arquivo; nenhum componente usa Modena.
  *
- * Estrutura:
- *   Canvas (#26282C) → Cards (#1E1F22) → Conteúdo
- *
- * Palette:
- *   canvas     38,40,44   (#26282C) — fundo único
- *   card       30,31,34   (#1E1F22) — fundo de todo card
- *   card-bord  rgba(255,255,255,0.05)
- *   radius     10
- *   accent     53,116,240
- *   text       220,220,220   text2  187,187,187   muted  145,150,160
- *
- * Nenhum componente define seu próprio fundo fora dos Cards.
+ * Blocos:
+ *   1  Palette (root theme)
+ *   2  Canvas
+ *   3  Card System
+ *   4  SplitPanes
+ *   5  Buttons
+ *   6  Toolbar
+ *   7  Tabs
+ *   8  Tooltips
+ *   9  Context Menus
+ *   10 TreeView
+ *   11 ScrollBars
+ *   12 Inputs
+ *   13 Popups
+ *   14 Status Bar
+ *   15 Explorer
+ *   16 Editor (CodeArea + gutter)
+ *   17 Syntax highlighting
+ *   18 Utilities
  */
 
 /* ============================================================
-   1. Canvas
+   1. Palette — bloco único do tema.
+   Todo controle herda via lookups (-fx-*). Nenhum componente
+   redefine -fx-focus-color / -fx-faint-focus-color / -fx-accent /
+   -fx-base / -fx-text-base-color / -fx-control-inner-background.
+   ============================================================ */
+.root {
+    /* EyeCode palette */
+    -eyecode-canvas:          rgb(38, 40, 44);
+    -eyecode-card:            rgb(30, 31, 34);
+    -eyecode-surface:         rgb(37, 38, 42);
+    -eyecode-border:          rgba(255, 255, 255, 0.05);
+    -eyecode-border-strong:   rgba(255, 255, 255, 0.12);
+    -eyecode-hover:           rgba(255, 255, 255, 0.06);
+    -eyecode-pressed:         rgba(255, 255, 255, 0.10);
+    -eyecode-accent:          rgb(53, 116, 240);
+    -eyecode-accent-soft:     rgba(53, 116, 240, 0.18);
+    -eyecode-accent-bright:   rgb(140, 175, 255);
+    -eyecode-text:            rgb(220, 220, 220);
+    -eyecode-text-secondary:  rgb(187, 187, 187);
+    -eyecode-muted:           rgb(145, 150, 160);
+    -eyecode-text-dim:        rgb(120, 120, 120);
+    -eyecode-success:         rgb(87, 166, 74);
+    -eyecode-scroll-thumb:        rgb(67, 70, 76);
+    -eyecode-scroll-thumb-hover:  rgb(87, 90, 96);
+    -eyecode-scroll-thumb-pressed: rgb(100, 104, 112);
+
+    /* JavaFX core lookups — foco neutro (sem azul Modena) */
+    -fx-focus-color:               rgba(140, 145, 155, 0.55);
+    -fx-faint-focus-color:         rgba(140, 145, 155, 0.18);
+    -fx-accent:                    -eyecode-accent;
+    -fx-base:                      -eyecode-card;
+    -fx-text-base-color:           -eyecode-text;
+    -fx-text-background-color:     -eyecode-text;
+    -fx-text-inner-color:          -eyecode-text;
+    -fx-text-fill:                 -eyecode-text;
+    -fx-control-inner-background:  -eyecode-surface;
+    -fx-mark-color:                -eyecode-text-secondary;
+}
+
+/* Scenes de popup re-ancoram a paleta (lookups não cruzam scenes).
+   Apenas as variáveis -eyecode-*; os -fx-* permanecem exclusivos do .root. */
+.tooltip,
+.context-menu,
+.combo-box-popup,
+.choice-box-popup {
+    -eyecode-card:            rgb(30, 31, 34);
+    -eyecode-surface:         rgb(37, 38, 42);
+    -eyecode-border:          rgba(255, 255, 255, 0.05);
+    -eyecode-border-strong:   rgba(255, 255, 255, 0.12);
+    -eyecode-hover:           rgba(255, 255, 255, 0.08);
+    -eyecode-pressed:         rgba(255, 255, 255, 0.12);
+    -eyecode-accent:          rgb(53, 116, 240);
+    -eyecode-accent-soft:     rgba(53, 116, 240, 0.35);
+    -eyecode-accent-bright:   rgb(140, 175, 255);
+    -eyecode-text:            rgb(220, 220, 220);
+    -eyecode-text-secondary:  rgb(187, 187, 187);
+    -eyecode-muted:           rgb(150, 155, 165);
+    -eyecode-text-dim:        rgb(120, 120, 120);
+    -eyecode-scroll-thumb:        rgb(67, 70, 76);
+    -eyecode-scroll-thumb-hover:  rgb(87, 90, 96);
+}
+
+/* ============================================================
+   2. Canvas
    ============================================================ */
 .canvas-root,
 .root-layout {
-    -fx-background-color: rgb(38, 40, 44);
+    -fx-background-color: -eyecode-canvas;
 }
 
 .workspace {
@@ -30,15 +101,15 @@
 }
 
 /* ============================================================
-   2. Card System
+   3. Card System
    ============================================================ */
 .fx-card,
 .explorer-card,
 .editor-card,
 .terminal-card {
-    -fx-background-color: rgb(30, 31, 34);
+    -fx-background-color: -eyecode-card;
     -fx-background-radius: 10;
-    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-border-color: -eyecode-border;
     -fx-border-width: 1;
     -fx-border-radius: 10;
     -fx-padding: 0;
@@ -59,7 +130,7 @@
 }
 
 /* ============================================================
-   3. SplitPanes — divisor fino, discreto, hover sutil
+   4. SplitPanes — divisor fino, discreto
    ============================================================ */
 .center-split,
 .root-split {
@@ -70,7 +141,7 @@
 .root-split > .split-pane-divider {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-padding: 0 0 0 0;
+    -fx-padding: 0;
 }
 
 .center-split > .split-pane-divider {
@@ -82,7 +153,120 @@
 }
 
 /* ============================================================
-   4. Toolbar
+   5. Buttons — comportamento unificado
+   (toolbar, bottom tool window, activity bar, window controls)
+   ============================================================ */
+.toolbar-btn,
+.activity-btn,
+.bottom-tw-btn,
+.win-btn {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6;
+    -fx-text-fill: -eyecode-text-secondary;
+    -fx-content-display: center;
+    -fx-cursor: hand;
+}
+
+.toolbar-btn:hover,
+.activity-btn:hover,
+.bottom-tw-btn:hover,
+.win-btn:hover {
+    -fx-background-color: -eyecode-hover;
+    -fx-text-fill: -eyecode-text;
+}
+
+.toolbar-btn:pressed,
+.activity-btn:pressed,
+.bottom-tw-btn:pressed,
+.win-btn:pressed,
+.toolbar-btn:focused,
+.activity-btn:focused,
+.bottom-tw-btn:focused,
+.win-btn:focused {
+    -fx-background-color: -eyecode-pressed;
+}
+
+.toolbar-btn:disabled,
+.activity-btn:disabled,
+.bottom-tw-btn:disabled,
+.win-btn:disabled {
+    -fx-opacity: 0.4;
+    -fx-cursor: default;
+}
+
+/* Toolbar (top bar) */
+.toolbar-btn {
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 13;
+    -fx-padding: 0 8 0 8;
+    -fx-min-height: 28;
+    -fx-pref-height: 28;
+    -fx-background-radius: 4;
+}
+
+.toolbar-btn-icon {
+    -fx-padding: 0;
+    -fx-min-width: 28;
+    -fx-pref-width: 28;
+    -fx-min-height: 28;
+    -fx-pref-height: 28;
+    -fx-content-display: graphic-only;
+}
+
+/* Window controls — transparentes; Close vermelho apenas no hover */
+.win-btn {
+    -fx-padding: 0;
+    -fx-min-width: 44;
+    -fx-pref-width: 44;
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+    -fx-background-radius: 0;
+    -fx-content-display: graphic-only;
+}
+
+#win-close {
+    -fx-background-color: transparent;
+    -fx-text-fill: -eyecode-text;
+}
+
+#win-close:hover {
+    -fx-background-color: rgb(232, 17, 35);
+    -fx-text-fill: rgb(255, 255, 255);
+}
+
+/* Activity bar — barra de ícones, sem fundo próprio */
+.activity-btn {
+    -fx-font-size: 18;
+    -fx-min-width: 36;
+    -fx-pref-width: 36;
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+}
+
+.activity-btn-selected,
+.activity-btn-selected:hover {
+    -fx-background-color: -eyecode-accent-soft;
+    -fx-text-fill: -eyecode-accent-bright;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+
+/* Bottom tool window bar — inspirada no IntelliJ */
+.bottom-tw-btn {
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 12;
+    -fx-padding: 4 10 4 10;
+    -fx-background-radius: 4;
+}
+
+.bottom-tw-btn-selected,
+.bottom-tw-btn-selected:hover {
+    -fx-background-color: -eyecode-accent-soft;
+    -fx-text-fill: -eyecode-accent-bright;
+}
+
+/* ============================================================
+   6. Toolbar (estrutura)
    ============================================================ */
 .toolbar {
     -fx-background-color: transparent;
@@ -108,235 +292,63 @@
     -fx-spacing: 2;
     -fx-padding: 0 8 0 0;
 }
+
 .toolbar-window {
     -fx-alignment: center-right;
     -fx-spacing: 0;
 }
 
 .toolbar-logo {
-    -fx-text-fill: rgb(220, 220, 220);
+    -fx-text-fill: -eyecode-text;
     -fx-font-family: "JetBrains Mono", monospace;
     -fx-font-weight: bold;
     -fx-font-size: 14;
 }
 
 .toolbar-project {
-    -fx-text-fill: rgb(150, 155, 165);
+    -fx-text-fill: -eyecode-muted;
     -fx-font-family: "JetBrains Mono", monospace;
     -fx-font-size: 12;
 }
 
 .toolbar-separator {
-    -fx-background-color: rgba(255, 255, 255, 0.10);
+    -fx-background-color: -eyecode-border-strong;
     -fx-min-width: 1;
     -fx-pref-width: 1;
     -fx-min-height: 16;
     -fx-pref-height: 16;
-    -fx-margin: 0 8 0 8;
 }
 
 /* ============================================================
-   5. Buttons (toolbar, top bar)
+   7. Tabs — .editor-tabs e .console-tabs com comportamento único
    ============================================================ */
-.toolbar-btn {
-    -fx-background-color: transparent;
-    -fx-text-fill: rgb(220, 220, 220);
-    -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 13;
-    -fx-cursor: hand;
-    -fx-padding: 0 8 0 8;
-    -fx-min-height: 28;
-    -fx-pref-height: 28;
-    -fx-background-radius: 4;
-    -fx-content-display: center;
-}
-.toolbar-btn:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.06);
-}
-.toolbar-btn:pressed,
-.toolbar-btn:focused {
-    -fx-background-color: rgba(255, 255, 255, 0.10);
-}
-.toolbar-btn:disabled {
-    -fx-opacity: 0.4;
-    -fx-cursor: default;
-}
-
-/* Botões gráficos-only (SVG icons) — dimensão quadrada consistente */
-.toolbar-btn-icon {
-    -fx-padding: 0;
-    -fx-min-width: 28;
-    -fx-pref-width: 28;
-    -fx-min-height: 28;
-    -fx-pref-height: 28;
-    -fx-content-display: graphic-only;
-}
-
-/* Window controls — transparentes; Close vermelho apenas no hover */
-.win-btn {
-    -fx-padding: 0;
-    -fx-min-width: 44;
-    -fx-pref-width: 44;
-    -fx-min-height: 36;
-    -fx-pref-height: 36;
-    -fx-background-radius: 0;
-    -fx-background-color: transparent;
-    -fx-content-display: graphic-only;
-    -fx-cursor: hand;
-}
-.win-btn:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.06);
-}
-#win-close {
-    -fx-background-color: transparent;
-    -fx-text-fill: rgb(220, 220, 220);
-}
-#win-close:hover {
-    -fx-background-color: rgb(232, 17, 35);
-    -fx-text-fill: rgb(255, 255, 255);
-}
-
-/* ============================================================
-   6. Activity Bar — barra de ícones, sem fundo próprio
-   ============================================================ */
-.activity-bar {
-    -fx-background-color: transparent;
-    -fx-border-color: transparent;
-    -fx-border-width: 0;
-    -fx-spacing: 4;
-    -fx-padding: 12 0 0 0;
-    -fx-alignment: top-center;
-}
-
-.activity-btn {
-    -fx-background-color: transparent;
-    -fx-text-fill: rgb(150, 155, 165);
-    -fx-font-size: 18;
-    -fx-cursor: hand;
-    -fx-content-display: center;
-    -fx-background-radius: 6;
-    -fx-min-width: 36;
-    -fx-pref-width: 36;
-    -fx-min-height: 36;
-    -fx-pref-height: 36;
-}
-.activity-btn:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.06);
-    -fx-text-fill: rgb(220, 220, 220);
-}
-.activity-btn-selected,
-.activity-btn-selected:hover {
-    -fx-background-color: rgba(53, 116, 240, 0.18);
-    -fx-background-radius: 6;
-    -fx-text-fill: rgb(140, 175, 255);
-    -fx-border-color: transparent;
-    -fx-border-width: 0;
-}
-
-/* ============================================================
-   7. Explorer (Tree)
-   ============================================================ */
-.explorer-content {
-    -fx-background-color: transparent;
-    -fx-padding: 0;
-}
-
-.explorer-placeholder {
-    -fx-text-fill: rgb(145, 150, 160);
-    -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 13;
-}
-
-.tree-view {
-    -fx-background-color: transparent;
-    -fx-padding: 0;
-}
-
-.tree-cell {
-    -fx-background-color: transparent;
-    -fx-text-fill: rgb(187, 187, 187);
-    -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 13;
-    -fx-padding: 2 8 2 8;
-    -fx-cursor: hand;
-    -fx-background-radius: 4;
-}
-.tree-cell:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.05);
-    -fx-text-fill: rgb(220, 220, 220);
-}
-.tree-cell:filled:selected {
-    -fx-background-color: rgba(53, 116, 240, 0.18);
-    -fx-text-fill: rgb(220, 220, 220);
-}
-.tree-cell:filled:selected:focused {
-    -fx-background-color: rgba(53, 116, 240, 0.28);
-}
-.tree-cell:filled:focused {
-    -fx-background-color: transparent;
-}
-.tree-cell .tree-disclosure-node {
-    -fx-background-color: transparent;
-}
-
-/* ============================================================
-   8. Editor Card — apenas estrutura; editor em si inalterado
-   ============================================================ */
-.editor-card > .tab-header-area {
-    -fx-background-color: transparent;
-    -fx-padding: 6 8 0 8;
-}
-
-.editor-card > .tab-header-area > .tab-header-background {
-    -fx-background-color: transparent;
-}
-
-.editor-card > .tab-header-area > .headers-region > .tab {
-    -fx-background-color: transparent;
-    -fx-border-color: transparent;
-    -fx-border-width: 0;
-    -fx-padding: 6 14 6 14;
-    -fx-background-radius: 6;
-    -fx-cursor: hand;
-}
-.editor-card > .tab-header-area > .headers-region > .tab:selected {
-    -fx-background-color: rgba(255, 255, 255, 0.06);
-    -fx-text-fill: rgb(220, 220, 220);
-}
-.editor-card > .tab-header-area > .headers-region > .tab:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.04);
-}
-
-.editor-area {
-    -fx-background-color: transparent;
-    -fx-padding: 0;
-}
-
-.editor-placeholder {
-    -fx-background-color: transparent;
-    -fx-text-fill: rgb(150, 155, 165);
-    -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 13;
-}
-
-/* ============================================================
-   9. Terminal Card — visualmente igual ao Editor Card
-   ============================================================ */
+.editor-tabs,
 .console-tabs {
     -fx-background-color: transparent;
+}
+
+.editor-tabs {
+    -fx-tab-min-width: 120;
+    -fx-tab-max-width: 260;
+}
+
+.console-tabs {
     -fx-tab-min-width: 90;
     -fx-tab-max-width: 220;
 }
 
+.editor-tabs > .tab-header-area,
 .console-tabs > .tab-header-area {
     -fx-background-color: transparent;
     -fx-padding: 6 8 0 8;
 }
 
+.editor-tabs > .tab-header-area > .tab-header-background,
 .console-tabs > .tab-header-area > .tab-header-background {
     -fx-background-color: transparent;
 }
 
+.editor-tabs > .tab-header-area > .headers-region > .tab,
 .console-tabs > .tab-header-area > .headers-region > .tab {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
@@ -345,55 +357,325 @@
     -fx-background-radius: 6;
     -fx-cursor: hand;
 }
-.console-tabs > .tab-header-area > .headers-region > .tab:selected {
-    -fx-background-color: rgba(255, 255, 255, 0.06);
-    -fx-text-fill: rgb(220, 220, 220);
-}
+
+.editor-tabs > .tab-header-area > .headers-region > .tab:hover,
 .console-tabs > .tab-header-area > .headers-region > .tab:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.04);
+    -fx-background-color: -eyecode-hover;
 }
 
-.console-placeholder {
-    -fx-text-fill: rgb(145, 150, 160);
+.editor-tabs > .tab-header-area > .headers-region > .tab:selected,
+.console-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: -eyecode-pressed;
+}
+
+/* Texto da aba — -fx-text-fill não herda para o .tab-label */
+.editor-tabs > .tab-header-area > .headers-region > .tab .tab-label,
+.console-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: -eyecode-muted;
     -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 12;
-    -fx-padding: 8 12 8 12;
+    -fx-font-size: 13;
+}
+
+.editor-tabs > .tab-header-area > .headers-region > .tab:hover .tab-label,
+.console-tabs > .tab-header-area > .headers-region > .tab:hover .tab-label {
+    -fx-text-fill: -eyecode-text-secondary;
+}
+
+.editor-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label,
+.console-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: -eyecode-text;
+}
+
+/* Preview tabs — itálico */
+.editor-tabs > .tab-header-area > .headers-region > .tab.tab-preview .tab-label,
+.console-tabs > .tab-header-area > .headers-region > .tab.tab-preview .tab-label {
+    -fx-font-style: italic;
+}
+
+/* Close button */
+.editor-tabs > .tab-header-area > .headers-region > .tab > .tab-close-button,
+.console-tabs > .tab-header-area > .headers-region > .tab > .tab-close-button {
+    -fx-background-color: -eyecode-text-dim;
+    -fx-background-insets: 2;
+    -fx-background-radius: 2;
+    -fx-padding: 4 4 4 4;
+    -fx-cursor: hand;
+}
+
+.editor-tabs > .tab-header-area > .headers-region > .tab > .tab-close-button:hover,
+.console-tabs > .tab-header-area > .headers-region > .tab > .tab-close-button:hover {
+    -fx-background-color: -eyecode-text;
+}
+
+/* Área de conteúdo */
+.editor-tabs > .tab-content-area,
+.console-tabs > .tab-content-area {
+    -fx-background-color: transparent;
 }
 
 /* ============================================================
-   9b. Bottom Tool Window Bar — inspirada no IntelliJ
+   8. Tooltips — identidade EyeCode
    ============================================================ */
-.bottom-tool-window-wrap {
-    -fx-background-color: transparent;
-    -fx-padding: 4 0 0 0;
-}
-
-.bottom-tool-window-bar {
-    -fx-background-color: transparent;
-    -fx-alignment: center-left;
-}
-
-.bottom-tw-btn {
-    -fx-background-color: transparent;
-    -fx-text-fill: rgb(150, 155, 165);
+.tooltip {
+    -fx-background-color: -eyecode-surface;
+    -fx-background-radius: 6;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-padding: 5 9 5 9;
     -fx-font-family: "JetBrains Mono", monospace;
     -fx-font-size: 12;
+    -fx-text-fill: -eyecode-text;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.45), 10, 0.4, 0, 3);
+}
+
+/* ============================================================
+   9. Context Menus — identidade EyeCode
+   ============================================================ */
+.context-menu {
+    -fx-background-color: -eyecode-surface;
+    -fx-background-radius: 6;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-padding: 4;
+    -fx-mark-color: -eyecode-text-secondary;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.45), 10, 0.4, 0, 3);
+}
+
+.context-menu .menu-item {
+    -fx-padding: 6 12 6 12;
+    -fx-background-radius: 4;
+    -fx-background-color: transparent;
+}
+
+.context-menu .menu-item .label {
+    -fx-text-fill: -eyecode-text-secondary;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 13;
+}
+
+.context-menu .menu-item:hover,
+.context-menu .menu-item:focused {
+    -fx-background-color: -eyecode-accent-soft;
+}
+
+.context-menu .menu-item:hover .label,
+.context-menu .menu-item:focused .label {
+    -fx-text-fill: -eyecode-text;
+}
+
+.context-menu .menu-item:disabled {
+    -fx-opacity: 0.4;
+}
+
+.context-menu .menu-item .right-container {
+    -fx-padding: 0 0 0 12;
+}
+
+.context-menu .separator-menu-item > .separator > .line,
+.context-menu .menu-item > .separator > .line {
+    -fx-background-color: -eyecode-border-strong;
+    -fx-border-color: -eyecode-border-strong;
+}
+
+/* ============================================================
+   10. TreeView — preparado para uso futuro
+   ============================================================ */
+.tree-view {
+    -fx-background-color: transparent;
+    -fx-padding: 2;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+
+.tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -eyecode-text-secondary;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 13;
+    -fx-padding: 2 8 2 8;
     -fx-cursor: hand;
-    -fx-padding: 4 10 4 10;
     -fx-background-radius: 4;
 }
-.bottom-tw-btn:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.06);
-    -fx-text-fill: rgb(220, 220, 220);
+
+.tree-cell:hover {
+    -fx-background-color: -eyecode-hover;
+    -fx-text-fill: -eyecode-text;
 }
-.bottom-tw-btn-selected,
-.bottom-tw-btn-selected:hover {
-    -fx-background-color: rgba(53, 116, 240, 0.18);
-    -fx-text-fill: rgb(140, 175, 255);
+
+.tree-cell:filled:selected {
+    -fx-background-color: -eyecode-accent-soft;
+    -fx-text-fill: -eyecode-text;
+}
+
+.tree-cell:filled:selected:focused {
+    -fx-background-color: -eyecode-accent-soft;
+    -fx-text-fill: -eyecode-text;
+}
+
+.tree-cell:filled:focused {
+    -fx-background-color: transparent;
+}
+
+.tree-cell .tree-disclosure-node {
+    -fx-background-color: transparent;
+    -fx-padding: 4;
+}
+
+.tree-cell .tree-disclosure-node .arrow {
+    -fx-background-color: -eyecode-text-dim;
+    -fx-padding: 4;
+}
+
+.tree-cell:hover .tree-disclosure-node .arrow {
+    -fx-background-color: -eyecode-text-secondary;
+}
+
+.tree-cell:empty {
+    -fx-background-color: transparent;
 }
 
 /* ============================================================
-   10. Status Bar — apoiada no Canvas, sem painel próprio
+   11. ScrollBars — finas, estilo IntelliJ
+   ============================================================ */
+.scroll-bar:vertical,
+.scroll-bar:horizontal {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.scroll-bar:vertical {
+    -fx-min-width: 9;
+    -fx-pref-width: 9;
+}
+
+.scroll-bar:horizontal {
+    -fx-min-height: 9;
+    -fx-pref-height: 9;
+}
+
+.scroll-bar:vertical > .thumb,
+.scroll-bar:horizontal > .thumb {
+    -fx-background-color: -eyecode-scroll-thumb;
+    -fx-background-radius: 3;
+    -fx-background-insets: 1;
+}
+
+.scroll-bar:vertical > .thumb:hover,
+.scroll-bar:horizontal > .thumb:hover {
+    -fx-background-color: -eyecode-scroll-thumb-hover;
+}
+
+.scroll-bar:vertical > .thumb:pressed,
+.scroll-bar:horizontal > .thumb:pressed {
+    -fx-background-color: -eyecode-scroll-thumb-pressed;
+}
+
+.scroll-bar:vertical > .track,
+.scroll-bar:horizontal > .track {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar:vertical > .increment-button,
+.scroll-bar:horizontal > .increment-button,
+.scroll-bar:vertical > .decrement-button,
+.scroll-bar:horizontal > .decrement-button {
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-min-width: 0;
+    -fx-pref-width: 0;
+    -fx-min-height: 0;
+    -fx-pref-height: 0;
+}
+
+.scroll-bar:vertical > .increment-arrow,
+.scroll-bar:vertical > .decrement-arrow,
+.scroll-bar:horizontal > .increment-arrow,
+.scroll-bar:horizontal > .decrement-arrow {
+    -fx-padding: 0;
+    -fx-shape: " ";
+}
+
+/* ============================================================
+   12. Inputs — preparados para uso futuro
+   ============================================================ */
+.text-input {
+    -fx-background-color: -eyecode-surface;
+    -fx-background-radius: 6;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-padding: 6 10 6 10;
+    -fx-text-fill: -eyecode-text;
+    -fx-prompt-text-fill: -eyecode-muted;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 13;
+    -fx-highlight-fill: -eyecode-accent;
+    -fx-highlight-text-fill: -eyecode-text;
+}
+
+.text-input:focused {
+    -fx-border-color: -eyecode-accent;
+}
+
+.combo-box,
+.choice-box {
+    -fx-background-color: -eyecode-surface;
+    -fx-background-radius: 6;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-padding: 2 4 2 4;
+    -fx-text-fill: -eyecode-text;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 13;
+}
+
+.combo-box > .list-cell,
+.choice-box > .label {
+    -fx-text-fill: -eyecode-text;
+}
+
+.combo-box .arrow-button .arrow,
+.choice-box .open-button .arrow {
+    -fx-background-color: -eyecode-text-secondary;
+}
+
+/* ============================================================
+   13. Popups — infraestrutura reutilizável
+   Listas de popups (combo/choice) herdam a paleta do bloco 1.
+   Popups futuros (completion, docs, notifications) devem usar
+   um root com estilo próprio referenciando -eyecode-* lookups.
+   ============================================================ */
+.combo-box-popup .list-view,
+.choice-box-popup .list-view {
+    -fx-background-color: -eyecode-surface;
+    -fx-background-radius: 6;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+}
+
+.combo-box-popup .list-view .list-cell,
+.choice-box-popup .list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -eyecode-text-secondary;
+    -fx-padding: 5 10 5 10;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 13;
+}
+
+.combo-box-popup .list-view .list-cell:hover,
+.combo-box-popup .list-view .list-cell:focused,
+.choice-box-popup .list-view .list-cell:hover,
+.choice-box-popup .list-view .list-cell:focused {
+    -fx-background-color: -eyecode-accent-soft;
+    -fx-text-fill: -eyecode-text;
+}
+
+/* ============================================================
+   14. Status Bar — apoiada no Canvas, sem painel próprio
    ============================================================ */
 .status-bar {
     -fx-background-color: transparent;
@@ -411,18 +693,18 @@
 }
 
 .status-item {
-    -fx-text-fill: rgb(187, 187, 187);
+    -fx-text-fill: -eyecode-text-secondary;
     -fx-font-family: "JetBrains Mono", monospace;
     -fx-font-size: 12;
 }
 
 #status-logo {
-    -fx-text-fill: rgb(220, 220, 220);
+    -fx-text-fill: -eyecode-text;
     -fx-font-weight: bold;
 }
 
 .status-dot {
-    -fx-background-color: rgb(87, 166, 74);
+    -fx-background-color: -eyecode-success;
     -fx-background-radius: 5;
     -fx-min-width: 8;
     -fx-pref-width: 8;
@@ -436,13 +718,13 @@
 }
 
 .status-path {
-    -fx-text-fill: rgb(145, 150, 160);
+    -fx-text-fill: -eyecode-muted;
     -fx-font-family: "JetBrains Mono", monospace;
     -fx-font-size: 12;
 }
 
 .status-separator {
-    -fx-background-color: rgba(255, 255, 255, 0.10);
+    -fx-background-color: -eyecode-border-strong;
     -fx-min-width: 1;
     -fx-pref-width: 1;
     -fx-min-height: 14;
@@ -450,52 +732,21 @@
 }
 
 /* ============================================================
-   11. Scrollbars — finas, estilo IntelliJ (inalteradas — legado)
+   15. Explorer
    ============================================================ */
-.scroll-bar:vertical,
-.scroll-bar:horizontal {
-    -fx-background-color: rgb(30, 30, 30);
-    -fx-padding: 0;
-    -fx-pref-width: 9;
-    -fx-pref-height: 9;
-}
-.scroll-bar:vertical > .thumb,
-.scroll-bar:horizontal > .thumb {
-    -fx-background-color: rgb(67, 70, 76);
-    -fx-background-radius: 2;
-    -fx-min-width: 6;
-    -fx-pref-width: 6;
-    -fx-insets: 0 2 0 2;
-}
-.scroll-bar:vertical > .thumb:hover,
-.scroll-bar:horizontal > .thumb:hover {
-    -fx-background-color: rgb(87, 90, 96);
-}
-.scroll-bar:vertical > .increment-button,
-.scroll-bar:horizontal > .increment-button,
-.scroll-bar:vertical > .decrement-button,
-.scroll-bar:horizontal > .decrement-button {
-    -fx-padding: 0;
+.explorer-content {
     -fx-background-color: transparent;
-    -fx-min-width: 0;
-    -fx-pref-width: 0;
-    -fx-min-height: 0;
-    -fx-pref-height: 0;
-}
-.scroll-bar:vertical > .increment-arrow,
-.scroll-bar:vertical > .decrement-arrow,
-.scroll-bar:horizontal > .increment-arrow,
-.scroll-bar:horizontal > .decrement-arrow {
     -fx-padding: 0;
-    -fx-shape: " ";
 }
-.scroll-bar:vertical > .track,
-.scroll-bar:horizontal > .track {
-    -fx-background-color: transparent;
+
+.explorer-placeholder {
+    -fx-text-fill: -eyecode-muted;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 13;
 }
 
 /* ============================================================
-   12. CodeArea (RichTextFX) — legado IntelliJ-aligned
+   16. Editor (CodeArea RichTextFX + gutter)
    ============================================================ */
 .editor-wrapper {
     -fx-background-color: transparent;
@@ -516,6 +767,7 @@
     -fx-border-width: 0;
     -fx-line-spacing: 3;
 }
+
 .code-area:focused {
     -fx-background-color: transparent;
     -fx-effect: null;
@@ -553,7 +805,7 @@
 
 .lineno {
     -fx-background-color: transparent;
-    -fx-text-fill: rgb(120, 120, 120);
+    -fx-text-fill: -eyecode-text-dim;
     -fx-font-family: "JetBrains Mono", monospace;
     -fx-font-size: 13;
     -fx-padding: 0 8 0 8;
@@ -565,12 +817,12 @@
 }
 
 .lineno-current {
-    -fx-text-fill: rgb(220, 220, 220);
+    -fx-text-fill: -eyecode-text;
     -fx-font-weight: bold;
 }
 
 /* ============================================================
-   13. Syntax highlighting — cores inalteradas
+   17. Syntax highlighting — cores inalteradas
    ============================================================ */
 .code-area .syntax-keyword      { -fx-fill: rgb(207, 142, 109); }
 .code-area .syntax-identifier   { -fx-fill: rgb(188, 190, 196); }
@@ -579,12 +831,50 @@
 .code-area .syntax-comment      { -fx-fill: rgb(122, 126, 133); -fx-font-style: italic; }
 .code-area .syntax-operator     { -fx-fill: rgb(188, 190, 196); }
 .code-area .syntax-separator    { -fx-fill: rgb(169, 183, 198); }
-.code-area .syntax-annotation    { -fx-fill: rgb(179, 174, 96);  }
+.code-area .syntax-annotation   { -fx-fill: rgb(179, 174, 96);  }
 .code-area .syntax-whitespace   { -fx-fill: rgb(188, 190, 196); }
 .code-area .syntax-unknown      { -fx-fill: rgb(196, 43, 28);   -fx-font-weight: bold; }
 .code-area .syntax-class        { -fx-fill: rgb(78, 201, 176);  }
 .code-area .syntax-method       { -fx-fill: rgb(86, 168, 245);  }
 .code-area .syntax-field        { -fx-fill: rgb(188, 190, 196); }
-.code-area .syntax-constant    { -fx-fill: rgb(199, 125, 187); }
+.code-area .syntax-constant     { -fx-fill: rgb(199, 125, 187); }
 .code-area .syntax-punctuation  { -fx-fill: rgb(169, 183, 198); }
 .code-area .syntax-plain        { -fx-fill: rgb(188, 190, 196); }
+
+/* ============================================================
+   18. Utilities
+   ============================================================ */
+.editor-workspace-pane,
+.editor-content-pane {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.editor-area {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.editor-placeholder {
+    -fx-background-color: transparent;
+    -fx-text-fill: -eyecode-muted;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 13;
+}
+
+.console-placeholder {
+    -fx-text-fill: -eyecode-muted;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 12;
+    -fx-padding: 8 12 8 12;
+}
+
+.bottom-tool-window-wrap {
+    -fx-background-color: transparent;
+    -fx-padding: 4 0 0 0;
+}
+
+.bottom-tool-window-bar {
+    -fx-background-color: transparent;
+    -fx-alignment: center-left;
+}

@@ -26,4 +26,7 @@ public final class HighlightPipeline {
     public void refresh(EditorDocument document, Optional<?> change) {
         refresh(document);
     }
+
+    public void dispose() {
+    }
 }

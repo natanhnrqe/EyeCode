@@ -40,4 +40,8 @@ public final class JavaFxEditorController {
             buffer.getDocument().setText(editor.getText());
         }
     }
+
+    public void dispose() {
+        changeSubscription.unsubscribe();
+    }
 }
