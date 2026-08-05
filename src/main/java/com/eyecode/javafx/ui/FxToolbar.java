@@ -39,7 +39,9 @@ public final class FxToolbar extends HBox {
                 JavaFxIconButton.create(EyeCodeIcon.SEARCH, "Search"),
                 JavaFxIconButton.create(EyeCodeIcon.GIT, "Git"),
                 separator(),
+                runConfiguration(),
                 JavaFxIconButton.create(EyeCodeIcon.RUN, "Run"),
+                JavaFxIconButton.create(EyeCodeIcon.STOP, "Stop"),
                 JavaFxIconButton.create(EyeCodeIcon.DEBUG, "Debug"),
                 separator(),
                 JavaFxIconButton.create(EyeCodeIcon.SETTINGS, "Settings")
@@ -70,6 +72,14 @@ public final class FxToolbar extends HBox {
         if (onClose != null) {
             b.setOnAction(e -> onClose.run());
         }
+        return b;
+    }
+
+    private Button runConfiguration() {
+        Button b = JavaFxIconButton.create(EyeCodeIcon.PLAY, "Run Configuration");
+        b.setText("Default");
+        b.setContentDisplay(javafx.scene.control.ContentDisplay.LEFT);
+        b.getStyleClass().add("toolbar-run-config");
         return b;
     }
 

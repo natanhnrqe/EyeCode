@@ -104,9 +104,9 @@
    3. Card System
    ============================================================ */
 .fx-card,
-.explorer-card,
 .editor-card,
-.terminal-card {
+.left-tool-window,
+.bottom-tool-window {
     -fx-background-color: -eyecode-card;
     -fx-background-radius: 10;
     -fx-border-color: -eyecode-border;
@@ -213,6 +213,14 @@
     -fx-content-display: graphic-only;
 }
 
+/* Run Configuration — seletor com largura maior */
+.toolbar-run-config {
+    -fx-min-width: 96;
+    -fx-pref-width: 96;
+    -fx-alignment: center;
+    -fx-padding: 0 10 0 8;
+}
+
 /* Window controls — transparentes; Close vermelho apenas no hover */
 .win-btn {
     -fx-padding: 0;
@@ -247,8 +255,8 @@
 .activity-btn-selected:hover {
     -fx-background-color: -eyecode-accent-soft;
     -fx-text-fill: -eyecode-accent-bright;
-    -fx-border-color: transparent;
-    -fx-border-width: 0;
+    -fx-border-color: -eyecode-accent transparent transparent transparent;
+    -fx-border-width: 0 0 0 3;
 }
 
 /* Bottom tool window bar — inspirada no IntelliJ */
@@ -675,52 +683,17 @@
 }
 
 /* ============================================================
-   14. Status Bar — apoiada no Canvas, sem painel próprio
+   14. Bottom Bar unificada — tools + breadcrumbs + status (uma linha)
    ============================================================ */
-.status-bar {
-    -fx-background-color: transparent;
-    -fx-border-color: transparent;
-    -fx-border-width: 0;
-    -fx-pref-height: 28;
-    -fx-min-height: 28;
-    -fx-padding: 0 8 0 8;
-    -fx-alignment: center-left;
-}
-
-.status-section {
-    -fx-alignment: center-left;
-    -fx-spacing: 8;
-}
-
 .status-item {
     -fx-text-fill: -eyecode-text-secondary;
     -fx-font-family: "JetBrains Mono", monospace;
     -fx-font-size: 12;
 }
 
-#status-logo {
-    -fx-text-fill: -eyecode-text;
-    -fx-font-weight: bold;
-}
-
-.status-dot {
-    -fx-background-color: -eyecode-success;
-    -fx-background-radius: 5;
-    -fx-min-width: 8;
-    -fx-pref-width: 8;
-    -fx-min-height: 8;
-    -fx-pref-height: 8;
-}
-
-.status-path-container {
-    -fx-alignment: center-left;
-    -fx-padding: 0 12 0 12;
-}
-
-.status-path {
-    -fx-text-fill: -eyecode-muted;
-    -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 12;
+.status-group {
+    -fx-alignment: center-right;
+    -fx-spacing: 8;
 }
 
 .status-separator {
@@ -731,22 +704,37 @@
     -fx-pref-height: 14;
 }
 
-/* ============================================================
-   15. Explorer
-   ============================================================ */
-.explorer-content {
-    -fx-background-color: transparent;
-    -fx-padding: 0;
+.breadcrumbs {
+    -fx-alignment: center-left;
+    -fx-spacing: 2;
 }
 
-.explorer-placeholder {
+.breadcrumb-label {
     -fx-text-fill: -eyecode-muted;
     -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 13;
+    -fx-font-size: 12;
+}
+
+.breadcrumb-current {
+    -fx-text-fill: -eyecode-text;
+}
+
+.breadcrumb-separator {
+    -fx-text-fill: -eyecode-text-dim;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 12;
+}
+
+.bar-sep {
+    -fx-background-color: -eyecode-border-strong;
+    -fx-min-width: 1;
+    -fx-pref-width: 1;
+    -fx-min-height: 16;
+    -fx-pref-height: 16;
 }
 
 /* ============================================================
-   16. Editor (CodeArea RichTextFX + gutter)
+   15. Editor (CodeArea RichTextFX + gutter)
    ============================================================ */
 .editor-wrapper {
     -fx-background-color: transparent;
@@ -822,7 +810,7 @@
 }
 
 /* ============================================================
-   17. Syntax highlighting — cores inalteradas
+   16. Syntax highlighting — cores inalteradas
    ============================================================ */
 .code-area .syntax-keyword      { -fx-fill: rgb(207, 142, 109); }
 .code-area .syntax-identifier   { -fx-fill: rgb(188, 190, 196); }
@@ -842,7 +830,7 @@
 .code-area .syntax-plain        { -fx-fill: rgb(188, 190, 196); }
 
 /* ============================================================
-   18. Utilities
+   17. Utilities
    ============================================================ */
 .editor-workspace-pane,
 .editor-content-pane {
@@ -862,19 +850,34 @@
     -fx-font-size: 13;
 }
 
-.console-placeholder {
-    -fx-text-fill: -eyecode-muted;
-    -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 12;
-    -fx-padding: 8 12 8 12;
-}
-
 .bottom-tool-window-wrap {
-    -fx-background-color: transparent;
-    -fx-padding: 4 0 0 0;
+    -fx-background-color: -eyecode-surface;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 0;
 }
 
 .bottom-tool-window-bar {
     -fx-background-color: transparent;
     -fx-alignment: center-left;
+}
+
+.workspace-navigator {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-alignment: top-center;
+}
+
+.toolwindow-content {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-alignment: top-left;
+}
+
+.toolwindow-placeholder {
+    -fx-text-fill: -eyecode-muted;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 13;
+    -fx-padding: 8 12 8 12;
 }
