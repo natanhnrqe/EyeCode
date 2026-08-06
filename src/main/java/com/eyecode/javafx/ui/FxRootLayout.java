@@ -5,8 +5,8 @@ import com.eyecode.javafx.designsystem.FxSpacing;
 import com.eyecode.javafx.ui.toolwindow.FxBottomToolWindow;
 import com.eyecode.javafx.ui.toolwindow.FxLeftToolWindow;
 import com.eyecode.javafx.ui.toolwindow.FxWorkspaceNavigator;
-import com.eyecode.javafx.ui.toolwindow.PlaceholderToolWindowContentFactory;
 import com.eyecode.javafx.ui.toolwindow.ToolWindowContentFactory;
+import com.eyecode.javafx.ui.toolwindow.content.WorkspaceContentFactory;
 import com.eyecode.workbench.toolwindow.ToolWindowManager;
 import com.eyecode.workbench.toolwindow.ToolWindowPosition;
 import com.eyecode.workbench.toolwindow.WorkspaceNavigatorItem;
@@ -47,7 +47,7 @@ public final class FxRootLayout extends BorderPane {
         WorkspaceNavigatorModel navigatorModel = new WorkspaceNavigatorModel();
         navigatorModel.setItems(defaultNavigatorItems());
 
-        ToolWindowContentFactory contentFactory = new PlaceholderToolWindowContentFactory();
+        ToolWindowContentFactory contentFactory = new WorkspaceContentFactory();
 
         FxWorkspaceNavigator navigator = new FxWorkspaceNavigator(navigatorModel, manager);
         FxLeftToolWindow leftToolWindow = new FxLeftToolWindow(manager, contentFactory);

@@ -32,6 +32,14 @@ public enum EyeCodeIcon {
     NEW_PROJECT("newProject"),
     JAVA_FILE("java"),
     TEXT_FILE("file"),
+    HTML("html"),
+    CSS("css"),
+    JSON("json"),
+    XML("xml"),
+    MARKDOWN("markdown"),
+    IMAGE("image"),
+    PACKAGE("package"),
+    MODULE("module"),
     MODIFIED_DOT("modifiedDot");
 
     public static final EyeCodeIcon PLACEHOLDER_OUTPUT = TEXT_FILE;
