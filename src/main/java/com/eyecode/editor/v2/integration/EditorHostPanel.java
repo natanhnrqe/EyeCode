@@ -7,6 +7,7 @@ import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.editor.v2.project.ProjectIndexer;
 import com.eyecode.editor.v2.project.ProjectSymbolIndex;
 import com.eyecode.editor.v2.ui.RichEditorView;
+import com.eyecode.eventbus.EventBus;
 import com.eyecode.filesystem.FileSystemService;
 
 import javax.swing.JTabbedPane;
@@ -28,25 +29,35 @@ public final class EditorHostPanel extends JTabbedPane {
     private final FileSystemService fileSystemService;
     private final ProjectSymbolIndex sharedSymbolIndex;
     private final ProjectIndexer sharedIndexer;
+    private final EventBus eventBus;
     private AutoSaveManager autoSaveManager;
     private EditorSession activeSession;
 
     public EditorHostPanel(FileSystemService fileSystemService) {
-        this(fileSystemService, null, null, null);
+        this(fileSystemService, null, null, null, null);
     }
 
     public EditorHostPanel(FileSystemService fileSystemService, AutoSaveManager autoSaveManager) {
-        this(fileSystemService, autoSaveManager, null, null);
+        this(fileSystemService, autoSaveManager, null, null, null);
     }
 
     public EditorHostPanel(FileSystemService fileSystemService,
                            AutoSaveManager autoSaveManager,
                            ProjectSymbolIndex sharedSymbolIndex,
                            ProjectIndexer sharedIndexer) {
+        this(fileSystemService, autoSaveManager, sharedSymbolIndex, sharedIndexer, null);
+    }
+
+    public EditorHostPanel(FileSystemService fileSystemService,
+                           AutoSaveManager autoSaveManager,
+                           ProjectSymbolIndex sharedSymbolIndex,
+                           ProjectIndexer sharedIndexer,
+                           EventBus eventBus) {
         this.fileSystemService = fileSystemService;
         this.autoSaveManager = autoSaveManager;
         this.sharedSymbolIndex = sharedSymbolIndex;
         this.sharedIndexer = sharedIndexer;
+        this.eventBus = eventBus;
     }
 
     public void setAutoSaveManager(AutoSaveManager autoSaveManager) {
@@ -74,7 +85,7 @@ public final class EditorHostPanel extends JTabbedPane {
         }
 
         EditorDocument document = new EditorDocument(canonicalFile.toPath(), content);
-        EditorBuffer buffer = new EditorBuffer(document);
+        EditorBuffer buffer = new EditorBuffer(document, eventBus);
         RichEditorView view = new RichEditorView(buffer, sharedSymbolIndex, sharedIndexer);
         EditorTab tab = new EditorTab(canonicalFile);
 
@@ -96,7 +107,7 @@ public final class EditorHostPanel extends JTabbedPane {
 
     public EditorSession newUntitled() {
         EditorDocument document = new EditorDocument();
-        EditorBuffer buffer = new EditorBuffer(document);
+        EditorBuffer buffer = new EditorBuffer(document, eventBus);
         RichEditorView view = new RichEditorView(buffer, sharedSymbolIndex, sharedIndexer);
         EditorTab tab = new EditorTab(null);
 

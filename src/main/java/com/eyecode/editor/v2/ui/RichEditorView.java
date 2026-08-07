@@ -5,6 +5,8 @@ import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.editor.v2.EditorPosition;
 import com.eyecode.editor.v2.EditorSelection;
 import com.eyecode.editor.v2.caret.CaretSynchronizationManager;
+import com.eyecode.editor.intelligence.document.LineMap;
+import com.eyecode.editor.intelligence.events.DocumentChangeListener;
 import com.eyecode.editor.v2.completion.CompletionEngine;
 import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionItemKind;
@@ -114,7 +116,7 @@ public final class RichEditorView extends JPanel {
     private final DocumentListener documentListener;
     private final CaretListener caretListener;
     private final FocusAdapter focusListener;
-    private final EditorDocument.TextChangeListener textChangeListener;
+    private final DocumentChangeListener textChangeListener;
     private final List<AutoPair> autoPairs;
     private final JPanel searchPanel;
     private final JTextField searchField;
@@ -278,13 +280,14 @@ public final class RichEditorView extends JPanel {
         };
         styledDocument.addDocumentListener(documentListener);
 
-        this.textChangeListener = (oldText, newText) -> {
+        this.textChangeListener = event -> {
             if (disposed || syncingFromSwing) return;
+            String newText = event.getAfter().getText();
             if (!newText.contentEquals(getCurrentText())) {
                 SwingUtilities.invokeLater(() -> refreshFromDocument());
             }
         };
-        buffer.getDocument().addTextChangeListener(textChangeListener);
+        buffer.getDocument().addDocumentChangeListener(textChangeListener);
 
         add(searchPanel, BorderLayout.NORTH);
         add(scrollPane, BorderLayout.CENTER);
@@ -1405,7 +1408,7 @@ public final class RichEditorView extends JPanel {
         styledDocument.removeDocumentListener(documentListener);
         textPane.removeCaretListener(caretListener);
         textPane.removeFocusListener(focusListener);
-        buffer.getDocument().removeTextChangeListener(textChangeListener);
+        buffer.getDocument().removeDocumentChangeListener(textChangeListener);
         caretSync.dispose();
         buffer.clearListeners();
         completionPopup.hide();
@@ -1570,21 +1573,7 @@ public final class RichEditorView extends JPanel {
     }
 
     private int toOffset(String text, com.eyecode.editor.v2.EditorPosition position) {
-        int line = 0;
-        int column = 0;
-        for (int offset = 0; offset < text.length(); offset++) {
-            if (line == position.line() && column == position.column()) {
-                return offset;
-            }
-            char current = text.charAt(offset);
-            if (current == '\n') {
-                line++;
-                column = 0;
-            } else {
-                column++;
-            }
-        }
-        return text.length();
+        return LineMap.of(text).offsetOf(position.line(), position.column());
     }
 
     private int mapCaretAfterTextChange(String before, String after, int caretOffset) {
@@ -1623,18 +1612,9 @@ public final class RichEditorView extends JPanel {
     }
 
     private EditorPosition toPosition(String text, int offset) {
+        LineMap lineMap = LineMap.of(text);
         int safeOffset = Math.max(0, Math.min(offset, text.length()));
-        int line = 0;
-        int column = 0;
-        for (int i = 0; i < safeOffset; i++) {
-            if (text.charAt(i) == '\n') {
-                line++;
-                column = 0;
-            } else {
-                column++;
-            }
-        }
-        return new EditorPosition(line, column);
+        return new EditorPosition(lineMap.lineOfOffset(safeOffset), lineMap.columnOfOffset(safeOffset));
     }
 
     private Path findProjectRoot() {

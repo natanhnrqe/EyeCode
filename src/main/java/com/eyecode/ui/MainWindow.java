@@ -101,7 +101,7 @@ public class MainWindow extends JFrame {
         sharedIndexer.index(sharedSymbolIndex);
 
         UIManager.put("TabbedPane.cardTabArc", 14);
-        tabbedPane = new EditorHostPanel(fileSystemService, autoSaveManager, sharedSymbolIndex, sharedIndexer);
+        tabbedPane = new EditorHostPanel(fileSystemService, autoSaveManager, sharedSymbolIndex, sharedIndexer, eventBus);
         explorerPanel = new FileExplorerPanel(new File("."), fileSystemService);
         explorerPanel.setEventBus(eventBus);
         bottomTool = new BottomToolWindowPanel();

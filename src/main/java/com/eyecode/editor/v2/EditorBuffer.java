@@ -1,5 +1,6 @@
 package com.eyecode.editor.v2;
 
+import com.eyecode.editor.intelligence.events.DocumentTextChangeEvent;
 import com.eyecode.editor.v2.command.CommandManager;
 import com.eyecode.editor.v2.command.DeleteTextCommand;
 import com.eyecode.editor.v2.command.EditCommand;
@@ -10,6 +11,7 @@ import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
 import com.eyecode.editor.v2.language.LanguageContext;
 import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
+import com.eyecode.eventbus.EventBus;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +19,7 @@ import java.util.List;
 public final class EditorBuffer {
 
     private final EditorDocument document;
+    private final EventBus eventBus;
     private EditorPosition caret;
     private EditorSelection selection;
     private DiagnosticSnapshot diagnostics;
@@ -28,7 +31,12 @@ public final class EditorBuffer {
     private final CommandManager commandManager;
 
     public EditorBuffer(EditorDocument document) {
+        this(document, null);
+    }
+
+    public EditorBuffer(EditorDocument document, EventBus eventBus) {
         this.document = document;
+        this.eventBus = eventBus;
         this.caret = new EditorPosition(0, 0);
         this.selection = new EditorSelection(caret, caret);
         this.diagnostics = DiagnosticSnapshot.empty();
@@ -43,7 +51,7 @@ public final class EditorBuffer {
         this.caretListeners = new ArrayList<>();
         this.selectionListeners = new ArrayList<>();
         this.commandManager = new CommandManager();
-        this.document.addTextChangeListener(this::trackTextChange);
+        this.document.addDocumentChangeListener(this::onDocumentChanged);
     }
 
     public void moveCaret(EditorPosition position) {
@@ -81,6 +89,8 @@ public final class EditorBuffer {
     public boolean canUndo() { return commandManager.canUndo(); }
 
     public boolean canRedo() { return commandManager.canRedo(); }
+
+    public CommandManager getCommandManager() { return commandManager; }
 
     public void undo() {
         commandManager.undo(document);
@@ -167,8 +177,15 @@ public final class EditorBuffer {
         selectionListeners.remove(listener);
     }
 
-    private void trackTextChange(String oldText, String newText) {
-        commandManager.recordTextChange(oldText, newText);
+    private void onDocumentChanged(DocumentTextChangeEvent event) {
+        if (eventBus != null) {
+            eventBus.publish(event);
+        }
+        if (!commandManager.isApplyingHistory()
+                && !commandManager.isProgrammaticUpdate()
+                && !event.isTransactional()) {
+            commandManager.recordTextChange(event.getBefore().getText(), event.getAfter().getText());
+        }
     }
 
     public interface CaretChangeListener {

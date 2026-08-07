@@ -66,7 +66,7 @@ public final class EditorManager {
             }
         }
         EditorDocument document = new EditorDocument(file, content == null ? "" : content);
-        EditorBuffer buffer = new EditorBuffer(document);
+        EditorBuffer buffer = new EditorBuffer(document, eventBus);
         return createSession(file, document, buffer);
     }
 

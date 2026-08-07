@@ -1,5 +1,6 @@
 package com.eyecode.autosave;
 
+import com.eyecode.editor.intelligence.events.DocumentChangeListener;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.filesystem.FileSystemService;
 
@@ -77,8 +78,8 @@ public final class AutoSaveManager {
     public synchronized void register(EditorDocument document) {
         if (document == null || shutdown) return;
         if (bindings.containsKey(document)) return;
-        EditorDocument.TextChangeListener listener = (oldText, newText) -> scheduleSave(document);
-        document.addTextChangeListener(listener);
+        DocumentChangeListener listener = event -> scheduleSave(document);
+        document.addDocumentChangeListener(listener);
         bindings.put(document, new Binding(listener));
     }
 
@@ -88,7 +89,7 @@ public final class AutoSaveManager {
     public synchronized void unregister(EditorDocument document) {
         Binding binding = bindings.remove(document);
         if (binding == null) return;
-        document.removeTextChangeListener(binding.listener);
+        document.removeDocumentChangeListener(binding.listener);
         cancelPending(binding);
     }
 
@@ -198,10 +199,10 @@ public final class AutoSaveManager {
     }
 
     private static final class Binding {
-        final EditorDocument.TextChangeListener listener;
+        final DocumentChangeListener listener;
         volatile ScheduledFuture<?> pending;
 
-        Binding(EditorDocument.TextChangeListener listener) {
+        Binding(DocumentChangeListener listener) {
             this.listener = listener;
         }
     }

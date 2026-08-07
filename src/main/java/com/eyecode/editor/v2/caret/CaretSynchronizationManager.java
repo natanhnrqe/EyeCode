@@ -7,9 +7,6 @@ import com.eyecode.editor.v2.EditorSelection;
 import javax.swing.JTextPane;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Document;
-import javax.swing.text.Element;
 
 public final class CaretSynchronizationManager {
 
@@ -71,23 +68,10 @@ public final class CaretSynchronizationManager {
     }
 
     private EditorPosition toPosition(int offset) {
-        Document document = textPane.getDocument();
-        Element root = document.getDefaultRootElement();
-        int safeOffset = Math.max(0, Math.min(offset, document.getLength()));
-        int line = root.getElementIndex(safeOffset);
-        Element lineElement = root.getElement(line);
-        int column = safeOffset - lineElement.getStartOffset();
-        return new EditorPosition(line, column);
+        return buffer.getDocument().positionOf(offset);
     }
 
     private int toOffset(EditorPosition position) {
-        Document document = textPane.getDocument();
-        Element root = document.getDefaultRootElement();
-        int line = Math.max(0, Math.min(position.line(), root.getElementCount() - 1));
-        Element lineElement = root.getElement(line);
-        int lineLength = lineElement.getEndOffset() - lineElement.getStartOffset();
-        int column = Math.max(0, Math.min(position.column(), lineLength));
-        int offset = lineElement.getStartOffset() + column;
-        return Math.max(0, Math.min(offset, document.getLength()));
+        return buffer.getDocument().offsetOf(position);
     }
 }

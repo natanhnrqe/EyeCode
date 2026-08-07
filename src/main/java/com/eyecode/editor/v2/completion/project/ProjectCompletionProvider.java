@@ -125,21 +125,6 @@ public final class ProjectCompletionProvider implements CompletionProvider {
     }
 
     private int offsetForPosition(LanguageContext context) {
-        String text = context.getDocument().getText();
-        int line = 0;
-        int column = 0;
-        for (int offset = 0; offset < text.length(); offset++) {
-            if (line == context.getCaret().line() && column == context.getCaret().column()) {
-                return offset;
-            }
-            char current = text.charAt(offset);
-            if (current == '\n') {
-                line++;
-                column = 0;
-            } else {
-                column++;
-            }
-        }
-        return text.length();
+        return context.getDocument().offsetOf(context.getCaret());
     }
 }

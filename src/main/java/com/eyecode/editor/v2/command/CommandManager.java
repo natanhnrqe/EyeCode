@@ -33,7 +33,7 @@ public final class CommandManager {
         } finally {
             applyingHistory = false;
         }
-        pushState(undoStack, command);
+        pushState(undoStack, command, true);
         redoStack.clear();
         validateHistoryState();
     }
@@ -41,7 +41,7 @@ public final class CommandManager {
     public void undo(EditorDocument document) {
         if (applyingHistory || programmaticUpdate || !canUndo()) return;
         EditCommand command = undoStack.pop();
-        pushState(redoStack, command);
+        pushState(redoStack, command, false);
         applyHistoryCommand(command, true, document);
         validateHistoryState();
     }
@@ -49,7 +49,7 @@ public final class CommandManager {
     public void redo(EditorDocument document) {
         if (applyingHistory || programmaticUpdate || !canRedo()) return;
         EditCommand command = redoStack.pop();
-        pushState(undoStack, command);
+        pushState(undoStack, command, false);
         applyHistoryCommand(command, false, document);
         validateHistoryState();
     }
@@ -68,7 +68,19 @@ public final class CommandManager {
 
     public void recordTextChange(String oldText, String newText) {
         if (applyingHistory || programmaticUpdate || oldText.equals(newText)) return;
-        pushState(undoStack, new ReplaceTextCommand(oldText, newText));
+        pushState(undoStack, new ReplaceTextCommand(oldText, newText), true);
+        redoStack.clear();
+        validateHistoryState();
+    }
+
+    /**
+     * Records a command that was already applied (for example a
+     * {@link CompositeEditCommand} committed through a document transaction) as
+     * a single undoable unit, without executing it again and without coalescing.
+     */
+    public void recordGroup(EditCommand group) {
+        if (group == null || applyingHistory || programmaticUpdate) return;
+        pushState(undoStack, group, false);
         redoStack.clear();
         validateHistoryState();
     }
@@ -86,11 +98,41 @@ public final class CommandManager {
         }
     }
 
-    private void pushState(Deque<EditCommand> stack, EditCommand command) {
+    private void pushState(Deque<EditCommand> stack, EditCommand command, boolean coalesce) {
         if (command == null) return;
+        if (coalesce) {
+            EditCommand merged = tryCoalesce(stack.peek(), command);
+            if (merged != null) {
+                stack.pop();
+                stack.push(merged);
+                return;
+            }
+        }
         if (stack.isEmpty() || !stack.peek().equals(command)) {
             stack.push(command);
         }
+    }
+
+    private EditCommand tryCoalesce(EditCommand top, EditCommand next) {
+        if (top instanceof InsertTextCommand a && next instanceof InsertTextCommand b) {
+            if (a.getOffset() + a.getText().length() == b.getOffset()) {
+                return new InsertTextCommand(a.getOffset(), a.getText() + b.getText());
+            }
+            return null;
+        }
+        if (top instanceof ReplaceTextCommand a && next instanceof ReplaceTextCommand b) {
+            if (isAppendOnly(a.getOldText(), a.getNewText())
+                    && isAppendOnly(b.getOldText(), b.getNewText())
+                    && a.getNewText().equals(b.getOldText())) {
+                return new ReplaceTextCommand(a.getOldText(), b.getNewText());
+            }
+            return null;
+        }
+        return null;
+    }
+
+    private boolean isAppendOnly(String oldText, String newText) {
+        return newText.length() > oldText.length() && newText.startsWith(oldText);
     }
 
     private void validateHistoryState() {

@@ -1,5 +1,7 @@
 package com.eyecode.editor.v2.completion.insert;
 
+import com.eyecode.editor.intelligence.document.LineMap;
+
 public final class CompletionInsertionEngine {
 
     public void insert(CompletionInsertionContext context) {
@@ -16,20 +18,6 @@ public final class CompletionInsertionEngine {
     }
 
     private int toOffset(String text, com.eyecode.editor.v2.EditorPosition caret) {
-        int line = 0;
-        int column = 0;
-        for (int offset = 0; offset < text.length(); offset++) {
-            if (line == caret.line() && column == caret.column()) {
-                return offset;
-            }
-            char current = text.charAt(offset);
-            if (current == '\n') {
-                line++;
-                column = 0;
-            } else {
-                column++;
-            }
-        }
-        return text.length();
+        return LineMap.of(text).offsetOf(caret.line(), caret.column());
     }
 }

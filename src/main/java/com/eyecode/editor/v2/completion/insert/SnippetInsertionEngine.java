@@ -1,5 +1,6 @@
 package com.eyecode.editor.v2.completion.insert;
 
+import com.eyecode.editor.intelligence.document.LineMap;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.editor.v2.EditorPosition;
 
@@ -73,20 +74,6 @@ public final class SnippetInsertionEngine {
     }
 
     private int toOffset(String text, EditorPosition position) {
-        int line = 0;
-        int column = 0;
-        for (int offset = 0; offset < text.length(); offset++) {
-            if (line == position.line() && column == position.column()) {
-                return offset;
-            }
-            char current = text.charAt(offset);
-            if (current == '\n') {
-                line++;
-                column = 0;
-            } else {
-                column++;
-            }
-        }
-        return text.length();
+        return LineMap.of(text).offsetOf(position.line(), position.column());
     }
 }
