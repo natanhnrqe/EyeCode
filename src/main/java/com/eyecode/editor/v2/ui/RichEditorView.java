@@ -6,7 +6,14 @@ import com.eyecode.editor.v2.EditorPosition;
 import com.eyecode.editor.v2.EditorSelection;
 import com.eyecode.editor.v2.caret.CaretSynchronizationManager;
 import com.eyecode.editor.intelligence.document.LineMap;
+import com.eyecode.editor.intelligence.document.TextRange;
 import com.eyecode.editor.intelligence.events.DocumentChangeListener;
+import com.eyecode.editor.intelligence.pipeline.EditorCommandContext;
+import com.eyecode.editor.intelligence.pipeline.EditorInputEvent;
+import com.eyecode.editor.intelligence.pipeline.PassthroughSmartEditStrategy;
+import com.eyecode.editor.intelligence.pipeline.SmartEditingRegistry;
+import com.eyecode.editor.intelligence.pipeline.SmartEditResult;
+import com.eyecode.editor.intelligence.pipeline.TypingPipeline;
 import com.eyecode.editor.v2.completion.CompletionEngine;
 import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionItemKind;
@@ -97,6 +104,8 @@ public final class RichEditorView extends JPanel {
     private static final String INDENTATION_UNIT = "    ";
 
     private final EditorBuffer buffer;
+    private final TypingPipeline smartEditingPipeline;
+    private final SwingEditorInputAdapter swingInputAdapter;
     private final JTextPane textPane;
     private final StyledDocument styledDocument;
     private final JScrollPane scrollPane;
@@ -146,8 +155,19 @@ public final class RichEditorView extends JPanel {
     }
 
     public RichEditorView(EditorBuffer buffer, ProjectSymbolIndex sharedSymbolIndex, ProjectIndexer sharedIndexer) {
+        this(buffer, sharedSymbolIndex, sharedIndexer, defaultSmartEditingPipeline());
+    }
+
+    public RichEditorView(EditorBuffer buffer,
+                          ProjectSymbolIndex sharedSymbolIndex,
+                          ProjectIndexer sharedIndexer,
+                          TypingPipeline smartEditingPipeline) {
         super(new BorderLayout());
         this.buffer = buffer;
+        this.smartEditingPipeline = smartEditingPipeline != null
+                ? smartEditingPipeline
+                : defaultSmartEditingPipeline();
+        this.swingInputAdapter = new SwingEditorInputAdapter();
         this.textPane = new JTextPane() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -155,6 +175,15 @@ public final class RichEditorView extends JPanel {
                 g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
                 g2d.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
                 super.paintComponent(g);
+            }
+
+            @Override
+            protected void processKeyEvent(java.awt.event.KeyEvent e) {
+                if (handleSmartEditing(e)) {
+                    e.consume();
+                    return;
+                }
+                super.processKeyEvent(e);
             }
         };
         this.textPane.setFont(TypographyManager.UI_CODE());
@@ -335,6 +364,29 @@ public final class RichEditorView extends JPanel {
         StyleConstants.setFontFamily(style, TypographyManager.UI_CODE().getFamily());
         StyleConstants.setFontSize(style, TypographyManager.UI_CODE().getSize());
         return style;
+    }
+
+    private static TypingPipeline defaultSmartEditingPipeline() {
+        SmartEditingRegistry registry = new SmartEditingRegistry();
+        registry.register(new PassthroughSmartEditStrategy());
+        return new TypingPipeline(registry);
+    }
+
+    private boolean handleSmartEditing(java.awt.event.KeyEvent e) {
+        try {
+            int selectionStart = textPane.getSelectionStart();
+            int selectionEnd = textPane.getSelectionEnd();
+            EditorInputEvent input = swingInputAdapter.adapt(
+                    e,
+                    textPane.getCaretPosition(),
+                    buffer.getDocument().currentVersion(),
+                    new TextRange(Math.min(selectionStart, selectionEnd), Math.max(selectionStart, selectionEnd))
+            );
+            SmartEditResult result = smartEditingPipeline.process(input, new EditorCommandContext(buffer));
+            return result.isHandled();
+        } catch (RuntimeException ex) {
+            return false;
+        }
     }
 
     private JPanel createSearchPanel() {

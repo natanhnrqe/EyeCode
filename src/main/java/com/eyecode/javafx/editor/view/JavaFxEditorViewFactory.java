@@ -12,7 +12,7 @@ public final class JavaFxEditorViewFactory implements EditorViewFactory {
 
     @Override
     public EditorView create(EditorBuffer buffer) {
-        JavaFxEditor editor = new JavaFxEditor();
+        JavaFxEditor editor = new JavaFxEditor(buffer);
         JavaFxEditorController controller = new JavaFxEditorController(editor, buffer);
         controller.loadDocument();
         return new JavaFxEditorView(editor, controller);

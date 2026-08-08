@@ -3,45 +3,34 @@ package com.eyecode.editor.intelligence.pipeline;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 
 /**
- * Priority-ordered registry of smart editing handlers.
+ * Priority-ordered registry of {@link SmartEditStrategy} instances.
  * <p>
- * Handlers with a lower {@link SmartEditHandler#priority()} value are consulted
- * first. The first handler that claims an input wins; if none does, the caller
- * falls back to plain editing.
+ * Strategies are consulted in priority order ({@link SmartEditPriority#HIGH}
+ * first). Registration is idempotent per strategy instance.
  */
 public final class SmartEditingRegistry {
 
-    private final List<SmartEditHandler> handlers = new ArrayList<>();
+    private final List<SmartEditStrategy> strategies = new ArrayList<>();
 
-    public void register(SmartEditHandler handler) {
-        if (handler == null || handlers.contains(handler)) return;
-        handlers.add(handler);
-        handlers.sort(Comparator.comparingInt(SmartEditHandler::priority));
+    public void register(SmartEditStrategy strategy) {
+        if (strategy == null || strategies.contains(strategy)) {
+            return;
+        }
+        strategies.add(strategy);
+        strategies.sort(Comparator.comparingInt(s -> s.priority().rank()));
     }
 
-    public void unregister(SmartEditHandler handler) {
-        handlers.remove(handler);
+    public void unregister(SmartEditStrategy strategy) {
+        strategies.remove(strategy);
     }
 
     public void clear() {
-        handlers.clear();
+        strategies.clear();
     }
 
-    public List<SmartEditHandler> handlers() {
-        return List.copyOf(handlers);
-    }
-
-    public Optional<EditorCommand> handle(EditorInputEvent event, EditorCommandContext context) {
-        if (event == null || context == null) return Optional.empty();
-        for (SmartEditHandler handler : handlers) {
-            Optional<EditorCommand> command = handler.tryHandle(event, context);
-            if (command.isPresent()) {
-                return command;
-            }
-        }
-        return Optional.empty();
+    public List<SmartEditStrategy> strategies() {
+        return List.copyOf(strategies);
     }
 }
