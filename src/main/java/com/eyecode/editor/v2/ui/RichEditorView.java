@@ -400,6 +400,8 @@ public final class RichEditorView extends JPanel {
                          java.awt.event.KeyEvent.VK_END,
                          java.awt.event.KeyEvent.VK_BACK_SPACE,
                          java.awt.event.KeyEvent.VK_DELETE -> true;
+                    case java.awt.event.KeyEvent.VK_W -> e.isControlDown()
+                            && !e.isAltDown() && !e.isMetaDown();
                     default -> false;
                 };
     }

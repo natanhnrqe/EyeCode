@@ -17,6 +17,7 @@ public final class CaretSynchronizationManager {
     private final EditorBuffer buffer;
     private final CaretListener caretListener;
     private final EditorBuffer.CaretChangeListener bufferCaretListener;
+    private final EditorBuffer.SelectionChangeListener bufferSelectionListener;
     private boolean internalUpdate;
     private boolean refreshing;
 
@@ -25,9 +26,11 @@ public final class CaretSynchronizationManager {
         this.buffer = buffer;
         this.caretListener = this::syncFromSwing;
         this.bufferCaretListener = this::syncCaretToSwing;
+        this.bufferSelectionListener = this::syncSelectionToSwing;
         if (SYNC_ENABLED) {
             this.textPane.addCaretListener(caretListener);
             this.buffer.addCaretChangeListener(bufferCaretListener);
+            this.buffer.addSelectionChangeListener(bufferSelectionListener);
         }
     }
 
@@ -35,6 +38,7 @@ public final class CaretSynchronizationManager {
         if (SYNC_ENABLED) {
             textPane.removeCaretListener(caretListener);
             buffer.removeCaretChangeListener(bufferCaretListener);
+            buffer.removeSelectionChangeListener(bufferSelectionListener);
         }
     }
 
@@ -62,6 +66,24 @@ public final class CaretSynchronizationManager {
             if (textPane.getCaretPosition() != offset) {
                 textPane.setCaretPosition(offset);
             }
+        } finally {
+            internalUpdate = false;
+        }
+    }
+
+    private void syncSelectionToSwing(EditorSelection selection) {
+        if (internalUpdate) return;
+
+        int start = toOffset(selection.getStart());
+        int end = toOffset(selection.getEnd());
+        int dot = Math.max(start, end);
+        int mark = Math.min(start, end);
+        if (textPane.getSelectionStart() == mark && textPane.getSelectionEnd() == dot) {
+            return;
+        }
+        internalUpdate = true;
+        try {
+            textPane.select(mark, dot);
         } finally {
             internalUpdate = false;
         }

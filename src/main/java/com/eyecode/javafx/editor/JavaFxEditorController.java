@@ -1,18 +1,27 @@
 package com.eyecode.javafx.editor;
 
+import com.eyecode.editor.intelligence.caret.CaretModel;
+import com.eyecode.editor.intelligence.caret.DefaultCaretModel;
+import com.eyecode.editor.intelligence.document.TextRange;
 import com.eyecode.editor.intelligence.events.DocumentChangeListener;
 import com.eyecode.editor.intelligence.events.DocumentTextChangeEvent;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.editor.v2.EditorPosition;
+import com.eyecode.editor.v2.EditorSelection;
 import org.fxmisc.richtext.CodeArea;
 import org.reactfx.Subscription;
+
+import java.util.Optional;
 
 /**
  * Keeps the {@link CodeArea} and the {@link EditorBuffer} model in sync.
  * <p>
  * Normal typing flows codeArea -> document; smart edits and undo/redo flow
  * document -> codeArea. Both directions are guarded against feedback loops.
+ * Selection changes produced by smart editing (Ctrl+W expansion) are projected
+ * onto the view through the {@link CaretModel}, the offset-based caret +
+ * selection abstraction of the Core.
  */
 public final class JavaFxEditorController {
 
@@ -22,6 +31,7 @@ public final class JavaFxEditorController {
     private final Subscription changeSubscription;
     private final DocumentChangeListener documentChangeListener;
     private final EditorBuffer.CaretChangeListener caretChangeListener;
+    private final EditorBuffer.SelectionChangeListener selectionChangeListener;
     private boolean syncing;
 
     public JavaFxEditorController(JavaFxEditor editor, EditorBuffer buffer) {
@@ -35,8 +45,10 @@ public final class JavaFxEditorController {
 
         this.documentChangeListener = this::refreshFromDocument;
         this.caretChangeListener = this::syncCaretToView;
+        this.selectionChangeListener = this::syncSelectionToView;
         buffer.getDocument().addDocumentChangeListener(documentChangeListener);
         buffer.addCaretChangeListener(caretChangeListener);
+        buffer.addSelectionChangeListener(selectionChangeListener);
     }
 
     public void loadDocument() {
@@ -93,6 +105,25 @@ public final class JavaFxEditorController {
         }
     }
 
+    private void syncSelectionToView(EditorSelection selection) {
+        if (syncing) {
+            return;
+        }
+        CaretModel caretModel = new DefaultCaretModel(buffer);
+        Optional<TextRange> range = caretModel.selection();
+        if (range.isEmpty()) {
+            return;
+        }
+        CodeArea codeArea = editor.getCodeArea();
+        syncing = true;
+        try {
+            codeArea.selectRange(range.get().startOffset(), range.get().endOffset());
+            codeArea.requestFollowCaret();
+        } finally {
+            syncing = false;
+        }
+    }
+
     private int offsetOf(EditorPosition position) {
         return buffer.getDocument().offsetOf(position);
     }
@@ -107,5 +138,6 @@ public final class JavaFxEditorController {
         changeSubscription.unsubscribe();
         buffer.getDocument().removeDocumentChangeListener(documentChangeListener);
         buffer.removeCaretChangeListener(caretChangeListener);
+        buffer.removeSelectionChangeListener(selectionChangeListener);
     }
 }
