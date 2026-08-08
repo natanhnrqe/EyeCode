@@ -3,10 +3,9 @@ package com.eyecode.javafx.editor;
 import com.eyecode.editor.intelligence.document.TextRange;
 import com.eyecode.editor.intelligence.pipeline.EditorCommandContext;
 import com.eyecode.editor.intelligence.pipeline.EditorInputEvent;
-import com.eyecode.editor.intelligence.pipeline.PassthroughSmartEditStrategy;
-import com.eyecode.editor.intelligence.pipeline.SmartEditingRegistry;
 import com.eyecode.editor.intelligence.pipeline.SmartEditResult;
 import com.eyecode.editor.intelligence.pipeline.TypingPipeline;
+import com.eyecode.editor.intelligence.pipeline.strategy.SmartEditingStrategies;
 import com.eyecode.editor.v2.EditorBuffer;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
@@ -52,9 +51,7 @@ public final class JavaFxEditor extends HBox {
     }
 
     private static TypingPipeline defaultSmartEditingPipeline() {
-        SmartEditingRegistry registry = new SmartEditingRegistry();
-        registry.register(new PassthroughSmartEditStrategy());
-        return new TypingPipeline(registry);
+        return new TypingPipeline(SmartEditingStrategies.defaultRegistry());
     }
 
     private void installSmartEditingFilters() {

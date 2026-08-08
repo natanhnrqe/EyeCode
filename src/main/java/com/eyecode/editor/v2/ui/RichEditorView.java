@@ -10,10 +10,9 @@ import com.eyecode.editor.intelligence.document.TextRange;
 import com.eyecode.editor.intelligence.events.DocumentChangeListener;
 import com.eyecode.editor.intelligence.pipeline.EditorCommandContext;
 import com.eyecode.editor.intelligence.pipeline.EditorInputEvent;
-import com.eyecode.editor.intelligence.pipeline.PassthroughSmartEditStrategy;
-import com.eyecode.editor.intelligence.pipeline.SmartEditingRegistry;
 import com.eyecode.editor.intelligence.pipeline.SmartEditResult;
 import com.eyecode.editor.intelligence.pipeline.TypingPipeline;
+import com.eyecode.editor.intelligence.pipeline.strategy.SmartEditingStrategies;
 import com.eyecode.editor.v2.completion.CompletionEngine;
 import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionItemKind;
@@ -367,9 +366,7 @@ public final class RichEditorView extends JPanel {
     }
 
     private static TypingPipeline defaultSmartEditingPipeline() {
-        SmartEditingRegistry registry = new SmartEditingRegistry();
-        registry.register(new PassthroughSmartEditStrategy());
-        return new TypingPipeline(registry);
+        return new TypingPipeline(SmartEditingStrategies.defaultRegistry());
     }
 
     private boolean handleSmartEditing(java.awt.event.KeyEvent e) {
