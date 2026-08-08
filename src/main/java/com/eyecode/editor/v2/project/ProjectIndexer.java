@@ -88,7 +88,7 @@ public final class ProjectIndexer {
         if (source == null) return List.of();
         try {
             JavaLexer lexer = new JavaLexer();
-            JavaTokenStream stream = new JavaTokenStream(lexer.tokenize(source));
+            JavaTokenStream stream = new JavaTokenStream(lexer.tokenize(source), source);
             JavaParser parser = new JavaParser(stream);
             JavaFileModel model = parser.parse();
 

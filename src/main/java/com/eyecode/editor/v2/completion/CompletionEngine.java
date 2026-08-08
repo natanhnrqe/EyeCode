@@ -1,7 +1,7 @@
 package com.eyecode.editor.v2.completion;
 
 import com.eyecode.editor.v2.language.LanguageContext;
-import com.eyecode.editor.v2.language.LanguageContextQueries;
+import com.eyecode.editor.v2.completion.insert.CompletionPrefixResolver;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -30,7 +30,7 @@ public final class CompletionEngine {
                 merged.putIfAbsent(item.getLabel() + "\u0000" + item.getKind(), item);
             }
         }
-        String prefix = LanguageContextQueries.getCurrentWordPrefix(context);
+        String prefix = CompletionPrefixResolver.resolvePrefix(context);
         List<CompletionItem> ranked = ranking.rank(new ArrayList<>(merged.values()), prefix, manual);
         return new CompletionSnapshot(ranked);
     }

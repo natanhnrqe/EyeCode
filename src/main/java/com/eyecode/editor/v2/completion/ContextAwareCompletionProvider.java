@@ -2,7 +2,6 @@ package com.eyecode.editor.v2.completion;
 
 import com.eyecode.editor.v2.EditorPosition;
 import com.eyecode.editor.v2.language.LanguageContext;
-import com.eyecode.editor.v2.language.LanguageContextQueries;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

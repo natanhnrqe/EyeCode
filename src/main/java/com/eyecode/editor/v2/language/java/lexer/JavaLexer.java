@@ -1,20 +1,22 @@
 package com.eyecode.editor.v2.language.java.lexer;
 
+import com.eyecode.editor.intelligence.document.TextRange;
+import com.eyecode.language.Token;
+import com.eyecode.language.java.JavaTokenType;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public final class JavaLexer {
 
-    public List<JavaToken> tokenize(String source) {
-        List<JavaToken> tokens = new ArrayList<>();
+    public List<Token> tokenize(String source) {
+        List<Token> tokens = new ArrayList<>();
         if (source == null || source.isEmpty()) {
-            tokens.add(new JavaToken(JavaTokenType.EOF, "", 0, 0, 0, 0));
+            tokens.add(new Token(JavaTokenType.EOF, TextRange.of(0, 0), ""));
             return tokens;
         }
 
         int pos = 0;
-        int line = 0;
-        int column = 0;
         int len = source.length();
 
         while (pos < len) {
@@ -22,180 +24,129 @@ public final class JavaLexer {
 
             if (isWhitespace(c)) {
                 int start = pos;
-                int startLine = line;
-                int startCol = column;
                 while (pos < len && isWhitespace(source.charAt(pos))) {
-                    if (source.charAt(pos) == '\n') {
-                        line++;
-                        column = 0;
-                    } else {
-                        column++;
-                    }
                     pos++;
                 }
-                tokens.add(new JavaToken(JavaTokenType.WHITESPACE,
-                        source.substring(start, pos), start, pos, startLine, startCol));
+                tokens.add(token(JavaTokenType.WHITESPACE, start, pos, source));
                 continue;
             }
 
             if (c == '/' && pos + 1 < len && source.charAt(pos + 1) == '/') {
                 int start = pos;
-                int startLine = line;
-                int startCol = column;
                 pos += 2;
-                column += 2;
                 while (pos < len && source.charAt(pos) != '\n') {
                     pos++;
-                    column++;
                 }
-                tokens.add(new JavaToken(JavaTokenType.COMMENT,
-                        source.substring(start, pos), start, pos, startLine, startCol));
+                tokens.add(token(JavaTokenType.COMMENT, start, pos, source));
                 continue;
             }
 
             if (c == '/' && pos + 1 < len && source.charAt(pos + 1) == '*') {
                 int start = pos;
-                int startLine = line;
-                int startCol = column;
                 pos += 2;
-                column += 2;
                 while (pos < len) {
                     if (source.charAt(pos) == '*' && pos + 1 < len && source.charAt(pos + 1) == '/') {
                         pos += 2;
-                        column += 2;
                         break;
-                    }
-                    if (source.charAt(pos) == '\n') {
-                        line++;
-                        column = 0;
-                    } else {
-                        column++;
                     }
                     pos++;
                 }
-                tokens.add(new JavaToken(JavaTokenType.COMMENT,
-                        source.substring(start, pos), start, pos, startLine, startCol));
+                tokens.add(token(JavaTokenType.COMMENT, start, pos, source));
                 continue;
             }
 
             if (c == '"') {
                 int start = pos;
-                int startLine = line;
-                int startCol = column;
                 pos++;
-                column++;
                 while (pos < len && source.charAt(pos) != '"') {
                     if (source.charAt(pos) == '\\' && pos + 1 < len) {
-                        if (source.charAt(pos + 1) == '\n') {
-                            line++;
-                            column = 0;
-                            pos += 2;
-                        } else {
-                            pos += 2;
-                            column += 2;
-                        }
+                        pos += 2;
                     } else {
-                        if (source.charAt(pos) == '\n') {
-                            line++;
-                            column = 0;
-                        } else {
-                            column++;
-                        }
                         pos++;
                     }
                 }
                 if (pos < len) {
                     pos++;
-                    column++;
                 }
-                tokens.add(new JavaToken(JavaTokenType.STRING,
-                        source.substring(start, pos), start, pos, startLine, startCol));
+                tokens.add(token(JavaTokenType.STRING, start, pos, source));
                 continue;
             }
 
             if (c == '\'') {
                 int start = pos;
-                int startLine = line;
-                int startCol = column;
                 pos++;
-                column++;
                 while (pos < len && source.charAt(pos) != '\'') {
                     if (source.charAt(pos) == '\\' && pos + 1 < len) {
                         pos += 2;
-                        column += 2;
                     } else {
                         pos++;
-                        column++;
                     }
                 }
                 if (pos < len) {
                     pos++;
-                    column++;
                 }
-                tokens.add(new JavaToken(JavaTokenType.CHARACTER,
-                        source.substring(start, pos), start, pos, startLine, startCol));
+                tokens.add(token(JavaTokenType.CHARACTER, start, pos, source));
                 continue;
             }
 
             if (isDigit(c)) {
                 int start = pos;
-                int startLine = line;
-                int startCol = column;
                 pos = scanNumber(source, pos, len);
-                column += (pos - start);
-                tokens.add(new JavaToken(JavaTokenType.NUMBER,
-                        source.substring(start, pos), start, pos, startLine, startCol));
+                tokens.add(token(JavaTokenType.NUMBER, start, pos, source));
                 continue;
             }
 
             if (isJavaIdentifierStart(c)) {
                 int start = pos;
-                int startLine = line;
-                int startCol = column;
                 while (pos < len && isJavaIdentifierPart(source.charAt(pos))) {
                     pos++;
-                    column++;
                 }
                 String lexeme = source.substring(start, pos);
-                JavaTokenType type = JavaKeywordRegistry.isKeyword(lexeme)
-                        ? JavaTokenType.KEYWORD : JavaTokenType.IDENTIFIER;
-                tokens.add(new JavaToken(type, lexeme, start, pos, startLine, startCol));
+                JavaTokenType type;
+                if (lexeme.equals("true") || lexeme.equals("false")) {
+                    type = JavaTokenType.BOOLEAN_LITERAL;
+                } else if (lexeme.equals("null")) {
+                    type = JavaTokenType.NULL_LITERAL;
+                } else {
+                    type = JavaKeywordRegistry.isKeyword(lexeme)
+                            ? JavaTokenType.KEYWORD : JavaTokenType.IDENTIFIER;
+                }
+                tokens.add(token(type, start, pos, source));
+                continue;
+            }
+
+            if (c == '@') {
+                tokens.add(token(JavaTokenType.AT, pos, pos + 1, source));
+                pos++;
                 continue;
             }
 
             if (JavaSeparatorRegistry.isSeparator(c)) {
-                int start = pos;
-                int startLine = line;
-                int startCol = column;
+                tokens.add(token(JavaTokenType.SEPARATOR, pos, pos + 1, source));
                 pos++;
-                column++;
-                tokens.add(new JavaToken(JavaTokenType.SEPARATOR,
-                        String.valueOf(c), start, pos, startLine, startCol));
                 continue;
             }
 
             if (JavaOperatorRegistry.isOperatorStart(c)) {
                 int start = pos;
-                int startLine = line;
-                int startCol = column;
                 int consumed = scanOperator(source, pos, len);
                 if (consumed > 0) {
                     pos += consumed;
-                    column += consumed;
-                    tokens.add(new JavaToken(JavaTokenType.OPERATOR,
-                            source.substring(start, pos), start, pos, startLine, startCol));
+                    tokens.add(token(JavaTokenType.OPERATOR, start, pos, source));
                     continue;
                 }
             }
 
-            tokens.add(new JavaToken(JavaTokenType.ERROR,
-                    String.valueOf(c), pos, pos + 1, line, column));
+            tokens.add(token(JavaTokenType.ERROR, pos, pos + 1, source));
             pos++;
-            column++;
         }
 
-        tokens.add(new JavaToken(JavaTokenType.EOF, "", pos, pos, line, column));
+        tokens.add(new Token(JavaTokenType.EOF, TextRange.of(pos, pos), ""));
         return tokens;
+    }
+
+    private static Token token(JavaTokenType type, int start, int end, String source) {
+        return new Token(type, TextRange.of(start, end), source.substring(start, end));
     }
 
     private int scanNumber(String source, int pos, int len) {

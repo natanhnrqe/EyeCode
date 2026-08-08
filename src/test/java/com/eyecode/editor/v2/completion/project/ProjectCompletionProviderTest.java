@@ -30,7 +30,7 @@ class ProjectCompletionProviderTest {
 
     private JavaFileModel parse(String source) {
         JavaLexer lexer = new JavaLexer();
-        JavaTokenStream stream = new JavaTokenStream(lexer.tokenize(source));
+        JavaTokenStream stream = new JavaTokenStream(lexer.tokenize(source), source);
         JavaParser parser = new JavaParser(stream);
         return parser.parse();
     }

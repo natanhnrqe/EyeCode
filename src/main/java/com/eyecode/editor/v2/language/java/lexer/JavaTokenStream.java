@@ -1,24 +1,29 @@
 package com.eyecode.editor.v2.language.java.lexer;
 
+import com.eyecode.editor.intelligence.document.LineMap;
 import com.eyecode.editor.v2.language.java.parser.ParserException;
+import com.eyecode.language.Token;
+import com.eyecode.language.java.JavaTokenType;
 
 import java.util.List;
 
 public final class JavaTokenStream {
 
-    private final List<JavaToken> tokens;
+    private final List<Token> tokens;
+    private final LineMap lineMap;
     private int position;
 
-    public JavaTokenStream(List<JavaToken> tokens) {
+    public JavaTokenStream(List<Token> tokens, String source) {
         this.tokens = tokens;
+        this.lineMap = LineMap.of(source == null ? "" : source);
         this.position = 0;
     }
 
-    public JavaToken peek() {
+    public Token peek() {
         return tokens.get(position);
     }
 
-    public JavaToken peek(int offset) {
+    public Token peek(int offset) {
         int index = position + offset;
         if (index < 0) {
             index = 0;
@@ -29,8 +34,8 @@ public final class JavaTokenStream {
         return tokens.get(index);
     }
 
-    public JavaToken consume() {
-        JavaToken token = tokens.get(position);
+    public Token consume() {
+        Token token = tokens.get(position);
         if (position < tokens.size() - 1) {
             position++;
         }
@@ -38,63 +43,63 @@ public final class JavaTokenStream {
     }
 
     public boolean match(JavaTokenType type) {
-        if (peek().getType() == type) {
+        if (peek().type() == type) {
             consume();
             return true;
         }
         return false;
     }
 
-    public boolean match(JavaTokenType type, String lexeme) {
-        JavaToken current = peek();
-        if (current.getType() == type && current.getLexeme().equals(lexeme)) {
+    public boolean match(JavaTokenType type, String text) {
+        Token current = peek();
+        if (current.type() == type && current.text().equals(text)) {
             consume();
             return true;
         }
         return false;
     }
 
-    public JavaToken expect(JavaTokenType type) {
-        JavaToken current = peek();
-        if (current.getType() != type) {
+    public Token expect(JavaTokenType type) {
+        Token current = peek();
+        if (current.type() != type) {
             throw new ParserException(
                     "Unexpected token: expected " + type,
-                    current.getLine(),
-                    current.getColumn(),
-                    current.getLexeme(),
+                    lineOf(current),
+                    columnOf(current),
+                    current.text(),
                     type.name()
             );
         }
         return consume();
     }
 
-    public JavaToken expect(JavaTokenType type, String lexeme) {
-        JavaToken current = peek();
-        if (current.getType() != type || !current.getLexeme().equals(lexeme)) {
+    public Token expect(JavaTokenType type, String text) {
+        Token current = peek();
+        if (current.type() != type || !current.text().equals(text)) {
             throw new ParserException(
-                    "Unexpected token: expected " + type + " \"" + lexeme + "\"",
-                    current.getLine(),
-                    current.getColumn(),
-                    current.getLexeme(),
-                    type.name() + " \"" + lexeme + "\""
+                    "Unexpected token: expected " + type + " \"" + text + "\"",
+                    lineOf(current),
+                    columnOf(current),
+                    current.text(),
+                    type.name() + " \"" + text + "\""
             );
         }
         return consume();
     }
 
     public boolean isEOF() {
-        return peek().getType() == JavaTokenType.EOF;
+        return peek().type() == JavaTokenType.EOF;
     }
 
     public boolean hasNext() {
         return !isEOF();
     }
 
-    public JavaToken current() {
+    public Token current() {
         return tokens.get(position);
     }
 
-    public JavaToken previous() {
+    public Token previous() {
         if (position > 0) {
             return tokens.get(position - 1);
         }
@@ -115,5 +120,13 @@ public final class JavaTokenStream {
 
     public int size() {
         return tokens.size();
+    }
+
+    private int lineOf(Token token) {
+        return lineMap.lineOfOffset(token.startOffset());
+    }
+
+    private int columnOf(Token token) {
+        return lineMap.columnOfOffset(token.startOffset());
     }
 }
