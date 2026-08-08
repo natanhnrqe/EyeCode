@@ -371,6 +371,9 @@ public final class RichEditorView extends JPanel {
 
     private boolean handleSmartEditing(java.awt.event.KeyEvent e) {
         try {
+            if (completionPopup.isVisible() && isSmartEditingKey(e)) {
+                return false;
+            }
             int selectionStart = textPane.getSelectionStart();
             int selectionEnd = textPane.getSelectionEnd();
             EditorInputEvent input = swingInputAdapter.adapt(
@@ -384,6 +387,21 @@ public final class RichEditorView extends JPanel {
         } catch (RuntimeException ex) {
             return false;
         }
+    }
+
+    private static boolean isSmartEditingKey(java.awt.event.KeyEvent e) {
+        if (e.getID() == java.awt.event.KeyEvent.KEY_TYPED) {
+            return e.getKeyChar() == '\n' || e.getKeyChar() == '\r';
+        }
+        return e.getID() == java.awt.event.KeyEvent.KEY_PRESSED
+                && switch (e.getKeyCode()) {
+                    case java.awt.event.KeyEvent.VK_ENTER,
+                         java.awt.event.KeyEvent.VK_HOME,
+                         java.awt.event.KeyEvent.VK_END,
+                         java.awt.event.KeyEvent.VK_BACK_SPACE,
+                         java.awt.event.KeyEvent.VK_DELETE -> true;
+                    default -> false;
+                };
     }
 
     private JPanel createSearchPanel() {
