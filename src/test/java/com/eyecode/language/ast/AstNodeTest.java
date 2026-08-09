@@ -1,6 +1,7 @@
 package com.eyecode.language.ast;
 
 import com.eyecode.editor.intelligence.document.TextRange;
+import com.eyecode.language.Token;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -34,6 +35,20 @@ class AstNodeTest {
 
         assertThrows(UnsupportedOperationException.class,
                 () -> node.children().add(AstNode.of(AstNodeKind.TYPE, TextRange.of(0, 0), List.of())));
+    }
+
+    @Test
+    void ofWithTokenCarriesOptionalTokenPayload() {
+        AstNode plain = AstNode.of(AstNodeKind.NAME_EXPRESSION, TextRange.of(0, 3), List.of());
+        assertNull(plain.token());
+
+        Token token = new Token(com.eyecode.language.java.JavaTokenType.IDENTIFIER,
+                TextRange.of(0, 3), "foo");
+        AstNode withToken = AstNode.of(AstNodeKind.NAME_EXPRESSION, TextRange.of(0, 3),
+                List.of(), token);
+        assertSame(token, withToken.token());
+        assertEquals("foo", withToken.token().text());
+        assertEquals(AstNodeKind.NAME_EXPRESSION, withToken.kind());
     }
 
     @Test

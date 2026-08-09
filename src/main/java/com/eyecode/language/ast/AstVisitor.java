@@ -63,17 +63,29 @@ public interface AstVisitor {
             case LABELED_STATEMENT -> visitLabeledStatement(node);
             case DECLARATOR -> visitDeclarator(node);
             case SKIPPED -> visitSkipped(node);
-            case IDENTIFIER_EXPRESSION -> visitIdentifierExpression(node);
+            case NAME_EXPRESSION -> visitNameExpression(node);
+            case THIS_EXPRESSION -> visitThisExpression(node);
+            case SUPER_EXPRESSION -> visitSuperExpression(node);
             case LITERAL_EXPRESSION -> visitLiteralExpression(node);
             case BINARY_EXPRESSION -> visitBinaryExpression(node);
             case UNARY_EXPRESSION -> visitUnaryExpression(node);
             case ASSIGNMENT_EXPRESSION -> visitAssignmentExpression(node);
+            case TERNARY_EXPRESSION -> visitTernaryExpression(node);
+            case INSTANCEOF_EXPRESSION -> visitInstanceofExpression(node);
+            case CAST_EXPRESSION -> visitCastExpression(node);
             case METHOD_CALL_EXPRESSION -> visitMethodCallExpression(node);
             case FIELD_ACCESS_EXPRESSION -> visitFieldAccessExpression(node);
+            case METHOD_REFERENCE_EXPRESSION -> visitMethodReferenceExpression(node);
             case PARENTHESIZED_EXPRESSION -> visitParenthesizedExpression(node);
-            case NEW_EXPRESSION -> visitNewExpression(node);
-            case CONDITIONAL_EXPRESSION -> visitConditionalExpression(node);
+            case OBJECT_CREATION_EXPRESSION -> visitObjectCreationExpression(node);
+            case ARRAY_CREATION_EXPRESSION -> visitArrayCreationExpression(node);
+            case CLASS_LITERAL_EXPRESSION -> visitClassLiteralExpression(node);
+            case LAMBDA_EXPRESSION -> visitLambdaExpression(node);
             case ARRAY_ACCESS_EXPRESSION -> visitArrayAccessExpression(node);
+            case SWITCH_EXPRESSION -> visitSwitchExpression(node);
+            case YIELD_STATEMENT -> visitYieldStatement(node);
+            case ASSERT_STATEMENT -> visitAssertStatement(node);
+            case TYPE_PATTERN -> visitTypePattern(node);
             case OPERATOR -> visitOperator(node);
         }
     }
@@ -210,7 +222,13 @@ public interface AstVisitor {
     default void visitSkipped(AstNode node) {
     }
 
-    default void visitIdentifierExpression(AstNode node) {
+    default void visitNameExpression(AstNode node) {
+    }
+
+    default void visitThisExpression(AstNode node) {
+    }
+
+    default void visitSuperExpression(AstNode node) {
     }
 
     default void visitLiteralExpression(AstNode node) {
@@ -225,22 +243,52 @@ public interface AstVisitor {
     default void visitAssignmentExpression(AstNode node) {
     }
 
+    default void visitTernaryExpression(AstNode node) {
+    }
+
+    default void visitInstanceofExpression(AstNode node) {
+    }
+
+    default void visitCastExpression(AstNode node) {
+    }
+
     default void visitMethodCallExpression(AstNode node) {
     }
 
     default void visitFieldAccessExpression(AstNode node) {
     }
 
+    default void visitMethodReferenceExpression(AstNode node) {
+    }
+
     default void visitParenthesizedExpression(AstNode node) {
     }
 
-    default void visitNewExpression(AstNode node) {
+    default void visitObjectCreationExpression(AstNode node) {
     }
 
-    default void visitConditionalExpression(AstNode node) {
+    default void visitArrayCreationExpression(AstNode node) {
+    }
+
+    default void visitClassLiteralExpression(AstNode node) {
+    }
+
+    default void visitLambdaExpression(AstNode node) {
     }
 
     default void visitArrayAccessExpression(AstNode node) {
+    }
+
+    default void visitSwitchExpression(AstNode node) {
+    }
+
+    default void visitYieldStatement(AstNode node) {
+    }
+
+    default void visitAssertStatement(AstNode node) {
+    }
+
+    default void visitTypePattern(AstNode node) {
     }
 
     default void visitOperator(AstNode node) {

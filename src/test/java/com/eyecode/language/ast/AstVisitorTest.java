@@ -241,8 +241,18 @@ class AstVisitorTest {
             }
 
             @Override
-            public void visitIdentifierExpression(AstNode n) {
-                counts.merge(AstNodeKind.IDENTIFIER_EXPRESSION, 1, Integer::sum);
+            public void visitNameExpression(AstNode n) {
+                counts.merge(AstNodeKind.NAME_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitThisExpression(AstNode n) {
+                counts.merge(AstNodeKind.THIS_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitSuperExpression(AstNode n) {
+                counts.merge(AstNodeKind.SUPER_EXPRESSION, 1, Integer::sum);
             }
 
             @Override
@@ -266,6 +276,21 @@ class AstVisitorTest {
             }
 
             @Override
+            public void visitTernaryExpression(AstNode n) {
+                counts.merge(AstNodeKind.TERNARY_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitInstanceofExpression(AstNode n) {
+                counts.merge(AstNodeKind.INSTANCEOF_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitCastExpression(AstNode n) {
+                counts.merge(AstNodeKind.CAST_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
             public void visitMethodCallExpression(AstNode n) {
                 counts.merge(AstNodeKind.METHOD_CALL_EXPRESSION, 1, Integer::sum);
             }
@@ -276,23 +301,58 @@ class AstVisitorTest {
             }
 
             @Override
+            public void visitMethodReferenceExpression(AstNode n) {
+                counts.merge(AstNodeKind.METHOD_REFERENCE_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
             public void visitParenthesizedExpression(AstNode n) {
                 counts.merge(AstNodeKind.PARENTHESIZED_EXPRESSION, 1, Integer::sum);
             }
 
             @Override
-            public void visitNewExpression(AstNode n) {
-                counts.merge(AstNodeKind.NEW_EXPRESSION, 1, Integer::sum);
+            public void visitObjectCreationExpression(AstNode n) {
+                counts.merge(AstNodeKind.OBJECT_CREATION_EXPRESSION, 1, Integer::sum);
             }
 
             @Override
-            public void visitConditionalExpression(AstNode n) {
-                counts.merge(AstNodeKind.CONDITIONAL_EXPRESSION, 1, Integer::sum);
+            public void visitArrayCreationExpression(AstNode n) {
+                counts.merge(AstNodeKind.ARRAY_CREATION_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitClassLiteralExpression(AstNode n) {
+                counts.merge(AstNodeKind.CLASS_LITERAL_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitLambdaExpression(AstNode n) {
+                counts.merge(AstNodeKind.LAMBDA_EXPRESSION, 1, Integer::sum);
             }
 
             @Override
             public void visitArrayAccessExpression(AstNode n) {
                 counts.merge(AstNodeKind.ARRAY_ACCESS_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitSwitchExpression(AstNode n) {
+                counts.merge(AstNodeKind.SWITCH_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitYieldStatement(AstNode n) {
+                counts.merge(AstNodeKind.YIELD_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitAssertStatement(AstNode n) {
+                counts.merge(AstNodeKind.ASSERT_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitTypePattern(AstNode n) {
+                counts.merge(AstNodeKind.TYPE_PATTERN, 1, Integer::sum);
             }
 
             @Override

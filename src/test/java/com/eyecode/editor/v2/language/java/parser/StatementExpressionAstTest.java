@@ -302,7 +302,7 @@ class StatementExpressionAstTest {
         assertEquals(AstNodeKind.ITERABLE, iterable.kind());
         assertEquals(AstNodeKind.THEN, body.kind());
         assertEquals(AstNodeKind.TYPE, variable.children().get(0).kind());
-        assertEquals(AstNodeKind.IDENTIFIER_EXPRESSION, iterable.children().get(0).kind());
+        assertEquals(AstNodeKind.NAME_EXPRESSION, iterable.children().get(0).kind());
     }
 
     @Test
@@ -348,7 +348,7 @@ class StatementExpressionAstTest {
         List<AstNode> breaks = all.stream().filter(n -> n.kind() == AstNodeKind.BREAK_STATEMENT).toList();
         assertEquals(1, breaks.size());
         assertEquals(1, breaks.get(0).children().size());
-        assertEquals(AstNodeKind.IDENTIFIER_EXPRESSION, breaks.get(0).children().get(0).kind());
+        assertEquals(AstNodeKind.NAME_EXPRESSION, breaks.get(0).children().get(0).kind());
 
         List<AstNode> continues = all.stream().filter(n -> n.kind() == AstNodeKind.CONTINUE_STATEMENT).toList();
         assertEquals(1, continues.size());
@@ -374,7 +374,7 @@ class StatementExpressionAstTest {
                 """;
         AstNode throwStatement = onlyChild(methodBlock(source), AstNodeKind.THROW_STATEMENT);
         assertEquals(1, throwStatement.children().size());
-        assertEquals(AstNodeKind.NEW_EXPRESSION, throwStatement.children().get(0).kind());
+        assertEquals(AstNodeKind.OBJECT_CREATION_EXPRESSION, throwStatement.children().get(0).kind());
     }
 
     @Test
@@ -503,7 +503,7 @@ class StatementExpressionAstTest {
                 """;
         AstNode labeled = onlyChild(methodBlock(source), AstNodeKind.LABELED_STATEMENT);
         assertEquals(2, labeled.children().size());
-        assertEquals(AstNodeKind.IDENTIFIER_EXPRESSION, labeled.children().get(0).kind());
+        assertEquals(AstNodeKind.NAME_EXPRESSION, labeled.children().get(0).kind());
         assertEquals("outer", slice(source, labeled.children().get(0)));
         assertEquals(AstNodeKind.WHILE_STATEMENT, labeled.children().get(1).kind());
     }
@@ -513,18 +513,34 @@ class StatementExpressionAstTest {
         String source = """
                 class A {
                     void m() {
-                        assert x == 1;
-                        Runnable r = () -> System.out.println("x");
-                        Object o = (int) value;
+                        const x = 1;
+                        goto end;
+                    }
+                }
+                """;
+        AstNode block = methodBlock(source);
+        assertEquals(2, block.children().size());
+        for (AstNode child : block.children()) {
+            assertEquals(AstNodeKind.SKIPPED, child.kind(), child + " should be SKIPPED");
+        }
+    }
+
+    @Test
+    void yieldAndAssertAreStatementsNotSkipped() {
+        String source = """
+                class A {
+                    void m() {
+                        assert x == 1 : "msg";
+                        assert y == 2;
                         yield 5;
                     }
                 }
                 """;
         AstNode block = methodBlock(source);
-        assertEquals(4, block.children().size());
-        for (AstNode child : block.children()) {
-            assertEquals(AstNodeKind.SKIPPED, child.kind(), child + " should be SKIPPED");
-        }
+        assertEquals(3, block.children().size());
+        assertEquals(AstNodeKind.ASSERT_STATEMENT, block.children().get(0).kind());
+        assertEquals(AstNodeKind.ASSERT_STATEMENT, block.children().get(1).kind());
+        assertEquals(AstNodeKind.YIELD_STATEMENT, block.children().get(2).kind());
     }
 
     @Test
@@ -555,7 +571,7 @@ class StatementExpressionAstTest {
         AstNode declarator = onlyChild(declaration, AstNodeKind.DECLARATOR);
         AstNode initializer = declarator.children().get(0);
         assertEquals(AstNodeKind.BINARY_EXPRESSION, initializer.kind());
-        assertEquals(AstNodeKind.IDENTIFIER_EXPRESSION, initializer.children().get(0).kind());
+        assertEquals(AstNodeKind.NAME_EXPRESSION, initializer.children().get(0).kind());
         AstNode right = initializer.children().get(2);
         assertEquals(AstNodeKind.BINARY_EXPRESSION, right.kind());
         assertEquals("b * c", slice(source, right));
@@ -699,7 +715,7 @@ class StatementExpressionAstTest {
     }
 
     @Test
-    void newExpressionForms() {
+    void objectAndArrayCreationForms() {
         String source = """
                 class A {
                     void m() {
@@ -717,12 +733,22 @@ class StatementExpressionAstTest {
         AstNode block = methodBlock(source);
         List<AstNode> declarations = ofKind(block, AstNodeKind.LOCAL_VARIABLE_DECLARATION);
         assertEquals(5, declarations.size());
-        for (AstNode declaration : declarations) {
-            AstNode initializer = onlyChild(declaration, AstNodeKind.DECLARATOR).children().get(0);
-            assertEquals(AstNodeKind.NEW_EXPRESSION, initializer.kind(), slice(source, initializer));
-        }
-        AstNode anonymous = declarations.get(4).children().get(1).children().get(0);
-        assertEquals(AstNodeKind.NEW_EXPRESSION, anonymous.kind());
+        assertEquals(AstNodeKind.OBJECT_CREATION_EXPRESSION,
+                onlyChild(declarations.get(0), AstNodeKind.DECLARATOR).children().get(0).kind());
+        assertEquals(AstNodeKind.OBJECT_CREATION_EXPRESSION,
+                onlyChild(declarations.get(1), AstNodeKind.DECLARATOR).children().get(0).kind());
+        AstNode array1 = onlyChild(declarations.get(2), AstNodeKind.DECLARATOR).children().get(0);
+        assertEquals(AstNodeKind.ARRAY_CREATION_EXPRESSION, array1.kind());
+        assertEquals(2, array1.children().size());
+        assertEquals(AstNodeKind.TYPE, array1.children().get(0).kind());
+        assertEquals(AstNodeKind.LITERAL_EXPRESSION, array1.children().get(1).kind());
+        AstNode array2 = onlyChild(declarations.get(3), AstNodeKind.DECLARATOR).children().get(0);
+        assertEquals(AstNodeKind.ARRAY_CREATION_EXPRESSION, array2.kind());
+        assertEquals(2, array2.children().size());
+        assertEquals(AstNodeKind.TYPE, array2.children().get(0).kind());
+        assertEquals(AstNodeKind.LITERAL_EXPRESSION, array2.children().get(1).kind());
+        AstNode anonymous = onlyChild(declarations.get(4), AstNodeKind.DECLARATOR).children().get(0);
+        assertEquals(AstNodeKind.OBJECT_CREATION_EXPRESSION, anonymous.kind());
         assertTrue(slice(source, anonymous).startsWith("new Foo() {"));
         assertTrue(slice(source, anonymous).endsWith("}"));
     }
@@ -738,7 +764,7 @@ class StatementExpressionAstTest {
                 """;
         AstNode initializer = onlyChild(onlyChild(
                 onlyChild(methodBlock(source), AstNodeKind.LOCAL_VARIABLE_DECLARATION),
-                AstNodeKind.DECLARATOR), AstNodeKind.CONDITIONAL_EXPRESSION);
+                AstNodeKind.DECLARATOR), AstNodeKind.TERNARY_EXPRESSION);
         assertEquals(3, initializer.children().size());
         assertEquals("flag ? a : b", slice(source, initializer));
     }
@@ -754,9 +780,9 @@ class StatementExpressionAstTest {
                 """;
         AstNode conditional = onlyChild(onlyChild(
                 onlyChild(methodBlock(source), AstNodeKind.LOCAL_VARIABLE_DECLARATION),
-                AstNodeKind.DECLARATOR), AstNodeKind.CONDITIONAL_EXPRESSION);
+                AstNodeKind.DECLARATOR), AstNodeKind.TERNARY_EXPRESSION);
         AstNode elseBranch = conditional.children().get(2);
-        assertEquals(AstNodeKind.CONDITIONAL_EXPRESSION, elseBranch.kind());
+        assertEquals(AstNodeKind.TERNARY_EXPRESSION, elseBranch.kind());
     }
 
     @Test
@@ -776,7 +802,7 @@ class StatementExpressionAstTest {
         assertEquals(AstNodeKind.UNARY_EXPRESSION, first.kind());
         assertEquals(2, first.children().size());
         assertEquals(AstNodeKind.OPERATOR, first.children().get(0).kind());
-        assertEquals(AstNodeKind.IDENTIFIER_EXPRESSION, first.children().get(1).kind());
+        assertEquals(AstNodeKind.NAME_EXPRESSION, first.children().get(1).kind());
 
         List<AstNode> all = AstNodes.descendants(modelRoot(block));
         List<AstNode> unary = all.stream().filter(n -> n.kind() == AstNodeKind.UNARY_EXPRESSION).toList();
@@ -786,7 +812,7 @@ class StatementExpressionAstTest {
     }
 
     @Test
-    void instanceofIsBinaryOperator() {
+    void instanceofExpressionParsesType() {
         String source = """
                 class A {
                     void m() {
@@ -796,8 +822,12 @@ class StatementExpressionAstTest {
                 """;
         AstNode initializer = onlyChild(onlyChild(
                 onlyChild(methodBlock(source), AstNodeKind.LOCAL_VARIABLE_DECLARATION),
-                AstNodeKind.DECLARATOR), AstNodeKind.BINARY_EXPRESSION);
+                AstNodeKind.DECLARATOR), AstNodeKind.INSTANCEOF_EXPRESSION);
+        assertEquals(3, initializer.children().size());
+        assertEquals(AstNodeKind.NAME_EXPRESSION, initializer.children().get(0).kind());
         assertEquals("instanceof", slice(source, initializer.children().get(1)));
+        assertEquals(AstNodeKind.TYPE, initializer.children().get(2).kind());
+        assertEquals("Foo", slice(source, initializer.children().get(2)));
     }
 
     @Test
@@ -887,7 +917,7 @@ class StatementExpressionAstTest {
                 .children().get(0);
         assertEquals(AstNodeKind.ASSIGNMENT_EXPRESSION, assignment.kind());
         assertEquals(AstNodeKind.FIELD_ACCESS_EXPRESSION, assignment.children().get(0).kind());
-        assertEquals(AstNodeKind.IDENTIFIER_EXPRESSION, assignment.children().get(0).children().get(0).kind());
+        assertEquals(AstNodeKind.THIS_EXPRESSION, assignment.children().get(0).children().get(0).kind());
     }
 
     @Test
@@ -915,7 +945,7 @@ class StatementExpressionAstTest {
     }
 
     @Test
-    void brokenBodyDoesNotPropagateToWholeFile() {
+    void lambdaInitializerParsesAndRemainderSurvives() {
         String source = """
                 class A {
                     void m() {
@@ -928,11 +958,14 @@ class StatementExpressionAstTest {
         JavaFileModel model = parse(source);
         AstNode block = methodBlock(source);
         assertEquals(3, block.children().size());
-        assertEquals(AstNodeKind.SKIPPED, block.children().get(0).kind());
+        AstNode declaration = block.children().get(0);
+        assertEquals(AstNodeKind.LOCAL_VARIABLE_DECLARATION, declaration.kind());
+        AstNode lambda = onlyChild(declaration, AstNodeKind.DECLARATOR).children().get(0);
+        assertEquals(AstNodeKind.LAMBDA_EXPRESSION, lambda.kind());
         assertEquals(AstNodeKind.LOCAL_VARIABLE_DECLARATION, block.children().get(1).kind());
         assertEquals(AstNodeKind.EXPRESSION_STATEMENT, block.children().get(2).kind());
-        assertEquals(1, model.getTypes().get(0).getMethods().get(0).getLocalVariables().size());
-        assertEquals("a", model.getTypes().get(0).getMethods().get(0).getLocalVariables().get(0).getName());
+        assertEquals(2, model.getTypes().get(0).getMethods().get(0).getLocalVariables().size());
+        assertEquals("r", model.getTypes().get(0).getMethods().get(0).getLocalVariables().get(0).getName());
     }
 
     @Test

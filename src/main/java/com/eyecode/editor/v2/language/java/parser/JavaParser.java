@@ -25,6 +25,7 @@ public final class JavaParser {
 
     private final JavaTokenStream stream;
     private JavaMethodModel currentMethod;
+    private boolean switchLabelContext;
 
     public JavaParser(JavaTokenStream stream) {
         this.stream = stream;
@@ -786,6 +787,12 @@ public final class JavaParser {
                 case "synchronized" -> {
                     return parseSynchronizedStatement();
                 }
+                case "yield" -> {
+                    return parseYieldStatement();
+                }
+                case "assert" -> {
+                    return parseAssertStatement();
+                }
                 case "new", "this", "super" -> {
                 }
                 default -> {
@@ -818,9 +825,13 @@ public final class JavaParser {
                 stream.consume();
                 break;
             }
-            if (depth == 0 && token.type() == JavaTokenType.SEPARATOR
-                    && token.text().equals("}")) {
-                break;
+            if (token.type() == JavaTokenType.SEPARATOR && token.text().equals("}")) {
+                if (depth <= 1) {
+                    break;
+                }
+                depth--;
+                stream.consume();
+                continue;
             }
 
             token = stream.consume();
@@ -859,11 +870,15 @@ public final class JavaParser {
         AstNode statement = parseStatement();
         return AstNode.of(AstNodeKind.LABELED_STATEMENT,
                 TextRange.of(label.startOffset(), statement.range().endOffset()),
-                List.of(identifierExpression(label), statement));
+                List.of(nameExpression(label), statement));
     }
 
-    private static AstNode identifierExpression(Token token) {
-        return AstNode.of(AstNodeKind.IDENTIFIER_EXPRESSION, token.range(), List.of());
+    private static AstNode nameExpression(Token token) {
+        return AstNode.of(AstNodeKind.NAME_EXPRESSION, token.range(), List.of(), token);
+    }
+
+    private static AstNode operatorNode(Token token) {
+        return AstNode.of(AstNodeKind.OPERATOR, token.range(), List.of(), token);
     }
 
     private boolean isLocalVariableDeclaration() {
@@ -954,6 +969,11 @@ public final class JavaParser {
     }
 
     private AstNode parseExpression() {
+        skipTrivia();
+        Token first = stream.peek();
+        if (first.type() == JavaTokenType.KEYWORD && first.text().equals("switch")) {
+            return parseSwitchExpression();
+        }
         int mark = stream.mark();
         AstNode base = parseConditional();
         skipTrivia();
@@ -967,7 +987,7 @@ public final class JavaParser {
             AstNode rhs = parseExpression();
             return AstNode.of(AstNodeKind.ASSIGNMENT_EXPRESSION,
                     TextRange.of(lhs.range().startOffset(), rhs.range().endOffset()),
-                    List.of(lhs, AstNode.of(AstNodeKind.OPERATOR, op.range(), List.of()), rhs));
+                    List.of(lhs, operatorNode(op), rhs));
         }
         return base;
     }
@@ -984,7 +1004,7 @@ public final class JavaParser {
 
     private static boolean isLvalue(AstNode node) {
         AstNodeKind kind = node.kind();
-        return kind == AstNodeKind.IDENTIFIER_EXPRESSION
+        return kind == AstNodeKind.NAME_EXPRESSION
                 || kind == AstNodeKind.FIELD_ACCESS_EXPRESSION
                 || kind == AstNodeKind.ARRAY_ACCESS_EXPRESSION;
     }
@@ -1002,7 +1022,7 @@ public final class JavaParser {
         stream.expect(JavaTokenType.OPERATOR, ":");
         skipTrivia();
         AstNode elseExpr = parseExpression();
-        return AstNode.of(AstNodeKind.CONDITIONAL_EXPRESSION,
+        return AstNode.of(AstNodeKind.TERNARY_EXPRESSION,
                 TextRange.of(condition.range().startOffset(), elseExpr.range().endOffset()),
                 List.of(condition, thenExpr, elseExpr));
     }
@@ -1018,12 +1038,17 @@ public final class JavaParser {
             }
             stream.consume();
             skipTrivia();
+            if (operator.type() == JavaTokenType.KEYWORD && operator.text().equals("instanceof")) {
+                AstNode typeNode = parseTypeNode();
+                left = AstNode.of(AstNodeKind.INSTANCEOF_EXPRESSION,
+                        TextRange.of(left.range().startOffset(), typeNode.range().endOffset()),
+                        List.of(left, operatorNode(operator), typeNode));
+                continue;
+            }
             AstNode right = parseBinary(precedence + 1);
             left = AstNode.of(AstNodeKind.BINARY_EXPRESSION,
                     TextRange.of(left.range().startOffset(), right.range().endOffset()),
-                    List.of(left,
-                            AstNode.of(AstNodeKind.OPERATOR, operator.range(), List.of()),
-                            right));
+                    List.of(left, operatorNode(operator), right));
         }
         return left;
     }
@@ -1052,6 +1077,9 @@ public final class JavaParser {
 
     private AstNode parseUnary() {
         skipTrivia();
+        if (isCastStart()) {
+            return parseCastExpression();
+        }
         Token token = stream.peek();
         if (token.type() == JavaTokenType.OPERATOR && isUnaryOperator(token.text())) {
             stream.consume();
@@ -1059,7 +1087,7 @@ public final class JavaParser {
             AstNode operand = parseUnary();
             return AstNode.of(AstNodeKind.UNARY_EXPRESSION,
                     TextRange.of(token.startOffset(), operand.range().endOffset()),
-                    List.of(AstNode.of(AstNodeKind.OPERATOR, token.range(), List.of()), operand));
+                    List.of(operatorNode(token), operand));
         }
         return parsePostfix();
     }
@@ -1067,6 +1095,186 @@ public final class JavaParser {
     private static boolean isUnaryOperator(String text) {
         return text.equals("+") || text.equals("-") || text.equals("!") || text.equals("~")
                 || text.equals("++") || text.equals("--");
+    }
+
+    /**
+     * JLS 15.2 disambiguation for {@code (Type)} vs {@code (Expression)}:
+     * a type in parens is a cast when it is a primitive type (always) or,
+     * for reference types, when the token after {@code )} can start a cast
+     * operand ({@code ! ~ ( new this super} literals or an identifier).
+     * Tokens like {@code + - ++ -- instanceof [ ?} keep the parenthesized
+     * interpretation (verified against javac's {@code analyzeParens}).
+     */
+    private boolean isCastStart() {
+        int mark = stream.mark();
+        skipTrivia();
+        if (!stream.match(JavaTokenType.SEPARATOR, "(")) {
+            stream.reset(mark);
+            return false;
+        }
+        skipTrivia();
+        Token first = stream.peek();
+        if (!isTypeToken(first, false)) {
+            stream.reset(mark);
+            return false;
+        }
+        boolean primitive = first.type() == JavaTokenType.KEYWORD;
+        StringBuilder ignored = new StringBuilder();
+        if (!appendTypeName(ignored, false)) {
+            stream.reset(mark);
+            return false;
+        }
+        parseGenericArguments(ignored);
+        parseArraySuffix(ignored);
+        skipTrivia();
+        if (!stream.match(JavaTokenType.SEPARATOR, ")")) {
+            stream.reset(mark);
+            return false;
+        }
+        skipTrivia();
+        boolean cast = primitive || canStartCastOperand(stream.peek());
+        stream.reset(mark);
+        return cast;
+    }
+
+    private static boolean canStartCastOperand(Token token) {
+        return switch (token.type()) {
+            case JavaTokenType.IDENTIFIER, JavaTokenType.NUMBER, JavaTokenType.STRING,
+                    JavaTokenType.CHARACTER, JavaTokenType.BOOLEAN_LITERAL,
+                    JavaTokenType.NULL_LITERAL -> true;
+            case JavaTokenType.KEYWORD -> token.text().equals("new") || token.text().equals("this")
+                    || token.text().equals("super");
+            case JavaTokenType.SEPARATOR -> token.text().equals("(");
+            case JavaTokenType.OPERATOR -> token.text().equals("!") || token.text().equals("~");
+            default -> false;
+        };
+    }
+
+    private AstNode parseCastExpression() {
+        Token open = stream.expect(JavaTokenType.SEPARATOR, "(");
+        int typeStart = stream.peek().startOffset();
+        StringBuilder ignored = new StringBuilder();
+        appendTypeName(ignored, false);
+        parseGenericArguments(ignored);
+        parseArraySuffix(ignored);
+        int typeEnd = stream.previous().endOffset();
+        AstNode typeNode = AstNode.of(AstNodeKind.TYPE,
+                TextRange.of(typeStart, typeEnd), List.of());
+        skipTrivia();
+        stream.expect(JavaTokenType.SEPARATOR, ")");
+        skipTrivia();
+        AstNode operand = parseUnary();
+        return AstNode.of(AstNodeKind.CAST_EXPRESSION,
+                TextRange.of(open.startOffset(), operand.range().endOffset()),
+                List.of(typeNode, operand));
+    }
+
+    private AstNode parseTypeNode() {
+        int typeStart = stream.peek().startOffset();
+        StringBuilder ignored = new StringBuilder();
+        if (!appendTypeName(ignored, false)) {
+            throw stream.error("Expected type after 'instanceof'", stream.peek());
+        }
+        parseGenericArguments(ignored);
+        parseArraySuffix(ignored);
+        int typeEnd = stream.previous().endOffset();
+        return AstNode.of(AstNodeKind.TYPE, TextRange.of(typeStart, typeEnd), List.of());
+    }
+
+    private boolean isLambdaParenStart() {
+        int mark = stream.mark();
+        skipTrivia();
+        if (!stream.match(JavaTokenType.SEPARATOR, "(")) {
+            stream.reset(mark);
+            return false;
+        }
+        skipTrivia();
+        if (stream.match(JavaTokenType.SEPARATOR, ")")) {
+            skipTrivia();
+            boolean lambda = stream.match(JavaTokenType.OPERATOR, "->");
+            stream.reset(mark);
+            return lambda;
+        }
+        while (stream.hasNext()) {
+            skipTrivia();
+            if (stream.peek().type() != JavaTokenType.IDENTIFIER) {
+                stream.reset(mark);
+                return false;
+            }
+            stream.consume();
+            skipTrivia();
+            if (stream.match(JavaTokenType.SEPARATOR, ")")) {
+                skipTrivia();
+                boolean lambda = stream.match(JavaTokenType.OPERATOR, "->");
+                stream.reset(mark);
+                return lambda;
+            }
+            if (!stream.match(JavaTokenType.SEPARATOR, ",")) {
+                stream.reset(mark);
+                return false;
+            }
+        }
+        stream.reset(mark);
+        return false;
+    }
+
+    private AstNode parseParenLambda() {
+        Token open = stream.expect(JavaTokenType.SEPARATOR, "(");
+        List<AstNode> children = new ArrayList<>();
+        skipTrivia();
+        if (!stream.match(JavaTokenType.SEPARATOR, ")")) {
+            while (stream.hasNext()) {
+                skipTrivia();
+                Token name = stream.expect(JavaTokenType.IDENTIFIER);
+                children.add(AstNode.of(AstNodeKind.PARAMETER, name.range(), List.of(), name));
+                skipTrivia();
+                if (stream.match(JavaTokenType.SEPARATOR, ")")) {
+                    break;
+                }
+                stream.expect(JavaTokenType.SEPARATOR, ",");
+            }
+        }
+        skipTrivia();
+        Token arrow = stream.expect(JavaTokenType.OPERATOR, "->");
+        children.add(operatorNode(arrow));
+        skipTrivia();
+        AstNode body = parseLambdaBody();
+        children.add(body);
+        return AstNode.of(AstNodeKind.LAMBDA_EXPRESSION,
+                TextRange.of(open.startOffset(), body.range().endOffset()), children);
+    }
+
+    private AstNode parseSingleParamLambda(AstNode paramNode) {
+        skipTrivia();
+        Token arrow = stream.expect(JavaTokenType.OPERATOR, "->");
+        skipTrivia();
+        AstNode body = parseLambdaBody();
+        return AstNode.of(AstNodeKind.LAMBDA_EXPRESSION,
+                TextRange.of(paramNode.range().startOffset(), body.range().endOffset()),
+                List.of(paramNode, operatorNode(arrow), body));
+    }
+
+    private AstNode parseLambdaBody() {
+        skipTrivia();
+        if (stream.peek().type() == JavaTokenType.SEPARATOR && stream.peek().text().equals("{")) {
+            return parseBlock();
+        }
+        return parseExpression();
+    }
+
+    private AstNode parseMethodReferenceSuffix(AstNode target) {
+        stream.expect(JavaTokenType.OPERATOR, "::");
+        skipTrivia();
+        skipTypeParameterList();
+        Token member = stream.peek();
+        if (member.type() != JavaTokenType.IDENTIFIER
+                && !(member.type() == JavaTokenType.KEYWORD && member.text().equals("new"))) {
+            throw stream.error("Expected method reference name", member);
+        }
+        stream.consume();
+        return AstNode.of(AstNodeKind.METHOD_REFERENCE_EXPRESSION,
+                TextRange.of(target.range().startOffset(), member.endOffset()),
+                List.of(target), member);
     }
 
     private AstNode parsePostfix() {
@@ -1085,7 +1293,12 @@ public final class JavaParser {
                 Token increment = stream.consume();
                 node = AstNode.of(AstNodeKind.UNARY_EXPRESSION,
                         TextRange.of(node.range().startOffset(), increment.endOffset()),
-                        List.of(node, AstNode.of(AstNodeKind.OPERATOR, increment.range(), List.of())));
+                        List.of(node, operatorNode(increment)));
+            } else if (token.type() == JavaTokenType.OPERATOR && token.text().equals("->")
+                    && node.kind() == AstNodeKind.NAME_EXPRESSION && !switchLabelContext) {
+                node = parseSingleParamLambda(node);
+            } else if (token.type() == JavaTokenType.OPERATOR && token.text().equals("::")) {
+                node = parseMethodReferenceSuffix(node);
             } else {
                 break;
             }
@@ -1098,22 +1311,35 @@ public final class JavaParser {
         Token token = stream.peek();
         switch (token.type()) {
             case JavaTokenType.IDENTIFIER -> {
-                return identifierExpression(stream.consume());
+                return nameExpression(stream.consume());
             }
             case JavaTokenType.NUMBER, JavaTokenType.STRING, JavaTokenType.CHARACTER,
                     JavaTokenType.BOOLEAN_LITERAL, JavaTokenType.NULL_LITERAL -> {
-                return AstNode.of(AstNodeKind.LITERAL_EXPRESSION, stream.consume().range(), List.of());
+                Token literal = stream.consume();
+                return AstNode.of(AstNodeKind.LITERAL_EXPRESSION, literal.range(), List.of(), literal);
             }
             case JavaTokenType.KEYWORD -> {
                 if (token.text().equals("new")) {
                     return parseNewExpression();
                 }
-                if (token.text().equals("this") || token.text().equals("super")) {
-                    return identifierExpression(stream.consume());
+                if (token.text().equals("this")) {
+                    Token thisToken = stream.consume();
+                    return AstNode.of(AstNodeKind.THIS_EXPRESSION, thisToken.range(), List.of(), thisToken);
+                }
+                if (token.text().equals("super")) {
+                    Token superToken = stream.consume();
+                    return AstNode.of(AstNodeKind.SUPER_EXPRESSION, superToken.range(), List.of(), superToken);
+                }
+                if (isTypeToken(token, false)) {
+                    Token typeToken = stream.consume();
+                    return AstNode.of(AstNodeKind.NAME_EXPRESSION, typeToken.range(), List.of(), typeToken);
                 }
             }
             case JavaTokenType.SEPARATOR -> {
                 if (token.text().equals("(")) {
+                    if (isLambdaParenStart()) {
+                        return parseParenLambda();
+                    }
                     stream.consume();
                     AstNode inner = parseExpression();
                     skipTrivia();
@@ -1166,11 +1392,17 @@ public final class JavaParser {
     private AstNode parseFieldAccessSuffix(AstNode target) {
         stream.expect(JavaTokenType.SEPARATOR, ".");
         skipTrivia();
+        if (stream.peek().type() == JavaTokenType.KEYWORD && stream.peek().text().equals("class")) {
+            Token classToken = stream.consume();
+            return AstNode.of(AstNodeKind.CLASS_LITERAL_EXPRESSION,
+                    TextRange.of(target.range().startOffset(), classToken.endOffset()),
+                    List.of(target));
+        }
         skipTypeParameterList();
         Token member = stream.expect(JavaTokenType.IDENTIFIER);
         return AstNode.of(AstNodeKind.FIELD_ACCESS_EXPRESSION,
                 TextRange.of(target.range().startOffset(), member.endOffset()),
-                List.of(target, identifierExpression(member)));
+                List.of(target, nameExpression(member)));
     }
 
     private AstNode parseArrayAccessSuffix(AstNode target) {
@@ -1196,37 +1428,52 @@ public final class JavaParser {
                 TextRange.of(typeStart, typeEnd), List.of());
         skipTrivia();
 
-        if (stream.match(JavaTokenType.SEPARATOR, "(")) {
-            List<AstNode> children = new ArrayList<>();
-            children.add(typeNode);
-            List<AstNode> arguments = parseArguments();
-            children.addAll(arguments);
-            int end = stream.previous().endOffset();
-            skipTrivia();
-            if (stream.peek().type() == JavaTokenType.SEPARATOR && stream.peek().text().equals("{")) {
-                skipBalanced("{", "}");
-                end = stream.previous().endOffset();
-            }
-            return AstNode.of(AstNodeKind.NEW_EXPRESSION,
-                    TextRange.of(newToken.startOffset(), end), children);
+        if (stream.peek().type() == JavaTokenType.SEPARATOR && stream.peek().text().equals("[")) {
+            return parseArrayCreationExpression(newToken, typeNode);
         }
 
+        stream.match(JavaTokenType.SEPARATOR, "(");
+        List<AstNode> children = new ArrayList<>();
+        children.add(typeNode);
+        List<AstNode> arguments = parseArguments();
+        children.addAll(arguments);
+        int end = stream.previous().endOffset();
+        skipTrivia();
+        if (stream.peek().type() == JavaTokenType.SEPARATOR && stream.peek().text().equals("{")) {
+            skipBalanced("{", "}");
+            end = stream.previous().endOffset();
+        }
+        return AstNode.of(AstNodeKind.OBJECT_CREATION_EXPRESSION,
+                TextRange.of(newToken.startOffset(), end), children);
+    }
+
+    private AstNode parseArrayCreationExpression(Token newToken, AstNode typeNode) {
+        List<AstNode> children = new ArrayList<>();
+        children.add(typeNode);
         while (true) {
             skipTrivia();
-            Token token = stream.peek();
-            if (token.type() == JavaTokenType.SEPARATOR && token.text().equals("[")) {
-                skipBalanced("[", "]");
+            if (!(stream.peek().type() == JavaTokenType.SEPARATOR && stream.peek().text().equals("["))) {
+                break;
+            }
+            stream.consume();
+            skipTrivia();
+            if (stream.match(JavaTokenType.SEPARATOR, "]")) {
                 continue;
             }
-            if (token.type() == JavaTokenType.SEPARATOR && token.text().equals("{")) {
-                skipBalanced("{", "}");
-                continue;
-            }
-            break;
+            AstNode dimension = parseExpression();
+            children.add(dimension);
+            skipTrivia();
+            stream.expect(JavaTokenType.SEPARATOR, "]");
         }
-        return AstNode.of(AstNodeKind.NEW_EXPRESSION,
-                TextRange.of(newToken.startOffset(), stream.previous().endOffset()),
-                List.of(typeNode));
+        skipTrivia();
+        if (stream.peek().type() == JavaTokenType.SEPARATOR && stream.peek().text().equals("{")) {
+            int initStart = stream.peek().startOffset();
+            skipBalanced("{", "}");
+            children.add(AstNode.of(AstNodeKind.LITERAL_EXPRESSION,
+                    TextRange.of(initStart, stream.previous().endOffset()), List.of()));
+        }
+        return AstNode.of(AstNodeKind.ARRAY_CREATION_EXPRESSION,
+                TextRange.of(newToken.startOffset(), stream.previous().endOffset()), children);
     }
 
     private void skipBalanced(String open, String close) {
@@ -1415,7 +1662,7 @@ public final class JavaParser {
         Token semi = stream.expect(JavaTokenType.SEPARATOR, ";");
         return AstNode.of(AstNodeKind.BREAK_STATEMENT,
                 TextRange.of(breakToken.startOffset(), semi.endOffset()),
-                label == null ? List.of() : List.of(identifierExpression(label)));
+                label == null ? List.of() : List.of(nameExpression(label)));
     }
 
     private AstNode parseContinueStatement() {
@@ -1429,7 +1676,7 @@ public final class JavaParser {
         Token semi = stream.expect(JavaTokenType.SEPARATOR, ";");
         return AstNode.of(AstNodeKind.CONTINUE_STATEMENT,
                 TextRange.of(continueToken.startOffset(), semi.endOffset()),
-                label == null ? List.of() : List.of(identifierExpression(label)));
+                label == null ? List.of() : List.of(nameExpression(label)));
     }
 
     private AstNode parseThrowStatement() {
@@ -1494,7 +1741,7 @@ public final class JavaParser {
                 break;
             }
             if (stream.match(JavaTokenType.KEYWORD, "case")) {
-                children.add(parseSwitchCase(stream.previous().startOffset()));
+                children.add(parseSwitchCase(stream.previous().startOffset(), false));
                 continue;
             }
             if (stream.match(JavaTokenType.KEYWORD, "default")) {
@@ -1504,7 +1751,8 @@ public final class JavaParser {
                 int labelEnd = stream.previous().endOffset();
                 children.add(parseSwitchCaseBody(TextRange.of(defaultStart, labelEnd),
                         AstNode.of(AstNodeKind.SWITCH_LABEL,
-                                TextRange.of(defaultStart, labelEnd), List.of())));
+                                TextRange.of(defaultStart, labelEnd), List.of()),
+                        false));
                 continue;
             }
             children.add(parseStatement());
@@ -1513,33 +1761,69 @@ public final class JavaParser {
                 TextRange.of(switchToken.startOffset(), stream.previous().endOffset()), children);
     }
 
-    private AstNode parseSwitchCase(int caseStart) {
+    private AstNode parseSwitchCase(int caseStart, boolean expressionMode) {
         skipTrivia();
         List<AstNode> labels = new ArrayList<>();
-        while (true) {
-            labels.add(parseExpression());
-            skipTrivia();
-            if (stream.match(JavaTokenType.SEPARATOR, ",")) {
+        boolean previous = switchLabelContext;
+        switchLabelContext = true;
+        try {
+            while (true) {
+                labels.add(parseExpression());
                 skipTrivia();
-                continue;
+                if (stream.match(JavaTokenType.SEPARATOR, ",")) {
+                    skipTrivia();
+                    continue;
+                }
+                break;
             }
-            break;
+        } finally {
+            switchLabelContext = previous;
         }
         Token terminator = stream.peek();
+        boolean arrow;
         if (terminator.type() == JavaTokenType.OPERATOR && terminator.text().equals(":")) {
             stream.consume();
+            arrow = false;
         } else if (terminator.type() == JavaTokenType.OPERATOR && terminator.text().equals("->")) {
             stream.consume();
+            arrow = true;
         } else {
             throw stream.error("Expected ':' or '->' after case label", terminator);
         }
         int labelEnd = stream.previous().endOffset();
+        if (arrow && expressionMode) {
+            return parseSwitchArrowBody(caseStart, labelEnd, labels);
+        }
         return parseSwitchCaseBody(TextRange.of(caseStart, labelEnd),
                 AstNode.of(AstNodeKind.SWITCH_LABEL,
-                        TextRange.of(caseStart, labelEnd), labels));
+                        TextRange.of(caseStart, labelEnd), labels),
+                expressionMode);
     }
 
-    private AstNode parseSwitchCaseBody(TextRange labelRange, AstNode label) {
+    private AstNode parseSwitchArrowBody(int caseStart, int labelEnd, List<AstNode> labels) {
+        skipTrivia();
+        AstNode body;
+        if (stream.peek().type() == JavaTokenType.SEPARATOR && stream.peek().text().equals("{")) {
+            body = parseBlock();
+        } else if (stream.peek().type() == JavaTokenType.KEYWORD && stream.peek().text().equals("throw")) {
+            body = parseThrowStatement();
+        } else {
+            AstNode expr = parseExpression();
+            skipTrivia();
+            stream.expect(JavaTokenType.SEPARATOR, ";");
+            body = AstNode.of(AstNodeKind.EXPRESSION_STATEMENT,
+                    TextRange.of(expr.range().startOffset(), stream.previous().endOffset()),
+                    List.of(expr));
+        }
+        List<AstNode> children = new ArrayList<>();
+        children.add(AstNode.of(AstNodeKind.SWITCH_LABEL,
+                TextRange.of(caseStart, labelEnd), labels));
+        children.add(body);
+        return AstNode.of(AstNodeKind.SWITCH_CASE,
+                TextRange.of(caseStart, body.range().endOffset()), children);
+    }
+
+    private AstNode parseSwitchCaseBody(TextRange labelRange, AstNode label, boolean expressionMode) {
         List<AstNode> children = new ArrayList<>();
         children.add(label);
         int end = labelRange.endOffset();
@@ -1575,6 +1859,76 @@ public final class JavaParser {
                 TextRange.of(syncToken.startOffset(), body.range().endOffset()),
                 List.of(AstNode.of(AstNodeKind.CONDITION, lock.range(), List.of(lock)),
                         AstNode.of(AstNodeKind.THEN, body.range(), List.of(body))));
+    }
+
+    private AstNode parseYieldStatement() {
+        Token yieldToken = stream.expect(JavaTokenType.KEYWORD, "yield");
+        skipTrivia();
+        AstNode value = parseExpression();
+        skipTrivia();
+        Token semi = stream.expect(JavaTokenType.SEPARATOR, ";");
+        return AstNode.of(AstNodeKind.YIELD_STATEMENT,
+                TextRange.of(yieldToken.startOffset(), semi.endOffset()),
+                List.of(value));
+    }
+
+    private AstNode parseAssertStatement() {
+        Token assertToken = stream.expect(JavaTokenType.KEYWORD, "assert");
+        skipTrivia();
+        AstNode condition = parseExpression();
+        skipTrivia();
+        AstNode message = null;
+        if (stream.peek().type() == JavaTokenType.OPERATOR && stream.peek().text().equals(":")) {
+            stream.consume();
+            skipTrivia();
+            message = parseExpression();
+            skipTrivia();
+        }
+        Token semi = stream.expect(JavaTokenType.SEPARATOR, ";");
+        List<AstNode> children = new ArrayList<>();
+        children.add(AstNode.of(AstNodeKind.CONDITION, condition.range(), List.of(condition)));
+        if (message != null) {
+            children.add(message);
+        }
+        return AstNode.of(AstNodeKind.ASSERT_STATEMENT,
+                TextRange.of(assertToken.startOffset(), semi.endOffset()), children);
+    }
+
+    private AstNode parseSwitchExpression() {
+        Token switchToken = stream.expect(JavaTokenType.KEYWORD, "switch");
+        skipTrivia();
+        stream.expect(JavaTokenType.SEPARATOR, "(");
+        skipTrivia();
+        AstNode selector = parseExpression();
+        skipTrivia();
+        stream.expect(JavaTokenType.SEPARATOR, ")");
+        skipTrivia();
+        stream.expect(JavaTokenType.SEPARATOR, "{");
+        List<AstNode> children = new ArrayList<>();
+        children.add(AstNode.of(AstNodeKind.CONDITION, selector.range(), List.of(selector)));
+        while (stream.hasNext()) {
+            skipTrivia();
+            if (stream.match(JavaTokenType.SEPARATOR, "}")) {
+                break;
+            }
+            if (stream.match(JavaTokenType.KEYWORD, "case")) {
+                children.add(parseSwitchCase(stream.previous().startOffset(), true));
+                continue;
+            }
+            if (stream.match(JavaTokenType.KEYWORD, "default")) {
+                int defaultStart = stream.previous().startOffset();
+                skipTrivia();
+                stream.expect(JavaTokenType.OPERATOR, "->");
+                int labelEnd = stream.previous().endOffset();
+                AstNode label = AstNode.of(AstNodeKind.SWITCH_LABEL,
+                        TextRange.of(defaultStart, labelEnd), List.of());
+                children.add(parseSwitchCaseBody(TextRange.of(defaultStart, labelEnd), label, true));
+                continue;
+            }
+            children.add(parseStatement());
+        }
+        return AstNode.of(AstNodeKind.SWITCH_EXPRESSION,
+                TextRange.of(switchToken.startOffset(), stream.previous().endOffset()), children);
     }
 
     private void skipThrowsClause() {

@@ -2,11 +2,12 @@ package com.eyecode.language.ast;
 
 /**
  * Kinds of AST nodes the parser can produce (Sprint 5.3a declarations,
- * Sprint 5.3b statements + expressions).
+ * Sprint 5.3b statements, Sprint 5.3c expressions, Sprint 5.3d control flow
+ * extensions and switch expressions).
  * <p>
  * Only kinds that genuinely exist in the current declarative parser are
- * represented — no speculative kinds for future phases (control flow,
- * semantic analysis, type resolution).
+ * represented — no speculative kinds for future phases (semantic analysis,
+ * type resolution, definite assignment).
  */
 public enum AstNodeKind {
 
@@ -56,16 +57,29 @@ public enum AstNodeKind {
     DECLARATOR,
     SKIPPED,
 
-    IDENTIFIER_EXPRESSION,
+    SWITCH_EXPRESSION,
+    YIELD_STATEMENT,
+    ASSERT_STATEMENT,
+    TYPE_PATTERN,
+
+    NAME_EXPRESSION,
+    THIS_EXPRESSION,
+    SUPER_EXPRESSION,
     LITERAL_EXPRESSION,
-    BINARY_EXPRESSION,
     UNARY_EXPRESSION,
+    BINARY_EXPRESSION,
     ASSIGNMENT_EXPRESSION,
-    METHOD_CALL_EXPRESSION,
-    FIELD_ACCESS_EXPRESSION,
+    TERNARY_EXPRESSION,
+    INSTANCEOF_EXPRESSION,
+    CAST_EXPRESSION,
     PARENTHESIZED_EXPRESSION,
-    NEW_EXPRESSION,
-    CONDITIONAL_EXPRESSION,
+    FIELD_ACCESS_EXPRESSION,
+    METHOD_CALL_EXPRESSION,
+    METHOD_REFERENCE_EXPRESSION,
     ARRAY_ACCESS_EXPRESSION,
+    OBJECT_CREATION_EXPRESSION,
+    ARRAY_CREATION_EXPRESSION,
+    CLASS_LITERAL_EXPRESSION,
+    LAMBDA_EXPRESSION,
     OPERATOR
 }
