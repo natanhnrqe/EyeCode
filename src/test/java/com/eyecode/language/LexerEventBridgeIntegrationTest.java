@@ -117,6 +117,21 @@ class LexerEventBridgeIntegrationTest {
     }
 
     @Test
+    void everyEventSnapshotEqualsAFreshFullRelexOfTheText() {
+        document.insert(11, "\n");
+        String t1 = document.getText();
+        document.insert(0, "// head\n");
+        String t2 = document.getText();
+        document.insert(12, "int x = 1;");
+        String t3 = document.getText();
+
+        assertEquals(3, received.size());
+        assertEquals(lexed(2, t1), received.get(0).getSnapshot());
+        assertEquals(lexed(3, t2), received.get(1).getSnapshot());
+        assertEquals(lexed(4, t3), received.get(2).getSnapshot());
+    }
+
+    @Test
     void rejectsNullServiceOrBus() {
         assertThrows(IllegalArgumentException.class,
                 () -> new LexerEventBridge(null, eventBus));

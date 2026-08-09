@@ -127,4 +127,28 @@ class JavaLexerServiceTest {
         assertEquals(directTokenize("class A {}"), v1.tokens());
         assertEquals(directTokenize(document.getText()), v2.tokens());
     }
+
+    @Test
+    void incrementalPathMatchesFullRelexAcrossDocumentMutations() {
+        EditorDocument document = new EditorDocument(null, "class A {}");
+        LexerSnapshot v1 = service.lex(document.snapshot());
+        String t1 = document.getText();
+        document.insert(t1.length(), "\n");
+        LexerSnapshot v2 = service.lex(document.snapshot());
+        String t2 = document.getText();
+        document.insert(0, "import java.util.List;\n");
+        LexerSnapshot v3 = service.lex(document.snapshot());
+        String t3 = document.getText();
+        document.insert(t3.length() - 1, "\n\n");
+        LexerSnapshot v4 = service.lex(document.snapshot());
+
+        assertEquals(1, v1.version());
+        assertEquals(2, v2.version());
+        assertEquals(3, v3.version());
+        assertEquals(4, v4.version());
+        assertSameTokens(directTokenize(t1), v1.tokens());
+        assertSameTokens(directTokenize(t2), v2.tokens());
+        assertSameTokens(directTokenize(t3), v3.tokens());
+        assertSameTokens(directTokenize(document.getText()), v4.tokens());
+    }
 }
