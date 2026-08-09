@@ -1,5 +1,7 @@
 package com.eyecode.editor.v2.language.java.model;
 
+import com.eyecode.editor.intelligence.document.TextRange;
+
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -10,6 +12,7 @@ public final class JavaConstructorModel {
     private EnumSet<JavaModifier> modifiers = EnumSet.noneOf(JavaModifier.class);
     private List<JavaParameterModel> parameters = new ArrayList<>();
     private String owner;
+    private TextRange range;
 
     public String getName() {
         return name;
@@ -41,5 +44,17 @@ public final class JavaConstructorModel {
 
     public void setOwner(String owner) {
         this.owner = owner;
+    }
+
+    /**
+     * Absolute range of the constructor declaration in the source document
+     * (Sprint 5.3a).
+     */
+    public TextRange getRange() {
+        return range;
+    }
+
+    public void setRange(TextRange range) {
+        this.range = range;
     }
 }

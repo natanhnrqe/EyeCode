@@ -1,5 +1,7 @@
 package com.eyecode.editor.v2.language.java.model;
 
+import com.eyecode.editor.intelligence.document.TextRange;
+
 import java.util.EnumSet;
 
 public final class JavaFieldModel {
@@ -8,6 +10,7 @@ public final class JavaFieldModel {
     private String type;
     private EnumSet<JavaModifier> modifiers = EnumSet.noneOf(JavaModifier.class);
     private String owner;
+    private TextRange range;
 
     public String getName() {
         return name;
@@ -39,5 +42,17 @@ public final class JavaFieldModel {
 
     public void setOwner(String owner) {
         this.owner = owner;
+    }
+
+    /**
+     * Absolute range of the field declaration in the source document
+     * (Sprint 5.3a).
+     */
+    public TextRange getRange() {
+        return range;
+    }
+
+    public void setRange(TextRange range) {
+        this.range = range;
     }
 }

@@ -1,5 +1,7 @@
 package com.eyecode.editor.v2.language.java.model;
 
+import com.eyecode.editor.intelligence.document.TextRange;
+
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -15,6 +17,7 @@ public final class JavaClassModel {
     private List<JavaMethodModel> methods = new ArrayList<>();
     private List<JavaConstructorModel> constructors = new ArrayList<>();
     private List<JavaClassModel> nestedTypes = new ArrayList<>();
+    private TextRange range;
 
     public String getName() {
         return name;
@@ -86,5 +89,17 @@ public final class JavaClassModel {
 
     public void setNestedTypes(List<JavaClassModel> nestedTypes) {
         this.nestedTypes = nestedTypes;
+    }
+
+    /**
+     * Absolute range of the type declaration in the source document
+     * (Sprint 5.3a).
+     */
+    public TextRange getRange() {
+        return range;
+    }
+
+    public void setRange(TextRange range) {
+        this.range = range;
     }
 }

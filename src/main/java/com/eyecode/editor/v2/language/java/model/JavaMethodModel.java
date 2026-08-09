@@ -1,5 +1,7 @@
 package com.eyecode.editor.v2.language.java.model;
 
+import com.eyecode.editor.intelligence.document.TextRange;
+
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -12,6 +14,7 @@ public final class JavaMethodModel {
     private List<JavaParameterModel> parameters = new ArrayList<>();
     private List<JavaVariableModel> localVariables = new ArrayList<>();
     private String owner;
+    private TextRange range;
 
     public String getName() {
         return name;
@@ -59,5 +62,17 @@ public final class JavaMethodModel {
 
     public void setOwner(String owner) {
         this.owner = owner;
+    }
+
+    /**
+     * Absolute range of the method declaration in the source document
+     * (Sprint 5.3a).
+     */
+    public TextRange getRange() {
+        return range;
+    }
+
+    public void setRange(TextRange range) {
+        this.range = range;
     }
 }
