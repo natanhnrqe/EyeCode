@@ -10,6 +10,7 @@ import com.eyecode.editor.intelligence.events.DocumentTextChangeEvent;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Versioned, snapshot-backed document model.
@@ -26,6 +27,7 @@ public final class EditorDocument implements DocumentSnapshotProvider {
     private final List<EditorLine> lines;
     private final List<DirtyChangeListener> dirtyListeners;
     private final List<DocumentChangeListener> documentListeners;
+    private final String sessionId;
     private Path sourceFile;
     private boolean dirty;
     private long version;
@@ -44,10 +46,19 @@ public final class EditorDocument implements DocumentSnapshotProvider {
         this.lines = new ArrayList<>();
         this.dirtyListeners = new ArrayList<>();
         this.documentListeners = new ArrayList<>();
+        this.sessionId = UUID.randomUUID().toString();
         this.sourceFile = sourceFile;
         this.lineMap = LineMap.empty();
         setText(text);
         this.dirty = false;
+    }
+
+    /**
+     * Identity of this document/session instance. Two documents on the same
+     * file have distinct identities; untitled documents have their own.
+     */
+    public String sessionId() {
+        return sessionId;
     }
 
     public String getText() {
@@ -77,7 +88,7 @@ public final class EditorDocument implements DocumentSnapshotProvider {
 
     @Override
     public DocumentSnapshot snapshot() {
-        return new DocumentSnapshot(version, content.toString(), lineMap, sourceFile);
+        return new DocumentSnapshot(version, content.toString(), lineMap, sourceFile, sessionId);
     }
 
     @Override
@@ -122,7 +133,7 @@ public final class EditorDocument implements DocumentSnapshotProvider {
             throw new IllegalStateException("No active batch on this document");
         }
         inBatch = false;
-        DocumentSnapshot before = new DocumentSnapshot(batchStartVersion, batchStartText, batchStartLineMap, sourceFile);
+        DocumentSnapshot before = new DocumentSnapshot(batchStartVersion, batchStartText, batchStartLineMap, sourceFile, sessionId);
         DocumentSnapshot after = snapshot();
         TextChange change = TextChange.between(before, after);
         batchStartText = null;
@@ -197,7 +208,7 @@ public final class EditorDocument implements DocumentSnapshotProvider {
     }
 
     private void fireTextChanged(String oldText, long oldVersion, LineMap oldLineMap) {
-        DocumentSnapshot before = new DocumentSnapshot(oldVersion, oldText, oldLineMap, sourceFile);
+        DocumentSnapshot before = new DocumentSnapshot(oldVersion, oldText, oldLineMap, sourceFile, sessionId);
         DocumentSnapshot after = snapshot();
         TextChange change = TextChange.between(before, after);
         notifyDocumentChanged(new DocumentTextChangeEvent(before, after, change, false));

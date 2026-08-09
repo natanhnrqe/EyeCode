@@ -24,6 +24,7 @@ public final class EditorManager {
     private final EventBus eventBus;
     private final FileSystemService fileSystemService;
     private final EditorViewFactory viewFactory;
+    private final JavaLexerService lexerService = new JavaLexerService();
     private final LexerEventBridge lexerEventBridge;
 
     private final WorkspaceState workspaceState = new WorkspaceState();
@@ -42,7 +43,7 @@ public final class EditorManager {
         this.fileSystemService = fileSystemService;
         this.viewFactory = viewFactory;
         this.lexerEventBridge = eventBus != null
-                ? new LexerEventBridge(new JavaLexerService(), eventBus)
+                ? new LexerEventBridge(lexerService, eventBus)
                 : null;
     }
 
@@ -84,6 +85,7 @@ public final class EditorManager {
 
         EditorView view = viewsBySession.get(sessionId);
         EditorBuffer buffer = buffersBySession.get(sessionId);
+        EditorDocument document = documentsBySession.get(sessionId);
 
         EditorViewport snapshot = selectionService.captureViewport(session);
         selectionService.unbind(session, buffer);
@@ -97,6 +99,10 @@ public final class EditorManager {
         viewsBySession.remove(sessionId);
         buffersBySession.remove(sessionId);
         documentsBySession.remove(sessionId);
+
+        if (document != null) {
+            lexerService.invalidateSession(document.sessionId());
+        }
 
         session.setState(SessionState.DISPOSED);
         history.recordClose(snapshot);
@@ -123,10 +129,18 @@ public final class EditorManager {
         EditorSession previous = workspaceState.getActiveSession();
         if (previous != null && previous != session && previous.getState() == SessionState.ACTIVE) {
             previous.setState(SessionState.INACTIVE);
+            EditorDocument previousDocument = documentsBySession.get(previous.getSessionId());
+            if (previousDocument != null) {
+                lexerService.deactivateSession(previousDocument.sessionId());
+            }
         }
         session.setState(SessionState.ACTIVE);
         workspaceState.setActiveSession(session);
         history.recordActivation(EditorViewport.initial(session.getFile()));
+        EditorDocument document = documentsBySession.get(sessionId);
+        if (document != null) {
+            lexerService.activateSession(document.sessionId());
+        }
 
         if (eventBus != null) {
             eventBus.publish(new EditorActivatedEvent(session));

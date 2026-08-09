@@ -10,6 +10,12 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
+/**
+ * Guards the JLS-faithful taxonomy of the canonical {@link JavaLexer}
+ * algorithm (AT/BOOLEAN_LITERAL/NULL_LITERAL etc.). Validates the lexer
+ * directly by design — the Sprint 5.2e rule allows this for tests that
+ * explicitly verify the lexical algorithm.
+ */
 class Sprint52aTaxonomyRegressionTest {
 
     private static List<Token> tokenize(String source) {

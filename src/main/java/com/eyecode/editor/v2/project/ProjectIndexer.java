@@ -91,7 +91,7 @@ public final class ProjectIndexer {
         if (source == null) return List.of();
         try {
             LexerService lexerService = new JavaLexerService();
-            LexerSnapshot lexed = lexerService.lex(new DocumentSnapshot(0, source, null, file));
+            LexerSnapshot lexed = lexerService.lex(DocumentSnapshot.oneShot(source, file));
             JavaTokenStream stream = new JavaTokenStream(lexed.tokens(), source);
             JavaParser parser = new JavaParser(stream);
             JavaFileModel model = parser.parse();

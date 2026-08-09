@@ -1,6 +1,7 @@
 package com.eyecode.language;
 
-import com.eyecode.language.java.JavaLexer;
+import com.eyecode.editor.intelligence.document.DocumentSnapshot;
+import com.eyecode.language.java.JavaLexerService;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
 import com.eyecode.editor.v2.language.java.parser.ParserException;
 import com.eyecode.language.java.JavaTokenType;
@@ -14,7 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class JavaTokenStreamErrorTest {
 
     private static JavaTokenStream stream(String source) {
-        return new JavaTokenStream(new JavaLexer().tokenize(source), source);
+        JavaLexerService service = new JavaLexerService();
+        return new JavaTokenStream(
+                service.lex(DocumentSnapshot.oneShot(source)).tokens(), source);
     }
 
     @Test

@@ -4,7 +4,6 @@ import com.eyecode.editor.intelligence.document.DocumentSnapshot;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.eventbus.EventBus;
-import com.eyecode.language.java.JavaLexer;
 import com.eyecode.language.java.JavaLexerService;
 import com.eyecode.language.java.LexerEventBridge;
 import com.eyecode.language.java.LexerSnapshot;
@@ -19,6 +18,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LexerEventBridgeIntegrationTest {
 
@@ -39,10 +39,6 @@ class LexerEventBridgeIntegrationTest {
 
     private static LexerSnapshot lexed(long version, String text) {
         return new JavaLexerService().lex(new DocumentSnapshot(version, text, null, null));
-    }
-
-    private static List<Token> directTokenize(String source) {
-        return new JavaLexer().tokenize(source);
     }
 
     @Test
@@ -76,7 +72,8 @@ class LexerEventBridgeIntegrationTest {
         document.insert(0, "import java.util.List;\n");
 
         String finalText = document.getText();
-        assertEquals(directTokenize(finalText), received.get(1).getSnapshot().tokens());
+        assertEquals(lexed(received.get(1).getVersion(), finalText).tokens(),
+                received.get(1).getSnapshot().tokens());
     }
 
     @Test
@@ -88,7 +85,7 @@ class LexerEventBridgeIntegrationTest {
         document.insert(0, "// head\n");
 
         assertEquals(2, first.version());
-        assertEquals(directTokenize(textAtFirstMutation), first.tokens());
+        assertEquals(lexed(2, textAtFirstMutation).tokens(), first.tokens());
         assertNotEquals(received.get(0).getSnapshot(), received.get(1).getSnapshot());
     }
 
@@ -132,10 +129,52 @@ class LexerEventBridgeIntegrationTest {
     }
 
     @Test
-    void rejectsNullServiceOrBus() {
+    void rejectNullServiceOrBus() {
         assertThrows(IllegalArgumentException.class,
                 () -> new LexerEventBridge(null, eventBus));
         assertThrows(IllegalArgumentException.class,
                 () -> new LexerEventBridge(new JavaLexerService(), null));
+    }
+
+    @Test
+    void versionsAreStrictlyMonotonicAcrossRapidEdits() {
+        document.insert(11, "\n");
+        document.insert(0, "int a;\n");
+        document.insert(5, "int b;\n");
+        document.insert(20, "x");
+        document.delete(0, 5);
+
+        assertEquals(5, received.size());
+        for (int i = 1; i < received.size(); i++) {
+            assertTrue(received.get(i).getVersion() > received.get(i - 1).getVersion(),
+                    "versions must be strictly monotonic: v" + received.get(i - 1).getVersion()
+                            + " -> v" + received.get(i).getVersion());
+        }
+        assertEquals(document.currentVersion(), received.get(received.size() - 1).getVersion());
+    }
+
+    @Test
+    void rollbackDoesNotTriggerLexicalUpdate() {
+        document.beginBatch();
+        document.insert(11, "\n");
+        document.insert(0, "import x;\n");
+        document.abortBatch();
+
+        assertEquals(0, received.size(), "aborted batch must not publish TokensUpdatedEvent");
+        assertEquals(3, document.currentVersion(),
+                "mutations in an aborted batch are applied silently (no event fired)");
+        assertTrue(document.getText().contains("import x;"));
+    }
+
+    @Test
+    void disposeIsIdempotentAndStopsDelivery() {
+        document.insert(11, "\n");
+        assertEquals(1, received.size());
+
+        bridge.dispose();
+        bridge.dispose();
+
+        document.insert(0, "// x\n");
+        assertEquals(1, received.size(), "no events after dispose, even on double dispose");
     }
 }

@@ -10,6 +10,12 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/**
+ * Low-level unit tests of the Java lexical algorithm itself (token types,
+ * ranges, lexer edge cases). These validate {@link JavaLexer} directly by
+ * design — the Sprint 5.2e rule allows this for tests that explicitly verify
+ * the lexical algorithm; service/integration tests use {@link JavaLexerService}.
+ */
 class JavaLexerTokenTest {
 
     private static List<Token> tokenize(String source) {

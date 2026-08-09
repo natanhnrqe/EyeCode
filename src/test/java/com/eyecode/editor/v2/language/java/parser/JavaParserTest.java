@@ -1,6 +1,7 @@
 package com.eyecode.editor.v2.language.java.parser;
 
-import com.eyecode.language.java.JavaLexer;
+import com.eyecode.editor.intelligence.document.DocumentSnapshot;
+import com.eyecode.language.java.JavaLexerService;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
 import com.eyecode.editor.v2.language.java.model.JavaClassModel;
 import com.eyecode.editor.v2.language.java.model.JavaConstructorModel;
@@ -19,8 +20,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class JavaParserTest {
 
     private JavaFileModel parse(String source) {
-        JavaLexer lexer = new JavaLexer();
-        JavaTokenStream stream = new JavaTokenStream(lexer.tokenize(source), source);
+        JavaLexerService service = new JavaLexerService();
+        JavaTokenStream stream = new JavaTokenStream(
+                service.lex(DocumentSnapshot.oneShot(source)).tokens(), source);
         JavaParser parser = new JavaParser(stream);
         return parser.parse();
     }

@@ -20,6 +20,7 @@ public final class LexerEventBridge {
     private final LexerService lexerService;
     private final EventBus eventBus;
     private final SubscriptionToken subscription;
+    private boolean disposed;
 
     public LexerEventBridge(LexerService lexerService, EventBus eventBus) {
         if (lexerService == null) {
@@ -34,11 +35,22 @@ public final class LexerEventBridge {
     }
 
     private void onDocumentChanged(DocumentTextChangeEvent event) {
+        if (disposed) {
+            return;
+        }
         LexerSnapshot snapshot = lexerService.lex(event.getAfter());
         eventBus.publish(new TokensUpdatedEvent(snapshot));
     }
 
+    /**
+     * Stops the bridge: no further {@link TokensUpdatedEvent}s are published.
+     * Idempotent — calling dispose twice is safe.
+     */
     public void dispose() {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
         eventBus.unsubscribe(subscription);
     }
 }

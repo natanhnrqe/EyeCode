@@ -15,6 +15,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Service-level tests of {@link JavaLexerService}. {@link JavaLexer} is used
+ * here solely as the reference oracle for the base lexical algorithm — these
+ * tests explicitly validate that the service reproduces the algorithm exactly
+ * (allowed by the Sprint 5.2e rule); fixtures never depend on the service's
+ * caching/incremental internals.
+ */
 class JavaLexerServiceTest {
 
     private final JavaLexerService service = new JavaLexerService();

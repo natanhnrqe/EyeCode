@@ -1,6 +1,7 @@
 package com.eyecode.language;
 
-import com.eyecode.language.java.JavaLexer;
+import com.eyecode.editor.intelligence.document.DocumentSnapshot;
+import com.eyecode.language.java.JavaLexerService;
 import com.eyecode.language.java.incremental.JavaLexicalContextTracker;
 import com.eyecode.language.java.incremental.LexicalCheckpoint;
 import com.eyecode.language.java.incremental.LexicalState;
@@ -21,7 +22,7 @@ class JavaLexicalContextTrackerTest {
     private final JavaLexicalContextTracker tracker = new JavaLexicalContextTracker();
 
     private static List<Token> tokens(String source) {
-        return new JavaLexer().tokenize(source);
+        return new JavaLexerService().lex(DocumentSnapshot.oneShot(source)).tokens();
     }
 
     private static Token tokenOf(List<Token> tokens, String text, int atLeast) {

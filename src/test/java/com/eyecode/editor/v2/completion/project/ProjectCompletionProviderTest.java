@@ -7,7 +7,8 @@ import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionSnapshot;
 import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
 import com.eyecode.editor.v2.language.LanguageContext;
-import com.eyecode.language.java.JavaLexer;
+import com.eyecode.editor.intelligence.document.DocumentSnapshot;
+import com.eyecode.language.java.JavaLexerService;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
 import com.eyecode.editor.v2.language.java.parser.JavaParser;
 import com.eyecode.editor.v2.language.java.model.JavaFileModel;
@@ -29,8 +30,9 @@ class ProjectCompletionProviderTest {
     private static final Path SRC = Path.of("test/Source.java");
 
     private JavaFileModel parse(String source) {
-        JavaLexer lexer = new JavaLexer();
-        JavaTokenStream stream = new JavaTokenStream(lexer.tokenize(source), source);
+        JavaLexerService service = new JavaLexerService();
+        JavaTokenStream stream = new JavaTokenStream(
+                service.lex(DocumentSnapshot.oneShot(source)).tokens(), source);
         JavaParser parser = new JavaParser(stream);
         return parser.parse();
     }
