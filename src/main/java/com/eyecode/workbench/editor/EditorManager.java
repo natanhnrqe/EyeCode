@@ -7,6 +7,8 @@ import com.eyecode.eventbus.events.EditorActivatedEvent;
 import com.eyecode.eventbus.events.FileClosedEvent;
 import com.eyecode.eventbus.events.FileOpenedEvent;
 import com.eyecode.filesystem.FileSystemService;
+import com.eyecode.language.java.JavaLexerService;
+import com.eyecode.language.java.LexerEventBridge;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -22,6 +24,7 @@ public final class EditorManager {
     private final EventBus eventBus;
     private final FileSystemService fileSystemService;
     private final EditorViewFactory viewFactory;
+    private final LexerEventBridge lexerEventBridge;
 
     private final WorkspaceState workspaceState = new WorkspaceState();
     private final EditorHistory history = new EditorHistory();
@@ -38,6 +41,9 @@ public final class EditorManager {
         this.eventBus = eventBus;
         this.fileSystemService = fileSystemService;
         this.viewFactory = viewFactory;
+        this.lexerEventBridge = eventBus != null
+                ? new LexerEventBridge(new JavaLexerService(), eventBus)
+                : null;
     }
 
     public EditorSession openDocument(Path file) {

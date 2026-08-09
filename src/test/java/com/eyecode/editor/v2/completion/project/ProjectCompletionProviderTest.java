@@ -7,7 +7,7 @@ import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionSnapshot;
 import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
 import com.eyecode.editor.v2.language.LanguageContext;
-import com.eyecode.editor.v2.language.java.lexer.JavaLexer;
+import com.eyecode.language.java.JavaLexer;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
 import com.eyecode.editor.v2.language.java.parser.JavaParser;
 import com.eyecode.editor.v2.language.java.model.JavaFileModel;

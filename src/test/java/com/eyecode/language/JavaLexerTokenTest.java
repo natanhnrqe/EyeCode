@@ -1,7 +1,7 @@
 package com.eyecode.language;
 
 import com.eyecode.editor.intelligence.document.TextRange;
-import com.eyecode.editor.v2.language.java.lexer.JavaLexer;
+import com.eyecode.language.java.JavaLexer;
 import com.eyecode.language.java.JavaTokenType;
 
 import org.junit.jupiter.api.Test;

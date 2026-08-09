@@ -1,6 +1,6 @@
 package com.eyecode.editor.v2.language.java.parser;
 
-import com.eyecode.editor.v2.language.java.lexer.JavaLexer;
+import com.eyecode.language.java.JavaLexer;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
 import com.eyecode.editor.v2.language.java.model.JavaClassModel;
 import com.eyecode.editor.v2.language.java.model.JavaConstructorModel;

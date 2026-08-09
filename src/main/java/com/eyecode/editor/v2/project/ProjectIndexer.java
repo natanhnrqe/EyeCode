@@ -1,11 +1,14 @@
 package com.eyecode.editor.v2.project;
 
-import com.eyecode.editor.v2.language.java.lexer.JavaLexer;
+import com.eyecode.editor.intelligence.document.DocumentSnapshot;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
 import com.eyecode.editor.v2.language.java.model.JavaFileModel;
 import com.eyecode.editor.v2.language.java.parser.JavaParser;
 import com.eyecode.editor.v2.language.java.symbols.ProjectSymbol;
 import com.eyecode.editor.v2.language.java.symbols.SymbolBuilder;
+import com.eyecode.language.java.JavaLexerService;
+import com.eyecode.language.java.LexerService;
+import com.eyecode.language.java.LexerSnapshot;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -87,8 +90,9 @@ public final class ProjectIndexer {
     public static List<ProjectSymbol> parseSymbols(Path file, String source) {
         if (source == null) return List.of();
         try {
-            JavaLexer lexer = new JavaLexer();
-            JavaTokenStream stream = new JavaTokenStream(lexer.tokenize(source), source);
+            LexerService lexerService = new JavaLexerService();
+            LexerSnapshot lexed = lexerService.lex(new DocumentSnapshot(0, source, null, file));
+            JavaTokenStream stream = new JavaTokenStream(lexed.tokens(), source);
             JavaParser parser = new JavaParser(stream);
             JavaFileModel model = parser.parse();
 

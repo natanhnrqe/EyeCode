@@ -1,20 +1,23 @@
 package com.eyecode.editor.v2.syntax;
 
 import com.eyecode.editor.v2.EditorDocument;
-import com.eyecode.editor.v2.language.java.lexer.JavaLexer;
 import com.eyecode.language.Token;
+import com.eyecode.language.java.JavaLexerService;
 import com.eyecode.language.java.JavaTokenType;
+import com.eyecode.language.java.LexerService;
+import com.eyecode.language.java.LexerSnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class JavaSyntaxAnalyzer implements SyntaxAnalyzer {
 
-    private final JavaLexer lexer = new JavaLexer();
+    private final LexerService lexerService = new JavaLexerService();
 
     @Override
     public SyntaxSnapshot analyze(EditorDocument document) {
-        List<Token> tokens = lexer.tokenize(document.getText());
+        LexerSnapshot snapshot = lexerService.lex(document.snapshot());
+        List<Token> tokens = snapshot.tokens();
         List<SyntaxToken> result = new ArrayList<>();
 
         int index = 0;

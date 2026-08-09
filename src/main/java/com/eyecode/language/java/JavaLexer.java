@@ -1,8 +1,7 @@
-package com.eyecode.editor.v2.language.java.lexer;
+package com.eyecode.language.java;
 
 import com.eyecode.editor.intelligence.document.TextRange;
 import com.eyecode.language.Token;
-import com.eyecode.language.java.JavaTokenType;
 
 import java.util.ArrayList;
 import java.util.List;

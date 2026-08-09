@@ -1,4 +1,4 @@
-package com.eyecode.editor.v2.language.java.lexer;
+package com.eyecode.language.java;
 
 import java.util.Set;
 
