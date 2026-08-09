@@ -89,6 +89,216 @@ class AstVisitorTest {
             public void visitModifier(AstNode n) {
                 counts.merge(AstNodeKind.MODIFIER, 1, Integer::sum);
             }
+
+            @Override
+            public void visitBlock(AstNode n) {
+                counts.merge(AstNodeKind.BLOCK, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitEmptyStatement(AstNode n) {
+                counts.merge(AstNodeKind.EMPTY_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitLocalVariableDeclaration(AstNode n) {
+                counts.merge(AstNodeKind.LOCAL_VARIABLE_DECLARATION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitExpressionStatement(AstNode n) {
+                counts.merge(AstNodeKind.EXPRESSION_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitIfStatement(AstNode n) {
+                counts.merge(AstNodeKind.IF_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitCondition(AstNode n) {
+                counts.merge(AstNodeKind.CONDITION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitThen(AstNode n) {
+                counts.merge(AstNodeKind.THEN, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitElse(AstNode n) {
+                counts.merge(AstNodeKind.ELSE, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitForStatement(AstNode n) {
+                counts.merge(AstNodeKind.FOR_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitInitializer(AstNode n) {
+                counts.merge(AstNodeKind.INITIALIZER, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitUpdate(AstNode n) {
+                counts.merge(AstNodeKind.UPDATE, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitEnhancedForStatement(AstNode n) {
+                counts.merge(AstNodeKind.ENHANCED_FOR_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitVariable(AstNode n) {
+                counts.merge(AstNodeKind.VARIABLE, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitIterable(AstNode n) {
+                counts.merge(AstNodeKind.ITERABLE, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitWhileStatement(AstNode n) {
+                counts.merge(AstNodeKind.WHILE_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitDoWhileStatement(AstNode n) {
+                counts.merge(AstNodeKind.DO_WHILE_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitReturnStatement(AstNode n) {
+                counts.merge(AstNodeKind.RETURN_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitBreakStatement(AstNode n) {
+                counts.merge(AstNodeKind.BREAK_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitContinueStatement(AstNode n) {
+                counts.merge(AstNodeKind.CONTINUE_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitThrowStatement(AstNode n) {
+                counts.merge(AstNodeKind.THROW_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitTryStatement(AstNode n) {
+                counts.merge(AstNodeKind.TRY_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitCatchClause(AstNode n) {
+                counts.merge(AstNodeKind.CATCH_CLAUSE, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitFinallyClause(AstNode n) {
+                counts.merge(AstNodeKind.FINALLY_CLAUSE, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitSwitchStatement(AstNode n) {
+                counts.merge(AstNodeKind.SWITCH_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitSwitchCase(AstNode n) {
+                counts.merge(AstNodeKind.SWITCH_CASE, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitSwitchLabel(AstNode n) {
+                counts.merge(AstNodeKind.SWITCH_LABEL, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitSynchronizedStatement(AstNode n) {
+                counts.merge(AstNodeKind.SYNCHRONIZED_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitLabeledStatement(AstNode n) {
+                counts.merge(AstNodeKind.LABELED_STATEMENT, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitDeclarator(AstNode n) {
+                counts.merge(AstNodeKind.DECLARATOR, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitSkipped(AstNode n) {
+                counts.merge(AstNodeKind.SKIPPED, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitIdentifierExpression(AstNode n) {
+                counts.merge(AstNodeKind.IDENTIFIER_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitLiteralExpression(AstNode n) {
+                counts.merge(AstNodeKind.LITERAL_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitBinaryExpression(AstNode n) {
+                counts.merge(AstNodeKind.BINARY_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitUnaryExpression(AstNode n) {
+                counts.merge(AstNodeKind.UNARY_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitAssignmentExpression(AstNode n) {
+                counts.merge(AstNodeKind.ASSIGNMENT_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitMethodCallExpression(AstNode n) {
+                counts.merge(AstNodeKind.METHOD_CALL_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitFieldAccessExpression(AstNode n) {
+                counts.merge(AstNodeKind.FIELD_ACCESS_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitParenthesizedExpression(AstNode n) {
+                counts.merge(AstNodeKind.PARENTHESIZED_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitNewExpression(AstNode n) {
+                counts.merge(AstNodeKind.NEW_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitConditionalExpression(AstNode n) {
+                counts.merge(AstNodeKind.CONDITIONAL_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitArrayAccessExpression(AstNode n) {
+                counts.merge(AstNodeKind.ARRAY_ACCESS_EXPRESSION, 1, Integer::sum);
+            }
+
+            @Override
+            public void visitOperator(AstNode n) {
+                counts.merge(AstNodeKind.OPERATOR, 1, Integer::sum);
+            }
         };
 
         for (AstNodeKind kind : AstNodeKind.values()) {

@@ -122,6 +122,16 @@ public final class JavaTokenStream {
         return tokens.size();
     }
 
+    public ParserException error(String message, Token token) {
+        return new ParserException(
+                message,
+                lineOf(token),
+                columnOf(token),
+                token.text(),
+                token.type().toString()
+        );
+    }
+
     private int lineOf(Token token) {
         return lineMap.lineOfOffset(token.startOffset());
     }

@@ -1,11 +1,12 @@
 package com.eyecode.language.ast;
 
 /**
- * Kinds of AST nodes the parser can produce (Sprint 5.3a).
+ * Kinds of AST nodes the parser can produce (Sprint 5.3a declarations,
+ * Sprint 5.3b statements + expressions).
  * <p>
  * Only kinds that genuinely exist in the current declarative parser are
- * represented — no speculative kinds for future statements/expressions
- * (those belong to 5.3b+).
+ * represented — no speculative kinds for future phases (control flow,
+ * semantic analysis, type resolution).
  */
 public enum AstNodeKind {
 
@@ -22,5 +23,49 @@ public enum AstNodeKind {
     CONSTRUCTOR_DECLARATION,
     PARAMETER,
     TYPE,
-    MODIFIER
+    MODIFIER,
+
+    BLOCK,
+    EMPTY_STATEMENT,
+    LOCAL_VARIABLE_DECLARATION,
+    EXPRESSION_STATEMENT,
+    IF_STATEMENT,
+    CONDITION,
+    THEN,
+    ELSE,
+    FOR_STATEMENT,
+    INITIALIZER,
+    UPDATE,
+    ENHANCED_FOR_STATEMENT,
+    VARIABLE,
+    ITERABLE,
+    WHILE_STATEMENT,
+    DO_WHILE_STATEMENT,
+    RETURN_STATEMENT,
+    BREAK_STATEMENT,
+    CONTINUE_STATEMENT,
+    THROW_STATEMENT,
+    TRY_STATEMENT,
+    CATCH_CLAUSE,
+    FINALLY_CLAUSE,
+    SWITCH_STATEMENT,
+    SWITCH_CASE,
+    SWITCH_LABEL,
+    SYNCHRONIZED_STATEMENT,
+    LABELED_STATEMENT,
+    DECLARATOR,
+    SKIPPED,
+
+    IDENTIFIER_EXPRESSION,
+    LITERAL_EXPRESSION,
+    BINARY_EXPRESSION,
+    UNARY_EXPRESSION,
+    ASSIGNMENT_EXPRESSION,
+    METHOD_CALL_EXPRESSION,
+    FIELD_ACCESS_EXPRESSION,
+    PARENTHESIZED_EXPRESSION,
+    NEW_EXPRESSION,
+    CONDITIONAL_EXPRESSION,
+    ARRAY_ACCESS_EXPRESSION,
+    OPERATOR
 }

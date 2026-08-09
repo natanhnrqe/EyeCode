@@ -103,19 +103,21 @@ class JavaParserAstTest {
         assertEquals(2, methods.size());
 
         AstNode add = methods.get(0);
-        assertEquals(4, add.children().size());
+        assertEquals(5, add.children().size());
         assertEquals(AstNodeKind.MODIFIER, add.children().get(0).kind());
         assertEquals(AstNodeKind.TYPE, add.children().get(1).kind());
         assertEquals(AstNodeKind.PARAMETER, add.children().get(2).kind());
         assertEquals(AstNodeKind.PARAMETER, add.children().get(3).kind());
+        assertEquals(AstNodeKind.BLOCK, add.children().get(4).kind());
 
         AstNode parameter = add.children().get(2);
         assertEquals(1, parameter.children().size());
         assertEquals(AstNodeKind.TYPE, parameter.children().get(0).kind());
 
         AstNode run = methods.get(1);
-        assertEquals(1, run.children().size());
+        assertEquals(2, run.children().size());
         assertEquals(AstNodeKind.TYPE, run.children().get(0).kind());
+        assertEquals(AstNodeKind.BLOCK, run.children().get(1).kind());
     }
 
     @Test
@@ -132,11 +134,12 @@ class JavaParserAstTest {
         assertEquals(1, constructors.size());
 
         AstNode constructor = constructors.get(0);
-        assertEquals(4, constructor.children().size());
+        assertEquals(5, constructor.children().size());
         assertEquals(AstNodeKind.ANNOTATION, constructor.children().get(0).kind());
         assertEquals(AstNodeKind.MODIFIER, constructor.children().get(1).kind());
         assertEquals(AstNodeKind.PARAMETER, constructor.children().get(2).kind());
         assertEquals(AstNodeKind.PARAMETER, constructor.children().get(3).kind());
+        assertEquals(AstNodeKind.BLOCK, constructor.children().get(4).kind());
         assertEquals(1, model.getTypes().get(0).getConstructors().size());
     }
 
