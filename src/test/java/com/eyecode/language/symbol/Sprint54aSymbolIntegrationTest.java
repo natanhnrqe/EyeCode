@@ -1,11 +1,14 @@
 package com.eyecode.language.symbol;
 
 import com.eyecode.editor.intelligence.document.DocumentSnapshot;
+import com.eyecode.editor.intelligence.document.TextRange;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
 import com.eyecode.editor.v2.language.java.model.JavaFileModel;
 import com.eyecode.editor.v2.language.java.parser.JavaParser;
 import com.eyecode.language.java.JavaLexerService;
 import org.junit.jupiter.api.Test;
+
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -18,10 +21,6 @@ class Sprint54aSymbolIntegrationTest {
         JavaTokenStream stream = new JavaTokenStream(
                 service.lex(DocumentSnapshot.oneShot(source)).tokens(), source);
         return new JavaParser(stream).parse();
-    }
-
-    private SymbolTableBuilder createBuilder(String source) {
-        return new SymbolTableBuilder(parse(source), 1, "Test.java");
     }
 
     @Test
@@ -70,8 +69,8 @@ class Sprint54aSymbolIntegrationTest {
 
         Optional<Symbol> foo = table.lookup(table.rootScope().id(), "Foo");
         assertTrue(foo.isPresent());
-        SymbolScope fooScope = snapshot.symbolTable().scope(foo.get().id().ownerScopeId()).orElseThrow();
-        Optional<Symbol> run = snapshot.symbolTable().findByName(foo.get().id(), "run");
+        // Method is a member of the type scope
+        Optional<Symbol> run = table.findByName(foo.get().scopeId(), "run");
         assertTrue(run.isPresent());
         assertEquals(SymbolKind.METHOD, run.get().kind());
     }
@@ -88,8 +87,7 @@ class Sprint54aSymbolIntegrationTest {
 
         Optional<Symbol> foo = table.lookup(table.rootScope().id(), "Foo");
         assertTrue(foo.isPresent());
-        SymbolScope fooScope = snapshot.symbolTable().scope(foo.get().id().ownerScopeId()).orElseThrow();
-        Optional<Symbol> field = snapshot.symbolTable().findByName(foo.get().id(), "field");
+        Optional<Symbol> field = table.findByName(foo.get().scopeId(), "field");
         assertTrue(field.isPresent());
         assertEquals(SymbolKind.FIELD, field.get().kind());
     }

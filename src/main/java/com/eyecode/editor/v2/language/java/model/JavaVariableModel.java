@@ -1,10 +1,13 @@
 package com.eyecode.editor.v2.language.java.model;
 
+import com.eyecode.editor.intelligence.document.TextRange;
+
 public final class JavaVariableModel {
 
     private String name;
     private String type;
     private String ownerMethod;
+    private TextRange range;
 
     public String getName() {
         return name;
@@ -28,5 +31,13 @@ public final class JavaVariableModel {
 
     public void setOwnerMethod(String ownerMethod) {
         this.ownerMethod = ownerMethod;
+    }
+
+    public TextRange getRange() {
+        return range;
+    }
+
+    public void setRange(TextRange range) {
+        this.range = range;
     }
 }

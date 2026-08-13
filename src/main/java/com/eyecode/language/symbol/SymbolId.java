@@ -22,15 +22,25 @@ public final class SymbolId {
     private final int declarationEnd;
     private final SymbolKind kind;
 
-    public SymbolId(long ownerScopeId, TextRange declarationRange, SymbolKind kind) {
-        this(ownerScopeId, declarationRange.startOffset(), declarationRange.endOffset(), kind);
-    }
-
     private SymbolId(long ownerScopeId, int declarationStart, int declarationEnd, SymbolKind kind) {
         this.ownerScopeId = ownerScopeId;
         this.declarationStart = declarationStart;
         this.declarationEnd = declarationEnd;
         this.kind = Objects.requireNonNull(kind, "kind must not be null");
+    }
+
+    /**
+     * Creates a SymbolId from a TextRange.
+     */
+    public static SymbolId of(long ownerScopeId, TextRange declarationRange, SymbolKind kind) {
+        return new SymbolId(ownerScopeId, declarationRange.startOffset(), declarationRange.endOffset(), kind);
+    }
+
+    /**
+     * Creates a SymbolId with explicit start/end offsets.
+     */
+    public static SymbolId of(long ownerScopeId, int declarationStart, int declarationEnd, SymbolKind kind) {
+        return new SymbolId(ownerScopeId, declarationStart, declarationEnd, kind);
     }
 
     public long ownerScopeId() {

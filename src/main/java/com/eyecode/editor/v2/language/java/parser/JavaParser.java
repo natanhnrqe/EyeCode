@@ -642,17 +642,32 @@ public final class JavaParser {
         nestedType.setModifiers(modifiers);
         owner.getNestedTypes().add(nestedType);
 
-        skipMember();
+        // Parse the nested type body recursively (header + class body)
+        // instead of skipping it wholesale. This ensures nested-type members
+        // (fields/methods/nested-types) populate the model and AST.
+        parseTypeHeader(nestedType);
+        skipToBodyOrSemicolon();
+
+        List<AstNode> memberNodes = new ArrayList<>();
+        if (stream.peek().type() == JavaTokenType.SEPARATOR
+                && stream.peek().text().equals("{")) {
+            memberNodes = parseClassBody(nestedType);
+        } else if (stream.peek().type() == JavaTokenType.SEPARATOR
+                && stream.peek().text().equals(";")) {
+            stream.consume();
+        }
         int declEnd = stream.previous().endOffset();
         nestedType.setRange(TextRange.of(declStart, declEnd));
 
-        List<AstNode> children = new ArrayList<>(modifierRanges.size() + annotations.size());
+        List<AstNode> children = new ArrayList<>(
+                modifierRanges.size() + annotations.size() + memberNodes.size());
         for (TextRange annotationRange : annotations) {
             children.add(AstNode.of(AstNodeKind.ANNOTATION, annotationRange, List.of()));
         }
         for (TextRange modifierRange : modifierRanges) {
             children.add(AstNode.of(AstNodeKind.MODIFIER, modifierRange, List.of()));
         }
+        children.addAll(memberNodes);
         members.add(AstNode.of(kindNode(kind), TextRange.of(declStart, declEnd), children));
     }
 
@@ -933,7 +948,8 @@ public final class JavaParser {
                 declarators.add(AstNode.of(AstNodeKind.DECLARATOR,
                         TextRange.of(declStart, nameToken.endOffset()), List.of()));
             }
-            registerLocalVariable(nameToken.text(), type);
+            registerLocalVariable(nameToken.text(), type,
+                    TextRange.of(nameToken.startOffset(), nameToken.endOffset()));
 
             if (!stream.match(JavaTokenType.SEPARATOR, ",")) {
                 break;
@@ -948,7 +964,7 @@ public final class JavaParser {
                 TextRange.of(typeStart, stream.previous().endOffset()), children);
     }
 
-    private void registerLocalVariable(String name, String type) {
+    private void registerLocalVariable(String name, String type, TextRange range) {
         if (currentMethod == null) {
             return;
         }
@@ -956,6 +972,7 @@ public final class JavaParser {
         variable.setName(name);
         variable.setType(type);
         variable.setOwnerMethod(currentMethod.getName());
+        variable.setRange(range);
         currentMethod.getLocalVariables().add(variable);
     }
 
@@ -1626,7 +1643,8 @@ public final class JavaParser {
         stream.expect(JavaTokenType.SEPARATOR, ")");
         skipTrivia();
         AstNode body = parseStatement();
-        registerLocalVariable(nameToken.text(), type);
+        registerLocalVariable(nameToken.text(), type,
+                TextRange.of(nameToken.startOffset(), nameToken.endOffset()));
         return AstNode.of(AstNodeKind.ENHANCED_FOR_STATEMENT,
                 TextRange.of(forToken.startOffset(), body.range().endOffset()),
                 List.of(AstNode.of(AstNodeKind.VARIABLE,

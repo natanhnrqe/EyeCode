@@ -10,7 +10,6 @@ import com.eyecode.editor.v2.language.java.model.JavaParameterModel;
 import com.eyecode.editor.v2.language.java.model.JavaVariableModel;
 import com.eyecode.editor.v2.language.java.model.TypeKind;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,12 +18,24 @@ import java.util.Optional;
  * <p>
  * This builder walks the {@link JavaFileModel} and populates a
  * {@link ProjectSymbolTable} with symbols for all declarations found in the
- * AST. It creates the scope hierarchy and registers symbols with their
- * correct owners and scopes.
+ * AST. It creates a lexically-nested scope hierarchy:
+ * <pre>
+ *   ROOT
+ *     PACKAGE (only if a package is declared)
+ *       TYPE         (top-level type, owned by package/root)
+ *         FIELD*     (declared in the type scope)
+ *         METHOD     (declared in the type scope; owns a METHOD scope)
+ *           BLOCK    (parameter scope, owns PARAMETER symbols)
+ *           BLOCK    (body scope, owns LOCAL_VARIABLE symbols)
+ *         CONSTRUCTOR
+ *           BLOCK    (parameter scope)
+ *         TYPE       (nested type, owned by enclosing type)
+ *           ...
+ * </pre>
  * <p>
  * The builder does NOT perform type resolution, overload resolution,
- * inheritance analysis, or import resolution. It only indexes
- * declarations present in the AST.
+ * inheritance analysis, or import resolution. It only indexes declarations
+ * present in the model.
  */
 public final class SymbolTableBuilder {
 
@@ -43,21 +54,22 @@ public final class SymbolTableBuilder {
     public SemanticModelSnapshot build() {
         SymbolScope rootScope = symbolTable.rootScope();
 
-        // Create package scope if package exists
-        SymbolScope packageScope = rootScope;
+        // Create package scope if package exists. Use the file/CU range as the
+        // package scope range — the package declaration and all top-level type
+        // declarations live within the CU.
+        SymbolScope ownerScope = rootScope;
         if (fileModel.getPackageName() != null && !fileModel.getPackageName().isEmpty()) {
-            SymbolScope packageScopeCreated = symbolTable.createChildScope(rootScope, ScopeKind.PACKAGE);
-            packageScope = packageScopeCreated;
+            TextRange cuRange = fileModel.getRange();
+            ownerScope = symbolTable.createChildScope(rootScope, ScopeKind.PACKAGE, cuRange);
         }
 
-        // Process all top-level types
+        // Process all top-level types in the package/root scope
         for (JavaClassModel typeModel : fileModel.getTypes()) {
-            processType(typeModel, packageScope);
+            processType(typeModel, ownerScope);
         }
 
         // Build the semantic model snapshot
-        // Get the symbol table snapshot first, then create the semantic model snapshot
-        SymbolTable snapshotTable = symbolTable.snapshot(version, sourceFile).symbolTable();
+        SymbolTable snapshotTable = symbolTable.snapshotTable(version, sourceFile);
         return new SemanticModelSnapshot(version, snapshotTable, sourceFile);
     }
 
@@ -65,150 +77,140 @@ public final class SymbolTableBuilder {
         SymbolKind kind = mapTypeKind(typeModel.getKind());
         TextRange range = typeModel.getRange();
 
-        // Create type scope first
-        SymbolScope typeScope = symbolTable.createChildScope(symbolTable.rootScope(), ScopeKind.TYPE);
+        // Create a TYPE child scope nested inside the lexical owner (package/root/nesting type)
+        // The scope range covers the whole type declaration so the resolver can match it.
+        SymbolScope typeScope = symbolTable.createChildScope(ownerScope, ScopeKind.TYPE, range);
 
-        // Create type symbol with its own scope ID
-        SymbolId typeId = new SymbolId(ownerScope.id(), typeModel.getRange(), mapTypeKind(typeModel.getKind()));
+        SymbolId typeId = SymbolId.of(ownerScope.id(), range, kind);
         String qualifiedName = buildQualifiedName(typeModel);
         Symbol typeSymbol = new Symbol(
-                new SymbolId(ownerScope.id(), typeModel.getRange(), mapTypeKind(typeModel.getKind())),
-                kind,
-                typeModel.getName(),
-                typeModel.getRange(),
-                ownerScope.id(),
-                typeScope.id(), // scopeId = type's own scope
-                qualifiedName
-        );
-
-        symbolTable.declareSymbol(typeScope, typeSymbol);
-
-        // Register the type symbol in the owner scope (package/root)
-        symbolTable.declareSymbol(symbolTable.rootScope(), new Symbol(
-                new SymbolId(ownerScope.id(), typeModel.getRange(), mapTypeKind(typeModel.getKind())),
+                typeId,
                 kind,
                 typeModel.getName(),
                 range,
                 ownerScope.id(),
-                typeScope.id(),
+                typeScope.id(), // scopeId = type's own scope (where its members live)
                 qualifiedName
-        ));
+        );
+        // Declare the type in the owner scope (package/root/enclosing type scope).
+        // The type is NOT declared in its own typeScope to avoid colliding with a member
+        // of the same name (e.g. constructor A() inside class A). Body references to the
+        // type's own name resolve through the parent chain: typeScope -> ownerScope -> hit.
+        symbolTable.declareSymbol(ownerScope, typeSymbol);
 
-        // Store the type symbol id for children to reference
-        SymbolId typeSymbolId = typeSymbol.id();
-
-        // Process fields
+        // Process fields — declared in the TYPE scope
         for (JavaFieldModel fieldModel : typeModel.getFields()) {
-            processField(fieldModel, typeScope, typeSymbol.id().ownerScopeId());
+            processField(fieldModel, typeScope);
         }
 
-        // Process constructors
+        // Process constructors — declared in the TYPE scope, own a METHOD scope
         for (JavaConstructorModel constructorModel : typeModel.getConstructors()) {
-            processConstructor(constructorModel, typeScope, typeSymbol.id().ownerScopeId());
+            processConstructor(constructorModel, typeScope);
         }
 
-        // Process methods
+        // Process methods — declared in the TYPE scope, own a METHOD scope
         for (JavaMethodModel methodModel : typeModel.getMethods()) {
-            processMethod(methodModel, typeScope, typeSymbol.id().ownerScopeId());
+            processMethod(methodModel, typeScope);
         }
 
-        // Process nested types
+        // Process nested types — declared in the enclosing TYPE scope, own their own TYPE scope
         for (JavaClassModel nestedType : typeModel.getNestedTypes()) {
             processType(nestedType, typeScope);
         }
     }
 
-    private void processField(JavaFieldModel fieldModel, SymbolScope typeScope, long ownerScopeId) {
+    private void processField(JavaFieldModel fieldModel, SymbolScope typeScope) {
         TextRange range = fieldModel.getRange();
         Symbol fieldSymbol = new Symbol(
-                new SymbolId(ownerScopeId, range, SymbolKind.FIELD),
+                SymbolId.of(typeScope.id(), range, SymbolKind.FIELD),
                 SymbolKind.FIELD,
                 fieldModel.getName(),
                 range,
-                ownerScopeId,
-                ownerScopeId, // scopeId = ownerScopeId for fields
-                buildQualifiedName(fieldModel)
+                typeScope.id(),
+                typeScope.id(),
+                buildQualifiedName(fieldModel, typeScope)
         );
         symbolTable.declareSymbol(typeScope, fieldSymbol);
     }
 
-    private void processConstructor(JavaConstructorModel constructorModel, SymbolScope typeScope, long ownerScopeId) {
+    private void processConstructor(JavaConstructorModel constructorModel, SymbolScope typeScope) {
         TextRange range = constructorModel.getRange();
-        String qualifiedName = constructorModel.getOwner() + "." + constructorModel.getName();
+        // Constructor scope is nested inside the type scope (so the constructor has a proper lexical parent)
+        SymbolScope constructorScope = symbolTable.createChildScope(typeScope, ScopeKind.METHOD, range);
         Symbol constructorSymbol = new Symbol(
-                new SymbolId(ownerScopeId, range, SymbolKind.CONSTRUCTOR),
+                SymbolId.of(typeScope.id(), range, SymbolKind.CONSTRUCTOR),
                 SymbolKind.CONSTRUCTOR,
                 constructorModel.getName(),
                 range,
-                ownerScopeId,
-                ownerScopeId, // scopeId = ownerScopeId for constructors
-                qualifiedName
+                typeScope.id(),
+                constructorScope.id(),
+                buildQualifiedName(constructorModel, typeScope)
         );
+        symbolTable.declareSymbol(typeScope, constructorSymbol);
 
-        // Create constructor scope (methods use METHOD scope kind)
-        SymbolScope constructorScope = symbolTable.createChildScope(symbolTable.rootScope(), ScopeKind.METHOD);
-        symbolTable.declareSymbol(constructorScope, constructorSymbol);
-
-        // Process parameters
-        SymbolScope parameterScope = symbolTable.createChildScope(constructorScope, ScopeKind.BLOCK);
+        // Parameters live inside a BLOCK scope nested inside the constructor scope.
+        // (Constructor bodies currently do NOT register locals with the model — see the
+        // JavaParser currentMethod guard — so only parameters appear here.)
+        SymbolScope constructorInnerScope = symbolTable.createChildScope(constructorScope, ScopeKind.BLOCK, range);
         for (JavaParameterModel param : constructorModel.getParameters()) {
-            processParameter(param, parameterScope, constructorSymbol.id().ownerScopeId());
+            processParameter(param, constructorInnerScope);
         }
     }
 
-    private void processMethod(JavaMethodModel methodModel, SymbolScope typeScope, long ownerScopeId) {
+    private void processMethod(JavaMethodModel methodModel, SymbolScope typeScope) {
         TextRange range = methodModel.getRange();
-        String qualifiedName = methodModel.getOwner() + "." + methodModel.getName();
+        // Method scope is nested inside the type scope
+        SymbolScope methodScope = symbolTable.createChildScope(typeScope, ScopeKind.METHOD, range);
         Symbol methodSymbol = new Symbol(
-                new SymbolId(ownerScopeId, range, SymbolKind.METHOD),
+                SymbolId.of(typeScope.id(), range, SymbolKind.METHOD),
                 SymbolKind.METHOD,
                 methodModel.getName(),
                 range,
-                ownerScopeId,
-                ownerScopeId, // scopeId = ownerScopeId for methods (they have their own scope created below)
-                qualifiedName
+                typeScope.id(),
+                methodScope.id(),
+                buildQualifiedName(methodModel, typeScope)
         );
+        symbolTable.declareSymbol(typeScope, methodSymbol);
 
-        // Create method scope
-        SymbolScope methodScope = symbolTable.createChildScope(symbolTable.rootScope(), ScopeKind.METHOD);
-        symbolTable.declareSymbol(methodScope, methodSymbol);
-
-        // Process parameters
-        SymbolScope parameterScope = symbolTable.createChildScope(methodScope, ScopeKind.BLOCK);
+        // Parameters and local variables share one BLOCK scope nested inside the
+        // method scope so the resolution chain follows BLOCK -> METHOD -> TYPE:
+        // any reference inside the method body looks up BLOCK first (where params
+        // and locals are declared), then falls back to METHOD, then TYPE, etc.
+        // This matches the Sprint 5.4b.1 spec hierarchy. The scope range covers
+        // the whole method (header + body) so nested block-matching still works
+        // when the resolver ascends from inner BLOCK siblings.
+        SymbolScope methodInnerScope = symbolTable.createChildScope(methodScope, ScopeKind.BLOCK, range);
         for (JavaParameterModel param : methodModel.getParameters()) {
-            processParameter(param, parameterScope, methodSymbol.id().ownerScopeId());
+            processParameter(param, methodInnerScope);
         }
-
-        // Process local variables
-        SymbolScope bodyScope = symbolTable.createChildScope(methodScope, ScopeKind.BLOCK);
         for (JavaVariableModel local : methodModel.getLocalVariables()) {
-            processLocalVariable(local, bodyScope, methodSymbol.id().ownerScopeId());
+            processLocalVariable(local, methodInnerScope);
         }
     }
 
-    private void processParameter(JavaParameterModel param, SymbolScope parameterScope, long ownerScopeId) {
+    private void processParameter(JavaParameterModel param, SymbolScope parameterScope) {
         TextRange range = param.getRange();
         Symbol paramSymbol = new Symbol(
-                new SymbolId(ownerScopeId, range, SymbolKind.PARAMETER),
+                SymbolId.of(parameterScope.id(), range, SymbolKind.PARAMETER),
                 SymbolKind.PARAMETER,
                 param.getName(),
                 range,
-                ownerScopeId,
-                ownerScopeId, // scopeId = ownerScopeId for parameters
+                parameterScope.id(),
+                parameterScope.id(),
                 buildQualifiedName(param)
         );
         symbolTable.declareSymbol(parameterScope, paramSymbol);
     }
 
-    private void processLocalVariable(JavaVariableModel local, SymbolScope bodyScope, long ownerScopeId) {
+    private void processLocalVariable(JavaVariableModel local, SymbolScope bodyScope) {
         TextRange range = local.getRange();
         Symbol localSymbol = new Symbol(
-                new SymbolId(ownerScopeId, range, SymbolKind.LOCAL_VARIABLE),
+                SymbolId.of(bodyScope.id(), range, SymbolKind.LOCAL_VARIABLE),
                 SymbolKind.LOCAL_VARIABLE,
                 local.getName(),
                 range,
-                ownerScopeId,
-                ownerScopeId, // scopeId = ownerScopeId for local variables
+                bodyScope.id(),
+                bodyScope.id(),
                 buildQualifiedName(local)
         );
         symbolTable.declareSymbol(bodyScope, localSymbol);
@@ -223,19 +225,28 @@ public final class SymbolTableBuilder {
         };
     }
 
-    private String buildQualifiedName(JavaFieldModel field) {
-        return field.getOwner() + "." + field.getName();
+    private String buildQualifiedName(JavaClassModel type) {
+        String pkg = fileModel.getPackageName();
+        return (pkg != null && !pkg.isEmpty()) ? pkg + "." + type.getName() : type.getName();
+    }
+
+    private String buildQualifiedName(JavaFieldModel field, SymbolScope typeScope) {
+        return typeScope.kind() + "." + field.getName();
+    }
+
+    private String buildQualifiedName(JavaMethodModel method, SymbolScope typeScope) {
+        return method.getOwner() + "." + method.getName();
+    }
+
+    private String buildQualifiedName(JavaConstructorModel constructor, SymbolScope typeScope) {
+        return constructor.getOwner() + "." + constructor.getName();
     }
 
     private String buildQualifiedName(JavaParameterModel param) {
-        return param.getName(); // Simplified
+        return param.getName();
     }
 
     private String buildQualifiedName(JavaVariableModel local) {
-        return local.getName(); // Simplified
-    }
-
-    private String buildQualifiedName(JavaClassModel type) {
-        return type.getName(); // Simplified - would need package context
+        return local.getName();
     }
 }

@@ -1,5 +1,6 @@
 package com.eyecode.language.symbol;
 
+import com.eyecode.editor.intelligence.document.TextRange;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,7 +24,7 @@ public final class ProjectSymbolTable implements SymbolTable {
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private final SymbolScopeImpl rootScope;
-    private final Map<Long, Symbol> symbolsById;
+    private final Map<SymbolId, Symbol> symbolsById;
     private final Map<Long, SymbolScopeImpl> scopesById;
     private final Map<SymbolId, List<SymbolReference>> referencesByTarget;
 
@@ -41,7 +42,7 @@ public final class ProjectSymbolTable implements SymbolTable {
     public Optional<Symbol> find(SymbolId id) {
         lock.readLock().lock();
         try {
-            return Optional.ofNullable(symbolsById.get(id.hashCode()));
+            return Optional.ofNullable(symbolsById.get(id));
         } finally {
             lock.readLock().unlock();
         }
@@ -117,9 +118,19 @@ public final class ProjectSymbolTable implements SymbolTable {
     // --- Mutation methods (writer only) ---
 
     public SymbolScope createChildScope(SymbolScope parent, ScopeKind kind) {
+        // Backward-compatible overload that approximates child range as parent's
+        // range. Prefer {@link #createChildScope(SymbolScope, ScopeKind, TextRange)}
+        // whenever the caller has a more specific range.
+        return createChildScope(parent, kind, parent.range());
+    }
+
+    public SymbolScope createChildScope(SymbolScope parent, ScopeKind kind, TextRange range) {
         lock.writeLock().lock();
         try {
-            return SymbolScopeImpl.createChild(parent, kind);
+            SymbolScopeImpl child = SymbolScopeImpl.createChild(parent, kind, range);
+            // Register the new scope (and any nested future scopes) in scopesById
+            registerScopeInternal(child);
+            return child;
         } finally {
             lock.writeLock().unlock();
         }
@@ -133,7 +144,7 @@ public final class ProjectSymbolTable implements SymbolTable {
             } else {
                 throw new IllegalArgumentException("scope must be SymbolScopeImpl");
             }
-            symbolsById.put(Long.valueOf(symbol.id().hashCode()), symbol);
+            symbolsById.put(symbol.id(), symbol);
         } finally {
             lock.writeLock().unlock();
         }
@@ -188,7 +199,7 @@ public final class ProjectSymbolTable implements SymbolTable {
 
     private static final class ProjectSymbolTableSnapshot implements SymbolTable {
 
-        private final Map<Long, Symbol> symbolsById;
+        private final Map<SymbolId, Symbol> symbolsById;
         private final Map<Long, SymbolScope> scopesById;
         private final Map<SymbolId, List<SymbolReference>> referencesByTarget;
         private final SymbolScopeImpl rootScope;
@@ -202,7 +213,7 @@ public final class ProjectSymbolTable implements SymbolTable {
 
         @Override
         public Optional<Symbol> find(SymbolId id) {
-            return Optional.ofNullable(symbolsById.get(id.hashCode()));
+            return Optional.ofNullable(symbolsById.get(id));
         }
 
         @Override

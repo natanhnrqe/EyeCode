@@ -1,5 +1,6 @@
 package com.eyecode.language.symbol;
 
+import com.eyecode.editor.intelligence.document.TextRange;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,6 +22,11 @@ public interface SymbolScope {
      * Kind of this scope.
      */
     ScopeKind kind();
+
+    /**
+     * Absolute range of this scope in the source document.
+     */
+    TextRange range();
 
     /**
      * Parent scope, or empty if this is the root scope.
