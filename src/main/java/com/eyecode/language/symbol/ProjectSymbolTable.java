@@ -153,7 +153,12 @@ public final class ProjectSymbolTable implements SymbolTable {
     public void addReference(SymbolReference reference) {
         lock.writeLock().lock();
         try {
-            referencesByTarget.computeIfAbsent(reference.target(), k -> new ArrayList<>())
+            SymbolId target = reference.target();
+            if (target == null) {
+                // Unresolved references are not indexed by target.
+                return;
+            }
+            referencesByTarget.computeIfAbsent(target, k -> new ArrayList<>())
                     .add(reference);
         } finally {
             lock.writeLock().unlock();

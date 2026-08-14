@@ -7,58 +7,82 @@ import com.eyecode.language.java.parser.ParserSnapshot;
 import com.eyecode.language.symbol.ScopeKind;
 import com.eyecode.language.symbol.Symbol;
 import com.eyecode.language.symbol.SymbolId;
-import com.eyecode.language.symbol.SymbolKind;
 import com.eyecode.language.symbol.SymbolReference;
-import com.eyecode.language.symbol.SymbolReferenceKind;
 import com.eyecode.language.symbol.SymbolScope;
 import com.eyecode.language.symbol.SymbolTable;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Java-specific {@link NameResolver} (Sprint 5.4b.1).
+ * Java implementation of {@link NameResolver} (Sprint 5.4b.1, rewritten in 5.4b.2).
  * <p>
- * Resolves simple-name references in Java source by traversing the AST and
- * tracking the current lexical {@link SymbolScope}. The lookup is delegated to
- * {@link SymbolScope#lookup(String)} which walks the hierarchical scope chain
- * {@code BLOCK -> METHOD -> TYPE -> PACKAGE -> ROOT}, returning the innermost
- * declaration for a simple name. This naturally implements Java shadowing:
- * a declaration in the innermost scope hides any same-named declaration in an
- * outer scope.
+ * Simple-name resolution is performed by a single primary entry point:
+ * {@link #resolve(SymbolReference, SymbolTable)}. It uses
+ * {@link SymbolTable#lookup(long, String)} which walks the
+ * hierarchical scope chain from the reference's scope toward the root,
+ * returning the innermost declaration for a simple name. This naturally
+ * implements Java shadowing — a declaration in the innermost scope hides
+ * any same-named declaration in an outer scope.
  * <p>
- * What it resolves:
+ * The batch entry point {@link #resolve(ParserSnapshot, SymbolTable)}
+ * walks the AST pre-order, builds a {@link SymbolReference}
+ * (name + scopeId + range) for each simple-name occurrence, and delegates
+ * to the single-reference entry point so both callers share the exact
+ * same lookup / shadowing semantics.
+ * <p>
+ * What it resolves (this sprint):
  * <ul>
- *   <li>local variables inside the body of a method/constructor;</li>
- *   <li>method/constructor parameters;</li>
- *   <li>fields of the enclosing type (looked up via TYPE scope);</li>
- *   <li>method names referenced unqualified ({@code run()} where {@code run}
- *       is a symbol in the enclosing TYPE scope) — overload matching and
- *       signature discrimination are NOT performed;</li>
- *   <li>type names (class/interface/enum/record) when a symbol exists in an
- *       enclosing scope.</li>
+ *   <li>local variables ({@link SymbolKind#LOCAL_VARIABLE});</li>
+ *   <li>method/constructor parameters ({@link SymbolKind#PARAMETER});</li>
+ *   <li>fields ({@link SymbolKind#FIELD});</li>
+ *   <li>types — class/interface/enum/record ({@link SymbolKind#TYPE},
+ *       {@link SymbolKind#INTERFACE}, {@link SymbolKind#ENUM}) —
+ *       when a symbol exists in an enclosing scope;</li>
+ *   <li>type parameters ({@link SymbolKind#TYPE_PARAMETER});</li>
+ *   <li>methods referenced unqualified ({@code run()} where {@code run}
+ *       is a symbol in the enclosing TYPE scope) — overload matching
+ *       and signature discrimination are NOT performed;</li>
+ *   <li>constructors referenced by the simple type name — also unqualified.</li>
  * </ul>
  * <p>
- * Out of scope (deferred to 5.4b.2 and later):
+ * Out of scope (deferred to 5.4b.3 and later):
  * overload resolution, method signature matching, inheritance, interface
  * implementation, generic substitution, type inference, qualified names
- * ({@code a.b.C}), field chains, static imports, regular imports, stdlib /
- * cross-file resolution.
+ * ({@code a.b.C}), field chains, static imports, regular imports,
+ * stdlib / cross-file resolution, type-name resolution in typed
+ * declarations, JLS-faithful shadowing in all corner cases, ambiguity
+ * detection (this model is lexically innermost-wins so it never
+ * produces {@link ResolutionKind#AMBIGUOUS}).
  * <p>
  * The resolver never throws on unresolved names — it produces
- * {@link ResolvedSymbolReference#unresolved(SymbolReference)} results with a
- * placeholder {@link SymbolId} (the reference's own range). The real
- * declaration symbol id is never fabricated for resolved entries.
+ * {@link ResolvedSymbolReference#unresolved(SymbolReference)} results.
+ * The AST, the {@link SymbolTable}, the {@link SymbolScope} and the
+ * {@link SymbolReference} input are never mutated. Results are returned
+ * as an immutable list (defensive copy).
  * <p>
  * Pure Core: zero Swing / JavaFX / AWT / editor-ui / workbench dependencies.
- * The AST and the {@link SymbolTable} are never mutated.
- * Results are returned as an immutable list (defensive copy).
  */
 public final class JavaNameResolver implements NameResolver {
+
+    @Override
+    public ResolvedSymbolReference resolve(SymbolReference reference, SymbolTable symbolTable) {
+        Objects.requireNonNull(reference, "reference must not be null");
+        Objects.requireNonNull(symbolTable, "symbolTable must not be null");
+
+        String name = reference.name();
+        long scopeId = reference.scopeId();
+        Optional<Symbol> found = symbolTable.lookup(scopeId, name);
+        if (found.isPresent()) {
+            SymbolId id = found.get().id();
+            return ResolvedSymbolReference.resolved(reference, id);
+        }
+        return ResolvedSymbolReference.unresolved(reference);
+    }
 
     @Override
     public List<ResolvedSymbolReference> resolve(ParserSnapshot parserSnapshot, SymbolTable symbolTable) {
@@ -70,29 +94,23 @@ public final class JavaNameResolver implements NameResolver {
             return List.of();
         }
 
-        ResolverVisitor visitor = new ResolverVisitor(symbolTable);
+        BatchVisitor visitor = new BatchVisitor(symbolTable);
         visitor.walk(astRoot);
         return visitor.results();
     }
 
     // ----------------------------------------------------------------------
-    // Traversal + resolution
+    // Batch traversal — builds a SymbolReference per NAME_EXPRESSION and
+    // delegates to the single-reference entry point.
     // ----------------------------------------------------------------------
 
-    /**
-     * Recursive visitor that walks the AST pre-order and tracks the current
-     * {@link SymbolScope}. Scope push/pop is paired around the recursive
-     * descent into scope-creating nodes (CU, package, type, method/constructor,
-     * block) so the same visitor is used for every name within a scope and the
-     * scope is released exactly once the subtree is exhausted.
-     */
-    private static final class ResolverVisitor {
+    private final class BatchVisitor {
 
         private final SymbolTable symbolTable;
         private final Deque<SymbolScope> scopeStack = new ArrayDeque<>();
         private final List<ResolvedSymbolReference> results = new ArrayList<>();
 
-        ResolverVisitor(SymbolTable symbolTable) {
+        BatchVisitor(SymbolTable symbolTable) {
             this.symbolTable = symbolTable;
             this.scopeStack.push(symbolTable.rootScope());
         }
@@ -100,8 +118,6 @@ public final class JavaNameResolver implements NameResolver {
         List<ResolvedSymbolReference> results() {
             return List.copyOf(results);
         }
-
-        // ---- traversal entry ------------------------------------------
 
         void walk(AstNode node) {
             switch (node.kind()) {
@@ -145,15 +161,6 @@ public final class JavaNameResolver implements NameResolver {
             pushMatching(node, target, false);
         }
 
-        /**
-         * Locate a child scope of the current scope whose kind matches
-         * {@code target} and whose range contains the AST node's range.
-         * When {@code preferSmallest} is set (used for BLOCK scopes),
-         * the tightest containing candidate wins, so nested sibling blocks
-         * descend into the innermost one. If no match is found a no-op
-         * re-push of the current scope is performed so the pop is always
-         * balanced.
-         */
         private void pushMatching(AstNode node, ScopeKind target, boolean preferSmallest) {
             SymbolScope current = scopeStack.peek();
             if (current == null) {
@@ -165,19 +172,8 @@ public final class JavaNameResolver implements NameResolver {
                     continue;
                 }
                 if (rangeContains(child.range(), node.range())) {
-                    if (best == null) {
+                    if (best == null || area(child.range()) < area(best.range())) {
                         best = child;
-                    } else {
-                        int aSize = area(child.range());
-                        int bSize = area(best.range());
-                        if (preferSmallest ? aSize < bSize : aSize < bSize) {
-                            // Prefer the tightest match in both cases — the
-                            // SymbolTableBuilder creates sibling TYPE/METHOD
-                            // scopes with parent-proxy ranges, so the actual
-                            // nested descendant is the only one that tightly
-                            // contains the AST node's range.
-                            best = child;
-                        }
                     }
                 }
             }
@@ -195,64 +191,33 @@ public final class JavaNameResolver implements NameResolver {
         private void resolveSimpleName(AstNode node) {
             String name = nameOf(node);
             if (name == null || name.isEmpty()) {
-                // The parser always attaches a Token to NAME_EXPRESSION leaves,
-                // so this should never occur in practice; bail defensively.
                 return;
             }
             resolveAndAdd(node, name);
         }
 
         private void visitMethodCall(AstNode node) {
-            // Children of METHOD_CALL_EXPRESSION: [receiver?, args...]
-            // receiver may be a NAME_EXPRESSION for an unqualified call `name()`.
-            // For any other shape (`this.x()`, `obj.foo()`, `a.b.c()`) we fall
-            // through and rely on visitChildren() — every nested NAME_EXPRESSION
-            // will be visited and resolved as an ordinary simple name.
             List<AstNode> children = node.children();
             if (!children.isEmpty() && children.get(0).kind() == AstNodeKind.NAME_EXPRESSION) {
                 resolveSimpleName(children.get(0));
             }
-            // Visit the rest of the children (call args).
             for (int i = 1; i < children.size(); i++) {
                 walk(children.get(i));
             }
         }
 
         private void visitFieldAccess(AstNode node) {
-            // `a.b`: children.get(0) is the receiver; we visit it as a simple
-            // name reference if applicable. `b` (the accessed field name) is
-            // not resolved in this sprint — that needs the static type of the
-            // receiver which is outside the scope of 5.4b.1.
             List<AstNode> children = node.children();
-            for (int i = 0; i < children.size(); i++) {
-                AstNode child = children.get(i);
-                // The receiver is already visited as a NAME_EXPRESSION if it
-                // is itself a NAME_EXPRESSION; deeper chains are delegated.
-                if (i == 0 && child.kind() == AstNodeKind.NAME_EXPRESSION) {
-                    walk(child); // walk -> NAME_EXPRESSION -> resolveSimpleName
-                } else {
-                    walk(child);
-                }
+            for (AstNode child : children) {
+                walk(child);
             }
         }
 
         private void resolveAndAdd(AstNode node, String name) {
             SymbolScope scope = scopeStack.peek();
-            if (scope == null) {
-                scope = symbolTable.rootScope();
-            }
-            Optional<Symbol> found = scope.lookup(name);
-            if (found.isPresent()) {
-                SymbolId resolvedId = found.get().id();
-                results.add(ResolvedSymbolReference.resolved(
-                        new SymbolReference(resolvedId, node.range(), SymbolReferenceKind.SIMPLE),
-                        resolvedId
-                ));
-            } else {
-                results.add(ResolvedSymbolReference.unresolved(
-                        new SymbolReference(placeholderId(node), node.range(), SymbolReferenceKind.SIMPLE)
-                ));
-            }
+            long scopeId = scope != null ? scope.id() : symbolTable.rootScope().id();
+            SymbolReference reference = SymbolReference.simple(name, scopeId, node.range());
+            results.add(JavaNameResolver.this.resolve(reference, symbolTable));
         }
 
         // ---- utilities ------------------------------------------------
@@ -267,19 +232,14 @@ public final class JavaNameResolver implements NameResolver {
             return null;
         }
 
-        private static SymbolId placeholderId(AstNode node) {
-            // For unresolved references a 0-owner placeholder carries the
-            // reference's own range; the resolved entry never uses a placeholder.
-            return SymbolId.of(0, node.range(), SymbolKind.TYPE);
-        }
-
         private static boolean rangeContains(TextRange outer, TextRange inner) {
-            return outer.startOffset() <= inner.startOffset() && inner.endOffset() <= outer.endOffset();
+            return outer.startOffset() <= inner.startOffset()
+                    && inner.endOffset() <= outer.endOffset();
         }
 
         private static int area(TextRange r) {
             int size = r.endOffset() - r.startOffset();
-            return size < 0 ? 0 : size;
+            return Math.max(size, 0);
         }
     }
 }

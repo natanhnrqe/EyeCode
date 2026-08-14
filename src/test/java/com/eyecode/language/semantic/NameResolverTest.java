@@ -10,10 +10,8 @@ import com.eyecode.language.java.JavaLexerService;
 import com.eyecode.language.java.parser.ParserSnapshot;
 import com.eyecode.language.symbol.ProjectSymbolTable;
 import com.eyecode.language.symbol.SemanticModelSnapshot;
-import com.eyecode.language.symbol.SymbolId;
 import com.eyecode.language.symbol.SymbolKind;
 import com.eyecode.language.symbol.SymbolReference;
-import com.eyecode.language.symbol.SymbolReferenceKind;
 import com.eyecode.language.symbol.SymbolTable;
 import com.eyecode.language.symbol.SymbolTableBuilder;
 import org.junit.jupiter.api.Test;
@@ -214,10 +212,7 @@ class NameResolverTest {
         String source = "class A { void test() { int x = 1; } }";
         List<ResolvedSymbolReference> results = resolve(source);
         assertNotNull(results);
-        SymbolReference stub = new SymbolReference(
-                SymbolId.of(0, 0, 1, SymbolKind.TYPE),
-                TextRange.of(0, 1),
-                SymbolReferenceKind.SIMPLE);
+        SymbolReference stub = SymbolReference.simple("stub", 1L, TextRange.of(0, 1));
         assertThrows(UnsupportedOperationException.class, () -> results.add(ResolvedSymbolReference.unresolved(stub)));
     }
 
@@ -231,7 +226,11 @@ class NameResolverTest {
                 s.lex(DocumentSnapshot.oneShot(src)).tokens(), src);
         AstNode root = new JavaParser(st).parse().getAstRoot();
         ParserSnapshot snap = new ParserSnapshot(1, src, root);
-        assertThrows(NullPointerException.class, () -> resolver.resolve(null, new ProjectSymbolTable()));
+        ProjectSymbolTable emptyTable = new ProjectSymbolTable();
+        SymbolReference ref = SymbolReference.simple("x", emptyTable.rootScope().id(), TextRange.of(0, 1));
+        assertThrows(NullPointerException.class, () -> resolver.resolve((SymbolReference) null, emptyTable));
+        assertThrows(NullPointerException.class, () -> resolver.resolve(ref, null));
+        assertThrows(NullPointerException.class, () -> resolver.resolve((ParserSnapshot) null, emptyTable));
         assertThrows(NullPointerException.class, () -> resolver.resolve(snap, null));
     }
 }
