@@ -80,11 +80,86 @@ import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Highlighter;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
+
+import com.eyecode.editor.intelligence.document.DocumentSnapshot;
+import com.eyecode.editor.intelligence.document.LineMap;
+import com.eyecode.editor.intelligence.document.TextRange;
+import com.eyecode.editor.intelligence.events.DocumentChangeListener;
+import com.eyecode.editor.intelligence.pipeline.EditorCommandContext;
+import com.eyecode.editor.intelligence.pipeline.EditorInputEvent;
+import com.eyecode.editor.intelligence.pipeline.SmartEditResult;
+import com.eyecode.editor.intelligence.pipeline.TypingPipeline;
+import com.eyecode.editor.intelligence.pipeline.strategy.SmartEditingStrategies;
+import com.eyecode.editor.v2.EditorBuffer;
+import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.editor.v2.EditorPosition;
+import com.eyecode.editor.v2.EditorSelection;
+import com.eyecode.editor.v2.caret.CaretSynchronizationManager;
+import com.eyecode.editor.v2.completion.CompletionEngine;
+import com.eyecode.editor.v2.completion.CompletionItem;
+import com.eyecode.editor.v2.completion.CompletionItemKind;
+import com.eyecode.editor.v2.completion.CompletionManager;
+import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
+import com.eyecode.editor.v2.completion.ContextAwareCompletionProvider;
+import com.eyecode.editor.v2.completion.JavaSnippetProvider;
+import com.eyecode.editor.v2.completion.JavaStandardLibraryProvider;
+import com.eyecode.editor.v2.completion.insert.CompletionInsertionContext;
+import com.eyecode.editor.v2.completion.insert.CompletionInsertionEngine;
+import com.eyecode.editor.v2.completion.insert.CompletionPrefixResolver;
+import com.eyecode.editor.v2.completion.insert.SnippetInsertionEngine;
+import com.eyecode.editor.v2.completion.knowledge.JavaKnowledgeBaseProvider;
+import com.eyecode.editor.v2.completion.project.ProjectCompletionProvider;
+import com.eyecode.editor.v2.completion.semantic.SemanticCompletionProvider;
+import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
+import com.eyecode.editor.v2.diagnostics.DiagnosticManager;
+import com.eyecode.editor.v2.diagnostics.EmptyDiagnosticEngine;
+import com.eyecode.editor.v2.language.DefaultLanguageService;
+import com.eyecode.editor.v2.language.LanguageManager;
+import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
+import com.eyecode.editor.v2.language.java.model.JavaFileModel;
+import com.eyecode.editor.v2.language.java.parser.JavaParser;
+import com.eyecode.editor.v2.project.ProjectIndexer;
+import com.eyecode.editor.v2.project.ProjectSymbolIndex;
+import com.eyecode.editor.v2.syntax.DocumentStyleRegistry;
+import com.eyecode.editor.v2.syntax.JavaSyntaxAnalyzer;
+import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
+import com.eyecode.editor.v2.syntax.SyntaxToken;
+import com.eyecode.editor.v2.syntax.TokenType;
+import com.eyecode.editor.v2.syntax.swing.SwingSyntaxRenderer;
+import com.eyecode.editor.v2.ui.completion.CompletionPopup;
+import com.eyecode.editor.v2.ui.gutter.GutterPanel;
+import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
+import com.eyecode.editor.v2.language.java.model.JavaFileModel;
+import com.eyecode.editor.v2.language.java.parser.JavaParser;
+import com.eyecode.language.Token;
+import com.eyecode.language.java.JavaLexerService;
+import com.eyecode.language.java.LexerSnapshot;
+import com.eyecode.language.semantic.DefinitionAtCaretResolver;
+import com.eyecode.language.semantic.DefinitionLocation;
+import com.eyecode.language.symbol.SemanticModelSnapshot;
+import com.eyecode.language.symbol.SymbolTable;
+import com.eyecode.language.symbol.SymbolTableBuilder;
+import com.eyecode.learning.catalog.DefaultLearningCatalog;
+import com.eyecode.learning.catalog.LearningCatalog;
+import com.eyecode.learning.concepts.DefaultLearningConceptEngine;
+import com.eyecode.learning.concepts.LearningConceptEngine;
+import com.eyecode.learning.concepts.providers.ClassConceptProvider;
+import com.eyecode.learning.hover.ConceptHoverProvider;
+import com.eyecode.learning.hover.DefaultHoverEngine;
+import com.eyecode.learning.hover.HoverEngine;
+import com.eyecode.learning.renderer.ChromiumLearningCardRenderer;
+import com.eyecode.learning.ui.LearningHoverController;
+import com.eyecode.learning.ui.SwingLearningHoverScheduler;
+import com.eyecode.learning.ui.SwingLearningHoverSurface;
+import com.eyecode.ui.designsystem.ColorManager;
+import com.eyecode.ui.designsystem.TypographyManager;
+
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.FocusAdapter;
@@ -97,6 +172,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 
 public final class RichEditorView extends JPanel {
 
@@ -136,6 +212,8 @@ public final class RichEditorView extends JPanel {
     private final Highlighter.HighlightPainter currentSearchHighlightPainter;
     private final ProjectSymbolIndex projectSymbolIndex;
     private final ProjectIndexer projectIndexer;
+    private final DefinitionAtCaretResolver definitionAtCaretResolver;
+    private final JavaLexerService lexerService;
     private SyntaxSnapshot latestSyntaxSnapshot;
     private boolean refreshing;
     private boolean suppressPopup;
@@ -212,6 +290,8 @@ public final class RichEditorView extends JPanel {
         if (sharedSymbolIndex == null && this.projectIndexer != null) {
             this.projectIndexer.index(this.projectSymbolIndex);
         }
+        this.definitionAtCaretResolver = new DefinitionAtCaretResolver();
+        this.lexerService = new JavaLexerService();
         this.completionManager = new CompletionManager(new CompletionEngine(
                 List.of(
                         new ContextAwareCompletionProvider(),
@@ -622,6 +702,14 @@ public final class RichEditorView extends JPanel {
             @Override
             public void actionPerformed(ActionEvent e) {
                 deleteCurrentLine();
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_B, InputEvent.CTRL_DOWN_MASK), "editorGoToDefinition");
+        actionMap.put("editorGoToDefinition", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                goToDefinition();
             }
         });
 
@@ -1709,5 +1797,62 @@ public final class RichEditorView extends JPanel {
             current = current.getParent();
         }
         return start;
+    }
+
+    public void revealOffset(int offset) {
+        if (buffer == null || textPane == null || offset < 0) {
+            return;
+        }
+        String text = textPane.getText();
+        int clamped = Math.min(offset, Math.max(0, text.length()));
+        try {
+            com.eyecode.editor.v2.EditorPosition pos = buffer.getDocument().positionOf(clamped);
+            buffer.moveCaret(pos);
+        } catch (RuntimeException ignored) {
+            return;
+        }
+        try {
+            Rectangle rect = textPane.modelToView(clamped);
+            if (rect != null) {
+                Rectangle scrollTarget = new Rectangle(rect.x, rect.y, 1, Math.max(rect.height, 1));
+                textPane.scrollRectToVisible(scrollTarget);
+            }
+        } catch (javax.swing.text.BadLocationException ignored) {
+        }
+    }
+
+    public void goToDefinition() {
+        if (buffer == null || textPane == null) {
+            return;
+        }
+        int caretOffset = textPane.getCaretPosition();
+        String source = buffer.getDocument().getText();
+        SymbolTable symbolTable = buildSymbolTableFor(source);
+        if (symbolTable == null) {
+            return;
+        }
+        Optional<DefinitionLocation> location = definitionAtCaretResolver.resolve(source, caretOffset, symbolTable);
+        if (location.isEmpty()) {
+            return;
+        }
+        int targetOffset = location.get().declarationRange().startOffset();
+        revealOffset(targetOffset);
+    }
+
+    private SymbolTable buildSymbolTableFor(String source) {
+        try {
+            com.eyecode.editor.intelligence.document.DocumentSnapshot snapshot =
+                    com.eyecode.editor.intelligence.document.DocumentSnapshot.oneShot(source);
+            LexerSnapshot lexerSnapshot = lexerService.lex(snapshot);
+            List<Token> tokens = lexerSnapshot.tokens();
+            JavaTokenStream stream = new JavaTokenStream(tokens, source);
+            JavaParser parser = new JavaParser(stream);
+            JavaFileModel model = parser.parse();
+            SymbolTableBuilder builder = new SymbolTableBuilder(model, 1, "GoToDefinition.java");
+            SemanticModelSnapshot semantic = builder.build();
+            return semantic.symbolTable();
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 }
