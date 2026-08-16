@@ -51,4 +51,40 @@ public record SymbolReference(
     public static SymbolReference simple(String name, long scopeId, TextRange range) {
         return new SymbolReference(null, range, name, scopeId, SymbolReferenceKind.SIMPLE);
     }
+
+    /**
+     * Convenience factory for a qualified-name reference (Sprint 5.4b.7).
+     * <p>
+     * The {@code name} carries the textual qualified reference (e.g.
+     * {@code "foo.bar"} or {@code "foo.bar.baz"}); the resolver pipeline
+     * uses {@link com.eyecode.language.semantic.QualifiedNameDecomposer} to
+     * recover the structured {@link com.eyecode.language.semantic.QualifiedName}
+     * from this text (the decomposition is purely syntactic, the
+     * {@code range.startOffset()} supplies the base offset). The kind is
+     * set to {@link SymbolReferenceKind#QUALIFIED_NAME} so dispatch
+     * routines can route qualified references through
+     * {@code QualifiedReferenceResolver} and simple references through
+     * {@code JavaNameResolver} — no guessing.
+     *
+     * @param name    the textual qualified reference; must be non-null,
+     *                non-empty and contain at least one dot
+     * @param scopeId the scope where the reference occurs (lookup start)
+     * @param range   the source range of the reference
+     * @return a new reference with {@code QUALIFIED_NAME} kind and
+     *         {@code null} target (target is filled by resolution)
+     * @throws NullPointerException if any argument is null
+     * @throws IllegalArgumentException if {@code name} does not contain a dot
+     */
+    public static SymbolReference qualified(String name, long scopeId, TextRange range) {
+        Objects.requireNonNull(name, "name must not be null");
+        Objects.requireNonNull(range, "range must not be null");
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("name must not be empty");
+        }
+        if (name.indexOf('.') < 0) {
+            throw new IllegalArgumentException(
+                    "qualified reference must contain at least one dot, got: " + name);
+        }
+        return new SymbolReference(null, range, name, scopeId, SymbolReferenceKind.QUALIFIED_NAME);
+    }
 }
