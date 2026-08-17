@@ -1800,7 +1800,7 @@ public final class RichEditorView extends JPanel {
     }
 
     public void revealOffset(int offset) {
-        if (buffer == null || textPane == null || offset < 0) {
+        if (disposed || buffer == null || textPane == null || offset < 0) {
             return;
         }
         String text = textPane.getText();
@@ -1822,16 +1822,20 @@ public final class RichEditorView extends JPanel {
     }
 
     public void goToDefinition() {
-        if (buffer == null || textPane == null) {
+        if (disposed || buffer == null || textPane == null) {
             return;
         }
         int caretOffset = textPane.getCaretPosition();
+        if (caretOffset < 0) {
+            return;
+        }
         String source = buffer.getDocument().getText();
         SymbolTable symbolTable = buildSymbolTableFor(source);
         if (symbolTable == null) {
             return;
         }
-        Optional<DefinitionLocation> location = definitionAtCaretResolver.resolve(source, caretOffset, symbolTable);
+        int safeCaret = Math.min(caretOffset, Math.max(0, source.length()));
+        Optional<DefinitionLocation> location = definitionAtCaretResolver.resolve(source, safeCaret, symbolTable);
         if (location.isEmpty()) {
             return;
         }

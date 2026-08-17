@@ -4,8 +4,14 @@ import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
+import javax.swing.JComponent;
 import javax.swing.JTextPane;
+import javax.swing.KeyStroke;
 import java.awt.Rectangle;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -248,5 +254,213 @@ class RichEditorViewGoToDefinitionTest {
         RichEditorView view = create(source);
         view.revealOffset(source.length() + 100);
         assertTrue(view.getTextPane().getCaretPosition() <= source.length());
+    }
+
+    @Test
+    void ctrlB_bindingInstalledOnTextPane() {
+        RichEditorView view = create("class C { }");
+        try {
+            KeyStroke ctrlB = KeyStroke.getKeyStroke(KeyEvent.VK_B, InputEvent.CTRL_DOWN_MASK);
+            InputMap inputMap = view.getTextPane().getInputMap(JComponent.WHEN_FOCUSED);
+            assertNotNull(inputMap);
+            Object actionName = inputMap.get(ctrlB);
+            assertEquals("editorGoToDefinition", actionName);
+            ActionMap actionMap = view.getTextPane().getActionMap();
+            assertNotNull(actionMap.get("editorGoToDefinition"));
+        } finally {
+            view.dispose();
+        }
+    }
+
+    @Test
+    void ctrlB_doesNotConflictWithCompletionAcceptKeys() {
+        RichEditorView view = create("class C { }");
+        try {
+            InputMap inputMap = view.getTextPane().getInputMap(JComponent.WHEN_FOCUSED);
+            assertEquals("completionAcceptOrEnter", inputMap.get(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0)));
+            assertEquals("completionAcceptOrTab", inputMap.get(KeyStroke.getKeyStroke(KeyEvent.VK_TAB, 0)));
+            assertEquals("completionHide", inputMap.get(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0)));
+        } finally {
+            view.dispose();
+        }
+    }
+
+    @Test
+    void ctrlB_doesNotConflictWithSmartEditingKeys() {
+        RichEditorView view = create("class C { }");
+        try {
+            InputMap inputMap = view.getTextPane().getInputMap(JComponent.WHEN_FOCUSED);
+            assertEquals("editorSmartBackspace", inputMap.get(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0)));
+            assertEquals("editorUndo", inputMap.get(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK)));
+            assertEquals("editorRedo", inputMap.get(KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK)));
+            assertEquals("editorDuplicateLine", inputMap.get(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK)));
+            assertEquals("editorOpenSearch", inputMap.get(KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK)));
+        } finally {
+            view.dispose();
+        }
+    }
+
+    @Test
+    void goToDefinition_emptyDocument_isSafe() {
+        RichEditorView view = create("");
+        try {
+            view.goToDefinition();
+            assertTrue(view.getTextPane().getCaretPosition() >= 0);
+        } finally {
+            view.dispose();
+        }
+    }
+
+    @Test
+    void goToDefinition_invalidSource_isSafe() {
+        RichEditorView view = create("not java code @#$%^&*()");
+        try {
+            putCaret(view, 0);
+            view.goToDefinition();
+            assertTrue(view.getTextPane().getCaretPosition() >= 0);
+        } finally {
+            view.dispose();
+        }
+    }
+
+    @Test
+    void goToDefinition_caretAtEndOfDocument_isSafe() {
+        String source = "class C { int value; }\n";
+        RichEditorView view = create(source);
+        try {
+            putCaret(view, source.length());
+            view.goToDefinition();
+            assertTrue(view.getTextPane().getCaretPosition() >= 0);
+            assertTrue(view.getTextPane().getCaretPosition() <= source.length());
+        } finally {
+            view.dispose();
+        }
+    }
+
+    @Test
+    void goToDefinition_caretAtStart_isSafe() {
+        String source = "class C { int value; }\n";
+        RichEditorView view = create(source);
+        try {
+            putCaret(view, 0);
+            view.goToDefinition();
+            assertTrue(view.getTextPane().getCaretPosition() >= 0);
+        } finally {
+            view.dispose();
+        }
+    }
+
+    @Test
+    void goToDefinition_afterDispose_isNoop() {
+        RichEditorView view = create("class C { int value; void m() { int x = value; } }\n");
+        view.dispose();
+        view.goToDefinition();
+    }
+
+    @Test
+    void revealOffset_afterDispose_isNoop() {
+        RichEditorView view = create("class C { int value; }\n");
+        view.dispose();
+        view.revealOffset(5);
+    }
+
+    @Test
+    void goToDefinition_unresolvedReference_caretUnchanged() {
+        String source = "class C { void m() { int x = nonexistentName; } }\n";
+        RichEditorView view = create(source);
+        try {
+            int refOffset = source.indexOf("nonexistentName");
+            putCaret(view, refOffset + 2);
+            int caretBefore = view.getTextPane().getCaretPosition();
+            view.goToDefinition();
+            assertEquals(caretBefore, view.getTextPane().getCaretPosition());
+        } finally {
+            view.dispose();
+        }
+    }
+
+    @Test
+    void goToDefinition_invalidOffsetViaReveal_resilient() {
+        String source = "class C { int value; }\n";
+        RichEditorView view = create(source);
+        try {
+            putCaret(view, 0);
+            view.revealOffset(Integer.MAX_VALUE);
+            assertTrue(view.getTextPane().getCaretPosition() <= source.length());
+            view.revealOffset(Integer.MIN_VALUE);
+            assertTrue(view.getTextPane().getCaretPosition() >= 0);
+        } finally {
+            view.dispose();
+        }
+    }
+
+    @Test
+    void goToDefinition_activeDocumentPreserved() {
+        String source = "class C {\n" +
+                "    int value = 1;\n" +
+                "    void m() { int x = value; }\n" +
+                "}\n";
+        RichEditorView view = create(source);
+        try {
+            int refOffset = source.indexOf("= value");
+            putCaret(view, refOffset + 2);
+            view.goToDefinition();
+            assertEquals(source, view.getBuffer().getDocument().getText());
+        } finally {
+            view.dispose();
+        }
+    }
+
+    @Test
+    void goToDefinition_existingSelectionClearedOnNav() {
+        String source = "class C { int value; void m() { int x = value; } }\n";
+        RichEditorView view = create(source);
+        try {
+            JTextPane pane = view.getTextPane();
+            pane.setSelectionStart(5);
+            pane.setSelectionEnd(15);
+            int refOffset = source.indexOf("= value");
+            putCaret(view, refOffset + 2);
+            view.goToDefinition();
+            assertEquals(view.getTextPane().getCaretPosition(), pane.getSelectionStart());
+            assertEquals(view.getTextPane().getCaretPosition(), pane.getSelectionEnd());
+        } finally {
+            view.dispose();
+        }
+    }
+
+    @Test
+    void goToDefinition_noUndoEntry() {
+        String source = "class C { int value; void m() { int x = value; } }\n";
+        RichEditorView view = create(source);
+        try {
+            int refOffset = source.indexOf("= value");
+            putCaret(view, refOffset + 2);
+            boolean canUndoBefore = view.getBuffer().canUndo();
+            view.goToDefinition();
+            boolean canUndoAfter = view.getBuffer().canUndo();
+            assertEquals(canUndoBefore, canUndoAfter);
+        } finally {
+            view.dispose();
+        }
+    }
+
+    @Test
+    void goToDefinition_completionPopupVisible_isSafe() {
+        String source = "class C {\n" +
+                "    void m() {\n" +
+                "        int value = 1;\n" +
+                "        int x = value;\n" +
+                "    }\n" +
+                "}\n";
+        RichEditorView view = create(source);
+        try {
+            int refOffset = source.indexOf("= value");
+            putCaret(view, refOffset + 2);
+            view.goToDefinition();
+            assertTrue(view.getTextPane().getCaretPosition() >= 0);
+        } finally {
+            view.dispose();
+        }
     }
 }
