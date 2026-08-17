@@ -358,7 +358,7 @@ class JavaReferenceFinderTest {
 
         List<ReferenceLocation> result = new JavaReferenceFinder().findReferences(field, table);
         assertNotNull(result);
-        assertTrue(result.isEmpty());
+        assertEquals(2, result.size());
     }
 
     private static Symbol findSymbolByName(SymbolTable table, String name, SymbolKind kind) {

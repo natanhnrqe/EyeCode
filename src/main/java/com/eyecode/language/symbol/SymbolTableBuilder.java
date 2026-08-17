@@ -9,12 +9,22 @@ import com.eyecode.editor.v2.language.java.model.JavaMethodModel;
 import com.eyecode.editor.v2.language.java.model.JavaParameterModel;
 import com.eyecode.editor.v2.language.java.model.JavaVariableModel;
 import com.eyecode.editor.v2.language.java.model.TypeKind;
+import com.eyecode.language.ast.AstNode;
+import com.eyecode.language.ast.AstNodeKind;
+import com.eyecode.language.semantic.JavaNameResolver;
+import com.eyecode.language.semantic.ResolvedSymbolReference;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
- * Builds a {@link ProjectSymbolTable} from a {@link JavaFileModel} (Sprint 5.4a).
+ * Builds a {@link ProjectSymbolTable} from a {@link JavaFileModel} (Sprint 5.4a;
+ * reference population added in 5.4d.2).
  * <p>
  * This builder walks the {@link JavaFileModel} and populates a
  * {@link ProjectSymbolTable} with symbols for all declarations found in the
@@ -36,6 +46,16 @@ import java.util.Optional;
  * The builder does NOT perform type resolution, overload resolution,
  * inheritance analysis, or import resolution. It only indexes declarations
  * present in the model.
+ * <p>
+ * <b>Sprint 5.4d.2 — reference population:</b> after the symbol-declaration
+ * phase, the builder walks the AST a second time via {@link ReferenceCollector}.
+ * For every {@code NAME_EXPRESSION} leaf, it builds a tentative
+ * {@link SymbolReference}, runs the existing {@link JavaNameResolver} to
+ * obtain the resolved target, and — when the resolution succeeds — registers
+ * the bound reference on the table. Unresolved names never produce an
+ * indexed reference (no fabricated {@link Symbol}). Identity is structural
+ * ({@code target + range + kind}); duplicates are suppressed by a
+ * {@link LinkedHashSet}.
  */
 public final class SymbolTableBuilder {
 
@@ -68,9 +88,28 @@ public final class SymbolTableBuilder {
             processType(typeModel, ownerScope);
         }
 
+        // Sprint 5.4d.2 — populate SymbolReferences from the AST (simple-name
+        // occurrences only — see ReferenceCollector for what is and isn't
+        // emitted). Uses the existing JavaNameResolver lookup so shadowing
+        // semantics are preserved verbatim.
+        collectReferences();
+
         // Build the semantic model snapshot
         SymbolTable snapshotTable = symbolTable.snapshotTable(version, sourceFile);
         return new SemanticModelSnapshot(version, snapshotTable, sourceFile);
+    }
+
+    private void collectReferences() {
+        AstNode astRoot = fileModel.getAstRoot();
+        if (astRoot == null || astRoot.kind() != AstNodeKind.COMPILATION_UNIT) {
+            return;
+        }
+        JavaNameResolver resolver = new JavaNameResolver();
+        ReferenceCollector collector = new ReferenceCollector(symbolTable, resolver);
+        collector.walk(astRoot);
+        for (SymbolReference ref : collector.references()) {
+            symbolTable.addReference(ref);
+        }
     }
 
     private void processType(JavaClassModel typeModel, SymbolScope ownerScope) {
@@ -248,5 +287,146 @@ public final class SymbolTableBuilder {
 
     private String buildQualifiedName(JavaVariableModel local) {
         return local.getName();
+    }
+
+    // ----------------------------------------------------------------------
+    // Reference collection (Sprint 5.4d.2)
+    //
+    // Walks the AST once after the symbol-declaration phase. For every
+    // NAME_EXPRESSION leaf, builds a SymbolReference, runs the existing
+    // JavaNameResolver to obtain the resolved target, and — when the
+    // resolution succeeds — registers it on the table.
+    //
+    // Identity is structural (target + range + kind); duplicates are
+    // suppressed by a LinkedHashSet. Unresolved names never produce an
+    // indexed reference (no fabricated Symbol).
+    // ----------------------------------------------------------------------
+
+    private static final class ReferenceCollector {
+
+        private final SymbolTable table;
+        private final JavaNameResolver resolver;
+        private final Deque<SymbolScope> scopeStack = new ArrayDeque<>();
+        private final Set<SymbolReference> references = new LinkedHashSet<>();
+
+        ReferenceCollector(SymbolTable table, JavaNameResolver resolver) {
+            this.table = Objects.requireNonNull(table, "table must not be null");
+            this.resolver = Objects.requireNonNull(resolver, "resolver must not be null");
+            this.scopeStack.push(table.rootScope());
+        }
+
+        Set<SymbolReference> references() {
+            return references;
+        }
+
+        void walk(AstNode node) {
+            switch (node.kind()) {
+                case COMPILATION_UNIT -> visitChildren(node);
+                case PACKAGE_DECLARATION -> {
+                    pushMatching(node, ScopeKind.PACKAGE);
+                    visitChildren(node);
+                    pop();
+                }
+                case CLASS_DECLARATION, INTERFACE_DECLARATION, ENUM_DECLARATION, RECORD_DECLARATION -> {
+                    pushMatching(node, ScopeKind.TYPE);
+                    visitChildren(node);
+                    pop();
+                }
+                case METHOD_DECLARATION, CONSTRUCTOR_DECLARATION -> {
+                    pushMatching(node, ScopeKind.METHOD);
+                    visitChildren(node);
+                    pop();
+                }
+                case BLOCK -> {
+                    pushMatching(node, ScopeKind.BLOCK, true);
+                    visitChildren(node);
+                    pop();
+                }
+                case NAME_EXPRESSION -> resolveSimpleName(node);
+                default -> visitChildren(node);
+            }
+        }
+
+        private void visitChildren(AstNode node) {
+            for (AstNode child : node.children()) {
+                walk(child);
+            }
+        }
+
+        private void pushMatching(AstNode node, ScopeKind target) {
+            pushMatching(node, target, false);
+        }
+
+        private void pushMatching(AstNode node, ScopeKind target, boolean preferSmallest) {
+            SymbolScope current = scopeStack.peek();
+            if (current == null) {
+                return;
+            }
+            SymbolScope best = null;
+            for (SymbolScope child : current.children()) {
+                if (child.kind() != target) {
+                    continue;
+                }
+                if (!rangeContains(child.range(), node.range())) {
+                    continue;
+                }
+                if (best == null || area(child.range()) < area(best.range())) {
+                    best = child;
+                }
+                if (!preferSmallest) {
+                    break;
+                }
+            }
+            scopeStack.push(best != null ? best : current);
+        }
+
+        private void pop() {
+            if (scopeStack.size() > 1) {
+                scopeStack.pop();
+            }
+        }
+
+        private void resolveSimpleName(AstNode node) {
+            String name = nameOf(node);
+            if (name == null || name.isEmpty()) {
+                return;
+            }
+            SymbolScope scope = scopeStack.peek();
+            if (scope == null) {
+                return;
+            }
+            SymbolReference tentative = SymbolReference.simple(name, scope.id(), node.range());
+            ResolvedSymbolReference resolved = resolver.resolve(tentative, table);
+            if (!resolved.isResolved()) {
+                return;
+            }
+            SymbolReference bound = new SymbolReference(
+                    resolved.resolvedSymbolId(),
+                    tentative.range(),
+                    tentative.name(),
+                    tentative.scopeId(),
+                    tentative.kind());
+            references.add(bound);
+        }
+
+        private static String nameOf(AstNode node) {
+            if (node.token() != null) {
+                String text = node.token().text();
+                if (text != null && !text.isEmpty()) {
+                    return text;
+                }
+            }
+            return null;
+        }
+
+        private static boolean rangeContains(TextRange outer, TextRange inner) {
+            return outer.startOffset() <= inner.startOffset()
+                    && inner.endOffset() <= outer.endOffset();
+        }
+
+        private static int area(TextRange r) {
+            int size = r.endOffset() - r.startOffset();
+            return Math.max(size, 0);
+        }
     }
 }
