@@ -119,9 +119,17 @@ public final class QualifiedNameResolver {
     public QualifiedNameResolution resolve(QualifiedName qualifiedName,
                                            SymbolScope startingScope,
                                            QualifiedMemberLookup memberLookup) {
+        return resolve(qualifiedName, startingScope, memberLookup, QualifiedMemberExpectation.ANY);
+    }
+
+    public QualifiedNameResolution resolve(QualifiedName qualifiedName,
+                                           SymbolScope startingScope,
+                                           QualifiedMemberLookup memberLookup,
+                                           QualifiedMemberExpectation terminalExpectation) {
         Objects.requireNonNull(qualifiedName, "qualifiedName must not be null");
         Objects.requireNonNull(startingScope, "startingScope must not be null");
         Objects.requireNonNull(memberLookup, "memberLookup must not be null");
+        Objects.requireNonNull(terminalExpectation, "terminalExpectation must not be null");
 
         List<QualifiedNameComponent> components = qualifiedName.components();
 
@@ -133,7 +141,10 @@ public final class QualifiedNameResolver {
         Symbol current = first;
         for (int i = 1; i < components.size(); i++) {
             String name = components.get(i).name();
-            Optional<Symbol> next = memberLookup.lookupMember(current, name);
+            QualifiedMemberExpectation expectation = i == components.size() - 1
+                    ? terminalExpectation
+                    : QualifiedMemberExpectation.ANY;
+            Optional<Symbol> next = memberLookup.lookupMember(current, name, expectation);
             if (next.isEmpty()) {
                 return QualifiedNameResolution.unresolved(qualifiedName, first);
             }

@@ -2,6 +2,7 @@ package com.eyecode.language.semantic;
 
 import com.eyecode.language.symbol.Symbol;
 import com.eyecode.language.symbol.SymbolKind;
+import com.eyecode.language.symbol.SymbolModifier;
 import com.eyecode.language.symbol.SymbolScope;
 import com.eyecode.language.symbol.SymbolTable;
 
@@ -63,8 +64,16 @@ public final class ScopeBasedQualifiedMemberLookup implements QualifiedMemberLoo
 
     @Override
     public Optional<Symbol> lookupMember(Symbol qualifier, String name) {
+        return lookupMember(qualifier, name, QualifiedMemberExpectation.ANY);
+    }
+
+    @Override
+    public Optional<Symbol> lookupMember(Symbol qualifier,
+                                         String name,
+                                         QualifiedMemberExpectation expectation) {
         Objects.requireNonNull(qualifier, "qualifier must not be null");
         Objects.requireNonNull(name, "name must not be null");
+        Objects.requireNonNull(expectation, "expectation must not be null");
         if (name.isEmpty()) {
             throw new IllegalArgumentException("name must not be empty");
         }
@@ -75,7 +84,22 @@ public final class ScopeBasedQualifiedMemberLookup implements QualifiedMemberLoo
         if (memberScope.isEmpty()) {
             return Optional.empty();
         }
-        return memberScope.get().findLocal(name);
+        return memberScope.get().findLocal(name)
+                .filter(member -> matches(member, qualifier.kind(), expectation));
+    }
+
+    private static boolean matches(Symbol member,
+                                   SymbolKind qualifierKind,
+                                   QualifiedMemberExpectation expectation) {
+        return switch (expectation) {
+            case ANY -> true;
+            case STATIC_FIELD -> member.kind() == SymbolKind.FIELD
+                    && (member.modifiers().contains(SymbolModifier.STATIC)
+                    || qualifierKind == SymbolKind.INTERFACE);
+            case STATIC_METHOD -> member.kind() == SymbolKind.METHOD
+                    && member.modifiers().contains(SymbolModifier.STATIC);
+            case CONSTRUCTOR -> member.kind() == SymbolKind.CONSTRUCTOR;
+        };
     }
 
     /**

@@ -167,7 +167,7 @@ class DefinitionAtCaretResolverTest {
     void qualifiedReference() {
         String source = """
                 class MyClass {
-                    int value;
+                    static int value;
                 }
                 class Use {
                     void test() {

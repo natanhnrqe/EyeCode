@@ -10,6 +10,7 @@ import com.eyecode.language.symbol.SymbolTable;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -67,6 +68,9 @@ public final class JavaDefinitionResolver implements DefinitionResolver {
         if (kind == SymbolReferenceKind.SIMPLE || kind == SymbolReferenceKind.SIMPLE_NAME) {
             return resolveSimple(reference, symbolTable);
         }
+        if (kind == SymbolReferenceKind.CONSTRUCTOR_CALL) {
+            return resolveConstructor(reference, symbolTable);
+        }
         if (kind == SymbolReferenceKind.QUALIFIED_NAME) {
             return resolveQualified(reference, symbolTable);
         }
@@ -110,13 +114,46 @@ public final class JavaDefinitionResolver implements DefinitionResolver {
                                                                SymbolTable symbolTable) {
         SymbolScope scope = innermostScopeContaining(symbolTable, reference.range());
         QualifiedMemberLookup memberLookup = new ScopeBasedQualifiedMemberLookup(symbolTable);
-        QualifiedReferenceResolution r = new QualifiedReferenceResolver()
-                .resolve(reference, scope, memberLookup);
-        if (!r.isResolved()) {
+        for (QualifiedMemberExpectation expectation : List.of(
+                QualifiedMemberExpectation.STATIC_FIELD,
+                QualifiedMemberExpectation.STATIC_METHOD)) {
+            QualifiedReferenceResolution r = new QualifiedReferenceResolver()
+                    .resolve(reference, scope, memberLookup, expectation);
+            if (!r.isResolved()) {
+                continue;
+            }
+            Symbol symbol = r.resolvedSymbol().orElseThrow();
+            return Optional.of(DefinitionLocation.of(symbol));
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<DefinitionLocation> resolveConstructor(SymbolReference reference,
+                                                                   SymbolTable symbolTable) {
+        SymbolScope scope = innermostScopeContaining(symbolTable, reference.range());
+        Optional<Symbol> type = symbolTable.lookup(scope.id(), reference.name());
+        if (type.isEmpty()) {
             return Optional.empty();
         }
-        Symbol symbol = r.resolvedSymbol().orElseThrow();
-        return Optional.of(DefinitionLocation.of(symbol));
+        if (!isTypeLike(type.get())) {
+            return Optional.empty();
+        }
+        Optional<SymbolScope> typeScope = symbolTable.scope(type.get().scopeId());
+        if (typeScope.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<Symbol> constructor = typeScope.get().findLocal(reference.name());
+        if (constructor.isEmpty() || constructor.get().kind() != com.eyecode.language.symbol.SymbolKind.CONSTRUCTOR) {
+            return Optional.empty();
+        }
+        return Optional.of(DefinitionLocation.of(constructor.get()));
+    }
+
+    private static boolean isTypeLike(Symbol symbol) {
+        return switch (symbol.kind()) {
+            case TYPE, INTERFACE, ENUM, ANNOTATION -> true;
+            default -> false;
+        };
     }
 
     /**

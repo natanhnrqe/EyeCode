@@ -10,6 +10,7 @@ import com.eyecode.language.symbol.SemanticModelSnapshot;
 import com.eyecode.language.symbol.Symbol;
 import com.eyecode.language.symbol.SymbolId;
 import com.eyecode.language.symbol.SymbolKind;
+import com.eyecode.language.symbol.SymbolModifier;
 import com.eyecode.language.symbol.SymbolScope;
 import com.eyecode.language.symbol.SymbolTable;
 import com.eyecode.language.symbol.SymbolTableBuilder;
@@ -562,7 +563,7 @@ class QualifiedNameResolverTest {
     void chain_fooBar_typeField_resolved() {
         String source = """
                 class MyClass {
-                    int value;
+                    static int value;
                     void test() {
                         MyClass.value = 1;
                     }
@@ -634,7 +635,7 @@ class QualifiedNameResolverTest {
     void chain_typeField_explicit() {
         String source = """
                 class MyClass {
-                    int value;
+                    static int value;
                     int other = MyClass.value;
                 }
                 """;
@@ -696,7 +697,7 @@ class QualifiedNameResolverTest {
         String source = """
                 enum Color {
                     RED, GREEN, BLUE;
-                    int value = 0;
+                    static int value = 0;
                     int read = Color.value;
                 }
                 """;
@@ -727,7 +728,8 @@ class QualifiedNameResolverTest {
                 TextRange.of(20, 25),
                 typeScope.id(),
                 typeScope.id(),
-                "TYPE.value");
+                "TYPE.value",
+                java.util.Set.of(SymbolModifier.STATIC));
         ((com.eyecode.language.symbol.ProjectSymbolTable) table).declareSymbol(typeScope, member);
         Symbol annotationQualifier = new Symbol(
                 SymbolId.of(root.id(), TextRange.of(0, 5), SymbolKind.ANNOTATION),
@@ -846,9 +848,9 @@ class QualifiedNameResolverTest {
     void chain_threeComponents_fullSuccess() {
         String source = """
                 class Outer {
-                    int bar;
+                    static int bar;
                     class Inner {
-                        int baz;
+                        static int baz;
                     }
                     int field = ((Outer) null).bar; // ignored; we craft our own
                     void use() {
@@ -863,9 +865,9 @@ class QualifiedNameResolverTest {
         // Outer -> Inner -> baz.
         String clean = """
                 class Outer {
-                    int bar;
+                    static int bar;
                     class Inner {
-                        int baz;
+                        static int baz;
                     }
                 }
                 class Use {
@@ -950,7 +952,7 @@ class QualifiedNameResolverTest {
                 class Outer {
                     int bar;
                     class Inner {
-                        int baz;
+                        static int baz;
                     }
                 }
                 """;
@@ -1001,7 +1003,7 @@ class QualifiedNameResolverTest {
     void chain_memberLookupUsesQualifierScope_notOriginal() {
         String source = """
                 class MyClass {
-                    int field;
+                    static int field;
                     void test() {
                         int field = 10; // local that shadows nothing relevant
                         // The QN `MyClass.field` must resolve to the TYPE-level
@@ -1073,7 +1075,7 @@ class QualifiedNameResolverTest {
     void chain_repeatedIsDeterministic() {
         String source = """
                 class MyClass {
-                    int value;
+                    static int value;
                 }
                 """;
         Pipeline p = build(source);
@@ -1098,7 +1100,7 @@ class QualifiedNameResolverTest {
     void goldenMyClassValue() {
         String source = """
                 class MyClass {
-                    int value;
+                    static int value;
                     void use() {
                         MyClass.value = 1;
                     }
@@ -1159,9 +1161,9 @@ class QualifiedNameResolverTest {
     void goldenFooBarBaz() {
         String source = """
                 class Outer {
-                    int bar;
+                    static int bar;
                     class Inner {
-                        int baz;
+                        static int baz;
                     }
                 }
                 """;

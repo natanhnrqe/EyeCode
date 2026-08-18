@@ -87,4 +87,8 @@ public record SymbolReference(
         }
         return new SymbolReference(null, range, name, scopeId, SymbolReferenceKind.QUALIFIED_NAME);
     }
+
+    public static SymbolReference constructorCall(String name, long scopeId, TextRange range) {
+        return new SymbolReference(null, range, name, scopeId, SymbolReferenceKind.CONSTRUCTOR_CALL);
+    }
 }

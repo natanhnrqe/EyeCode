@@ -173,7 +173,7 @@ class QualifiedReferenceResolverTest {
     void qualifiedReference_twoComponents_resolved() {
         String source = """
                 class MyClass {
-                    int value;
+                    static int value;
                     void test() {
                         MyClass.value = 1;
                     }
@@ -207,9 +207,9 @@ class QualifiedReferenceResolverTest {
     void qualifiedReference_threeComponents_resolved() {
         String source = """
                 class Outer {
-                    int bar;
+                    static int bar;
                     class Inner {
-                        int baz;
+                        static int baz;
                     }
                 }
                 """;
@@ -245,7 +245,7 @@ class QualifiedReferenceResolverTest {
     void goldenMyClassValue() {
         String source = """
                 class MyClass {
-                    int value;
+                    static int value;
                     void test() {
                         MyClass.value = 1;
                     }
@@ -466,7 +466,7 @@ class QualifiedReferenceResolverTest {
     void repeatedResolutionIsDeterministic() {
         String source = """
                 class MyClass {
-                    int value;
+                    static int value;
                 }
                 """;
         Pipeline p = build(source);
@@ -499,7 +499,7 @@ class QualifiedReferenceResolverTest {
         String source = """
                 class Outer {
                     class Inner {
-                        int baz;
+                        static int baz;
                     }
                 }
                 class Use {
@@ -544,7 +544,7 @@ class QualifiedReferenceResolverTest {
         // preserved in both optionals for diagnostics.
         String source = """
                 class MyClass {
-                    int value;
+                    static int value;
                     void test() {
                         int obj = 0;
                         obj.value = 1;

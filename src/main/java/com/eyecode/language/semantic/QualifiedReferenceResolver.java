@@ -85,9 +85,17 @@ public final class QualifiedReferenceResolver {
     public QualifiedReferenceResolution resolve(SymbolReference reference,
                                                 SymbolScope scope,
                                                 QualifiedMemberLookup memberLookup) {
+        return resolve(reference, scope, memberLookup, QualifiedMemberExpectation.ANY);
+    }
+
+    public QualifiedReferenceResolution resolve(SymbolReference reference,
+                                                SymbolScope scope,
+                                                QualifiedMemberLookup memberLookup,
+                                                QualifiedMemberExpectation terminalExpectation) {
         Objects.requireNonNull(reference, "reference must not be null");
         Objects.requireNonNull(scope, "scope must not be null");
         Objects.requireNonNull(memberLookup, "memberLookup must not be null");
+        Objects.requireNonNull(terminalExpectation, "terminalExpectation must not be null");
 
         if (reference.kind() != SymbolReferenceKind.QUALIFIED_NAME) {
             // Spec §3 — explicit separation. SIMPLE / SIMPLE_NAME go to
@@ -113,7 +121,7 @@ public final class QualifiedReferenceResolver {
 
         QualifiedName qualifiedName = decomposed.get();
         QualifiedNameResolution inner = new QualifiedNameResolver()
-                .resolve(qualifiedName, scope, memberLookup);
+                .resolve(qualifiedName, scope, memberLookup, terminalExpectation);
 
         return wrap(reference, qualifiedName, inner);
     }

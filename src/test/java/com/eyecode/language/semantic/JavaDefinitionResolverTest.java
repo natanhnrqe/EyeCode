@@ -382,10 +382,9 @@ class JavaDefinitionResolverTest {
                 typeScope.id(), typeScope.id(), "MyClass.MyClass");
         mut.declareSymbol(typeScope, ctor);
 
-        // Qualified reference at offset 0 — outside the typeScope range.
-        TextRange refRange = TextRange.of(0, 14);
-        SymbolReference ref = SymbolReference.qualified(
-                "MyClass.MyClass", root.id(), refRange);
+        TextRange refRange = TextRange.of(0, 7);
+        SymbolReference ref = SymbolReference.constructorCall(
+                "MyClass", root.id(), refRange);
         Optional<DefinitionLocation> loc = new JavaDefinitionResolver().resolve(ref, table);
         assertTrue(loc.isPresent());
         DefinitionLocation l = loc.get();
@@ -440,7 +439,7 @@ class JavaDefinitionResolverTest {
     void qualifiedReference_resolvesToTerminalDeclaration() {
         String source = """
                 class MyClass {
-                    int value;
+                    static int value;
                 }
                 class Use {
                     void test() {
@@ -455,7 +454,7 @@ class JavaDefinitionResolverTest {
         DefinitionLocation l = loc.get();
         assertEquals("value", l.symbol().name());
         assertEquals(SymbolKind.FIELD, l.symbol().kind());
-        int declIdx = p.source.indexOf("int value");
+        int declIdx = p.source.indexOf("static int value");
         assertEquals(declIdx, l.declarationRange().startOffset());
     }
 
@@ -542,7 +541,7 @@ class JavaDefinitionResolverTest {
     void repeatedResolutionIsDeterministic() {
         String source = """
                 class Example {
-                    int field;
+                    static int field;
                 }
                 class Use {
                     void test() {

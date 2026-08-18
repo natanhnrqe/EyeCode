@@ -159,6 +159,9 @@ public final class DefinitionReferenceResolver {
         long scopeId = scope.id();
 
         int componentCount = (endIdx - startIdx) / 2 + 1;
+        if (componentCount == 1 && isConstructorCall(tokens, startIdx, endIdx)) {
+            return Optional.of(SymbolReference.constructorCall(first.text(), scopeId, refRange));
+        }
         if (componentCount >= 2) {
             String name = source.substring(refRange.startOffset(), refRange.endOffset());
             return Optional.of(SymbolReference.qualified(name, scopeId, refRange));
@@ -255,6 +258,41 @@ public final class DefinitionReferenceResolver {
     private static int indexOf(List<Token> tokens, Token target) {
         for (int i = 0; i < tokens.size(); i++) {
             if (tokens.get(i) == target) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static boolean isConstructorCall(List<Token> tokens, int startIdx, int endIdx) {
+        int previous = previousSignificantIndex(tokens, startIdx - 1);
+        if (previous < 0) {
+            return false;
+        }
+        Token previousToken = tokens.get(previous);
+        if (previousToken.type() != JavaTokenType.KEYWORD || !"new".equals(previousToken.text())) {
+            return false;
+        }
+        int next = nextSignificantIndex(tokens, endIdx + 1);
+        return next >= 0
+                && tokens.get(next).type() == JavaTokenType.SEPARATOR
+                && "(".equals(tokens.get(next).text());
+    }
+
+    private static int previousSignificantIndex(List<Token> tokens, int from) {
+        for (int i = from; i >= 0; i--) {
+            JavaTokenType type = (JavaTokenType) tokens.get(i).type();
+            if (type != JavaTokenType.WHITESPACE && type != JavaTokenType.COMMENT) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static int nextSignificantIndex(List<Token> tokens, int from) {
+        for (int i = from; i < tokens.size(); i++) {
+            JavaTokenType type = (JavaTokenType) tokens.get(i).type();
+            if (type != JavaTokenType.WHITESPACE && type != JavaTokenType.COMMENT) {
                 return i;
             }
         }

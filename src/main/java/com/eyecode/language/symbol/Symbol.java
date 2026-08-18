@@ -3,6 +3,7 @@ package com.eyecode.language.symbol;
 import com.eyecode.editor.intelligence.document.TextRange;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Canonical, immutable symbol in the semantic model (Sprint 5.4a).
@@ -23,7 +24,8 @@ public record Symbol(
         TextRange declarationRange,
         long ownerScopeId,
         long scopeId,
-        String qualifiedName
+        String qualifiedName,
+        Set<SymbolModifier> modifiers
 ) {
 
     public Symbol {
@@ -34,6 +36,12 @@ public record Symbol(
         if (scopeId == 0) {
             scopeId = ownerScopeId;
         }
+        modifiers = Set.copyOf(Objects.requireNonNull(modifiers, "modifiers must not be null"));
+    }
+
+    public Symbol(SymbolId id, SymbolKind kind, String name, TextRange declarationRange,
+                  long ownerScopeId, long scopeId, String qualifiedName) {
+        this(id, kind, name, declarationRange, ownerScopeId, scopeId, qualifiedName, Set.of());
     }
 
     /**

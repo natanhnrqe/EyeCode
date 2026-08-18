@@ -31,5 +31,7 @@ public enum SymbolReferenceKind {
      * {@code super.value}, {@code a.b.c} or {@code pkg.Type} — at least
      * one dot separates the qualifier from the terminal name.
      */
-    QUALIFIED_NAME
+    QUALIFIED_NAME,
+
+    CONSTRUCTOR_CALL
 }

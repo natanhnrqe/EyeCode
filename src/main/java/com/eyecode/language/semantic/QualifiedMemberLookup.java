@@ -32,6 +32,10 @@ import java.util.Optional;
  */
 public interface QualifiedMemberLookup {
 
+    default Optional<Symbol> lookupMember(Symbol qualifier, String name) {
+        return lookupMember(qualifier, name, QualifiedMemberExpectation.ANY);
+    }
+
     /**
      * Looks up a member {@code name} in the context of the given
      * {@code qualifier}.
@@ -52,5 +56,5 @@ public interface QualifiedMemberLookup {
      * @param name      the member name to look up; never null, non-empty
      * @return the member symbol, or empty when not found / unsupported
      */
-    Optional<Symbol> lookupMember(Symbol qualifier, String name);
+    Optional<Symbol> lookupMember(Symbol qualifier, String name, QualifiedMemberExpectation expectation);
 }

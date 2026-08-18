@@ -7,6 +7,7 @@ import com.eyecode.editor.v2.language.java.model.JavaConstructorModel;
 import com.eyecode.editor.v2.language.java.model.JavaFieldModel;
 import com.eyecode.editor.v2.language.java.model.JavaFileModel;
 import com.eyecode.editor.v2.language.java.model.JavaMethodModel;
+import com.eyecode.editor.v2.language.java.model.JavaModifier;
 import com.eyecode.editor.v2.language.java.model.JavaParameterModel;
 import com.eyecode.editor.v2.language.java.model.JavaVariableModel;
 import com.eyecode.editor.v2.language.java.model.TypeKind;
@@ -16,7 +17,11 @@ import com.eyecode.language.ast.AstNodeKind;
 import com.eyecode.language.java.JavaLexerService;
 import com.eyecode.language.java.JavaTokenType;
 import com.eyecode.language.semantic.JavaNameResolver;
+import com.eyecode.language.semantic.QualifiedMemberExpectation;
+import com.eyecode.language.semantic.QualifiedReferenceResolution;
+import com.eyecode.language.semantic.QualifiedReferenceResolver;
 import com.eyecode.language.semantic.ResolvedSymbolReference;
+import com.eyecode.language.semantic.ScopeBasedQualifiedMemberLookup;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -168,7 +173,8 @@ public final class SymbolTableBuilder {
                 range,
                 ownerScope.id(),
                 typeScope.id(), // scopeId = type's own scope (where its members live)
-                qualifiedName
+                qualifiedName,
+                mapModifiers(typeModel.getModifiers())
         );
         // Declare the type in the owner scope (package/root/enclosing type scope).
         // The type is NOT declared in its own typeScope to avoid colliding with a member
@@ -206,7 +212,8 @@ public final class SymbolTableBuilder {
                 range,
                 typeScope.id(),
                 typeScope.id(),
-                buildQualifiedName(fieldModel, typeScope)
+                buildQualifiedName(fieldModel, typeScope),
+                mapModifiers(fieldModel.getModifiers())
         );
         symbolTable.declareSymbol(typeScope, fieldSymbol);
     }
@@ -222,7 +229,8 @@ public final class SymbolTableBuilder {
                 range,
                 typeScope.id(),
                 constructorScope.id(),
-                buildQualifiedName(constructorModel, typeScope)
+                buildQualifiedName(constructorModel, typeScope),
+                mapModifiers(constructorModel.getModifiers())
         );
         symbolTable.declareSymbol(typeScope, constructorSymbol);
 
@@ -246,7 +254,8 @@ public final class SymbolTableBuilder {
                 range,
                 typeScope.id(),
                 methodScope.id(),
-                buildQualifiedName(methodModel, typeScope)
+                buildQualifiedName(methodModel, typeScope),
+                mapModifiers(methodModel.getModifiers())
         );
         symbolTable.declareSymbol(typeScope, methodSymbol);
 
@@ -301,6 +310,17 @@ public final class SymbolTableBuilder {
             case ENUM -> SymbolKind.ENUM;
             case RECORD -> SymbolKind.TYPE;
         };
+    }
+
+    private Set<SymbolModifier> mapModifiers(Set<JavaModifier> modifiers) {
+        if (modifiers == null || modifiers.isEmpty()) {
+            return Set.of();
+        }
+        Set<SymbolModifier> result = new LinkedHashSet<>();
+        for (JavaModifier modifier : modifiers) {
+            result.add(SymbolModifier.valueOf(modifier.name()));
+        }
+        return Set.copyOf(result);
     }
 
     private String buildQualifiedName(JavaClassModel type) {
@@ -397,7 +417,9 @@ public final class SymbolTableBuilder {
                     pop();
                 }
                 case NAME_EXPRESSION -> resolveSimpleName(node);
+                case METHOD_CALL_EXPRESSION -> visitMethodCall(node);
                 case FIELD_ACCESS_EXPRESSION -> visitFieldAccess(node);
+                case OBJECT_CREATION_EXPRESSION -> resolveConstructorCall(node);
                 case TYPE -> resolveTypeName(node);
                 default -> visitChildren(node);
             }
@@ -472,18 +494,48 @@ public final class SymbolTableBuilder {
             if (receiver.kind() == AstNodeKind.SUPER_EXPRESSION) {
                 return;
             }
-            collectQualifiedField(node);
+            collectQualifiedMember(node, QualifiedMemberExpectation.STATIC_FIELD);
         }
 
-        private void collectQualifiedField(AstNode node) {
+        private void visitMethodCall(AstNode node) {
+            List<AstNode> children = node.children();
+            if (children.isEmpty()) {
+                return;
+            }
+            AstNode target = children.get(0);
+            if (target.kind() == AstNodeKind.NAME_EXPRESSION) {
+                resolveSimpleName(target);
+            } else if (target.kind() == AstNodeKind.FIELD_ACCESS_EXPRESSION
+                    && target.children().size() >= 2) {
+                AstNode receiver = target.children().get(0);
+                AstNode terminal = target.children().get(1);
+                if (receiver.kind() == AstNodeKind.THIS_EXPRESSION) {
+                    resolveThisMethod(terminal);
+                } else if (receiver.kind() != AstNodeKind.SUPER_EXPRESSION) {
+                    collectQualifiedMember(target, QualifiedMemberExpectation.STATIC_METHOD);
+                }
+            } else {
+                walk(target);
+            }
+            for (int i = 1; i < children.size(); i++) {
+                walk(children.get(i));
+            }
+        }
+
+        private void collectQualifiedMember(AstNode node, QualifiedMemberExpectation expectation) {
             List<String> components = qualifiedComponents(node);
             SymbolScope scope = scopeStack.peek();
             if (components == null || components.size() < 2 || scope == null) {
                 return;
             }
             String qualifiedName = String.join(".", components);
-            references.add(SymbolReference.qualified(
-                    qualifiedName, scope.id(), node.range()));
+            SymbolReference tentative = SymbolReference.qualified(
+                    qualifiedName, scope.id(), node.range());
+            QualifiedReferenceResolution resolved = new QualifiedReferenceResolver().resolve(
+                    tentative, scope, new ScopeBasedQualifiedMemberLookup(table), expectation);
+            if (resolved.isResolved()) {
+                register(resolved.resolvedSymbol().orElseThrow().id(), tentative);
+            }
         }
 
         private List<String> qualifiedComponents(AstNode node) {
@@ -518,6 +570,14 @@ public final class SymbolTableBuilder {
         }
 
         private void resolveThisField(AstNode terminal) {
+            resolveThisMember(terminal, SymbolKind.FIELD);
+        }
+
+        private void resolveThisMethod(AstNode terminal) {
+            resolveThisMember(terminal, SymbolKind.METHOD);
+        }
+
+        private void resolveThisMember(AstNode terminal, SymbolKind expectedKind) {
             String name = nameOf(terminal);
             SymbolScope current = scopeStack.peek();
             if (name == null || current == null) {
@@ -527,11 +587,11 @@ public final class SymbolTableBuilder {
             if (typeScope == null) {
                 return;
             }
-            Symbol field = typeScope.findLocal(name).orElse(null);
-            if (field == null || field.kind() != SymbolKind.FIELD) {
+            Symbol member = typeScope.findLocal(name).orElse(null);
+            if (member == null || member.kind() != expectedKind) {
                 return;
             }
-            register(field.id(), SymbolReference.simple(name, current.id(), terminal.range()));
+            register(member.id(), SymbolReference.simple(name, current.id(), terminal.range()));
         }
 
         private SymbolScope typeScope() {
@@ -584,6 +644,49 @@ public final class SymbolTableBuilder {
             }
             register(target, tentative);
             visitChildren(node);
+        }
+
+        private void resolveConstructorCall(AstNode node) {
+            if (sourceText == null || node.children().isEmpty()) {
+                visitObjectCreationArguments(node);
+                return;
+            }
+            AstNode typeNode = node.children().get(0);
+            String typeName = leadingIdentifierName(typeNode);
+            SymbolScope scope = scopeStack.peek();
+            if (typeName == null || typeName.isEmpty() || scope == null) {
+                visitObjectCreationArguments(node);
+                return;
+            }
+            SymbolReference typeReference = SymbolReference.simple(typeName, scope.id(), typeNode.range());
+            ResolvedSymbolReference resolvedType = resolver.resolve(typeReference, table);
+            if (!resolvedType.isResolved()) {
+                visitObjectCreationArguments(node);
+                return;
+            }
+            SymbolId typeTarget = resolvedType.resolvedSymbolId();
+            Symbol typeSymbol = table.find(typeTarget).orElse(null);
+            if (typeSymbol == null || !isTypeCompatible(typeTarget)) {
+                visitObjectCreationArguments(node);
+                return;
+            }
+            register(typeTarget, typeReference);
+            SymbolScope typeScope = table.scope(typeSymbol.scopeId()).orElse(null);
+            if (typeScope == null) {
+                visitObjectCreationArguments(node);
+                return;
+            }
+            Symbol constructor = typeScope.findLocal(typeName).orElse(null);
+            if (constructor != null && constructor.kind() == SymbolKind.CONSTRUCTOR) {
+                register(constructor.id(), SymbolReference.constructorCall(typeName, scope.id(), typeNode.range()));
+            }
+            visitObjectCreationArguments(node);
+        }
+
+        private void visitObjectCreationArguments(AstNode node) {
+            for (int i = 1; i < node.children().size(); i++) {
+                walk(node.children().get(i));
+            }
         }
 
         private void register(SymbolId target, SymbolReference tentative) {
