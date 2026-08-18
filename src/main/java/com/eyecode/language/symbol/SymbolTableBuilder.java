@@ -19,6 +19,7 @@ import com.eyecode.language.semantic.JavaNameResolver;
 import com.eyecode.language.semantic.ResolvedSymbolReference;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -29,7 +30,7 @@ import java.util.Set;
 /**
  * Builds a {@link ProjectSymbolTable} from a {@link JavaFileModel} (Sprint 5.4a;
  * reference population added in 5.4d.2; type-position reference population
- * added in 5.4d.3).
+ * added in 5.4d.3; qualified field collection added in 5.4d.5).
  * <p>
  * This builder walks the {@link JavaFileModel} and populates a
  * {@link ProjectSymbolTable} with symbols for all declarations found in the
@@ -78,6 +79,16 @@ import java.util.Set;
  * not supported at this layer (the leading identifier resolves via the
  * simple-name chain only). No new lookup rule is added — the existing
  * {@link JavaNameResolver} chain is reused opaquely.
+ * <p>
+ * <b>Sprint 5.4d.5 — qualified field collection:</b> field-access expressions
+ * whose receiver is an identifier or another identifier field access are
+ * recognized structurally as {@code QUALIFIED_NAME} references. The collector
+ * preserves the complete range and textual component chain, but deliberately
+ * does not resolve the receiver type or assign a fabricated target. Because
+ * unresolved references are not stored by {@link ProjectSymbolTable}, these
+ * occurrences remain transient until a later semantic phase provides a target.
+ * Explicit {@code this.field} handling remains the 5.4d.4 field-only path;
+ * {@code super.field} remains ignored.
  */
 public final class SymbolTableBuilder {
 
@@ -318,7 +329,8 @@ public final class SymbolTableBuilder {
     }
 
     // ----------------------------------------------------------------------
-    // Reference collection (Sprint 5.4d.2; type-position expansion in 5.4d.3)
+    // Reference collection (Sprint 5.4d.2; type-position expansion in 5.4d.3;
+    // qualified field collection in 5.4d.5)
     //
     // Walks the AST once after the symbol-declaration phase. For every
     // NAME_EXPRESSION leaf, builds a SymbolReference, runs the existing
@@ -385,6 +397,7 @@ public final class SymbolTableBuilder {
                     pop();
                 }
                 case NAME_EXPRESSION -> resolveSimpleName(node);
+                case FIELD_ACCESS_EXPRESSION -> visitFieldAccess(node);
                 case TYPE -> resolveTypeName(node);
                 default -> visitChildren(node);
             }
@@ -444,6 +457,90 @@ public final class SymbolTableBuilder {
                 return;
             }
             register(resolved.resolvedSymbolId(), tentative);
+        }
+
+        private void visitFieldAccess(AstNode node) {
+            if (node.children().size() < 2) {
+                visitChildren(node);
+                return;
+            }
+            AstNode receiver = node.children().get(0);
+            if (receiver.kind() == AstNodeKind.THIS_EXPRESSION) {
+                resolveThisField(node.children().get(1));
+                return;
+            }
+            if (receiver.kind() == AstNodeKind.SUPER_EXPRESSION) {
+                return;
+            }
+            collectQualifiedField(node);
+        }
+
+        private void collectQualifiedField(AstNode node) {
+            List<String> components = qualifiedComponents(node);
+            SymbolScope scope = scopeStack.peek();
+            if (components == null || components.size() < 2 || scope == null) {
+                return;
+            }
+            String qualifiedName = String.join(".", components);
+            references.add(SymbolReference.qualified(
+                    qualifiedName, scope.id(), node.range()));
+        }
+
+        private List<String> qualifiedComponents(AstNode node) {
+            if (node.kind() != AstNodeKind.FIELD_ACCESS_EXPRESSION
+                    || node.children().size() < 2) {
+                return null;
+            }
+            AstNode receiver = node.children().get(0);
+            AstNode terminal = node.children().get(1);
+            String terminalName = nameOf(terminal);
+            if (terminalName == null) {
+                return null;
+            }
+            List<String> components = new ArrayList<>();
+            if (receiver.kind() == AstNodeKind.NAME_EXPRESSION) {
+                String receiverName = nameOf(receiver);
+                if (receiverName == null) {
+                    return null;
+                }
+                components.add(receiverName);
+            } else if (receiver.kind() == AstNodeKind.FIELD_ACCESS_EXPRESSION) {
+                List<String> nested = qualifiedComponents(receiver);
+                if (nested == null) {
+                    return null;
+                }
+                components.addAll(nested);
+            } else {
+                return null;
+            }
+            components.add(terminalName);
+            return components;
+        }
+
+        private void resolveThisField(AstNode terminal) {
+            String name = nameOf(terminal);
+            SymbolScope current = scopeStack.peek();
+            if (name == null || current == null) {
+                return;
+            }
+            SymbolScope typeScope = typeScope();
+            if (typeScope == null) {
+                return;
+            }
+            Symbol field = typeScope.findLocal(name).orElse(null);
+            if (field == null || field.kind() != SymbolKind.FIELD) {
+                return;
+            }
+            register(field.id(), SymbolReference.simple(name, current.id(), terminal.range()));
+        }
+
+        private SymbolScope typeScope() {
+            for (SymbolScope scope : scopeStack) {
+                if (scope.kind() == ScopeKind.TYPE) {
+                    return scope;
+                }
+            }
+            return null;
         }
 
         /**
