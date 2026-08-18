@@ -2,13 +2,23 @@ package com.eyecode.workbench.editor;
 
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
+import com.eyecode.editor.v2.language.java.model.JavaFileModel;
+import com.eyecode.editor.v2.language.java.parser.JavaParser;
 import com.eyecode.eventbus.EventBus;
 import com.eyecode.eventbus.events.EditorActivatedEvent;
 import com.eyecode.eventbus.events.FileClosedEvent;
 import com.eyecode.eventbus.events.FileOpenedEvent;
 import com.eyecode.filesystem.FileSystemService;
+import com.eyecode.language.Token;
 import com.eyecode.language.java.JavaLexerService;
 import com.eyecode.language.java.LexerEventBridge;
+import com.eyecode.language.java.LexerSnapshot;
+import com.eyecode.language.semantic.DefinitionAtCaretResolver;
+import com.eyecode.language.semantic.DefinitionLocation;
+import com.eyecode.language.symbol.SemanticModelSnapshot;
+import com.eyecode.language.symbol.SymbolTable;
+import com.eyecode.language.symbol.SymbolTableBuilder;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -25,6 +35,7 @@ public final class EditorManager {
     private final FileSystemService fileSystemService;
     private final EditorViewFactory viewFactory;
     private final JavaLexerService lexerService = new JavaLexerService();
+    private final DefinitionAtCaretResolver definitionAtCaretResolver = new DefinitionAtCaretResolver();
     private final LexerEventBridge lexerEventBridge;
 
     private final WorkspaceState workspaceState = new WorkspaceState();
@@ -184,6 +195,25 @@ public final class EditorManager {
         return selectionService;
     }
 
+    public Optional<DefinitionLocation> resolveDefinition(String sessionId, int caretOffset) {
+        if (sessionId == null) {
+            return Optional.empty();
+        }
+        EditorDocument document = documentsBySession.get(sessionId);
+        if (document == null) {
+            return Optional.empty();
+        }
+        String source = document.getText();
+        if (caretOffset < 0 || caretOffset > source.length()) {
+            return Optional.empty();
+        }
+        Optional<SymbolTable> symbolTable = buildSymbolTable(document);
+        if (symbolTable.isEmpty()) {
+            return Optional.empty();
+        }
+        return definitionAtCaretResolver.resolve(source, caretOffset, symbolTable.get());
+    }
+
     private EditorSession createSession(Path file, EditorDocument document, EditorBuffer buffer) {
         String sessionId = UUID.randomUUID().toString();
         String documentId = UUID.randomUUID().toString();
@@ -197,6 +227,7 @@ public final class EditorManager {
         viewsBySession.put(sessionId, view);
         sessionsById.put(sessionId, session);
 
+        view.bindNavigation(this, sessionId);
         selectionService.bind(session, buffer);
         workspaceState.addSession(session);
         session.setState(SessionState.VISIBLE);
@@ -211,5 +242,27 @@ public final class EditorManager {
     private java.io.File fileOf(EditorSession session) {
         Path file = session.getFile();
         return file != null ? file.toFile() : null;
+    }
+
+    private Optional<SymbolTable> buildSymbolTable(EditorDocument document) {
+        try {
+            String source = document.getText();
+            LexerSnapshot lexerSnapshot = lexerService.lex(document.snapshot());
+            List<Token> tokens = lexerSnapshot.tokens();
+            JavaTokenStream stream = new JavaTokenStream(tokens, source);
+            JavaFileModel model = new JavaParser(stream).parse();
+            String sourceFile = document.getSourceFile() != null
+                    ? document.getSourceFile().getFileName().toString()
+                    : "Untitled.java";
+            SemanticModelSnapshot semantic = new SymbolTableBuilder(
+                    model,
+                    document.currentVersion(),
+                    sourceFile,
+                    source
+            ).build();
+            return Optional.of(semantic.symbolTable());
+        } catch (RuntimeException ignored) {
+            return Optional.empty();
+        }
     }
 }

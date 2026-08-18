@@ -9,6 +9,8 @@ import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.editor.v2.EditorPosition;
 import com.eyecode.editor.v2.EditorSelection;
+import com.eyecode.language.semantic.DefinitionLocation;
+import com.eyecode.workbench.editor.EditorManager;
 import org.fxmisc.richtext.CodeArea;
 import org.reactfx.Subscription;
 
@@ -32,6 +34,8 @@ public final class JavaFxEditorController {
     private final DocumentChangeListener documentChangeListener;
     private final EditorBuffer.CaretChangeListener caretChangeListener;
     private final EditorBuffer.SelectionChangeListener selectionChangeListener;
+    private EditorManager manager;
+    private String sessionId;
     private boolean syncing;
 
     public JavaFxEditorController(JavaFxEditor editor, EditorBuffer buffer) {
@@ -49,6 +53,7 @@ public final class JavaFxEditorController {
         buffer.getDocument().addDocumentChangeListener(documentChangeListener);
         buffer.addCaretChangeListener(caretChangeListener);
         buffer.addSelectionChangeListener(selectionChangeListener);
+        editor.setGoToDefinitionAction(this::goToDefinition);
     }
 
     public void loadDocument() {
@@ -126,6 +131,24 @@ public final class JavaFxEditorController {
 
     private int offsetOf(EditorPosition position) {
         return buffer.getDocument().offsetOf(position);
+    }
+
+    public void bindNavigation(EditorManager manager, String sessionId) {
+        this.manager = manager;
+        this.sessionId = sessionId;
+    }
+
+    public boolean goToDefinition() {
+        if (manager == null || sessionId == null) {
+            return false;
+        }
+        int caretOffset = editor.getCodeArea().getCaretPosition();
+        Optional<DefinitionLocation> location = manager.resolveDefinition(sessionId, caretOffset);
+        if (location.isEmpty()) {
+            return false;
+        }
+        editor.revealOffset(location.get().declarationRange().startOffset());
+        return true;
     }
 
     public void syncToDocument() {

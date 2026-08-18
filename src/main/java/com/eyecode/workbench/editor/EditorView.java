@@ -6,5 +6,8 @@ public interface EditorView {
 
     void refreshFromDocument();
 
+    default void bindNavigation(EditorManager manager, String sessionId) {
+    }
+
     void dispose();
 }

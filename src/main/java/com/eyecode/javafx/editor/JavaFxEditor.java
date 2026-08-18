@@ -13,6 +13,8 @@ import javafx.scene.layout.Priority;
 import org.fxmisc.flowless.VirtualizedScrollPane;
 import org.fxmisc.richtext.CodeArea;
 
+import java.util.function.BooleanSupplier;
+
 public final class JavaFxEditor extends HBox {
 
     private final EditorBuffer buffer;
@@ -20,6 +22,7 @@ public final class JavaFxEditor extends HBox {
     private final JavaFxEditorInputAdapter inputAdapter;
     private final CodeArea codeArea;
     private final VirtualizedScrollPane<CodeArea> scrollPane;
+    private BooleanSupplier goToDefinitionAction;
 
     public JavaFxEditor(EditorBuffer buffer) {
         this(buffer, defaultSmartEditingPipeline());
@@ -55,8 +58,24 @@ public final class JavaFxEditor extends HBox {
     }
 
     private void installSmartEditingFilters() {
+        codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleGoToDefinition);
         codeArea.addEventFilter(KeyEvent.KEY_TYPED, this::handleSmartEditing);
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleSmartEditing);
+    }
+
+    private void handleGoToDefinition(KeyEvent event) {
+        handleGoToDefinitionShortcut(event);
+    }
+
+    boolean handleGoToDefinitionShortcut(KeyEvent event) {
+        if (!isGoToDefinitionKey(event)) {
+            return false;
+        }
+        if (goToDefinition()) {
+            event.consume();
+            return true;
+        }
+        return false;
     }
 
     private void handleSmartEditing(KeyEvent event) {
@@ -72,6 +91,39 @@ public final class JavaFxEditor extends HBox {
         if (result.isHandled()) {
             event.consume();
         }
+    }
+
+    private boolean isGoToDefinitionKey(KeyEvent event) {
+        return event.getEventType() == KeyEvent.KEY_PRESSED
+                && event.getCode() != null
+                && event.getCode().getName().equalsIgnoreCase("B")
+                && event.isControlDown()
+                && !event.isShiftDown()
+                && !event.isAltDown()
+                && !event.isMetaDown();
+    }
+
+    public void setGoToDefinitionAction(BooleanSupplier goToDefinitionAction) {
+        this.goToDefinitionAction = goToDefinitionAction;
+    }
+
+    public boolean goToDefinition() {
+        return goToDefinitionAction != null && goToDefinitionAction.getAsBoolean();
+    }
+
+    public void revealOffset(int offset) {
+        if (offset < 0) {
+            return;
+        }
+        String text = codeArea.getText();
+        int clamped = Math.min(offset, Math.max(0, text.length()));
+        try {
+            buffer.moveCaret(buffer.getDocument().positionOf(clamped));
+        } catch (RuntimeException ignored) {
+            return;
+        }
+        codeArea.moveTo(clamped);
+        codeArea.requestFollowCaret();
     }
 
     public CodeArea getCodeArea() {

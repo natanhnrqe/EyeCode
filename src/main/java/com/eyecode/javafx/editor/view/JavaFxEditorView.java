@@ -2,6 +2,7 @@ package com.eyecode.javafx.editor.view;
 
 import com.eyecode.javafx.editor.JavaFxEditor;
 import com.eyecode.javafx.editor.JavaFxEditorController;
+import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorView;
 import javafx.scene.Node;
 
@@ -35,6 +36,11 @@ public final class JavaFxEditorView implements EditorView {
     @Override
     public void refreshFromDocument() {
         controller.loadDocument();
+    }
+
+    @Override
+    public void bindNavigation(EditorManager manager, String sessionId) {
+        controller.bindNavigation(manager, sessionId);
     }
 
     @Override
