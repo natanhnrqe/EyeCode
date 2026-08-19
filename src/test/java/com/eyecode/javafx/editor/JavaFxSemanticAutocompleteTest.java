@@ -72,6 +72,102 @@ class JavaFxSemanticAutocompleteTest {
     }
 
     @Test
+    void ctrlSpaceWithEmptyDocumentRequestsCompletion() throws Exception {
+        runInFx("|", "", harness -> {
+            assertTrue(harness.controller().handleCompletionEvent(ctrlSpace()));
+            List<String> labels = harness.buffer().getCompletionSnapshot().getItems().stream()
+                    .map(CompletionItem::getLabel)
+                    .toList();
+            assertFalse(labels.isEmpty());
+            assertTrue(labels.contains("class"));
+            assertEquals(0, harness.popup().selectedIndex());
+        });
+    }
+
+    @Test
+    void ctrlSpaceWithEmptyPrefixInsideMethodShowsInScopeCandidates() throws Exception {
+        runInFx("""
+                class Example {
+                    int field;
+                    void helper() { }
+                    void test(int parameter) {
+                        |
+                    }
+                }
+                """, "", harness -> {
+            assertTrue(harness.controller().handleCompletionEvent(ctrlSpace()));
+            List<String> labels = harness.buffer().getCompletionSnapshot().getItems().stream()
+                    .map(CompletionItem::getLabel)
+                    .toList();
+            assertTrue(labels.contains("parameter"));
+            assertTrue(labels.contains("field"));
+            assertTrue(labels.contains("helper"));
+            assertTrue(labels.contains("if"));
+            assertTrue(labels.contains("sout"));
+        });
+    }
+
+    @Test
+    void ctrlSpaceAfterWhitespaceStillOpensCompletion() throws Exception {
+        runInFx("""
+                class Example {
+                    int field;
+                    void test(int parameter) {
+
+                        |
+                    }
+                }
+                """, "", harness -> {
+            assertTrue(harness.controller().handleCompletionEvent(ctrlSpace()));
+            assertFalse(harness.buffer().getCompletionSnapshot().isEmpty());
+            assertTrue(harness.popup().hasSuggestionList());
+            assertEquals(0, harness.popup().selectedIndex());
+        });
+    }
+
+    @Test
+    void ctrlSpaceInQualifiedStaticContextSupportsEmptyTerminalPrefix() throws Exception {
+        runInFx("""
+                class Helper {
+                    static int count;
+                    static void ping() { }
+                    int hidden;
+                }
+                class Example {
+                    void test() {
+                        Helper.|
+                    }
+                }
+                """, "", harness -> {
+            assertTrue(harness.controller().handleCompletionEvent(ctrlSpace()));
+            List<String> labels = harness.buffer().getCompletionSnapshot().getItems().stream()
+                    .map(CompletionItem::getLabel)
+                    .toList();
+            assertTrue(labels.contains("count"));
+            assertTrue(labels.contains("ping"));
+            assertFalse(labels.contains("hidden"));
+        });
+    }
+
+    @Test
+    void ctrlSpaceInUnsupportedObjectQualifiedContextRemainsConservative() throws Exception {
+        runInFx("""
+                class Helper {
+                    void ping() { }
+                }
+                class Example {
+                    void test() {
+                        Helper helper = new Helper();
+                        helper.|
+                    }
+                }
+                """, "", harness -> {
+            assertTrue(harness.controller().handleCompletionEvent(ctrlSpace()));
+            assertTrue(harness.buffer().getCompletionSnapshot().isEmpty());
+        });
+    }
+
+    @Test
     void detailPaneTracksSelectedItem() throws Exception {
         runInFx("""
                 class Example {
@@ -238,6 +334,18 @@ class JavaFxSemanticAutocompleteTest {
     }
 
     @Test
+    void charLiteralSuppressesCompletion() throws Exception {
+        runInFx("""
+                class Example {
+                    char value = '|';
+                }
+                """, "", harness -> {
+            harness.controller().invokeCompletion(true);
+            assertTrue(harness.buffer().getCompletionSnapshot().isEmpty());
+        });
+    }
+
+    @Test
     void stringSuppressesCompletion() throws Exception {
         runInFx("""
                 class Example {
@@ -267,25 +375,55 @@ class JavaFxSemanticAutocompleteTest {
         });
     }
 
+    @Test
+    void repeatedCtrlSpaceWithEmptyPrefixRemainsDeterministic() throws Exception {
+        runInFx("""
+                class Example {
+                    int field;
+                    void test(int parameter) {
+                        |
+                    }
+                }
+                """, "", harness -> {
+            assertTrue(harness.controller().handleCompletionEvent(ctrlSpace()));
+            List<String> first = harness.buffer().getCompletionSnapshot().getItems().stream()
+                    .map(CompletionItem::getLabel)
+                    .toList();
+
+            assertTrue(harness.controller().handleCompletionEvent(ctrlSpace()));
+            List<String> second = harness.buffer().getCompletionSnapshot().getItems().stream()
+                    .map(CompletionItem::getLabel)
+                    .toList();
+
+            assertEquals(first, second);
+        });
+    }
+
     private static void runInFx(String source, String caretToken, ThrowingConsumer<TestHarness> assertions) throws Exception {
         CountDownLatch done = new CountDownLatch(1);
         AtomicReference<Throwable> failure = new AtomicReference<>();
         Platform.runLater(() -> {
             JavaFxEditorView view = null;
             try {
+                int markerOffset = source.indexOf('|');
+                String effectiveSource = markerOffset >= 0
+                        ? source.substring(0, markerOffset) + source.substring(markerOffset + 1)
+                        : source;
                 EditorManager manager = new EditorManager(
                         new EventBus(),
                         new NoOpFileSystemService(),
                         new JavaFxEditorViewFactory()
                 );
-                EditorSession session = manager.openDocument(Path.of("Test.java"), source);
+                EditorSession session = manager.openDocument(Path.of("Test.java"), effectiveSource);
                 view = (JavaFxEditorView) manager.getView(session.getSessionId()).orElseThrow();
                 JavaFxEditor editor = view.getEditor();
                 assertNotNull(editor);
                 new Scene(editor, 800, 600);
                 editor.applyCss();
                 editor.layout();
-                int caretOffset = editor.getText().lastIndexOf(caretToken) + caretToken.length();
+                int caretOffset = markerOffset >= 0
+                        ? markerOffset
+                        : editor.getText().lastIndexOf(caretToken) + caretToken.length();
                 editor.getCodeArea().moveTo(caretOffset);
                 editor.getCodeArea().requestFocus();
                 assertions.accept(new TestHarness(view, manager.getBuffer(session.getSessionId()).orElseThrow()));

@@ -42,15 +42,20 @@ public final class SemanticCompletionProvider implements CompletionProvider {
 
     @Override
     public CompletionSnapshot complete(LanguageContext context) {
+        return complete(context, false);
+    }
+
+    @Override
+    public CompletionSnapshot complete(LanguageContext context, boolean manual) {
         if (context == null || isTriviaContext(context)) {
             return CompletionSnapshot.empty();
         }
         Optional<SemanticModelSnapshot> semantic = semanticModelBuilder.build(context.getDocument());
         if (semantic.isEmpty()) {
-            return fallbackRegistryItems(context);
+            return fallbackRegistryItems(context, manual);
         }
         CompletionQuery query = completionQuery(context);
-        if (!query.qualified() && query.prefix().isEmpty()) {
+        if (!query.qualified() && query.prefix().isEmpty() && !manual) {
             return CompletionSnapshot.empty();
         }
         SymbolTable table = semantic.get().symbolTable();
@@ -63,9 +68,9 @@ public final class SemanticCompletionProvider implements CompletionProvider {
         return new CompletionSnapshot(List.copyOf(items.values()));
     }
 
-    private CompletionSnapshot fallbackRegistryItems(LanguageContext context) {
+    private CompletionSnapshot fallbackRegistryItems(LanguageContext context, boolean manual) {
         String prefix = CompletionPrefixResolver.resolvePrefix(context);
-        if (prefix.isEmpty()) {
+        if (prefix.isEmpty() && !manual) {
             return CompletionSnapshot.empty();
         }
         List<CompletionItem> items = registry.getSymbols().stream()

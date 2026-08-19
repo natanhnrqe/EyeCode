@@ -12,12 +12,22 @@ public final class JavaKnowledgeBaseProvider implements CompletionProvider {
 
     @Override
     public CompletionSnapshot complete(LanguageContext context) {
+        return complete(context, false);
+    }
+
+    @Override
+    public CompletionSnapshot complete(LanguageContext context, boolean manual) {
+        if (CompletionPrefixResolver.isQualifiedContext(context)) {
+            return CompletionSnapshot.empty();
+        }
         String prefix = CompletionPrefixResolver.resolvePrefix(context);
-        if (prefix.isEmpty()) {
+        if (prefix.isEmpty() && !manual) {
             return CompletionSnapshot.empty();
         }
 
-        List<CompletionItem> items = JavaKnowledgeBase.findByPrefix(prefix);
+        List<CompletionItem> items = prefix.isEmpty()
+                ? JavaKnowledgeBase.findByPrefix("")
+                : JavaKnowledgeBase.findByPrefix(prefix);
         return new CompletionSnapshot(items);
     }
 }

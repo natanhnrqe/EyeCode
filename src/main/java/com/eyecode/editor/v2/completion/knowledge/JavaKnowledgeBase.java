@@ -345,8 +345,11 @@ public final class JavaKnowledgeBase {
     }
 
     public static List<CompletionItem> findByPrefix(String prefix) {
-        if (prefix == null || prefix.isEmpty()) {
+        if (prefix == null) {
             return Collections.emptyList();
+        }
+        if (prefix.isEmpty()) {
+            return Collections.unmodifiableList(new ArrayList<>(ENTRIES.values()));
         }
         List<CompletionItem> result = new ArrayList<>();
         for (CompletionItem item : ENTRIES.values()) {

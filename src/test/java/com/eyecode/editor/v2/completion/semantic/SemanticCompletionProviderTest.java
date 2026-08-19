@@ -7,6 +7,7 @@ import com.eyecode.editor.v2.completion.CompletionEngine;
 import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionSnapshot;
 import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
+import com.eyecode.editor.v2.completion.JavaSnippetProvider;
 import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
 import com.eyecode.editor.v2.language.LanguageContext;
 import com.eyecode.editor.v2.syntax.JavaSyntaxAnalyzer;
@@ -111,6 +112,70 @@ class SemanticCompletionProviderTest {
     }
 
     @Test
+    void explicitCompletionWithEmptyPrefixReturnsVisibleSymbolsKeywordsAndSnippets() {
+        CompletionEngine engine = new CompletionEngine(List.of(
+                new JavaKeywordCompletionProvider(),
+                new JavaSnippetProvider(),
+                provider
+        ));
+
+        CompletionSnapshot snapshot = engine.complete(context("""
+                class Example {
+                    int field;
+                    void helper() { }
+                    void test(int parameter) {
+                        |
+                    }
+                }
+                """), true);
+
+        List<String> labels = labels(snapshot);
+        assertTrue(labels.contains("parameter"));
+        assertTrue(labels.contains("field"));
+        assertTrue(labels.contains("helper"));
+        assertTrue(labels.contains("if"));
+        assertTrue(labels.contains("sout"));
+    }
+
+    @Test
+    void explicitCompletionAtClassBodyWithEmptyPrefixReturnsContextCandidates() {
+        CompletionEngine engine = new CompletionEngine(List.of(
+                new JavaKeywordCompletionProvider(),
+                new JavaSnippetProvider(),
+                provider
+        ));
+
+        CompletionSnapshot snapshot = engine.complete(context("""
+                class Example {
+                    |
+                }
+                """), true);
+
+        List<String> labels = labels(snapshot);
+        assertTrue(labels.contains("class"));
+        assertTrue(labels.contains("interface"));
+        assertTrue(labels.contains("record"));
+        assertTrue(labels.contains("Example"));
+    }
+
+    @Test
+    void explicitCompletionAfterWhitespaceReturnsVisibleSymbols() {
+        CompletionSnapshot snapshot = provider.complete(context("""
+                class Example {
+                    int field;
+                    void test(int parameter) {
+
+                        |
+                    }
+                }
+                """), true);
+
+        List<String> labels = labels(snapshot);
+        assertTrue(labels.contains("parameter"));
+        assertTrue(labels.contains("field"));
+    }
+
+    @Test
     void prefixFilteringKeepsOnlyMatchingItems() {
         CompletionSnapshot snapshot = provider.complete(context("""
                 class Example {
@@ -209,6 +274,94 @@ class SemanticCompletionProviderTest {
                 """));
 
         assertTrue(snapshot.isEmpty());
+    }
+
+    @Test
+    void explicitCompletionInsideCommentRemainsSuppressed() {
+        CompletionEngine engine = new CompletionEngine(List.of(
+                new JavaKeywordCompletionProvider(),
+                new JavaSnippetProvider(),
+                provider
+        ));
+
+        CompletionSnapshot snapshot = engine.complete(context("""
+                class Example {
+                    void test() {
+                        // |
+                    }
+                }
+                """), true);
+
+        assertTrue(snapshot.isEmpty());
+    }
+
+    @Test
+    void explicitCompletionInsideStringRemainsSuppressed() {
+        CompletionEngine engine = new CompletionEngine(List.of(
+                new JavaKeywordCompletionProvider(),
+                new JavaSnippetProvider(),
+                provider
+        ));
+
+        CompletionSnapshot snapshot = engine.complete(context("""
+                class Example {
+                    String value = "|";
+                }
+                """), true);
+
+        assertTrue(snapshot.isEmpty());
+    }
+
+    @Test
+    void explicitCompletionInsideCharLiteralRemainsSuppressed() {
+        CompletionEngine engine = new CompletionEngine(List.of(
+                new JavaKeywordCompletionProvider(),
+                new JavaSnippetProvider(),
+                provider
+        ));
+
+        CompletionSnapshot snapshot = engine.complete(context("""
+                class Example {
+                    char value = '|';
+                }
+                """), true);
+
+        assertTrue(snapshot.isEmpty());
+    }
+
+    @Test
+    void automaticCompletionWithEmptyPrefixRemainsUnchanged() {
+        CompletionEngine engine = new CompletionEngine(List.of(
+                new JavaKeywordCompletionProvider(),
+                new JavaSnippetProvider(),
+                provider
+        ));
+
+        CompletionSnapshot snapshot = engine.complete(context("""
+                class Example {
+                    void test() {
+                        |
+                    }
+                }
+                """), false);
+
+        assertTrue(snapshot.isEmpty());
+    }
+
+    @Test
+    void explicitCompletionOnEmptyDocumentIsAvailable() {
+        CompletionEngine engine = new CompletionEngine(List.of(
+                new JavaKeywordCompletionProvider(),
+                new JavaSnippetProvider(),
+                provider
+        ));
+
+        CompletionSnapshot snapshot = engine.complete(context("|"), true);
+
+        List<String> labels = labels(snapshot);
+        assertFalse(labels.isEmpty());
+        assertTrue(labels.contains("class"));
+        assertTrue(labels.contains("sout"));
     }
 
     private LanguageContext context(String sourceWithCaret) {

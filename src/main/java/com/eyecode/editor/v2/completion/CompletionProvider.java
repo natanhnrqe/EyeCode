@@ -5,4 +5,8 @@ import com.eyecode.editor.v2.language.LanguageContext;
 public interface CompletionProvider {
 
     CompletionSnapshot complete(LanguageContext context);
+
+    default CompletionSnapshot complete(LanguageContext context, boolean manual) {
+        return complete(context);
+    }
 }
