@@ -11,20 +11,30 @@ public final class HighlightPipeline {
 
     private final JavaSyntaxAnalyzer analyzer;
     private final JavaFxSyntaxRenderer renderer;
+    private SyntaxSnapshot latestSnapshot;
 
     public HighlightPipeline(CodeArea codeArea) {
         this.analyzer = new JavaSyntaxAnalyzer();
         this.renderer = new JavaFxSyntaxRenderer(codeArea);
+        this.latestSnapshot = new SyntaxSnapshot(java.util.List.of());
     }
 
-    public void refresh(EditorDocument document) {
-        if (document == null) return;
-        SyntaxSnapshot snapshot = analyzer.analyze(document);
-        renderer.render(snapshot);
+    public SyntaxSnapshot refresh(EditorDocument document) {
+        if (document == null) {
+            latestSnapshot = new SyntaxSnapshot(java.util.List.of());
+            return latestSnapshot;
+        }
+        latestSnapshot = analyzer.analyze(document);
+        renderer.render(latestSnapshot);
+        return latestSnapshot;
     }
 
-    public void refresh(EditorDocument document, Optional<?> change) {
-        refresh(document);
+    public SyntaxSnapshot refresh(EditorDocument document, Optional<?> change) {
+        return refresh(document);
+    }
+
+    public SyntaxSnapshot latestSnapshot() {
+        return latestSnapshot;
     }
 
     public void dispose() {

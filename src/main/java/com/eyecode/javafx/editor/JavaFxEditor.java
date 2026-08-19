@@ -14,6 +14,7 @@ import org.fxmisc.flowless.VirtualizedScrollPane;
 import org.fxmisc.richtext.CodeArea;
 
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 
 public final class JavaFxEditor extends HBox {
 
@@ -23,6 +24,7 @@ public final class JavaFxEditor extends HBox {
     private final CodeArea codeArea;
     private final VirtualizedScrollPane<CodeArea> scrollPane;
     private BooleanSupplier goToDefinitionAction;
+    private Predicate<KeyEvent> completionEventHandler;
 
     public JavaFxEditor(EditorBuffer buffer) {
         this(buffer, defaultSmartEditingPipeline());
@@ -58,9 +60,16 @@ public final class JavaFxEditor extends HBox {
     }
 
     private void installSmartEditingFilters() {
+        codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleCompletionEvent);
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleGoToDefinition);
         codeArea.addEventFilter(KeyEvent.KEY_TYPED, this::handleSmartEditing);
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleSmartEditing);
+    }
+
+    private void handleCompletionEvent(KeyEvent event) {
+        if (completionEventHandler != null && completionEventHandler.test(event)) {
+            event.consume();
+        }
     }
 
     private void handleGoToDefinition(KeyEvent event) {
@@ -79,6 +88,9 @@ public final class JavaFxEditor extends HBox {
     }
 
     private void handleSmartEditing(KeyEvent event) {
+        if (event.isConsumed()) {
+            return;
+        }
         int caretOffset = codeArea.getCaretPosition();
         javafx.scene.control.IndexRange selection = codeArea.getSelection();
         EditorInputEvent input = inputAdapter.adapt(
@@ -105,6 +117,10 @@ public final class JavaFxEditor extends HBox {
 
     public void setGoToDefinitionAction(BooleanSupplier goToDefinitionAction) {
         this.goToDefinitionAction = goToDefinitionAction;
+    }
+
+    public void setCompletionEventHandler(Predicate<KeyEvent> completionEventHandler) {
+        this.completionEventHandler = completionEventHandler;
     }
 
     public boolean goToDefinition() {

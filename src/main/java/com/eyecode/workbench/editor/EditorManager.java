@@ -2,23 +2,18 @@ package com.eyecode.workbench.editor;
 
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
-import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
-import com.eyecode.editor.v2.language.java.model.JavaFileModel;
-import com.eyecode.editor.v2.language.java.parser.JavaParser;
 import com.eyecode.eventbus.EventBus;
 import com.eyecode.eventbus.events.EditorActivatedEvent;
 import com.eyecode.eventbus.events.FileClosedEvent;
 import com.eyecode.eventbus.events.FileOpenedEvent;
 import com.eyecode.filesystem.FileSystemService;
-import com.eyecode.language.Token;
 import com.eyecode.language.java.JavaLexerService;
 import com.eyecode.language.java.LexerEventBridge;
-import com.eyecode.language.java.LexerSnapshot;
 import com.eyecode.language.semantic.DefinitionAtCaretResolver;
 import com.eyecode.language.semantic.DefinitionLocation;
+import com.eyecode.language.symbol.DocumentSemanticModelBuilder;
 import com.eyecode.language.symbol.SemanticModelSnapshot;
 import com.eyecode.language.symbol.SymbolTable;
-import com.eyecode.language.symbol.SymbolTableBuilder;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -35,6 +30,7 @@ public final class EditorManager {
     private final FileSystemService fileSystemService;
     private final EditorViewFactory viewFactory;
     private final JavaLexerService lexerService = new JavaLexerService();
+    private final DocumentSemanticModelBuilder semanticModelBuilder = new DocumentSemanticModelBuilder(lexerService);
     private final DefinitionAtCaretResolver definitionAtCaretResolver = new DefinitionAtCaretResolver();
     private final LexerEventBridge lexerEventBridge;
 
@@ -245,24 +241,7 @@ public final class EditorManager {
     }
 
     private Optional<SymbolTable> buildSymbolTable(EditorDocument document) {
-        try {
-            String source = document.getText();
-            LexerSnapshot lexerSnapshot = lexerService.lex(document.snapshot());
-            List<Token> tokens = lexerSnapshot.tokens();
-            JavaTokenStream stream = new JavaTokenStream(tokens, source);
-            JavaFileModel model = new JavaParser(stream).parse();
-            String sourceFile = document.getSourceFile() != null
-                    ? document.getSourceFile().getFileName().toString()
-                    : "Untitled.java";
-            SemanticModelSnapshot semantic = new SymbolTableBuilder(
-                    model,
-                    document.currentVersion(),
-                    sourceFile,
-                    source
-            ).build();
-            return Optional.of(semantic.symbolTable());
-        } catch (RuntimeException ignored) {
-            return Optional.empty();
-        }
+        Optional<SemanticModelSnapshot> semantic = semanticModelBuilder.build(document);
+        return semantic.map(SemanticModelSnapshot::symbolTable);
     }
 }

@@ -36,6 +36,7 @@
     -eyecode-canvas:          rgb(38, 40, 44);
     -eyecode-card:            rgb(30, 31, 34);
     -eyecode-surface:         rgb(37, 38, 42);
+    -eyecode-autocomplete-bg: rgb(43, 43, 43);
     -eyecode-border:          rgba(255, 255, 255, 0.05);
     -eyecode-border-strong:   rgba(255, 255, 255, 0.12);
     -eyecode-hover:           rgba(255, 255, 255, 0.06);
@@ -680,6 +681,146 @@
 .choice-box-popup .list-view .list-cell:focused {
     -fx-background-color: -eyecode-accent-soft;
     -fx-text-fill: -eyecode-text;
+}
+
+.completion-popup {
+    -fx-background-color: -eyecode-autocomplete-bg;
+    -fx-background-radius: 10;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.45), 18, 0.32, 0, 8);
+}
+
+.completion-popup-content {
+    -fx-background-color: transparent;
+}
+
+.completion-list-shell {
+    -fx-background-color: transparent;
+    -fx-padding: 8 8 8 8;
+}
+
+.completion-list {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-border-width: 0;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.completion-list .virtual-flow,
+.completion-list .clipped-container,
+.completion-list .sheet,
+.completion-list .sheet .cell {
+    -fx-background-color: transparent;
+}
+
+.completion-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-text-fill: -eyecode-text;
+}
+
+.completion-list .list-cell:filled:selected,
+.completion-list .list-cell:filled:selected:focused,
+.completion-list .list-cell:focused {
+    -fx-background-color: transparent;
+}
+
+.completion-row-shell {
+    -fx-padding: 1 2 1 2;
+}
+
+.completion-row {
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 4 7 4 7;
+}
+
+.completion-icon {
+    -fx-alignment: CENTER;
+}
+
+.completion-primary {
+    -fx-text-fill: -eyecode-text;
+}
+
+.completion-secondary {
+    -fx-text-fill: -eyecode-text-secondary;
+}
+
+.completion-origin {
+    -fx-text-fill: -eyecode-muted;
+}
+
+.completion-return-type {
+    -fx-text-fill: -eyecode-accent-bright;
+    -fx-alignment: CENTER_RIGHT;
+}
+
+.completion-separator {
+    -fx-padding: 0;
+}
+
+.completion-separator .line {
+    -fx-border-color: -eyecode-border-strong;
+    -fx-background-color: -eyecode-border-strong;
+}
+
+.completion-doc-scroll,
+.completion-doc-scroll > .viewport {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-border-width: 0;
+}
+
+.completion-doc-pane {
+    -fx-background-color: transparent;
+    -fx-padding: 10 12 11 12;
+    -fx-spacing: 6;
+}
+
+.completion-title {
+    -fx-text-fill: -eyecode-text;
+}
+
+.completion-return {
+    -fx-text-fill: -eyecode-accent-bright;
+}
+
+.completion-doc-text {
+    -fx-text-fill: -eyecode-text-secondary;
+    -fx-line-spacing: 1;
+}
+
+.completion-example-title,
+.completion-owner-title {
+    -fx-text-fill: -eyecode-muted;
+}
+
+.completion-owner {
+    -fx-text-fill: -eyecode-text-dim;
+}
+
+.completion-example-code {
+    -fx-text-fill: rgb(106, 171, 115);
+    -fx-background-color: -eyecode-surface;
+    -fx-background-radius: 0;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-width: 1;
+    -fx-border-radius: 0;
+    -fx-padding: 8 10 8 10;
+}
+
+.completion-list .scroll-bar:horizontal {
+    -fx-opacity: 0;
+    -fx-pref-height: 0;
+    -fx-min-height: 0;
+    -fx-max-height: 0;
 }
 
 /* ============================================================

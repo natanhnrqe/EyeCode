@@ -26,6 +26,7 @@ public final class EditorCommandContext {
     private DocumentTransaction transaction;
     private EditorPosition targetCaret;
     private EditorSelection targetSelection;
+    private boolean selectionExplicitlySet;
 
     public EditorCommandContext(EditorBuffer buffer) {
         if (buffer == null) {
@@ -36,6 +37,7 @@ public final class EditorCommandContext {
         this.selection = buffer.getSelection();
         this.targetCaret = caret;
         this.targetSelection = selection;
+        this.selectionExplicitlySet = false;
     }
 
     public DocumentSnapshot snapshot() {
@@ -72,12 +74,16 @@ public final class EditorCommandContext {
     public void moveCaret(EditorPosition position) {
         if (position != null) {
             targetCaret = position;
+            if (!selectionExplicitlySet) {
+                targetSelection = new EditorSelection(position, position);
+            }
         }
     }
 
     public void setSelection(EditorSelection newSelection) {
         if (newSelection != null) {
             targetSelection = newSelection;
+            selectionExplicitlySet = true;
         }
     }
 
