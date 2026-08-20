@@ -40,6 +40,13 @@
         </dependency>
 
         <dependency>
+            <groupId>com.techsenger.ceffx</groupId>
+            <artifactId>ceffx-core</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+
+
+        <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>
             <version>3.4</version>
@@ -125,7 +132,7 @@
         <dependency>
             <groupId>org.fxmisc.richtext</groupId>
             <artifactId>richtextfx</artifactId>
-            <version>0.11.3</version>
+            <version>0.11.7</version>
         </dependency>
 
         <dependency>
@@ -168,18 +175,32 @@
                 <configuration>
                     <mainClass>com.eyecode.javafx.FxApplication</mainClass>
                     <options>
+
+                        <!-- CEFFX / Chromium native libraries -->
+                        <option>-Djava.library.path=${project.basedir}/chromium</option>
+
+                        <!-- Native access required by CEFFX / JDK 25+ -->
+                        <option>--enable-native-access=javafx.graphics</option>
+                        <option>--enable-native-access=ALL-UNNAMED</option>
+
                         <option>--add-opens</option>
                         <option>java.desktop/sun.awt=ALL-UNNAMED</option>
+
                         <option>--add-opens</option>
                         <option>java.desktop/sun.java2d=ALL-UNNAMED</option>
+
                         <option>--add-opens</option>
                         <option>java.desktop/sun.font=ALL-UNNAMED</option>
+
                         <option>--add-opens</option>
                         <option>javafx.graphics/javafx.scene=ALL-UNNAMED</option>
+
                         <option>--add-opens</option>
                         <option>javafx.controls/javafx.scene.control=ALL-UNNAMED</option>
+
                         <option>--add-opens</option>
                         <option>javafx.graphics/javafx.stage=ALL-UNNAMED</option>
+
                     </options>
                 </configuration>
             </plugin>

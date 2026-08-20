@@ -4,11 +4,9 @@ import com.eyecode.editor.intelligence.pipeline.EditorCommand;
 import com.eyecode.editor.intelligence.pipeline.EditorCommandContext;
 
 /**
- * Smart Backspace dedent: removes exactly the leading whitespace that ends at
- * the caret so the caret returns to the previous indentation unit. A single
- * leading tab counts as one full unit; otherwise up to {@code indentSize}
- * leading spaces are removed (misaligned partial indentation collapses to the
- * previous level, leaving at most {@code indentSize - 1} residual spaces).
+ * Smart Backspace dedent: removes leading whitespace back to the previous
+ * indentation boundary. A single leading tab counts as one full unit, while
+ * misaligned spaces remove only the distance needed to reach that boundary.
  * <p>
  * The strategy guarantees the deleted region is pure whitespace, so the delete
  * stays inside the single pipeline transaction and undoes as one step.
@@ -47,13 +45,32 @@ final class SmartBackspaceCommand implements EditorCommand {
         if (caret <= 0 || text == null || text.isEmpty()) {
             return 0;
         }
-        if (text.charAt(caret - 1) == '\t') {
-            return 1;
+        int lineStart = caret;
+        while (lineStart > 0 && text.charAt(lineStart - 1) != '\n' && text.charAt(lineStart - 1) != '\r') {
+            lineStart--;
         }
-        int start = caret;
-        while (start > 0 && text.charAt(start - 1) == ' ') {
-            start--;
+
+        int size = Math.max(1, indentSize);
+        int visualColumn = 0;
+        for (int index = lineStart; index < caret; index++) {
+            char current = text.charAt(index);
+            visualColumn = current == '\t'
+                    ? visualColumn + size - (visualColumn % size)
+                    : visualColumn + 1;
         }
-        return Math.min(indentSize, caret - start);
+
+        int targetColumn = ((Math.max(1, visualColumn) - 1) / size) * size;
+        visualColumn = 0;
+        for (int index = lineStart; index < caret; index++) {
+            char current = text.charAt(index);
+            int nextColumn = current == '\t'
+                    ? visualColumn + size - (visualColumn % size)
+                    : visualColumn + 1;
+            if (nextColumn > targetColumn) {
+                return caret - index;
+            }
+            visualColumn = nextColumn;
+        }
+        return 0;
     }
 }

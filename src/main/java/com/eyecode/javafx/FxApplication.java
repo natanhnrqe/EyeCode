@@ -1,5 +1,6 @@
 package com.eyecode.javafx;
 
+import com.eyecode.javafx.ceffx.CeffxRuntime;
 import com.eyecode.javafx.ui.FxMainWindow;
 import javafx.application.Application;
 import javafx.stage.Stage;
@@ -7,6 +8,7 @@ import javafx.stage.Stage;
 public final class FxApplication extends Application {
 
     public static void main(String[] args) {
+        CeffxRuntime.startup(args);
         launch(args);
     }
 

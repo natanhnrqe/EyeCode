@@ -42,6 +42,13 @@ public final class WorkspaceContentFactory implements ToolWindowContentFactory {
         return cache.get(toolWindowId);
     }
 
+    public void dispose() {
+        Node preview = cache.get("preview");
+        if (preview instanceof PreviewToolWindowContent content) {
+            content.dispose();
+        }
+    }
+
     private Node build(String id) {
         return switch (id) {
             case "project" -> new ProjectToolWindowContent(ProjectModel.fromDirectory(projectRoot));

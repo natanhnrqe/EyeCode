@@ -100,6 +100,17 @@ class SmartBackspaceStrategyTest {
     }
 
     @Test
+    void caretInsidePartialLeadingWhitespaceSnapsToPreviousIndentBoundary() {
+        EditorBuffer buffer = buffer("      foo");
+        caretAt(buffer, 6);
+
+        pipeline().process(backspace(buffer), new EditorCommandContext(buffer));
+
+        assertEquals("    foo", buffer.getDocument().getText());
+        assertEquals(4, caretOffset(buffer));
+    }
+
+    @Test
     void caretAtLineStartIsNotClaimed() {
         EditorBuffer buffer = buffer("foo");
         caretAt(buffer, 0);

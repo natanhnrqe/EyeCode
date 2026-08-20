@@ -389,6 +389,7 @@ public final class JavaFxEditorController {
     public void dispose() {
         completionPopup.hide();
         changeSubscription.unsubscribe();
+        editor.indentGuideLayer().dispose();
         buffer.getDocument().removeDocumentChangeListener(documentChangeListener);
         buffer.removeCaretChangeListener(caretChangeListener);
         buffer.removeSelectionChangeListener(selectionChangeListener);

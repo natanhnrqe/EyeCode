@@ -11,6 +11,8 @@ import java.util.function.IntFunction;
 
 public final class JavaFxGutterFactory implements IntFunction<Node> {
 
+    static final double GUTTER_WIDTH = 52;
+
     private final CodeArea codeArea;
 
     public JavaFxGutterFactory(CodeArea codeArea) {
@@ -22,9 +24,9 @@ public final class JavaFxGutterFactory implements IntFunction<Node> {
         Label label = new Label(Integer.toString(lineIndex + 1));
         label.getStyleClass().add("lineno");
         label.setAlignment(Pos.CENTER_LEFT);
-        label.setPrefWidth(48);
-        label.setMinWidth(48);
-        label.setMaxWidth(48);
+        label.setPrefWidth(GUTTER_WIDTH);
+        label.setMinWidth(GUTTER_WIDTH);
+        label.setMaxWidth(GUTTER_WIDTH);
         label.setPadding(new Insets(0, 6, 0, 8));
 
         if (lineIndex == codeArea.getCurrentParagraph()) {
@@ -33,13 +35,16 @@ public final class JavaFxGutterFactory implements IntFunction<Node> {
 
         ChangeListener<Number> listener = (obs, old, current) -> {
             boolean wasCurrent = old != null && old.intValue() == lineIndex;
-            boolean isCurrent  = current != null && current.intValue() == lineIndex;
-            if (wasCurrent == isCurrent) return;
+            boolean isCurrent = current != null && current.intValue() == lineIndex;
+            if (wasCurrent == isCurrent) {
+                return;
+            }
             label.getStyleClass().remove("lineno-current");
-            if (isCurrent) label.getStyleClass().add("lineno-current");
+            if (isCurrent) {
+                label.getStyleClass().add("lineno-current");
+            }
         };
         codeArea.currentParagraphProperty().addListener(listener);
-
         return label;
     }
 }

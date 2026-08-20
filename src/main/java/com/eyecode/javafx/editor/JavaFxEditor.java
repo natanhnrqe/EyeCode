@@ -10,6 +10,7 @@ import com.eyecode.editor.v2.EditorBuffer;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.StackPane;
 import org.fxmisc.flowless.VirtualizedScrollPane;
 import org.fxmisc.richtext.CodeArea;
 
@@ -23,6 +24,8 @@ public final class JavaFxEditor extends HBox {
     private final JavaFxEditorInputAdapter inputAdapter;
     private final CodeArea codeArea;
     private final VirtualizedScrollPane<CodeArea> scrollPane;
+    private final JavaFxIndentGuideLayer indentGuideLayer;
+    private final StackPane editorSurface;
     private BooleanSupplier goToDefinitionAction;
     private Predicate<KeyEvent> completionEventHandler;
 
@@ -46,13 +49,16 @@ public final class JavaFxEditor extends HBox {
 
         scrollPane = new VirtualizedScrollPane<>(codeArea);
         scrollPane.getStyleClass().add("editor-scroll-pane");
-        HBox.setHgrow(scrollPane, Priority.ALWAYS);
+        indentGuideLayer = new JavaFxIndentGuideLayer(codeArea);
+        editorSurface = new StackPane(indentGuideLayer, scrollPane);
+        editorSurface.getStyleClass().add("editor-surface");
+        HBox.setHgrow(editorSurface, Priority.ALWAYS);
 
         getStyleClass().add("editor-root");
         setMaxWidth(Double.MAX_VALUE);
         setMaxHeight(Double.MAX_VALUE);
 
-        getChildren().add(scrollPane);
+        getChildren().add(editorSurface);
     }
 
     private static TypingPipeline defaultSmartEditingPipeline() {
@@ -148,6 +154,10 @@ public final class JavaFxEditor extends HBox {
 
     public VirtualizedScrollPane<CodeArea> getScrollPane() {
         return scrollPane;
+    }
+
+    JavaFxIndentGuideLayer indentGuideLayer() {
+        return indentGuideLayer;
     }
 
     public String getText() {

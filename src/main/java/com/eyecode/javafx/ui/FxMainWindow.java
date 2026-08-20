@@ -1,5 +1,6 @@
 package com.eyecode.javafx.ui;
 
+import com.eyecode.javafx.ceffx.CeffxRuntime;
 import javafx.application.Platform;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
@@ -21,15 +22,11 @@ public final class FxMainWindow {
 
     public FxMainWindow(Stage stage) {
         this.stage = stage;
-        this.root = new FxRootLayout(() -> {
-            Platform.exit();
-            System.exit(0);
-        });
+        this.root = new FxRootLayout(this::shutdown);
 
         stage.initStyle(StageStyle.UNDECORATED);
         stage.setOnCloseRequest(e -> {
-            Platform.exit();
-            System.exit(0);
+            shutdown();
         });
         stage.setTitle(TITLE);
         stage.setMinWidth(MIN_WIDTH);
@@ -51,5 +48,12 @@ public final class FxMainWindow {
         stage.show();
         Region r = root;
         r.requestLayout();
+    }
+
+    private void shutdown() {
+        root.dispose();
+        CeffxRuntime.dispose();
+        Platform.exit();
+        System.exit(0);
     }
 }
