@@ -34,8 +34,10 @@ public final class LearningHtmlBuilder {
                 + "<script defer src=\"" + jsSrc + "\"></script>\n"
                 + "</head>\n"
                 + "<body class=\"learning-markdown\">\n"
+                + "<main class=\"learning-content\">\n"
                 + body
-                + "\n</body>\n"
+                + "\n</main>\n"
+                + "</body>\n"
                 + "</html>\n";
     }
 

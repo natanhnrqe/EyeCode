@@ -47,6 +47,10 @@ public final class WorkspaceContentFactory implements ToolWindowContentFactory {
         if (preview instanceof PreviewToolWindowContent content) {
             content.dispose();
         }
+        Node learning = cache.get("learn");
+        if (learning instanceof LearnToolWindowContent content) {
+            content.dispose();
+        }
     }
 
     private Node build(String id) {

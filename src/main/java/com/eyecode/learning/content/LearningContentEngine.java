@@ -13,6 +13,7 @@ import java.util.List;
 public final class LearningContentEngine {
 
     private final LearningResourceLoader resourceLoader;
+    private final LearningContentRepository contentRepository;
     private final LearningHtmlBuilder htmlBuilder;
     private final Parser parser;
     private final HtmlRenderer renderer;
@@ -23,6 +24,7 @@ public final class LearningContentEngine {
 
     public LearningContentEngine(LearningResourceLoader resourceLoader) {
         this.resourceLoader = resourceLoader;
+        contentRepository = new LearningContentRepository(resourceLoader);
         htmlBuilder = new LearningHtmlBuilder();
         MutableDataSet options = new MutableDataSet();
         options.set(Parser.EXTENSIONS, List.of(
@@ -44,6 +46,10 @@ public final class LearningContentEngine {
 
     public String loadHtml(String resourcePath) {
         return convert(loadMarkdown(resourcePath));
+    }
+
+    public String loadHtmlByIdentifier(String identifier) {
+        return convert(contentRepository.load(identifier));
     }
 
     private String renderBody(String markdown) {

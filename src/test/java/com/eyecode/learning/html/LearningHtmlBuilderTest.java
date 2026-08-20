@@ -20,7 +20,8 @@ class LearningHtmlBuilderTest {
         assertTrue(html.contains("rel=\"stylesheet\""));
         assertTrue(html.contains("href=\"data:text/css;base64,"));
         assertTrue(countOccurrences(html, "<script defer src=\"data:text/javascript;base64,") == 2);
-        assertTrue(html.contains("<body>"));
+        assertTrue(html.contains("<body class=\"learning-markdown\">"));
+        assertTrue(html.contains("<main class=\"learning-content\">"));
         assertTrue(html.contains("<h1>Hello</h1>"));
         assertFalse(html.contains("style=\""));
     }

@@ -1,14 +1,21 @@
 package com.eyecode.javafx.ui.toolwindow.content;
 
+import com.eyecode.learning.content.LearningContentEngine;
+
 public final class LearnToolWindowContent extends ToolWindowPlaceholderContent {
+
+    private static final String DEFAULT_LESSON = "java/basics/variables";
+
+    private final JavaFxCeffxLearningSurface learningSurface;
 
     public LearnToolWindowContent() {
         super("Learn");
-        addSection("Lesson Atual", placeholder("Nenhuma lição selecionada"));
-        addSection("Roadmap", placeholder("Roadmap em breve"));
-        addSection("Exercises", placeholder("Sem exercícios ainda"));
-        addSection("Flashcards", placeholder("Sem flashcards ainda"));
-        addSection("Professor IA", placeholder("Assistente disponível em breve"));
-        addSection("Resumo", placeholder("Resumo da lição em breve"));
+        learningSurface = new JavaFxCeffxLearningSurface();
+        learningSurface.showHtml(new LearningContentEngine().loadHtmlByIdentifier(DEFAULT_LESSON));
+        addSection("Lesson Atual", learningSurface);
+    }
+
+    public void dispose() {
+        learningSurface.dispose();
     }
 }

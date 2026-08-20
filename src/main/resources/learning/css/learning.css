@@ -13,8 +13,18 @@
     box-sizing: border-box;
 }
 
+:root {
+    --eyecode-bg: #2b2b2b;
+    --eyecode-surface: #313335;
+    --eyecode-text: #a9b7c6;
+    --eyecode-muted: #8f98a3;
+    --eyecode-accent: #589df6;
+    --eyecode-border: #3c3f41;
+    --eyecode-code-bg: #313335;
+}
+
 html {
-    background: transparent;
+    background: var(--eyecode-bg);
     color-scheme: dark;
 }
 
@@ -22,8 +32,8 @@ body.learning-markdown {
     margin: 0 auto;
     max-width: 920px;
     padding: 20px 24px 24px;
-    background: #2b2b2b;
-    color: #a9b7c6;
+    background: var(--eyecode-bg);
+    color: var(--eyecode-text);
     font-family: "Inter", "Segoe UI", "Noto Sans", "Emoji", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Segoe UI Symbol", sans-serif;
     font-size: 14px;
     line-height: 1.62;
@@ -39,6 +49,10 @@ body.learning-markdown > :first-child {
 
 body.learning-markdown > :last-child {
     margin-bottom: 0;
+}
+
+.learning-content {
+    min-height: 100%;
 }
 
 body.learning-markdown,
