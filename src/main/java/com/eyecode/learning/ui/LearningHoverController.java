@@ -20,6 +20,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.IntConsumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public final class LearningHoverController {
@@ -33,6 +34,7 @@ public final class LearningHoverController {
     private final HoverEngine hoverEngine;
     private final Supplier<SyntaxSnapshot> syntaxSupplier;
     private final LearningContextResolver resolver;
+    private final Function<String, String> contentLoader;
     private final IntConsumer moveListener;
     private final Runnable cancelListener;
 
@@ -52,6 +54,17 @@ public final class LearningHoverController {
             HoverEngine hoverEngine,
             Supplier<SyntaxSnapshot> syntaxSupplier
     ) {
+        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, LearningRenderer::renderLesson);
+    }
+
+    public LearningHoverController(
+            LearningHoverSurface surface,
+            LearningCardRenderer popup,
+            LearningHoverScheduler scheduler,
+            HoverEngine hoverEngine,
+            Supplier<SyntaxSnapshot> syntaxSupplier,
+            Function<String, String> contentLoader
+    ) {
         this.surface = surface;
         this.popup = popup;
         this.scheduler = scheduler;
@@ -59,6 +72,7 @@ public final class LearningHoverController {
         this.hoverEngine = hoverEngine;
         this.syntaxSupplier = syntaxSupplier;
         this.resolver = new DefaultLearningContextResolver();
+        this.contentLoader = Objects.requireNonNull(contentLoader, "contentLoader");
         this.moveListener = this::onOffsetChanged;
         this.cancelListener = this::cancelHover;
 
@@ -70,6 +84,7 @@ public final class LearningHoverController {
         scheduler.dispose();
         popupShownAt = -1L;
         popup.hide();
+        popup.dispose();
         surface.removeMoveListener(moveListener);
         surface.removeCancelListener(cancelListener);
         surface.dispose();
@@ -214,14 +229,15 @@ public final class LearningHoverController {
         }
 
         String resourcePath = page.getResourcePath();
-        if (resourcePath != null && resourcePath.equals(lastLessonPath)) {
+        String contentIdentifier = page.getId() != null ? page.getId() : resourcePath;
+        if (contentIdentifier != null && contentIdentifier.equals(lastLessonPath)) {
             return;
         }
 
         loadingContent = true;
-        lastLessonPath = resourcePath;
+        lastLessonPath = contentIdentifier;
 
-        String html = LearningRenderer.renderLesson(resourcePath);
+        String html = contentLoader.apply(contentIdentifier);
         popup.loadHtml(html);
     }
 

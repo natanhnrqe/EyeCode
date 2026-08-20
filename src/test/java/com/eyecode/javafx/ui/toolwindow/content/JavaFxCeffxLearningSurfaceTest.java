@@ -50,6 +50,36 @@ class JavaFxCeffxLearningSurfaceTest {
         });
     }
 
+    @Test
+    void latestContentBeforeAttachIsLoadedOnceWhenBrowserArrives() throws Exception {
+        TestBrowser browser = new TestBrowser();
+        runInFx(() -> {
+            JavaFxCeffxLearningSurface surface =
+                    new JavaFxCeffxLearningSurface(() -> browser, false);
+            surface.showHtml("<h1>Old</h1>");
+            surface.showHtml("<h1>Latest</h1>");
+
+            surface.attachForTest(browser);
+
+            assertEquals("<h1>Latest</h1>", browser.html);
+            assertEquals(1, browser.loadCount);
+            surface.dispose();
+        });
+    }
+
+    @Test
+    void disposeBeforeAttachDisposesALateBrowserImmediately() throws Exception {
+        TestBrowser browser = new TestBrowser();
+        runInFx(() -> {
+            JavaFxCeffxLearningSurface surface =
+                    new JavaFxCeffxLearningSurface(() -> browser, false);
+            surface.dispose();
+            surface.attachForTest(browser);
+
+            assertEquals(1, browser.disposeCount);
+        });
+    }
+
     private static void runInFx(ThrowingRunnable action) throws Exception {
         CountDownLatch done = new CountDownLatch(1);
         AtomicReference<Throwable> failure = new AtomicReference<>();
@@ -77,6 +107,7 @@ class JavaFxCeffxLearningSurfaceTest {
         private final Label node = new Label();
         private String html;
         private int disposeCount;
+        private int loadCount;
 
         @Override
         public javafx.scene.Node node() {
@@ -86,6 +117,7 @@ class JavaFxCeffxLearningSurfaceTest {
         @Override
         public void loadHtml(String html) {
             this.html = html;
+            loadCount++;
         }
 
         @Override

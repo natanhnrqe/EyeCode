@@ -27,10 +27,21 @@ import com.eyecode.editor.v2.completion.knowledge.JavaKnowledgeBaseProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticCompletionProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
 import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
+import com.eyecode.javafx.learning.JavaFxLearningCardRenderer;
+import com.eyecode.javafx.learning.JavaFxLearningHoverScheduler;
+import com.eyecode.javafx.learning.JavaFxLearningHoverSurface;
+import com.eyecode.javafx.ui.toolwindow.content.JavaFxCeffxLearningSurface;
 import com.eyecode.editor.v2.language.DefaultLanguageService;
 import com.eyecode.editor.v2.language.LanguageManager;
 import com.eyecode.language.semantic.DefinitionLocation;
 import com.eyecode.workbench.editor.EditorManager;
+import com.eyecode.learning.catalog.DefaultLearningCatalog;
+import com.eyecode.learning.concepts.DefaultLearningConceptEngine;
+import com.eyecode.learning.concepts.providers.ClassConceptProvider;
+import com.eyecode.learning.content.LearningContentEngine;
+import com.eyecode.learning.hover.ConceptHoverProvider;
+import com.eyecode.learning.hover.DefaultHoverEngine;
+import com.eyecode.learning.ui.LearningHoverController;
 import javafx.scene.control.IndexRange;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -60,6 +71,7 @@ public final class JavaFxEditorController {
     private final CompletionInsertionEngine completionInsertionEngine;
     private final SnippetInsertionEngine snippetInsertionEngine;
     private final JavaFxCompletionPopup completionPopup;
+    private final LearningHoverController learningHoverController;
     private final Subscription changeSubscription;
     private final DocumentChangeListener documentChangeListener;
     private final EditorBuffer.CaretChangeListener caretChangeListener;
@@ -85,6 +97,29 @@ public final class JavaFxEditorController {
         this.completionInsertionEngine = new CompletionInsertionEngine();
         this.snippetInsertionEngine = new SnippetInsertionEngine();
         this.completionPopup = new JavaFxCompletionPopup();
+
+        var learningCatalog = new DefaultLearningCatalog();
+        var learningConceptEngine = new DefaultLearningConceptEngine(
+                List.of(new ClassConceptProvider(learningCatalog)));
+        var learningHoverSurface = new JavaFxLearningHoverSurface(editor.getCodeArea());
+        var learningCardSurface = new JavaFxCeffxLearningSurface();
+        var learningRenderer = new JavaFxLearningCardRenderer(learningHoverSurface, learningCardSurface);
+        var learningContentEngine = new LearningContentEngine();
+        this.learningHoverController = new LearningHoverController(
+                learningHoverSurface,
+                learningRenderer,
+                new JavaFxLearningHoverScheduler(),
+                new DefaultHoverEngine(List.of(new ConceptHoverProvider(learningConceptEngine))),
+                () -> {
+                    if (buffer.getLanguageContext() == null) {
+                        return null;
+                    }
+                    return buffer.getLanguageContext().getSyntax();
+                },
+                resourceIdentifier -> resourceIdentifier.startsWith("java/")
+                        ? learningContentEngine.loadHtmlByIdentifier(resourceIdentifier)
+                        : learningContentEngine.loadHtml(resourceIdentifier)
+        );
 
         this.changeSubscription = editor.getCodeArea()
                 .multiPlainChanges()
@@ -388,6 +423,7 @@ public final class JavaFxEditorController {
 
     public void dispose() {
         completionPopup.hide();
+        learningHoverController.dispose();
         changeSubscription.unsubscribe();
         editor.indentGuideLayer().dispose();
         buffer.getDocument().removeDocumentChangeListener(documentChangeListener);

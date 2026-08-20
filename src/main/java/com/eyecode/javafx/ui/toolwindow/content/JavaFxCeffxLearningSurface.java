@@ -25,13 +25,19 @@ public final class JavaFxCeffxLearningSurface extends Region {
     }
 
     JavaFxCeffxLearningSurface(BrowserFactory browserFactory) {
+        this(browserFactory, true);
+    }
+
+    JavaFxCeffxLearningSurface(BrowserFactory browserFactory, boolean attachImmediately) {
         getStyleClass().add("ceffx-learning-surface");
         setPrefSize(800, 600);
         setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        try {
-            attach(browserFactory.create());
-        } catch (Throwable failure) {
-            showFailure(failure);
+        if (attachImmediately) {
+            try {
+                attach(browserFactory.create());
+            } catch (Throwable failure) {
+                showFailure(failure);
+            }
         }
     }
 
@@ -74,6 +80,10 @@ public final class JavaFxCeffxLearningSurface extends Region {
         return getChildren().isEmpty() ? null : getChildren().getFirst();
     }
 
+    void attachForTest(BrowserAdapter created) {
+        attach(created);
+    }
+
     interface BrowserFactory {
         BrowserAdapter create();
     }
@@ -91,10 +101,11 @@ public final class JavaFxCeffxLearningSurface extends Region {
             CeffxRuntime.runLater(() -> {
                 try {
                     CefClient client = CeffxRuntime.app().createClient();
+                    String initialHtml = html;
 
                     CefBrowser cefBrowser =
                             client.createBrowser(
-                                    "about:blank",
+                                    CeffxDataUrl.html(initialHtml),
                                     true,
                                     false
                             );
