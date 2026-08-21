@@ -9,5 +9,9 @@ public record DocumentationTarget(String label, String url) {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("Documentation URL must not be blank");
         }
+        String scheme = java.net.URI.create(url).getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+            throw new IllegalArgumentException("Documentation URL must use HTTP or HTTPS");
+        }
     }
 }

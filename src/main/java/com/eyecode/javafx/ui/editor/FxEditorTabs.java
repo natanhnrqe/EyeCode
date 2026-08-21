@@ -2,6 +2,7 @@ package com.eyecode.javafx.ui.editor;
 
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.layout.Region;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,6 +15,8 @@ public final class FxEditorTabs extends TabPane {
     private final Map<String, Tab> tabsBySessionId = new HashMap<>();
     private final Map<String, TabModel> modelsBySessionId = new HashMap<>();
     private boolean syncing;
+    private boolean documentationSelected;
+    private Tab documentationTab;
 
     private Consumer<String> onTabSelected;
     private Consumer<String> onTabCloseRequested;
@@ -22,12 +25,22 @@ public final class FxEditorTabs extends TabPane {
         getStyleClass().add("editor-tabs");
         setTabClosingPolicy(TabClosingPolicy.ALL_TABS);
         setTabDragPolicy(TabDragPolicy.FIXED);
+        setMinHeight(Region.USE_PREF_SIZE);
+        setMaxHeight(Region.USE_PREF_SIZE);
 
         getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
             if (syncing || newTab == null) {
                 return;
             }
             String sessionId = (String) newTab.getUserData();
+            if (JavaFxDocumentationWorkspace.TAB_ID.equals(sessionId)) {
+                documentationSelected = true;
+                if (onTabSelected != null) {
+                    onTabSelected.accept(sessionId);
+                }
+                return;
+            }
+            documentationSelected = false;
             if (sessionId != null && onTabSelected != null) {
                 onTabSelected.accept(sessionId);
             }
@@ -42,11 +55,38 @@ public final class FxEditorTabs extends TabPane {
         this.onTabCloseRequested = onTabCloseRequested;
     }
 
+    public void addDocumentationTab(JavaFxDocumentationTab content, Runnable closeAction) {
+        if (documentationTab != null) {
+            return;
+        }
+        documentationTab = createTab(JavaFxDocumentationWorkspace.TAB_ID,
+                "Documentation", closeAction);
+        documentationTab.setClosable(true);
+        getTabs().add(documentationTab);
+    }
+
+    public void showDocumentation() {
+        if (documentationTab != null) {
+            documentationSelected = true;
+            getSelectionModel().select(documentationTab);
+        }
+    }
+
+    public void removeDocumentation() {
+        if (documentationTab != null) {
+            getTabs().remove(documentationTab);
+            documentationTab = null;
+            documentationSelected = false;
+        }
+    }
+
     public void update(List<TabModel> models, String activeSessionId) {
         syncing = true;
         try {
             reconcileTabs(models);
-            selectActive(activeSessionId);
+            if (!documentationSelected) {
+                selectActive(activeSessionId);
+            }
         } finally {
             syncing = false;
         }
@@ -69,10 +109,7 @@ public final class FxEditorTabs extends TabPane {
         for (TabModel model : models) {
             Tab tab = tabsBySessionId.get(model.sessionId());
             if (tab == null) {
-                tab = new Tab();
-                tab.setUserData(model.sessionId());
-                tab.setOnCloseRequest(event -> {
-                    event.consume();
+                tab = createTab(model.sessionId(), model.displayName(), () -> {
                     if (onTabCloseRequested != null) {
                         onTabCloseRequested.accept(model.sessionId());
                     }
@@ -99,6 +136,18 @@ public final class FxEditorTabs extends TabPane {
         } else if (!model.preview()) {
             tab.getStyleClass().remove("tab-preview");
         }
+    }
+
+    private Tab createTab(String id, String title, Runnable closeAction) {
+        Tab tab = new Tab(title);
+        tab.setUserData(id);
+        tab.setOnCloseRequest(event -> {
+            event.consume();
+            if (closeAction != null) {
+                closeAction.run();
+            }
+        });
+        return tab;
     }
 
     private void selectActive(String activeSessionId) {

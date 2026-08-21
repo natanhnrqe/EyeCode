@@ -3,6 +3,7 @@ package com.eyecode.javafx.ui.editor;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorSession;
 import com.eyecode.workbench.editor.WorkspaceState;
+import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
 import javafx.scene.Node;
@@ -22,15 +23,19 @@ public final class FxEditorWorkspacePane extends VBox {
     private final Set<String> dirtyObserved = new HashSet<>();
     private boolean syncing;
 
-    public FxEditorWorkspacePane(EditorManager manager) {
+    private final JavaFxDocumentationWorkspace documentationWorkspace;
+
+    public FxEditorWorkspacePane(EditorManager manager, JavaFxDocumentationWorkspace documentationWorkspace) {
         this.manager = manager;
+        this.documentationWorkspace = documentationWorkspace;
+        documentationWorkspace.setPresenter(this::openDocumentation);
         getStyleClass().add("editor-workspace-pane");
 
         this.tabs = new FxEditorTabs();
         this.contentPane = new FxEditorContentPane();
         VBox.setVgrow(contentPane, Priority.ALWAYS);
 
-        tabs.setOnTabSelected(manager::activateSession);
+        tabs.setOnTabSelected(this::selectTab);
         tabs.setOnTabCloseRequested(manager::closeSession);
 
         getChildren().addAll(tabs, contentPane);
@@ -39,6 +44,32 @@ public final class FxEditorWorkspacePane extends VBox {
         state.addChangeListener(this::refresh);
         state.addActiveSessionListener(session -> refresh());
         refresh();
+    }
+
+    private void selectTab(String id) {
+        if (JavaFxDocumentationWorkspace.TAB_ID.equals(id)) {
+            if (documentationWorkspace.hasTabForTest()) {
+                contentPane.show(documentationWorkspace.tab());
+            }
+        } else {
+            manager.activateSession(id);
+        }
+    }
+
+    private void openDocumentation(DocumentationTarget target) {
+        JavaFxDocumentationTab tab = documentationWorkspace.ensureTab();
+        addDocumentationTab();
+        tab.open(target);
+        tabs.showDocumentation();
+        contentPane.show(tab);
+    }
+
+    private void addDocumentationTab() {
+        tabs.addDocumentationTab(documentationWorkspace.tab(), () -> {
+            documentationWorkspace.closeTab();
+            tabs.removeDocumentation();
+            refresh();
+        });
     }
 
     private void refresh() {

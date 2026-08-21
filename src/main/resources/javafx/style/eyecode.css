@@ -339,6 +339,8 @@
 .editor-tabs {
     -fx-tab-min-width: 120;
     -fx-tab-max-width: 260;
+    -fx-tab-min-height: 30;
+    -fx-tab-max-height: 30;
 }
 
 .console-tabs {
@@ -1270,4 +1272,30 @@
 
 .learning-card-footer .hyperlink:hover {
     -fx-text-fill: -eyecode-text;
+}
+
+.documentation-tab-content {
+    -fx-background-color: -eyecode-surface;
+}
+
+.documentation-tab-header {
+    -fx-background-color: -eyecode-surface;
+    -fx-border-color: transparent transparent -eyecode-border transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 7 10 7 10;
+    -fx-alignment: center-left;
+}
+
+.documentation-tab-title {
+    -fx-text-fill: -eyecode-text;
+    -fx-font-weight: bold;
+}
+
+.documentation-tab-location {
+    -fx-text-fill: -eyecode-muted;
+    -fx-font-size: 10;
+}
+
+.documentation-browser {
+    -fx-background-color: -eyecode-surface;
 }
