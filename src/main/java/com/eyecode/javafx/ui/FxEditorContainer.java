@@ -3,6 +3,7 @@ package com.eyecode.javafx.ui;
 import com.eyecode.eventbus.EventBus;
 import com.eyecode.filesystem.DefaultFileSystemService;
 import com.eyecode.javafx.editor.view.JavaFxEditorViewFactory;
+import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
 import com.eyecode.javafx.ui.editor.FxEditorWorkspacePane;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorViewFactory;
@@ -11,12 +12,15 @@ import java.nio.file.Path;
 
 public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxCard {
 
+    private final JavaFxLearningWorkspace learningWorkspace;
+
     public FxEditorContainer() {
         getStyleClass().add("editor-card");
         getStyleClass().remove("fx-card");
 
         EventBus eventBus = new EventBus();
-        EditorViewFactory viewFactory = new JavaFxEditorViewFactory();
+        learningWorkspace = new JavaFxLearningWorkspace();
+        EditorViewFactory viewFactory = new JavaFxEditorViewFactory(learningWorkspace);
         EditorManager manager = new EditorManager(
                 eventBus, new DefaultFileSystemService(), viewFactory);
 
@@ -24,6 +28,10 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
 
         FxEditorWorkspacePane workspacePane = new FxEditorWorkspacePane(manager);
         setContent(workspacePane);
+    }
+
+    public void dispose() {
+        learningWorkspace.dispose();
     }
 
     private void openDemoDocuments(EditorManager manager) {

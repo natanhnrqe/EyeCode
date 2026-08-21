@@ -4,10 +4,21 @@ import com.eyecode.javafx.ceffx.CeffxDataUrl;
 import com.eyecode.javafx.ceffx.CeffxRuntime;
 import com.techsenger.ceffx.core.CefClient;
 import com.techsenger.ceffx.core.browser.CefBrowser;
+import com.techsenger.ceffx.core.browser.CefFrame;
+import com.techsenger.ceffx.core.callback.CefAuthCallback;
+import com.techsenger.ceffx.core.callback.CefCallback;
+import com.techsenger.ceffx.core.handler.CefRequestHandler;
+import com.techsenger.ceffx.core.handler.CefResourceRequestHandler;
+import com.techsenger.ceffx.core.handler.CefLoadHandler;
+import com.techsenger.ceffx.core.misc.BoolRef;
+import com.techsenger.ceffx.core.network.CefRequest;
+import com.eyecode.learning.content.LearningLink;
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Region;
+
+import java.util.function.Consumer;
 
 public final class JavaFxCeffxLearningSurface extends Region {
 
@@ -15,6 +26,7 @@ public final class JavaFxCeffxLearningSurface extends Region {
     private String html = "";
     private boolean ceffxBacked;
     private boolean disposed;
+    private Consumer<String> navigationListener;
 
     public JavaFxCeffxLearningSurface() {
         getStyleClass().add("ceffx-learning-surface");
@@ -54,6 +66,10 @@ public final class JavaFxCeffxLearningSurface extends Region {
 
     public void clear() {
         showHtml("");
+    }
+
+    public void setInternalNavigationListener(Consumer<String> listener) {
+        navigationListener = listener;
     }
 
     public void dispose() {
@@ -102,6 +118,7 @@ public final class JavaFxCeffxLearningSurface extends Region {
                 try {
                     CefClient client = CeffxRuntime.app().createClient();
                     String initialHtml = html;
+                    client.addRequestHandler(new LearningRequestHandler());
 
                     CefBrowser cefBrowser =
                             client.createBrowser(
@@ -196,6 +213,82 @@ public final class JavaFxCeffxLearningSurface extends Region {
             disposed = true;
             browser.close(true);
             client.dispose();
+        }
+    }
+
+    private final class LearningRequestHandler implements CefRequestHandler {
+
+        @Override
+        public boolean onBeforeBrowse(
+                CefBrowser browser,
+                CefFrame frame,
+                CefRequest request,
+                boolean userGesture,
+                boolean isRedirect
+        ) {
+            return handle(request.getURL());
+        }
+
+        @Override
+        public boolean onOpenURLFromTab(CefBrowser browser, CefFrame frame, String targetUrl, boolean userGesture) {
+            return handle(targetUrl);
+        }
+
+        @Override
+        public CefResourceRequestHandler getResourceRequestHandler(
+                CefBrowser browser,
+                CefFrame frame,
+                CefRequest request,
+                boolean isNavigation,
+                boolean isDownload,
+                String requestInitiator,
+                BoolRef disableDefaultHandling
+        ) {
+            return null;
+        }
+
+        @Override
+        public boolean getAuthCredentials(
+                CefBrowser browser,
+                String originUrl,
+                boolean isProxy,
+                String host,
+                int port,
+                String realm,
+                String scheme,
+                CefAuthCallback callback
+        ) {
+            return false;
+        }
+
+        @Override
+        public boolean onCertificateError(
+                CefBrowser browser,
+                CefLoadHandler.ErrorCode certError,
+                String requestUrl,
+                CefCallback callback
+        ) {
+            return false;
+        }
+
+        @Override
+        public void onRenderProcessTerminated(
+                CefBrowser browser,
+                CefRequestHandler.TerminationStatus status,
+                int errorCode,
+                String errorString
+        ) {
+        }
+
+        private boolean handle(String url) {
+            var identifier = LearningLink.identifier(url);
+            if (identifier.isPresent()) {
+                if (navigationListener != null) {
+                    Platform.runLater(() -> navigationListener.accept(identifier.get()));
+                }
+                return true;
+            }
+            return url != null && !url.startsWith("data:") && !url.startsWith("about:");
         }
     }
 }

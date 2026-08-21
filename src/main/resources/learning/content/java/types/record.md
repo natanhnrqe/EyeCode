@@ -1,6 +1,17 @@
-# Records em Java
-Intermediário • 10 min
-
+---
+id: java/types/record
+title: Records em Java
+concept: record
+level: intermediate
+duration: 10
+category: JAVA CONCEPT
+officialDocs:
+  label: Java Record Classes
+  url: https://docs.oracle.com/en/java/javase/21/language/records.html
+related:
+  - java/types/class
+  - java/types/interface
+next: java/types/class
 ---
 
 ## 💡 O que é isso?

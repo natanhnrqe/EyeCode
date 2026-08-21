@@ -18,6 +18,7 @@ public final class JavaFxLearningHoverSurface implements LearningHoverSurface {
     private final javafx.event.EventHandler<KeyEvent> keyHandler = event -> cancelHover();
     private IntConsumer moveListener;
     private Runnable cancelListener;
+    private Runnable pointerObserver;
     private Point lastPointer;
 
     public JavaFxLearningHoverSurface(CodeArea codeArea) {
@@ -81,6 +82,10 @@ public final class JavaFxLearningHoverSurface implements LearningHoverSurface {
         return codeArea.getScene() == null ? null : codeArea.getScene().getWindow();
     }
 
+    void setPointerObserver(Runnable observer) {
+        pointerObserver = observer;
+    }
+
     @Override
     public void dispose() {
         codeArea.removeEventHandler(MouseEvent.MOUSE_MOVED, mouseHandler);
@@ -88,6 +93,7 @@ public final class JavaFxLearningHoverSurface implements LearningHoverSurface {
         codeArea.removeEventHandler(KeyEvent.KEY_PRESSED, keyHandler);
         moveListener = null;
         cancelListener = null;
+        pointerObserver = null;
         lastPointer = null;
     }
 
@@ -95,6 +101,9 @@ public final class JavaFxLearningHoverSurface implements LearningHoverSurface {
         Point2D screen = codeArea.localToScreen(event.getX(), event.getY());
         if (screen != null) {
             lastPointer = new Point((int) Math.round(screen.getX()), (int) Math.round(screen.getY()));
+        }
+        if (pointerObserver != null) {
+            pointerObserver.run();
         }
         if (moveListener == null) {
             return;

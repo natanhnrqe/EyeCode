@@ -35,6 +35,7 @@ public final class LearningHoverController {
     private final Supplier<SyntaxSnapshot> syntaxSupplier;
     private final LearningContextResolver resolver;
     private final Function<String, String> contentLoader;
+    private final boolean ownsRenderer;
     private final IntConsumer moveListener;
     private final Runnable cancelListener;
 
@@ -54,7 +55,7 @@ public final class LearningHoverController {
             HoverEngine hoverEngine,
             Supplier<SyntaxSnapshot> syntaxSupplier
     ) {
-        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, LearningRenderer::renderLesson);
+        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, LearningRenderer::renderLesson, true);
     }
 
     public LearningHoverController(
@@ -65,6 +66,18 @@ public final class LearningHoverController {
             Supplier<SyntaxSnapshot> syntaxSupplier,
             Function<String, String> contentLoader
     ) {
+        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, contentLoader, true);
+    }
+
+    public LearningHoverController(
+            LearningHoverSurface surface,
+            LearningCardRenderer popup,
+            LearningHoverScheduler scheduler,
+            HoverEngine hoverEngine,
+            Supplier<SyntaxSnapshot> syntaxSupplier,
+            Function<String, String> contentLoader,
+            boolean ownsRenderer
+    ) {
         this.surface = surface;
         this.popup = popup;
         this.scheduler = scheduler;
@@ -73,6 +86,7 @@ public final class LearningHoverController {
         this.syntaxSupplier = syntaxSupplier;
         this.resolver = new DefaultLearningContextResolver();
         this.contentLoader = Objects.requireNonNull(contentLoader, "contentLoader");
+        this.ownsRenderer = ownsRenderer;
         this.moveListener = this::onOffsetChanged;
         this.cancelListener = this::cancelHover;
 
@@ -84,7 +98,9 @@ public final class LearningHoverController {
         scheduler.dispose();
         popupShownAt = -1L;
         popup.hide();
-        popup.dispose();
+        if (ownsRenderer) {
+            popup.dispose();
+        }
         surface.removeMoveListener(moveListener);
         surface.removeCancelListener(cancelListener);
         surface.dispose();

@@ -319,3 +319,28 @@ img.emoji {
 ::-webkit-scrollbar-corner {
     background: #2b2b2b;
 }
+
+.learning-callout {
+    border-left: 3px solid var(--eyecode-accent);
+    background: rgba(88, 157, 246, 0.10);
+    margin: 14px 0;
+    padding: 10px 12px;
+}
+
+.learning-callout strong {
+    color: var(--eyecode-accent);
+    text-transform: uppercase;
+    font-size: 0.78rem;
+}
+
+.learning-callout p {
+    margin: 5px 0 0;
+}
+
+.learning-callout-warning {
+    border-left-color: #e6a23c;
+}
+
+.learning-callout-warning strong {
+    color: #e6a23c;
+}

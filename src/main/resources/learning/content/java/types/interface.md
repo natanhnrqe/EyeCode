@@ -1,6 +1,17 @@
-# Interfaces em Java
-Intermediário • 10 min
-
+---
+id: java/types/interface
+title: Interfaces em Java
+concept: interface
+level: intermediate
+duration: 10
+category: JAVA CONCEPT
+officialDocs:
+  label: Java Interfaces
+  url: https://docs.oracle.com/javase/tutorial/java/IandI/createinterface.html
+related:
+  - java/types/class
+  - java/types/record
+next: java/types/record
 ---
 
 ## 💡 O que é isso?

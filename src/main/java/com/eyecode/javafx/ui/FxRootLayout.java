@@ -27,6 +27,7 @@ public final class FxRootLayout extends BorderPane {
     private FxLeftToolWindow leftToolWindow;
     private FxBottomToolWindow bottomToolWindow;
     private WorkspaceContentFactory contentFactory;
+    private FxEditorContainer editorContainer;
     private HBox bottomBar;
 
     public FxRootLayout(Runnable onWindowClose) {
@@ -55,6 +56,7 @@ public final class FxRootLayout extends BorderPane {
         FxLeftToolWindow leftToolWindow = new FxLeftToolWindow(manager, contentFactory);
         this.leftToolWindow = leftToolWindow;
         FxEditorContainer editorContainer = new FxEditorContainer();
+        this.editorContainer = editorContainer;
         FxBottomToolWindow bottomToolWindow = new FxBottomToolWindow(manager, contentFactory);
         this.bottomToolWindow = bottomToolWindow;
         FxBottomToolWindowBar bottomBar = new FxBottomToolWindowBar(manager);
@@ -106,6 +108,9 @@ public final class FxRootLayout extends BorderPane {
     public void dispose() {
         if (contentFactory != null) {
             contentFactory.dispose();
+        }
+        if (editorContainer != null) {
+            editorContainer.dispose();
         }
     }
 

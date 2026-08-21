@@ -5,6 +5,7 @@ public final class LearningContentRepository {
     private static final String ROOT = "/learning/content/";
 
     private final LearningResourceLoader resourceLoader;
+    private final LearningFrontMatterParser frontMatterParser = new LearningFrontMatterParser();
 
     public LearningContentRepository() {
         this(new LearningResourceLoader());
@@ -16,6 +17,12 @@ public final class LearningContentRepository {
 
     public String load(String identifier) {
         return resourceLoader.load(resourcePath(identifier));
+    }
+
+    public LearningDocument loadDocument(String identifier) {
+        String markdown = load(identifier);
+        LearningFrontMatterParser.Parsed parsed = frontMatterParser.parse(markdown, identifier);
+        return new LearningDocument(identifier, parsed.metadata(), parsed.body(), "");
     }
 
     public String resourcePath(String identifier) {

@@ -1,4 +1,17 @@
-# Java Variables
+---
+id: java/basics/variables
+title: Java Variables
+concept: variable
+level: beginner
+duration: 5
+category: BASICS
+officialDocs:
+  label: Java Language Specification
+  url: https://docs.oracle.com/javase/specs/
+related:
+  - java/types/class
+next: java/types/class
+---
 
 Variables give a name to data that a Java program needs to remember. A variable has a **type**, a name, and a value.
 

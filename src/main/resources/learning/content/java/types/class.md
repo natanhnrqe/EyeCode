@@ -1,6 +1,18 @@
-# Classes em Java
-Iniciante • 16 min
-
+---
+id: java/types/class
+title: Classes em Java
+concept: class
+level: beginner
+duration: 16
+category: JAVA CONCEPT
+officialDocs:
+  label: Java Classes and Objects
+  url: https://docs.oracle.com/javase/tutorial/java/javaOO/classes.html
+related:
+  - java/types/object
+  - java/types/interface
+  - java/types/record
+next: java/types/object
 ---
 
 ## 💡 O que é isso?

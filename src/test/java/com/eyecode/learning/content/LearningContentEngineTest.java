@@ -3,6 +3,7 @@ package com.eyecode.learning.content;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class LearningContentEngineTest {
 
@@ -41,7 +42,7 @@ class LearningContentEngineTest {
     void rendersBundledLessonMarkdownFeatures() {
         String html = engine.loadHtml("/learning/content/java/basics/variables.md");
 
-        assertTrue(html.contains("<h1>Java Variables</h1>"));
+        assertTrue(html.contains("Variables give a name to data"));
         assertTrue(html.contains("<ul>"));
         assertTrue(html.contains("<ol>"));
         assertTrue(html.contains("<code>int</code>"));
@@ -59,5 +60,23 @@ class LearningContentEngineTest {
         assertTrue(first.contains("<main class=\"learning-content\">"));
         assertTrue(first.contains("href=\"data:text/css;base64,"));
         assertTrue(first.equals(second));
+    }
+
+    @Test
+    void loadsDocumentWithMetadataAndRenderedBody() {
+        LearningDocument document = engine.loadDocument("java/types/object");
+
+        assertTrue(document.renderedHtml().contains("<main class=\"learning-content\">"));
+        assertTrue(document.renderedHtml().contains("objeto"));
+        assertEquals(document.metadata().id(), document.identifier());
+    }
+
+    @Test
+    void rendersSupportedInfoAndWarningCallouts() {
+        String html = engine.convert(
+                "> [!INFO]\n> A value is available.\n\n> [!WARNING]\n> Be careful.");
+
+        assertTrue(html.contains("learning-callout learning-callout-info"));
+        assertTrue(html.contains("learning-callout learning-callout-warning"));
     }
 }

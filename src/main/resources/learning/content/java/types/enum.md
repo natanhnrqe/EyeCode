@@ -1,6 +1,16 @@
-# Enums em Java
-Iniciante • 10 min
-
+---
+id: java/types/enum
+title: Enums em Java
+concept: enum
+level: beginner
+duration: 10
+category: JAVA CONCEPT
+officialDocs:
+  label: Java Enum Types
+  url: https://docs.oracle.com/javase/tutorial/java/javaOO/enum.html
+related:
+  - java/types/class
+next: java/types/class
 ---
 
 ## 💡 O que é isso?
