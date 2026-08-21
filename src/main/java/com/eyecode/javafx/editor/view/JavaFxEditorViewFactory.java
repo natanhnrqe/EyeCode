@@ -4,27 +4,37 @@ import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.javafx.editor.JavaFxEditor;
 import com.eyecode.javafx.editor.JavaFxEditorController;
 import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
+import com.eyecode.language.documentation.JdkSourceTarget;
 import com.eyecode.workbench.editor.EditorView;
 import com.eyecode.workbench.editor.EditorViewFactory;
 
 import java.nio.file.Path;
+import java.util.function.Consumer;
 
 public final class JavaFxEditorViewFactory implements EditorViewFactory {
 
     private final JavaFxLearningWorkspace learningWorkspace;
+    private final Consumer<JdkSourceTarget> sourceNavigator;
 
     public JavaFxEditorViewFactory() {
-        this(new JavaFxLearningWorkspace());
+        this(new JavaFxLearningWorkspace(), target -> { });
     }
 
     public JavaFxEditorViewFactory(JavaFxLearningWorkspace learningWorkspace) {
+        this(learningWorkspace, target -> { });
+    }
+
+    public JavaFxEditorViewFactory(JavaFxLearningWorkspace learningWorkspace,
+                                   Consumer<JdkSourceTarget> sourceNavigator) {
         this.learningWorkspace = learningWorkspace;
+        this.sourceNavigator = sourceNavigator;
     }
 
     @Override
     public EditorView create(EditorBuffer buffer) {
         JavaFxEditor editor = new JavaFxEditor(buffer);
-        JavaFxEditorController controller = new JavaFxEditorController(editor, buffer, learningWorkspace);
+        JavaFxEditorController controller = new JavaFxEditorController(
+                editor, buffer, learningWorkspace, sourceNavigator);
         controller.loadDocument();
         return new JavaFxEditorView(editor, controller);
     }

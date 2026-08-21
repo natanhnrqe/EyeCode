@@ -27,6 +27,9 @@ public final class JavaFxEditor extends HBox {
     private final JavaFxIndentGuideLayer indentGuideLayer;
     private final StackPane editorSurface;
     private BooleanSupplier goToDefinitionAction;
+    private BooleanSupplier documentationAction;
+    private BooleanSupplier jdkSourceAction;
+    private boolean readOnly;
     private Predicate<KeyEvent> completionEventHandler;
 
     public JavaFxEditor(EditorBuffer buffer) {
@@ -68,11 +71,16 @@ public final class JavaFxEditor extends HBox {
     private void installSmartEditingFilters() {
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleCompletionEvent);
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleGoToDefinition);
+        codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleDocumentation);
+        codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleJdkSource);
         codeArea.addEventFilter(KeyEvent.KEY_TYPED, this::handleSmartEditing);
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleSmartEditing);
     }
 
     private void handleCompletionEvent(KeyEvent event) {
+        if (readOnly) {
+            return;
+        }
         if (completionEventHandler != null && completionEventHandler.test(event)) {
             event.consume();
         }
@@ -80,6 +88,14 @@ public final class JavaFxEditor extends HBox {
 
     private void handleGoToDefinition(KeyEvent event) {
         handleGoToDefinitionShortcut(event);
+    }
+
+    private void handleDocumentation(KeyEvent event) {
+        handleDocumentationShortcut(event);
+    }
+
+    private void handleJdkSource(KeyEvent event) {
+        handleJdkSourceShortcut(event);
     }
 
     boolean handleGoToDefinitionShortcut(KeyEvent event) {
@@ -93,8 +109,30 @@ public final class JavaFxEditor extends HBox {
         return false;
     }
 
+    boolean handleDocumentationShortcut(KeyEvent event) {
+        if (!isDocumentationKey(event)) {
+            return false;
+        }
+        if (openDocumentation()) {
+            event.consume();
+            return true;
+        }
+        return false;
+    }
+
+    boolean handleJdkSourceShortcut(KeyEvent event) {
+        if (!isJdkSourceKey(event)) {
+            return false;
+        }
+        if (openJdkSource()) {
+            event.consume();
+            return true;
+        }
+        return false;
+    }
+
     private void handleSmartEditing(KeyEvent event) {
-        if (event.isConsumed()) {
+        if (event.isConsumed() || readOnly) {
             return;
         }
         int caretOffset = codeArea.getCaretPosition();
@@ -121,8 +159,40 @@ public final class JavaFxEditor extends HBox {
                 && !event.isMetaDown();
     }
 
+    private boolean isDocumentationKey(KeyEvent event) {
+        return event.getEventType() == KeyEvent.KEY_PRESSED
+                && event.getCode() != null
+                && event.getCode().getName().equalsIgnoreCase("Q")
+                && event.isControlDown()
+                && !event.isShiftDown()
+                && !event.isAltDown()
+                && !event.isMetaDown();
+    }
+
+    private boolean isJdkSourceKey(KeyEvent event) {
+        return event.getEventType() == KeyEvent.KEY_PRESSED
+                && event.getCode() == javafx.scene.input.KeyCode.S
+                && event.isControlDown()
+                && event.isAltDown()
+                && !event.isShiftDown()
+                && !event.isMetaDown();
+    }
+
     public void setGoToDefinitionAction(BooleanSupplier goToDefinitionAction) {
         this.goToDefinitionAction = goToDefinitionAction;
+    }
+
+    public void setDocumentationAction(BooleanSupplier documentationAction) {
+        this.documentationAction = documentationAction;
+    }
+
+    public void setJdkSourceAction(BooleanSupplier jdkSourceAction) {
+        this.jdkSourceAction = jdkSourceAction;
+    }
+
+    public void setReadOnly(boolean readOnly) {
+        this.readOnly = readOnly;
+        codeArea.setEditable(!readOnly);
     }
 
     public void setCompletionEventHandler(Predicate<KeyEvent> completionEventHandler) {
@@ -131,6 +201,14 @@ public final class JavaFxEditor extends HBox {
 
     public boolean goToDefinition() {
         return goToDefinitionAction != null && goToDefinitionAction.getAsBoolean();
+    }
+
+    public boolean openDocumentation() {
+        return documentationAction != null && documentationAction.getAsBoolean();
+    }
+
+    public boolean openJdkSource() {
+        return jdkSourceAction != null && jdkSourceAction.getAsBoolean();
     }
 
     public void revealOffset(int offset) {

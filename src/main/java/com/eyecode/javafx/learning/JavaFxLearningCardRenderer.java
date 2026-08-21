@@ -5,6 +5,9 @@ import com.eyecode.learning.content.LearningContentEngine;
 import com.eyecode.learning.content.LearningDocument;
 import com.eyecode.learning.model.LearningConcept;
 import com.eyecode.learning.renderer.LearningCardRenderer;
+import com.eyecode.language.documentation.JdkSourceResolver;
+import com.eyecode.language.documentation.JavaJdkTypeCatalog;
+import com.eyecode.language.documentation.JdkSourceTarget;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Popup;
@@ -24,12 +27,15 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
     private final JavaFxCeffxLearningSurface learningSurface;
     private final LearningContentEngine contentEngine;
     private final DocumentationNavigator documentationNavigator;
+    private final SourceNavigator sourceNavigator;
+    private final JdkSourceResolver sourceResolver = new JdkSourceResolver();
     private final JavaFxLearningCardHeader header = new JavaFxLearningCardHeader();
     private final JavaFxLearningCardFooter footer = new JavaFxLearningCardFooter();
     private final Popup popup = new Popup();
     private final VBox card;
     private boolean disposed;
     private String currentIdentifier;
+    private JdkSourceTarget explicitSourceTarget;
 
     public JavaFxLearningCardRenderer(
             JavaFxLearningAnchor anchor,
@@ -37,10 +43,21 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
             LearningContentEngine contentEngine,
             DocumentationNavigator documentationNavigator
     ) {
+        this(anchor, learningSurface, contentEngine, documentationNavigator, target -> { });
+    }
+
+    public JavaFxLearningCardRenderer(
+            JavaFxLearningAnchor anchor,
+            JavaFxCeffxLearningSurface learningSurface,
+            LearningContentEngine contentEngine,
+            DocumentationNavigator documentationNavigator,
+            SourceNavigator sourceNavigator
+    ) {
         this.anchor = anchor;
         this.learningSurface = learningSurface;
         this.contentEngine = contentEngine;
         this.documentationNavigator = documentationNavigator == null ? target -> { } : documentationNavigator;
+        this.sourceNavigator = sourceNavigator == null ? target -> { } : sourceNavigator;
         this.card = new VBox(header, learningSurface, footer);
         card.getStyleClass().add("learning-card");
         card.setMinSize(WIDTH, HEIGHT);
@@ -147,6 +164,15 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
         showIdentifier(identifier);
     }
 
+    public void setJdkSourceTarget(JdkSourceTarget target) {
+        explicitSourceTarget = target;
+        if (currentIdentifier != null) {
+            String identifier = currentIdentifier;
+            currentIdentifier = null;
+            showIdentifier(identifier);
+        }
+    }
+
     private void showIdentifier(String identifier) {
         if (identifier == null || identifier.isBlank() || identifier.equals(currentIdentifier)) {
             return;
@@ -164,9 +190,21 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
                 this::navigate,
                 documentationNavigator::open,
                 this::navigate,
-                this::titleFor
+                this::titleFor,
+                explicitSourceTarget != null
+                        ? explicitSourceTarget : sourceTarget(document.metadata()),
+                sourceNavigator::open
         );
         learningSurface.showHtml(document.renderedHtml());
+    }
+
+    private JdkSourceTarget sourceTarget(com.eyecode.learning.content.LearningMetadata metadata) {
+        if (metadata == null || metadata.officialDocs() == null) {
+            return null;
+        }
+        return JavaJdkTypeCatalog.findSimple(metadata.officialDocs().label())
+                .flatMap(sourceResolver::resolve)
+                .orElse(null);
     }
 
     private void navigate(String identifier) {

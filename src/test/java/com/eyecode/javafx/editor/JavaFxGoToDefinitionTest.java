@@ -1,6 +1,10 @@
 package com.eyecode.javafx.editor;
 
 import com.eyecode.eventbus.EventBus;
+import com.eyecode.editor.v2.EditorBuffer;
+import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
+import com.eyecode.language.documentation.JdkSourceTarget;
 import com.eyecode.filesystem.FileSystemService;
 import com.eyecode.javafx.editor.view.JavaFxEditorView;
 import com.eyecode.javafx.editor.view.JavaFxEditorViewFactory;
@@ -18,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -288,6 +293,78 @@ class JavaFxGoToDefinitionTest {
 
     private static KeyEvent ctrlB() {
         return new KeyEvent(KeyEvent.KEY_PRESSED, "", "b", KeyCode.B, false, true, false, false);
+    }
+
+    @Test
+    void ctrlQIsConsumedOnlyWhenDocumentationResolves() throws Exception {
+        runInFx("class Demo { String value; }", editor -> {
+            editor.setDocumentationAction(() -> true);
+            KeyEvent handled = new KeyEvent(
+                    KeyEvent.KEY_PRESSED, "", "q", KeyCode.Q, false, true, false, false);
+            assertTrue(editor.handleDocumentationShortcut(handled));
+            assertTrue(handled.isConsumed());
+
+            editor.setDocumentationAction(() -> false);
+            KeyEvent ignored = new KeyEvent(
+                    KeyEvent.KEY_PRESSED, "", "q", KeyCode.Q, false, true, false, false);
+            assertFalse(editor.handleDocumentationShortcut(ignored));
+            assertFalse(ignored.isConsumed());
+        });
+    }
+
+    @Test
+    void ctrlAltSIsConsumedOnlyWhenJdkSourceResolves() throws Exception {
+        runInFx("class Demo { String value; }", editor -> {
+            editor.setJdkSourceAction(() -> true);
+            KeyEvent handled = new KeyEvent(
+                    KeyEvent.KEY_PRESSED, "", "s", KeyCode.S,
+                    false, true, true, false);
+            assertTrue(editor.handleJdkSourceShortcut(handled));
+            assertTrue(handled.isConsumed());
+
+            editor.setJdkSourceAction(() -> false);
+            KeyEvent ignored = new KeyEvent(
+                    KeyEvent.KEY_PRESSED, "", "s", KeyCode.S,
+                    false, true, true, false);
+            assertFalse(editor.handleJdkSourceShortcut(ignored));
+            assertFalse(ignored.isConsumed());
+        });
+    }
+
+    @Test
+    void editorSourceActionResolvesJdkTypeAndRejectsProjectType() throws Exception {
+        CountDownLatch done = new CountDownLatch(1);
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Platform.runLater(() -> {
+            JavaFxEditorController controller = null;
+            try {
+                String source = "class Demo { String value; }";
+                EditorBuffer buffer = new EditorBuffer(new EditorDocument(null, source));
+                JavaFxEditor editor = new JavaFxEditor(buffer);
+                List<JdkSourceTarget> opened = new ArrayList<>();
+                controller = new JavaFxEditorController(
+                        editor, buffer, new JavaFxLearningWorkspace(), opened::add);
+                controller.loadDocument();
+                new Scene(editor, 800, 600);
+                editor.getCodeArea().moveTo(source.indexOf("String"));
+                assertTrue(controller.openJdkSourceAtCaret());
+                assertEquals("java.lang.String", opened.getFirst().qualifiedName());
+
+                editor.getCodeArea().moveTo(source.indexOf("Demo"));
+                assertFalse(controller.openJdkSourceAtCaret());
+            } catch (Throwable throwable) {
+                failure.set(throwable);
+            } finally {
+                if (controller != null) {
+                    controller.dispose();
+                }
+                done.countDown();
+            }
+        });
+        assertTrue(done.await(15, TimeUnit.SECONDS));
+        if (failure.get() != null) {
+            throw new AssertionError(failure.get());
+        }
     }
 
     private static void runInFx(String source, ThrowingConsumer<JavaFxEditor> assertions) throws Exception {

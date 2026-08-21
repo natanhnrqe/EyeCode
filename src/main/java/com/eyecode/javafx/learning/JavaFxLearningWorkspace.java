@@ -3,6 +3,8 @@ package com.eyecode.javafx.learning;
 import com.eyecode.javafx.ui.toolwindow.content.JavaFxCeffxLearningSurface;
 import com.eyecode.learning.catalog.DefaultLearningCatalog;
 import com.eyecode.learning.content.LearningContentEngine;
+import com.eyecode.learning.content.DocumentationTarget;
+import com.eyecode.language.documentation.JdkSourceTarget;
 import com.eyecode.learning.hover.ConceptHoverProvider;
 import com.eyecode.learning.hover.DefaultHoverEngine;
 import com.eyecode.learning.ui.LearningHoverController;
@@ -21,6 +23,7 @@ public final class JavaFxLearningWorkspace {
     private final JavaFxCeffxLearningSurface learningSurface;
     private final JavaFxLearningCardRenderer renderer;
     private final LearningContentEngine contentEngine;
+    private final DocumentationNavigator documentationNavigator;
     private boolean disposed;
 
     public JavaFxLearningWorkspace() {
@@ -28,15 +31,30 @@ public final class JavaFxLearningWorkspace {
     }
 
     public JavaFxLearningWorkspace(DocumentationNavigator documentationNavigator) {
+        this(documentationNavigator, target -> { });
+    }
+
+    public JavaFxLearningWorkspace(DocumentationNavigator documentationNavigator,
+                                   SourceNavigator sourceNavigator) {
+        this.documentationNavigator = documentationNavigator;
         contentEngine = new LearningContentEngine();
         learningSurface = new JavaFxCeffxLearningSurface();
         renderer = new JavaFxLearningCardRenderer(
                 anchor,
                 learningSurface,
                 contentEngine,
-                documentationNavigator
+                documentationNavigator,
+                sourceNavigator
         );
         learningSurface.setInternalNavigationListener(renderer::navigateToIdentifier);
+    }
+
+    public void openDocumentation(DocumentationTarget target) {
+        documentationNavigator.open(target);
+    }
+
+    public void setJdkSourceTarget(JdkSourceTarget target) {
+        renderer.setJdkSourceTarget(target);
     }
 
     public LearningHoverController createHoverController(

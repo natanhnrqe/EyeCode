@@ -6,6 +6,7 @@ import com.eyecode.javafx.editor.view.JavaFxEditorViewFactory;
 import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
 import com.eyecode.javafx.ui.editor.FxEditorWorkspacePane;
 import com.eyecode.javafx.ui.editor.JavaFxDocumentationWorkspace;
+import com.eyecode.javafx.ui.editor.JavaFxJdkSourceWorkspace;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorViewFactory;
 
@@ -15,6 +16,7 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
 
     private final JavaFxLearningWorkspace learningWorkspace;
     private final JavaFxDocumentationWorkspace documentationWorkspace;
+    private final JavaFxJdkSourceWorkspace sourceWorkspace;
 
     public FxEditorContainer() {
         getStyleClass().add("editor-card");
@@ -22,20 +24,24 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
 
         EventBus eventBus = new EventBus();
         documentationWorkspace = new JavaFxDocumentationWorkspace();
-        learningWorkspace = new JavaFxLearningWorkspace(documentationWorkspace::open);
-        EditorViewFactory viewFactory = new JavaFxEditorViewFactory(learningWorkspace);
+        sourceWorkspace = new JavaFxJdkSourceWorkspace();
+        learningWorkspace = new JavaFxLearningWorkspace(
+                documentationWorkspace::open, sourceWorkspace::open);
+        EditorViewFactory viewFactory = new JavaFxEditorViewFactory(learningWorkspace, sourceWorkspace::open);
         EditorManager manager = new EditorManager(
                 eventBus, new DefaultFileSystemService(), viewFactory);
 
         openDemoDocuments(manager);
 
-        FxEditorWorkspacePane workspacePane = new FxEditorWorkspacePane(manager, documentationWorkspace);
+        FxEditorWorkspacePane workspacePane = new FxEditorWorkspacePane(
+                manager, documentationWorkspace, sourceWorkspace);
         setContent(workspacePane);
     }
 
     public void dispose() {
         learningWorkspace.dispose();
         documentationWorkspace.dispose();
+        sourceWorkspace.dispose();
     }
 
     private void openDemoDocuments(EditorManager manager) {

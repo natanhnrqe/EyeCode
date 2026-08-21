@@ -3,6 +3,7 @@ package com.eyecode.javafx.learning;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.learning.content.LearningLink;
 import com.eyecode.learning.content.LearningMetadata;
+import com.eyecode.language.documentation.JdkSourceTarget;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.layout.FlowPane;
@@ -16,13 +17,15 @@ public final class JavaFxLearningCardFooter extends VBox {
     private final FlowPane relatedPane = new FlowPane();
     private final Hyperlink documentation = new Hyperlink();
     private final Hyperlink next = new Hyperlink();
+    private final Hyperlink source = new Hyperlink("View Source </>");
 
     public JavaFxLearningCardFooter() {
         getStyleClass().add("learning-card-footer");
         relatedPane.getStyleClass().add("learning-card-related");
         documentation.getStyleClass().add("learning-card-documentation");
         next.getStyleClass().add("learning-card-next");
-        getChildren().addAll(relatedPane, documentation, next);
+        source.getStyleClass().add("learning-card-source");
+        getChildren().addAll(relatedPane, documentation, source, next);
     }
 
     public void show(
@@ -31,6 +34,18 @@ public final class JavaFxLearningCardFooter extends VBox {
             Consumer<DocumentationTarget> documentationAction,
             Consumer<String> nextAction,
             Function<String, String> titleResolver
+    ) {
+        show(metadata, relatedAction, documentationAction, nextAction, titleResolver, null, target -> { });
+    }
+
+    public void show(
+            LearningMetadata metadata,
+            Consumer<String> relatedAction,
+            Consumer<DocumentationTarget> documentationAction,
+            Consumer<String> nextAction,
+            Function<String, String> titleResolver,
+            JdkSourceTarget sourceTarget,
+            Consumer<JdkSourceTarget> sourceAction
     ) {
         relatedPane.getChildren().clear();
         if (!metadata.related().isEmpty()) {
@@ -52,6 +67,13 @@ public final class JavaFxLearningCardFooter extends VBox {
             documentation.setVisible(false);
             documentation.setManaged(false);
         }
+        source.setVisible(sourceTarget != null);
+        source.setManaged(sourceTarget != null);
+        source.setOnAction(event -> {
+            if (sourceTarget != null) {
+                sourceAction.accept(sourceTarget);
+            }
+        });
         if (metadata.next() != null && !metadata.next().isBlank()) {
             next.setText("Next: " + titleResolver.apply(metadata.next()) + " →");
             next.setVisible(true);
@@ -69,5 +91,13 @@ public final class JavaFxLearningCardFooter extends VBox {
 
     String documentationTextForTest() {
         return documentation.getText();
+    }
+
+    boolean sourceVisibleForTest() {
+        return source.isVisible() && source.isManaged();
+    }
+
+    void fireSourceForTest() {
+        source.fire();
     }
 }

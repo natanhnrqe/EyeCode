@@ -4,6 +4,7 @@ import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorSession;
 import com.eyecode.workbench.editor.WorkspaceState;
 import com.eyecode.learning.content.DocumentationTarget;
+import com.eyecode.language.documentation.JdkSourceTarget;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
 import javafx.scene.Node;
@@ -24,11 +25,20 @@ public final class FxEditorWorkspacePane extends VBox {
     private boolean syncing;
 
     private final JavaFxDocumentationWorkspace documentationWorkspace;
+    private final JavaFxJdkSourceWorkspace sourceWorkspace;
 
     public FxEditorWorkspacePane(EditorManager manager, JavaFxDocumentationWorkspace documentationWorkspace) {
+        this(manager, documentationWorkspace, new JavaFxJdkSourceWorkspace());
+    }
+
+    public FxEditorWorkspacePane(EditorManager manager,
+                                 JavaFxDocumentationWorkspace documentationWorkspace,
+                                 JavaFxJdkSourceWorkspace sourceWorkspace) {
         this.manager = manager;
         this.documentationWorkspace = documentationWorkspace;
+        this.sourceWorkspace = sourceWorkspace;
         documentationWorkspace.setPresenter(this::openDocumentation);
+        sourceWorkspace.setPresenter(this::openSource);
         getStyleClass().add("editor-workspace-pane");
 
         this.tabs = new FxEditorTabs();
@@ -51,9 +61,26 @@ public final class FxEditorWorkspacePane extends VBox {
             if (documentationWorkspace.hasTabForTest()) {
                 contentPane.show(documentationWorkspace.tab());
             }
+        } else if (sourceWorkspace.contains(id)) {
+            contentPane.show(sourceWorkspace.tab(id));
         } else {
             manager.activateSession(id);
         }
+    }
+
+    private void openSource(JdkSourceTarget target) {
+        JavaFxJdkSourceTab tab = sourceWorkspace.ensureTab(target);
+        if (tab == null) {
+            return;
+        }
+        String id = target.tabId();
+        tabs.addSourceTab(id, target.displayName(), () -> {
+            sourceWorkspace.close(id);
+            tabs.removeSource(id);
+            refresh();
+        });
+        tabs.showSource(id);
+        contentPane.show(tab);
     }
 
     private void openDocumentation(DocumentationTarget target) {

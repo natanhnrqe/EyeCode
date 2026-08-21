@@ -2,6 +2,7 @@ package com.eyecode.javafx.learning;
 
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.learning.content.LearningMetadata;
+import com.eyecode.language.documentation.JdkSourceTarget;
 import javafx.application.Platform;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -57,6 +58,27 @@ class JavaFxLearningCardMetadataTest {
                         "JAVA CONCEPT", null, List.of(), null));
                 assertTrue(header.iconLoadedForTest(), concept);
             }
+        });
+    }
+
+    @Test
+    void sourceActionUsesCapabilityEvenWhenLessonMetadataHasNoSourceProse() throws Exception {
+        runInFx(() -> {
+            LearningMetadata metadata = new LearningMetadata(
+                    "java/types/string", "String", "type", "intermediate", 1,
+                    "JAVA TYPE", null, List.of(), null);
+            JavaFxLearningCardFooter footer = new JavaFxLearningCardFooter();
+            var opened = new java.util.concurrent.atomic.AtomicReference<JdkSourceTarget>();
+            JdkSourceTarget target = new JdkSourceTarget(
+                    "java.lang.String", "java.base",
+                    "java.base/java/lang/String.java", "String.java");
+
+            footer.show(metadata, ignored -> { }, ignored -> { }, ignored -> { },
+                    id -> id, target, opened::set);
+
+            assertTrue(footer.sourceVisibleForTest());
+            footer.fireSourceForTest();
+            assertEquals(target, opened.get());
         });
     }
 

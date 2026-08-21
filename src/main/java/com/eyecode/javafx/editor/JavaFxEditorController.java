@@ -31,6 +31,11 @@ import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
 import com.eyecode.editor.v2.language.DefaultLanguageService;
 import com.eyecode.editor.v2.language.LanguageManager;
 import com.eyecode.language.semantic.DefinitionLocation;
+import com.eyecode.language.documentation.DocumentationAtCaretResolver;
+import com.eyecode.language.documentation.JdkSourceResolver;
+import com.eyecode.language.documentation.JdkSourceTarget;
+import com.eyecode.learning.content.DocumentationTarget;
+import com.eyecode.language.symbol.DocumentSemanticModelBuilder;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.learning.ui.LearningHoverController;
 import javafx.scene.control.IndexRange;
@@ -41,6 +46,7 @@ import org.reactfx.Subscription;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * Keeps the {@link CodeArea} and the {@link EditorBuffer} model in sync.
@@ -64,6 +70,9 @@ public final class JavaFxEditorController {
     private final JavaFxCompletionPopup completionPopup;
     private final LearningHoverController learningHoverController;
     private final JavaFxLearningWorkspace learningWorkspace;
+    private final DocumentationAtCaretResolver documentationAtCaretResolver;
+    private final JdkSourceResolver jdkSourceResolver;
+    private final Consumer<JdkSourceTarget> sourceNavigator;
     private final boolean ownsLearningWorkspace;
     private final Subscription changeSubscription;
     private final DocumentChangeListener documentChangeListener;
@@ -74,7 +83,7 @@ public final class JavaFxEditorController {
     private boolean syncing;
 
     public JavaFxEditorController(JavaFxEditor editor, EditorBuffer buffer) {
-        this(editor, buffer, new JavaFxLearningWorkspace(), true);
+        this(editor, buffer, new JavaFxLearningWorkspace(), true, target -> { });
     }
 
     public JavaFxEditorController(
@@ -82,18 +91,31 @@ public final class JavaFxEditorController {
             EditorBuffer buffer,
             JavaFxLearningWorkspace learningWorkspace
     ) {
-        this(editor, buffer, learningWorkspace, false);
+        this(editor, buffer, learningWorkspace, false, target -> { });
+    }
+
+    public JavaFxEditorController(
+            JavaFxEditor editor,
+            EditorBuffer buffer,
+            JavaFxLearningWorkspace learningWorkspace,
+            Consumer<JdkSourceTarget> sourceNavigator
+    ) {
+        this(editor, buffer, learningWorkspace, false, sourceNavigator);
     }
 
     private JavaFxEditorController(
             JavaFxEditor editor,
             EditorBuffer buffer,
             JavaFxLearningWorkspace learningWorkspace,
-            boolean ownsLearningWorkspace
+            boolean ownsLearningWorkspace,
+            Consumer<JdkSourceTarget> sourceNavigator
     ) {
         this.editor = editor;
         this.buffer = buffer;
         this.learningWorkspace = learningWorkspace;
+        this.documentationAtCaretResolver = new DocumentationAtCaretResolver();
+        this.jdkSourceResolver = new JdkSourceResolver();
+        this.sourceNavigator = sourceNavigator == null ? target -> { } : sourceNavigator;
         this.ownsLearningWorkspace = ownsLearningWorkspace;
         this.pipeline = new HighlightPipeline(editor.getCodeArea());
         this.languageManager = new LanguageManager(new DefaultLanguageService());
@@ -131,6 +153,8 @@ public final class JavaFxEditorController {
         buffer.addCaretChangeListener(caretChangeListener);
         buffer.addSelectionChangeListener(selectionChangeListener);
         editor.setGoToDefinitionAction(this::goToDefinition);
+        editor.setDocumentationAction(this::openDocumentationAtCaret);
+        editor.setJdkSourceAction(this::openJdkSourceAtCaret);
         editor.setCompletionEventHandler(this::handleCompletionEvent);
         editor.getCodeArea().caretPositionProperty().addListener((obs, oldValue, newValue) -> syncCaretFromEditor());
         editor.getCodeArea().selectionProperty().addListener((obs, oldValue, newValue) -> syncSelectionFromEditor());
@@ -268,6 +292,40 @@ public final class JavaFxEditorController {
             return false;
         }
         editor.revealOffset(location.get().declarationRange().startOffset());
+        return true;
+    }
+
+    public boolean openDocumentationAtCaret() {
+        syncCaretFromEditor();
+        EditorDocument document = buffer.getDocument();
+        Optional<com.eyecode.language.symbol.SemanticModelSnapshot> model =
+                new DocumentSemanticModelBuilder().build(document);
+        Optional<DocumentationTarget> target = documentationAtCaretResolver.resolve(
+                document.getText(),
+                editor.getCodeArea().getCaretPosition(),
+                model.map(com.eyecode.language.symbol.SemanticModelSnapshot::symbolTable).orElse(null)
+        );
+        if (target.isEmpty()) {
+            return false;
+        }
+        learningWorkspace.openDocumentation(target.get());
+        return true;
+    }
+
+    public boolean openJdkSourceAtCaret() {
+        syncCaretFromEditor();
+        EditorDocument document = buffer.getDocument();
+        Optional<com.eyecode.language.symbol.SemanticModelSnapshot> model =
+                new DocumentSemanticModelBuilder().build(document);
+        Optional<com.eyecode.language.documentation.JavaJdkType> type =
+                documentationAtCaretResolver.resolveType(
+                        document.getText(), editor.getCodeArea().getCaretPosition(),
+                        model.map(com.eyecode.language.symbol.SemanticModelSnapshot::symbolTable).orElse(null));
+        Optional<JdkSourceTarget> target = type.flatMap(jdkSourceResolver::resolve);
+        if (target.isEmpty()) {
+            return false;
+        }
+        sourceNavigator.accept(target.get());
         return true;
     }
 

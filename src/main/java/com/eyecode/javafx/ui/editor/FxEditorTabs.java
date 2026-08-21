@@ -16,7 +16,9 @@ public final class FxEditorTabs extends TabPane {
     private final Map<String, TabModel> modelsBySessionId = new HashMap<>();
     private boolean syncing;
     private boolean documentationSelected;
+    private boolean sourceSelected;
     private Tab documentationTab;
+    private final Map<String, Tab> sourceTabs = new HashMap<>();
 
     private Consumer<String> onTabSelected;
     private Consumer<String> onTabCloseRequested;
@@ -35,12 +37,14 @@ public final class FxEditorTabs extends TabPane {
             String sessionId = (String) newTab.getUserData();
             if (JavaFxDocumentationWorkspace.TAB_ID.equals(sessionId)) {
                 documentationSelected = true;
+                sourceSelected = false;
                 if (onTabSelected != null) {
                     onTabSelected.accept(sessionId);
                 }
                 return;
             }
             documentationSelected = false;
+            sourceSelected = sessionId != null && sessionId.startsWith("jdk-source:");
             if (sessionId != null && onTabSelected != null) {
                 onTabSelected.accept(sessionId);
             }
@@ -80,11 +84,36 @@ public final class FxEditorTabs extends TabPane {
         }
     }
 
+    public void addSourceTab(String id, String title, Runnable closeAction) {
+        if (sourceTabs.containsKey(id)) {
+            return;
+        }
+        Tab tab = createTab(id, title, closeAction);
+        sourceTabs.put(id, tab);
+        getTabs().add(tab);
+    }
+
+    public void showSource(String id) {
+        Tab tab = sourceTabs.get(id);
+        if (tab != null) {
+            sourceSelected = true;
+            getSelectionModel().select(tab);
+        }
+    }
+
+    public void removeSource(String id) {
+        Tab tab = sourceTabs.remove(id);
+        if (tab != null) {
+            getTabs().remove(tab);
+            sourceSelected = false;
+        }
+    }
+
     public void update(List<TabModel> models, String activeSessionId) {
         syncing = true;
         try {
             reconcileTabs(models);
-            if (!documentationSelected) {
+            if (!documentationSelected && !sourceSelected) {
                 selectActive(activeSessionId);
             }
         } finally {
