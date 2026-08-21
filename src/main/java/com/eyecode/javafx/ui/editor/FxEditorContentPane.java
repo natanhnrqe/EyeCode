@@ -13,4 +13,8 @@ public final class FxEditorContentPane extends StackPane {
     public void show(Node node) {
         getChildren().setAll(node);
     }
+
+    Node mountedContentForTest() {
+        return getChildren().isEmpty() ? null : getChildren().getFirst();
+    }
 }

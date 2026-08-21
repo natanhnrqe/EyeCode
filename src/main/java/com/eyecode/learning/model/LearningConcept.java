@@ -13,6 +13,7 @@ public final class LearningConcept {
     private DifficultyLevel difficulty;
     private List<String> relatedConcepts;
     private LearningPage page;
+    private String qualifiedName;
 
     public String getId() {
         return id;
@@ -68,5 +69,13 @@ public final class LearningConcept {
 
     public void setPage(LearningPage page) {
         this.page = page;
+    }
+
+    public String getQualifiedName() {
+        return qualifiedName;
+    }
+
+    public void setQualifiedName(String qualifiedName) {
+        this.qualifiedName = qualifiedName;
     }
 }

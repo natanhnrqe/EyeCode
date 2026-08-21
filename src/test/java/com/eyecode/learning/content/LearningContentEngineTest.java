@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.eyecode.learning.content.LearningResourceLoader;
+
 class LearningContentEngineTest {
 
     private final LearningContentEngine engine = new LearningContentEngine();
@@ -78,5 +80,16 @@ class LearningContentEngineTest {
 
         assertTrue(html.contains("learning-callout learning-callout-info"));
         assertTrue(html.contains("learning-callout learning-callout-warning"));
+    }
+
+    @Test
+    void learningStylesAllowBodyScrollingAndLocalCodeOverflow() {
+        String css = new LearningResourceLoader().load("/learning/css/learning.css");
+
+        assertTrue(css.contains("body.learning-markdown"));
+        assertTrue(css.contains("overflow-y: auto"));
+        assertTrue(css.contains("overflow-x: hidden"));
+        assertTrue(css.contains("pre {"));
+        assertTrue(css.contains("overflow-x: auto"));
     }
 }

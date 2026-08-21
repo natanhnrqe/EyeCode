@@ -57,14 +57,16 @@ public final class FxEditorWorkspacePane extends VBox {
     }
 
     private void selectTab(String id) {
+        if (id == null) {
+            return;
+        }
         if (JavaFxDocumentationWorkspace.TAB_ID.equals(id)) {
-            if (documentationWorkspace.hasTabForTest()) {
-                contentPane.show(documentationWorkspace.tab());
-            }
+            mountSelectedContent(id);
         } else if (sourceWorkspace.contains(id)) {
-            contentPane.show(sourceWorkspace.tab(id));
+            mountSelectedContent(id);
         } else {
             manager.activateSession(id);
+            mountSelectedContent(id);
         }
     }
 
@@ -113,14 +115,33 @@ public final class FxEditorWorkspacePane extends VBox {
             EditorSession active = manager.getCurrentSession();
             String activeId = active != null ? active.getSessionId() : null;
             tabs.update(models, activeId);
-            if (active != null) {
-                Object nativeView = manager.getNativeView(active.getSessionId());
-                if (nativeView instanceof Node node) {
-                    contentPane.show(node);
-                }
-            }
+            String selectedId = tabs.selectedTabId();
+            mountSelectedContent(selectedId != null ? selectedId : activeId);
         } finally {
             syncing = false;
+        }
+    }
+
+    private void mountSelectedContent(String id) {
+        if (id == null) {
+            return;
+        }
+        if (JavaFxDocumentationWorkspace.TAB_ID.equals(id)) {
+            if (documentationWorkspace.hasTabForTest()) {
+                contentPane.show(documentationWorkspace.tab());
+            }
+            return;
+        }
+        if (sourceWorkspace.contains(id)) {
+            JavaFxJdkSourceTab sourceTab = sourceWorkspace.tab(id);
+            if (sourceTab != null) {
+                contentPane.show(sourceTab);
+            }
+            return;
+        }
+        Object nativeView = manager.getNativeView(id);
+        if (nativeView instanceof Node node) {
+            contentPane.show(node);
         }
     }
 
@@ -147,5 +168,13 @@ public final class FxEditorWorkspacePane extends VBox {
                 dirty,
                 session.isPinned(),
                 session.isPreview());
+    }
+
+    FxEditorTabs tabsForTest() {
+        return tabs;
+    }
+
+    FxEditorContentPane contentPaneForTest() {
+        return contentPane;
     }
 }

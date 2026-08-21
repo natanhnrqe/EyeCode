@@ -35,6 +35,7 @@ public final class LearningHoverController {
     private final Supplier<SyntaxSnapshot> syntaxSupplier;
     private final LearningContextResolver resolver;
     private final Function<String, String> contentLoader;
+    private final Function<Integer, Optional<LearningConcept>> jdkConceptResolver;
     private final boolean ownsRenderer;
     private final IntConsumer moveListener;
     private final Runnable cancelListener;
@@ -42,6 +43,8 @@ public final class LearningHoverController {
     private volatile int lastOffset = -1;
     private volatile HoverSnapshot currentSnapshot;
     private volatile String visibleSymbolKey;
+    private HoverSnapshot visibleSnapshot;
+    private HoverSnapshot pendingSnapshot;
 
     private boolean loadingContent;
     private LearningConcept lastConcept;
@@ -55,7 +58,8 @@ public final class LearningHoverController {
             HoverEngine hoverEngine,
             Supplier<SyntaxSnapshot> syntaxSupplier
     ) {
-        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, LearningRenderer::renderLesson, true);
+        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, LearningRenderer::renderLesson, true,
+                offset -> Optional.empty());
     }
 
     public LearningHoverController(
@@ -66,7 +70,8 @@ public final class LearningHoverController {
             Supplier<SyntaxSnapshot> syntaxSupplier,
             Function<String, String> contentLoader
     ) {
-        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, contentLoader, true);
+        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, contentLoader, true,
+                offset -> Optional.empty());
     }
 
     public LearningHoverController(
@@ -78,14 +83,44 @@ public final class LearningHoverController {
             Function<String, String> contentLoader,
             boolean ownsRenderer
     ) {
+        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, contentLoader, ownsRenderer,
+                offset -> Optional.empty());
+    }
+
+    public LearningHoverController(
+            LearningHoverSurface surface,
+            LearningCardRenderer popup,
+            LearningHoverScheduler scheduler,
+            HoverEngine hoverEngine,
+            Supplier<SyntaxSnapshot> syntaxSupplier,
+            Function<String, String> contentLoader,
+            boolean ownsRenderer,
+            Function<Integer, Optional<LearningConcept>> jdkConceptResolver
+    ) {
+        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, contentLoader, ownsRenderer,
+                jdkConceptResolver, new HoverStateMachine());
+    }
+
+    LearningHoverController(
+            LearningHoverSurface surface,
+            LearningCardRenderer popup,
+            LearningHoverScheduler scheduler,
+            HoverEngine hoverEngine,
+            Supplier<SyntaxSnapshot> syntaxSupplier,
+            Function<String, String> contentLoader,
+            boolean ownsRenderer,
+            Function<Integer, Optional<LearningConcept>> jdkConceptResolver,
+            HoverStateMachine stateMachine
+    ) {
         this.surface = surface;
         this.popup = popup;
         this.scheduler = scheduler;
-        this.stateMachine = new HoverStateMachine();
+        this.stateMachine = Objects.requireNonNull(stateMachine, "stateMachine");
         this.hoverEngine = hoverEngine;
         this.syntaxSupplier = syntaxSupplier;
         this.resolver = new DefaultLearningContextResolver();
         this.contentLoader = Objects.requireNonNull(contentLoader, "contentLoader");
+        this.jdkConceptResolver = Objects.requireNonNull(jdkConceptResolver, "jdkConceptResolver");
         this.ownsRenderer = ownsRenderer;
         this.moveListener = this::onOffsetChanged;
         this.cancelListener = this::cancelHover;
@@ -118,28 +153,23 @@ public final class LearningHoverController {
             currentSnapshot = snapshot;
             stateMachine.enter(snapshot.symbolKey());
 
+            if (popup.isVisible()) {
+                if (Objects.equals(visibleSymbolKey, snapshot.symbolKey())) {
+                    cancelPendingSwitch();
+                } else {
+                    schedulePendingSwitch(snapshot);
+                }
+                return;
+            }
+
             if (stateMachine.getState() == HoverState.WAITING) {
                 scheduler.restartHover(this::tryShow);
                 scheduler.startMonitor(this::monitorHover);
             }
-
-            if ((stateMachine.getState() == HoverState.VISIBLE
-                    || stateMachine.getState() == HoverState.INTERACTING
-                    || stateMachine.getState() == HoverState.HIDING)
-                    && popup.isVisible()
-                    && !Objects.equals(visibleSymbolKey, snapshot.symbolKey())) {
-                popup.update(snapshot.concept());
-                visibleSymbolKey = snapshot.symbolKey();
-                if (!Objects.equals(lastConcept, snapshot.concept())) {
-                    loadingContent = false;
-                    lastConcept = snapshot.concept();
-                    lastLessonPath = null;
-                    loadLessonContent(snapshot);
-                }
-            }
             return;
         }
 
+        cancelPendingSwitch();
         if (withinGracePeriod()) {
             return;
         }
@@ -155,6 +185,7 @@ public final class LearningHoverController {
         scheduler.stopHover();
         scheduler.stopMonitor();
         stateMachine.reset();
+        cancelPendingSwitch();
         popupShownAt = -1L;
         popup.hide();
         loadingContent = false;
@@ -175,8 +206,12 @@ public final class LearningHoverController {
         boolean insidePopup = popup.containsScreen(mouse);
 
         stateMachine.setPopupHover(insidePopup);
+        if (insidePopup) {
+            cancelPendingSwitch();
+        }
 
         if (!insideEditor && !insidePopup) {
+            cancelPendingSwitch();
             if (!withinGracePeriod()) {
                 stateMachine.leave();
             }
@@ -192,6 +227,7 @@ public final class LearningHoverController {
             popup.hide();
             loadingContent = false;
             visibleSymbolKey = null;
+            visibleSnapshot = null;
             currentSnapshot = null;
             lastOffset = -1;
             lastConcept = null;
@@ -229,9 +265,42 @@ public final class LearningHoverController {
         popup.show(snapshot.concept());
         HoverDiagnosticLogger.logRendererShow();
         visibleSymbolKey = snapshot.symbolKey();
+        visibleSnapshot = snapshot;
         popupShownAt = System.currentTimeMillis();
 
         loadLessonContent(snapshot);
+    }
+
+    private void schedulePendingSwitch(HoverSnapshot snapshot) {
+        pendingSnapshot = snapshot;
+        scheduler.restartHover(this::applyPendingSwitch);
+        scheduler.startMonitor(this::monitorHover);
+    }
+
+    private void applyPendingSwitch() {
+        HoverSnapshot pending = pendingSnapshot;
+        if (pending == null || !popup.isVisible()
+                || !Objects.equals(currentSnapshot, pending)
+                || stateMachine.getState() == HoverState.INTERACTING) {
+            return;
+        }
+        pendingSnapshot = null;
+        popup.update(pending.concept());
+        visibleSymbolKey = pending.symbolKey();
+        visibleSnapshot = pending;
+        if (!Objects.equals(lastConcept, pending.concept())) {
+            loadingContent = false;
+            lastConcept = pending.concept();
+            lastLessonPath = null;
+            loadLessonContent(pending);
+        }
+    }
+
+    private void cancelPendingSwitch() {
+        pendingSnapshot = null;
+        if (popup.isVisible()) {
+            scheduler.stopHover();
+        }
     }
 
     private void loadLessonContent(HoverSnapshot snapshot) {
@@ -265,19 +334,35 @@ public final class LearningHoverController {
 
         Optional<SyntaxToken> token = syntax.getTokens().stream()
                 .filter(t -> offset >= t.startOffset() && offset <= t.endOffset()
+                        && t.type() == TokenType.IDENTIFIER)
+                .findFirst();
+
+        if (token.isPresent()) {
+            SyntaxToken syntaxToken = token.get();
+            Optional<LearningConcept> jdkConcept = jdkConceptResolver.apply(offset);
+            if (jdkConcept.isPresent()) {
+                String key = "jdk:" + syntaxToken.startOffset() + ":" + syntaxToken.endOffset();
+                if (Objects.equals(key, visibleSymbolKey) && popup.isVisible()) {
+                    return visibleSnapshot;
+                }
+                return new HoverSnapshot(key, jdkConcept.get());
+            }
+        }
+
+        Optional<SyntaxToken> keyword = syntax.getTokens().stream()
+                .filter(t -> offset >= t.startOffset() && offset <= t.endOffset()
                         && t.type() == TokenType.KEYWORD
                         && TYPE_KEYWORDS.contains(t.text()))
                 .findFirst();
-
-        if (token.isEmpty()) {
+        if (keyword.isEmpty()) {
             return null;
         }
 
-        SyntaxToken syntaxToken = token.get();
+        SyntaxToken syntaxToken = keyword.get();
         String key = syntaxToken.text() + ":" + syntaxToken.startOffset() + ":" + syntaxToken.endOffset();
 
         if (Objects.equals(key, visibleSymbolKey) && popup.isVisible()) {
-            return currentSnapshot;
+            return visibleSnapshot;
         }
 
         SymbolKind kind = keywordToKind(syntaxToken.text());
@@ -313,6 +398,8 @@ public final class LearningHoverController {
         lastOffset = -1;
         currentSnapshot = null;
         visibleSymbolKey = null;
+        visibleSnapshot = null;
+        pendingSnapshot = null;
         lastConcept = null;
         lastLessonPath = null;
     }

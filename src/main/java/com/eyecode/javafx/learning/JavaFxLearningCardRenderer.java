@@ -75,6 +75,11 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
         if (disposed) {
             return;
         }
+        explicitSourceTarget = concept == null || concept.getQualifiedName() == null
+                ? null
+                : JavaJdkTypeCatalog.findQualified(concept.getQualifiedName())
+                        .flatMap(sourceResolver::resolve)
+                        .orElse(null);
         if (concept != null && concept.getPage() != null) {
             showIdentifier(concept.getPage().getId());
         }
@@ -105,9 +110,6 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
     public void update(LearningConcept concept) {
         if (concept != null && concept.getPage() != null) {
             showIdentifier(concept.getPage().getId());
-        }
-        if (isVisible()) {
-            reposition();
         }
     }
 

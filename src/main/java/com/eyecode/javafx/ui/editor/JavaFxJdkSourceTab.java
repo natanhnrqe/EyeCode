@@ -6,6 +6,7 @@ import com.eyecode.javafx.editor.JavaFxEditor;
 import com.eyecode.javafx.editor.JavaFxEditorController;
 import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
 import com.eyecode.language.documentation.JdkSourceTarget;
+import com.eyecode.language.documentation.JdkSourceDeclarationLocator;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
@@ -24,6 +25,8 @@ public final class JavaFxJdkSourceTab extends VBox {
         this.controller = new JavaFxEditorController(editor, buffer, learningWorkspace);
         controller.loadDocument();
         editor.setReadOnly(true);
+        String simpleName = target.qualifiedName().substring(target.qualifiedName().lastIndexOf('.') + 1);
+        editor.revealOffset(new JdkSourceDeclarationLocator().find(source, simpleName));
         getStyleClass().add("jdk-source-tab");
         VBox.setVgrow(editor, Priority.ALWAYS);
         getChildren().add(editor);

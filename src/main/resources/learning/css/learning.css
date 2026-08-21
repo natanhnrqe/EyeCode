@@ -24,12 +24,15 @@
 }
 
 html {
+    min-height: 100%;
     background: var(--eyecode-bg);
     color-scheme: dark;
+    overflow-x: hidden;
 }
 
 body.learning-markdown {
     margin: 0 auto;
+    min-height: 100%;
     max-width: 920px;
     padding: 20px 24px 24px;
     background: var(--eyecode-bg);
@@ -41,6 +44,8 @@ body.learning-markdown {
     -webkit-font-smoothing: antialiased;
     overflow-wrap: anywhere;
     word-break: normal;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 body.learning-markdown > :first-child {

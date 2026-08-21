@@ -2,9 +2,11 @@ package com.eyecode.javafx.learning;
 
 import com.eyecode.javafx.ui.toolwindow.content.JavaFxCeffxLearningSurface;
 import com.eyecode.learning.catalog.DefaultLearningCatalog;
+import com.eyecode.learning.catalog.JdkLearningConceptCatalog;
 import com.eyecode.learning.content.LearningContentEngine;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.language.documentation.JdkSourceTarget;
+import com.eyecode.language.documentation.DocumentationAtCaretResolver;
 import com.eyecode.learning.hover.ConceptHoverProvider;
 import com.eyecode.learning.hover.DefaultHoverEngine;
 import com.eyecode.learning.ui.LearningHoverController;
@@ -67,6 +69,8 @@ public final class JavaFxLearningWorkspace {
         JavaFxLearningHoverSurface surface = new JavaFxLearningHoverSurface(codeArea);
         surface.setPointerObserver(() -> anchor.follow(surface));
         var catalog = new DefaultLearningCatalog();
+        var jdkCatalog = new JdkLearningConceptCatalog();
+        var jdkResolver = new DocumentationAtCaretResolver();
         var conceptEngine = new DefaultLearningConceptEngine(
                 List.of(new ClassConceptProvider(catalog)));
         return new LearningHoverController(
@@ -78,7 +82,9 @@ public final class JavaFxLearningWorkspace {
                 identifier -> identifier.startsWith("java/")
                         ? contentEngine.loadHtmlByIdentifier(identifier)
                         : contentEngine.loadHtml(identifier),
-                false
+                false,
+                offset -> jdkResolver.resolveType(codeArea.getText(), offset)
+                        .flatMap(type -> jdkCatalog.find(type.simpleName()))
         );
     }
 

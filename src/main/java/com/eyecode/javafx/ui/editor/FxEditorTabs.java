@@ -121,6 +121,11 @@ public final class FxEditorTabs extends TabPane {
         }
     }
 
+    public String selectedTabId() {
+        Tab selected = getSelectionModel().getSelectedItem();
+        return selected == null ? null : (String) selected.getUserData();
+    }
+
     private void reconcileTabs(List<TabModel> models) {
         Map<String, TabModel> incoming = new HashMap<>();
         for (TabModel model : models) {
