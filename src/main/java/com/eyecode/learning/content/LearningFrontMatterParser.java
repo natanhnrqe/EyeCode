@@ -30,6 +30,7 @@ final class LearningFrontMatterParser {
 
         Map<String, String> values = new LinkedHashMap<>();
         List<String> related = new ArrayList<>();
+        List<LearningMember> members = new ArrayList<>();
         String officialLabel = null;
         String officialUrl = null;
         String section = "";
@@ -41,6 +42,17 @@ final class LearningFrontMatterParser {
             String trimmed = line.trim();
             if (trimmed.startsWith("- ") && section.equals("related")) {
                 related.add(value(trimmed.substring(2)));
+                continue;
+            }
+            if (trimmed.startsWith("- ") && section.equals("members")) {
+                String member = value(trimmed.substring(2));
+                int separator = member.indexOf(':');
+                if (separator <= 0 || separator == member.length() - 1) {
+                    throw new IllegalArgumentException("Malformed learning member metadata line: " + line);
+                }
+                members.add(new LearningMember(
+                        value(member.substring(0, separator)),
+                        value(member.substring(separator + 1))));
                 continue;
             }
             int colon = line.indexOf(':');
@@ -60,6 +72,8 @@ final class LearningFrontMatterParser {
             } else if (key.equals("officialDocs")) {
                 section = key;
             } else if (key.equals("related")) {
+                section = key;
+            } else if (key.equals("members")) {
                 section = key;
             } else {
                 section = "";
@@ -86,7 +100,9 @@ final class LearningFrontMatterParser {
         String body = String.join("\n", Arrays.asList(lines).subList(end + 1, lines.length)).strip();
         return new Parsed(
                 new LearningMetadata(id, title, concept, level, duration, category, docs,
-                        related, values.get("next"), LearningDepth.parse(values.get("depth"))),
+                        related, values.get("next"), values.get("parent"), members,
+                        LearningDepth.parse(values.get("depth")), LearningKind.parse(values.get("kind")),
+                        values.get("sourceMember")),
                 body);
     }
 

@@ -32,6 +32,7 @@ public final class JavaJdkTypeCatalog {
         add(types, "Math", "java.lang.Math", "java.base");
         add(types, "List", "java.util.List", "java.base");
         add(types, "ArrayList", "java.util.ArrayList", "java.base");
+        add(types, "LinkedList", "java.util.LinkedList", "java.base");
         add(types, "Map", "java.util.Map", "java.base");
         add(types, "HashMap", "java.util.HashMap", "java.base");
         add(types, "UIManager", "javax.swing.UIManager", "java.desktop");

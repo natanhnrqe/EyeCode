@@ -1245,6 +1245,30 @@
     -fx-font-size: 10;
 }
 
+.learning-card-breadcrumb {
+    -fx-alignment: center-left;
+    -fx-hgap: 2;
+    -fx-vgap: 0;
+    -fx-padding: 2 0 0 32;
+}
+
+.learning-card-breadcrumb .label,
+.learning-card-breadcrumb .hyperlink {
+    -fx-text-fill: -eyecode-muted;
+    -fx-font-family: "JetBrains Mono";
+    -fx-font-size: 10;
+    -fx-padding: 0 1 0 1;
+}
+
+.learning-card-breadcrumb .hyperlink {
+    -fx-text-fill: -eyecode-accent-bright;
+    -fx-border-color: transparent;
+}
+
+.learning-card-breadcrumb .hyperlink:hover {
+    -fx-text-fill: -eyecode-text;
+}
+
 .learning-card-body {
     -fx-background-color: #2b2b2b;
 }

@@ -10,6 +10,13 @@ officialDocs:
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html
 related:
   - java/jdk/object
+members:
+  - length(): java/jdk/string/length
+  - isBlank(): java/jdk/string/is-blank
+  - substring(): java/jdk/string/substring
+  - contains(): java/jdk/string/contains
+  - replace(): java/jdk/string/replace
+  - split(): java/jdk/string/split
 ---
 
 ## What it is
@@ -22,3 +29,7 @@ String loud = greeting.toUpperCase();
 ```
 
 Use `equals` to compare text, not `==`.
+
+## Common methods
+
+Choose a method below to explore common String operations.

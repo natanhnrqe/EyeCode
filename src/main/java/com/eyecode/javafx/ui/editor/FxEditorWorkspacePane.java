@@ -75,6 +75,7 @@ public final class FxEditorWorkspacePane extends VBox {
         if (tab == null) {
             return;
         }
+        tab.reveal(target);
         String id = target.tabId();
         tabs.addSourceTab(id, target.displayName(), () -> {
             sourceWorkspace.close(id);

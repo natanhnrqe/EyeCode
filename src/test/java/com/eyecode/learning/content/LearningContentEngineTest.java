@@ -74,6 +74,15 @@ class LearningContentEngineTest {
     }
 
     @Test
+    void loadsStringMemberLessonsByStableIdentifiers() {
+        LearningDocument document = engine.loadDocument("java/jdk/string/substring");
+
+        assertEquals("String.substring()", document.metadata().title());
+        assertEquals("quick", document.metadata().depth().name().toLowerCase());
+        assertTrue(document.renderedHtml().contains("substring(begin, end)"));
+    }
+
+    @Test
     void rendersSupportedInfoAndWarningCallouts() {
         String html = engine.convert(
                 "> [!INFO]\n> A value is available.\n\n> [!WARNING]\n> Be careful.");

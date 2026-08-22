@@ -21,6 +21,7 @@ public final class JdkLearningConceptCatalog {
             Map.entry("Math", "java/jdk/math"),
             Map.entry("List", "java/jdk/list"),
             Map.entry("ArrayList", "java/jdk/array-list"),
+            Map.entry("LinkedList", "java/jdk/linked-list"),
             Map.entry("Map", "java/jdk/map"),
             Map.entry("HashMap", "java/jdk/hash-map"));
 

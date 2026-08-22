@@ -47,4 +47,96 @@ public final class JdkSourceDeclarationLocator {
         }
         return 0;
     }
+
+    public int find(String source, JdkSourceTarget target) {
+        if (target == null || source == null) {
+            return 0;
+        }
+        if (target.memberName() != null) {
+            int memberOffset = findMember(source, target.memberName());
+            if (memberOffset > 0) {
+                return memberOffset;
+            }
+        }
+        String simpleName = target.qualifiedName().substring(
+                target.qualifiedName().lastIndexOf('.') + 1);
+        return find(source, simpleName);
+    }
+
+    private int findMember(String source, String memberName) {
+        var tokens = lexerService.lex(DocumentSnapshot.oneShot(source)).tokens();
+        for (int index = 0; index < tokens.size(); index++) {
+            Token name = tokens.get(index);
+            if (name.type() != JavaTokenType.IDENTIFIER || !memberName.equals(name.text())) {
+                continue;
+            }
+            int next = nextSignificant(tokens, index + 1);
+            if (next >= tokens.size() || !"(".equals(tokens.get(next).text())) {
+                continue;
+            }
+            int previous = previousSignificant(tokens, index - 1);
+            if (previous >= 0 && ".".equals(tokens.get(previous).text())) {
+                continue;
+            }
+            int close = matchingParen(tokens, next);
+            if (close < 0) {
+                continue;
+            }
+            int after = nextSignificant(tokens, close + 1);
+            if (after < tokens.size() && isDeclarationTail(tokens, after)) {
+                return name.startOffset();
+            }
+        }
+        return 0;
+    }
+
+    private static boolean isDeclarationTail(java.util.List<Token> tokens, int index) {
+        String text = tokens.get(index).text();
+        if ("{".equals(text) || ";".equals(text)) {
+            return true;
+        }
+        if (!"throws".equals(text)) {
+            return false;
+        }
+        for (int i = index + 1; i < tokens.size(); i++) {
+            String next = tokens.get(i).text();
+            if ("{".equals(next) || ";".equals(next)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static int matchingParen(java.util.List<Token> tokens, int open) {
+        int depth = 0;
+        for (int index = open; index < tokens.size(); index++) {
+            String text = tokens.get(index).text();
+            if ("(".equals(text)) {
+                depth++;
+            } else if (")".equals(text) && --depth == 0) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private static int nextSignificant(java.util.List<Token> tokens, int start) {
+        for (int index = start; index < tokens.size(); index++) {
+            Token token = tokens.get(index);
+            if (token.type() != JavaTokenType.WHITESPACE && token.type() != JavaTokenType.COMMENT) {
+                return index;
+            }
+        }
+        return tokens.size();
+    }
+
+    private static int previousSignificant(java.util.List<Token> tokens, int start) {
+        for (int index = start; index >= 0; index--) {
+            Token token = tokens.get(index);
+            if (token.type() != JavaTokenType.WHITESPACE && token.type() != JavaTokenType.COMMENT) {
+                return index;
+            }
+        }
+        return -1;
+    }
 }

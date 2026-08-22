@@ -2,6 +2,7 @@ package com.eyecode.javafx.learning;
 
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.learning.content.LearningMetadata;
+import com.eyecode.learning.content.LearningMember;
 import com.eyecode.language.documentation.JdkSourceTarget;
 import javafx.application.Platform;
 import org.junit.jupiter.api.BeforeAll;
@@ -79,6 +80,68 @@ class JavaFxLearningCardMetadataTest {
             assertTrue(footer.sourceVisibleForTest());
             footer.fireSourceForTest();
             assertEquals(target, opened.get());
+        });
+    }
+
+    @Test
+    void memberLinksUseTheExistingInternalNavigationCallback() throws Exception {
+        runInFx(() -> {
+            LearningMetadata metadata = new LearningMetadata(
+                    "java/jdk/string", "String", "string", "beginner", 4,
+                    "JAVA API", null, List.of(), null,
+                    List.of(new LearningMember("substring()", "java/jdk/string/substring")),
+                    com.eyecode.learning.content.LearningDepth.FULL);
+            JavaFxLearningCardFooter footer = new JavaFxLearningCardFooter();
+            var navigated = new java.util.concurrent.atomic.AtomicReference<String>();
+
+            footer.show(metadata, ignored -> { }, ignored -> { }, ignored -> { }, id -> id,
+                    null, ignored -> { }, navigated::set);
+
+            assertEquals(2, footer.memberCountForTest());
+            footer.fireMemberForTest(0);
+            assertEquals("java/jdk/string/substring", navigated.get());
+        });
+    }
+
+    @Test
+    void breadcrumbIsNativeHeaderNavigationAndRootHasNoRedundantPath() throws Exception {
+        runInFx(() -> {
+            LearningMetadata root = new LearningMetadata(
+                    "java/jdk/string", "String", "string", "beginner", 4,
+                    "JAVA API", null, List.of(), null);
+            LearningMetadata child = new LearningMetadata(
+                    "java/jdk/string/substring", "String.substring()", "string-substring",
+                    "beginner", 2, "JAVA API", null, List.of(), null,
+                    "java/jdk/string", List.of(), com.eyecode.learning.content.LearningDepth.QUICK);
+            JavaFxLearningCardHeader header = new JavaFxLearningCardHeader();
+            var navigated = new java.util.concurrent.atomic.AtomicReference<String>();
+
+            header.show(root);
+            assertEquals("", header.breadcrumbTextForTest());
+
+            header.show(child, List.of(root), navigated::set);
+            assertEquals("String > substring()", header.breadcrumbTextForTest());
+            header.fireBreadcrumbForTest(0);
+            assertEquals("java/jdk/string", navigated.get());
+        });
+    }
+
+    @Test
+    void methodOwnerIsNotDuplicatedInRelatedFooter() throws Exception {
+        runInFx(() -> {
+            LearningMetadata metadata = new LearningMetadata(
+                    "java/jdk/string/contains", "String.contains()", "string-contains",
+                    "beginner", 1, "JAVA API", null, List.of("java/jdk/string"), null,
+                    "java/jdk/string", List.of(), com.eyecode.learning.content.LearningDepth.QUICK,
+                    com.eyecode.learning.content.LearningKind.MEMBER);
+            JavaFxLearningCardFooter footer = new JavaFxLearningCardFooter();
+
+            footer.show(metadata, ignored -> { }, ignored -> { }, ignored -> { }, id -> "String",
+                    new DocumentationTarget("String API", "https://docs.oracle.com/"), null,
+                    ignored -> { }, ignored -> { });
+
+            assertEquals(0, footer.relatedLinkCountForTest());
+            assertEquals("String API ↗", footer.documentationTextForTest());
         });
     }
 

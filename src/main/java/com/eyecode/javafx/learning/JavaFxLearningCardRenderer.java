@@ -16,11 +16,13 @@ import javafx.stage.Window;
 import javafx.geometry.Rectangle2D;
 
 import java.awt.Point;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
 
-    private static final double WIDTH = 600;
-    private static final double HEIGHT = 500;
     private static final int OFFSET = 14;
 
     private final JavaFxLearningAnchor anchor;
@@ -60,9 +62,7 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
         this.sourceNavigator = sourceNavigator == null ? target -> { } : sourceNavigator;
         this.card = new VBox(header, learningSurface, footer);
         card.getStyleClass().add("learning-card");
-        card.setMinSize(WIDTH, HEIGHT);
-        card.setPrefSize(WIDTH, HEIGHT);
-        card.setMaxSize(WIDTH, HEIGHT);
+        applySizing(null);
         learningSurface.getStyleClass().add("learning-card-body");
         VBox.setVgrow(learningSurface, Priority.ALWAYS);
         popup.setAutoHide(false);
@@ -159,11 +159,11 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
     }
 
     double widthForTest() {
-        return WIDTH;
+        return card.getPrefWidth();
     }
 
     double heightForTest() {
-        return HEIGHT;
+        return card.getPrefHeight();
     }
 
     VBox cardForTest() {
@@ -171,6 +171,7 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
     }
 
     public void navigateToIdentifier(String identifier) {
+        explicitSourceTarget = null;
         showIdentifier(identifier);
     }
 
@@ -194,30 +195,73 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
             return;
         }
         currentIdentifier = identifier;
-        header.show(document.metadata());
+        applySizing(document.metadata());
+        header.show(document.metadata(), ancestorsFor(document.metadata()), this::navigate);
         footer.show(
                 document.metadata(),
                 this::navigate,
                 documentationNavigator::open,
                 this::navigate,
                 this::titleFor,
+                documentationTarget(document.metadata()),
                 explicitSourceTarget != null
                         ? explicitSourceTarget : sourceTarget(document.metadata()),
-                sourceNavigator::open
+                        sourceNavigator::open,
+                        this::navigate
         );
         learningSurface.showHtml(document.renderedHtml());
     }
 
+    private List<com.eyecode.learning.content.LearningMetadata> ancestorsFor(
+            com.eyecode.learning.content.LearningMetadata metadata) {
+        List<com.eyecode.learning.content.LearningMetadata> ancestors = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        String parent = metadata.parent();
+        while (parent != null && !parent.isBlank() && visited.add(parent)
+                && ancestors.size() < 32) {
+            try {
+                com.eyecode.learning.content.LearningMetadata ancestor =
+                        contentEngine.loadDocument(parent).metadata();
+                ancestors.addFirst(ancestor);
+                parent = ancestor.parent();
+            } catch (RuntimeException ignored) {
+                break;
+            }
+        }
+        return ancestors;
+    }
+
     private JdkSourceTarget sourceTarget(com.eyecode.learning.content.LearningMetadata metadata) {
-        if (metadata == null || metadata.officialDocs() == null) {
+        com.eyecode.learning.content.LearningMetadata targetMetadata = referenceMetadata(metadata);
+        if (targetMetadata == null || targetMetadata.officialDocs() == null) {
             return null;
         }
-        return JavaJdkTypeCatalog.findSimple(metadata.officialDocs().label())
+        return JavaJdkTypeCatalog.findSimple(targetMetadata.officialDocs().label())
                 .flatMap(sourceResolver::resolve)
+                .map(target -> target.withMember(metadata.sourceMember()))
                 .orElse(null);
     }
 
+    private com.eyecode.learning.content.DocumentationTarget documentationTarget(
+            com.eyecode.learning.content.LearningMetadata metadata) {
+        com.eyecode.learning.content.LearningMetadata targetMetadata = referenceMetadata(metadata);
+        return targetMetadata == null ? null : targetMetadata.officialDocs();
+    }
+
+    private com.eyecode.learning.content.LearningMetadata referenceMetadata(
+            com.eyecode.learning.content.LearningMetadata metadata) {
+        if (metadata == null || metadata.officialDocs() != null || metadata.parent() == null) {
+            return metadata;
+        }
+        try {
+            return contentEngine.loadDocument(metadata.parent()).metadata();
+        } catch (RuntimeException ignored) {
+            return metadata;
+        }
+    }
+
     private void navigate(String identifier) {
+        explicitSourceTarget = null;
         showIdentifier(identifier);
     }
 
@@ -232,21 +276,29 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
     private void reposition() {
         Point point = anchor.point();
         if (point != null) {
-            popup.setX(point.x + OFFSET);
-            popup.setY(point.y + OFFSET);
+            positionWithinScreen(point.x + OFFSET, point.y + OFFSET);
         }
     }
 
+    private void applySizing(com.eyecode.learning.content.LearningMetadata metadata) {
+        LearningCardSizingPolicy sizing = LearningCardSizingPolicy.forMetadata(metadata);
+        card.setMinSize(sizing.width(), sizing.minHeight());
+        card.setPrefSize(sizing.width(), sizing.preferredHeight());
+        card.setMaxSize(sizing.width(), sizing.maxHeight());
+    }
+
     private void positionWithinScreen(double requestedX, double requestedY) {
+        double width = card.getPrefWidth();
+        double height = card.getPrefHeight();
         Rectangle2D bounds = Screen.getScreensForRectangle(
-                        requestedX, requestedY, WIDTH, HEIGHT)
+                        requestedX, requestedY, width, height)
                 .stream()
                 .findFirst()
                 .map(Screen::getVisualBounds)
                 .orElse(Screen.getPrimary().getVisualBounds());
         popup.setX(Math.max(bounds.getMinX(),
-                Math.min(requestedX, bounds.getMaxX() - WIDTH)));
+                Math.min(requestedX, bounds.getMaxX() - width)));
         popup.setY(Math.max(bounds.getMinY(),
-                Math.min(requestedY, bounds.getMaxY() - HEIGHT)));
+                Math.min(requestedY, bounds.getMaxY() - height)));
     }
 }

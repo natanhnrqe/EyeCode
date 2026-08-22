@@ -51,6 +51,27 @@ class JavaFxJdkSourceTabTest {
         });
     }
 
+    @Test
+    void memberRevealMovesTheExistingSourceEditorWithoutChangingItsContent() throws Exception {
+        runInFx(() -> {
+            JdkSourceTarget type = new JdkSourceTarget(
+                    "java.lang.String", "java.base", "java.base/java/lang/String.java", "String.java");
+            JdkSourceTarget member = type.withMember("contains");
+            String source = "public final class String {\n"
+                    + "  public boolean contains(CharSequence value) { return true; }\n"
+                    + "}";
+            JavaFxJdkSourceTab tab = new JavaFxJdkSourceTab(type, source);
+            try {
+                tab.reveal(member);
+                assertEquals(source.indexOf("contains(CharSequence"),
+                        tab.editor().getCodeArea().getCaretPosition());
+                assertEquals(source, tab.editor().getText());
+            } finally {
+                tab.dispose();
+            }
+        });
+    }
+
     private static void runInFx(ThrowingRunnable action) throws Exception {
         CountDownLatch done = new CountDownLatch(1);
         AtomicReference<Throwable> failure = new AtomicReference<>();

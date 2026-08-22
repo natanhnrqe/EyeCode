@@ -16,17 +16,19 @@ public final class JavaFxJdkSourceTab extends VBox {
     private final JavaFxEditor editor;
     private final JavaFxEditorController controller;
     private final JavaFxLearningWorkspace learningWorkspace;
+    private final JdkSourceDeclarationLocator declarationLocator = new JdkSourceDeclarationLocator();
+    private final String source;
 
     public JavaFxJdkSourceTab(JdkSourceTarget target, String source) {
         this.target = target;
+        this.source = source == null ? "" : source;
         this.learningWorkspace = new JavaFxLearningWorkspace();
-        EditorBuffer buffer = new EditorBuffer(new EditorDocument(null, source == null ? "" : source));
+        EditorBuffer buffer = new EditorBuffer(new EditorDocument(null, this.source));
         this.editor = new JavaFxEditor(buffer);
         this.controller = new JavaFxEditorController(editor, buffer, learningWorkspace);
         controller.loadDocument();
         editor.setReadOnly(true);
-        String simpleName = target.qualifiedName().substring(target.qualifiedName().lastIndexOf('.') + 1);
-        editor.revealOffset(new JdkSourceDeclarationLocator().find(source, simpleName));
+        reveal(target);
         getStyleClass().add("jdk-source-tab");
         VBox.setVgrow(editor, Priority.ALWAYS);
         getChildren().add(editor);
@@ -38,6 +40,10 @@ public final class JavaFxJdkSourceTab extends VBox {
 
     public JavaFxEditor editor() {
         return editor;
+    }
+
+    public void reveal(JdkSourceTarget target) {
+        editor.revealOffset(declarationLocator.find(source, target));
     }
 
     public void dispose() {

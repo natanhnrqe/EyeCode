@@ -38,6 +38,30 @@ class LearningContentRepositoryTest {
     }
 
     @Test
+    void exposesStringMemberDestinationsFromFrontMatter() {
+        LearningMetadata metadata = repository.loadDocument("java/jdk/string").metadata();
+
+        assertEquals(6, metadata.members().size());
+        assertEquals("length()", metadata.members().getFirst().label());
+        assertEquals("java/jdk/string/length", metadata.members().getFirst().identifier());
+    }
+
+    @Test
+    void exposesParentMetadataForMemberAndCollectionLessons() {
+        assertEquals("java/jdk/string", repository.loadDocument("java/jdk/string/substring")
+                .metadata().parent());
+        assertEquals("java/jdk/list", repository.loadDocument("java/jdk/array-list")
+                .metadata().parent());
+        assertEquals("java/jdk/map", repository.loadDocument("java/jdk/hash-map")
+                .metadata().parent());
+        assertEquals(null, repository.loadDocument("java/jdk/string").metadata().parent());
+        assertEquals(LearningKind.MEMBER,
+                repository.loadDocument("java/jdk/string/contains").metadata().kind());
+        assertEquals("contains",
+                repository.loadDocument("java/jdk/string/contains").metadata().sourceMember());
+    }
+
+    @Test
     void producesDeterministicClasspathResourcePath() {
         assertEquals("/learning/content/java/basics/variables.md",
                 repository.resourcePath("/java/basics/variables/"));
