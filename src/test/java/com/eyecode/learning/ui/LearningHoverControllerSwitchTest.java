@@ -87,6 +87,7 @@ class LearningHoverControllerSwitchTest {
                     identifier -> "",
                     false,
                     offset -> Optional.of(offset < 2 ? string : object),
+                    token -> Optional.empty(),
                     new HoverStateMachine(clock::get));
         }
 

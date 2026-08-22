@@ -86,7 +86,7 @@ final class LearningFrontMatterParser {
         String body = String.join("\n", Arrays.asList(lines).subList(end + 1, lines.length)).strip();
         return new Parsed(
                 new LearningMetadata(id, title, concept, level, duration, category, docs,
-                        related, values.get("next")),
+                        related, values.get("next"), LearningDepth.parse(values.get("depth"))),
                 body);
     }
 

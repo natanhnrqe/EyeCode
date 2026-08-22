@@ -36,6 +36,7 @@ public final class LearningHoverController {
     private final LearningContextResolver resolver;
     private final Function<String, String> contentLoader;
     private final Function<Integer, Optional<LearningConcept>> jdkConceptResolver;
+    private final Function<String, Optional<LearningConcept>> syntaxConceptResolver;
     private final boolean ownsRenderer;
     private final IntConsumer moveListener;
     private final Runnable cancelListener;
@@ -98,7 +99,22 @@ public final class LearningHoverController {
             Function<Integer, Optional<LearningConcept>> jdkConceptResolver
     ) {
         this(surface, popup, scheduler, hoverEngine, syntaxSupplier, contentLoader, ownsRenderer,
-                jdkConceptResolver, new HoverStateMachine());
+                jdkConceptResolver, token -> Optional.empty(), new HoverStateMachine());
+    }
+
+    public LearningHoverController(
+            LearningHoverSurface surface,
+            LearningCardRenderer popup,
+            LearningHoverScheduler scheduler,
+            HoverEngine hoverEngine,
+            Supplier<SyntaxSnapshot> syntaxSupplier,
+            Function<String, String> contentLoader,
+            boolean ownsRenderer,
+            Function<Integer, Optional<LearningConcept>> jdkConceptResolver,
+            Function<String, Optional<LearningConcept>> syntaxConceptResolver
+    ) {
+        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, contentLoader, ownsRenderer,
+                jdkConceptResolver, syntaxConceptResolver, new HoverStateMachine());
     }
 
     LearningHoverController(
@@ -110,6 +126,7 @@ public final class LearningHoverController {
             Function<String, String> contentLoader,
             boolean ownsRenderer,
             Function<Integer, Optional<LearningConcept>> jdkConceptResolver,
+            Function<String, Optional<LearningConcept>> syntaxConceptResolver,
             HoverStateMachine stateMachine
     ) {
         this.surface = surface;
@@ -121,6 +138,7 @@ public final class LearningHoverController {
         this.resolver = new DefaultLearningContextResolver();
         this.contentLoader = Objects.requireNonNull(contentLoader, "contentLoader");
         this.jdkConceptResolver = Objects.requireNonNull(jdkConceptResolver, "jdkConceptResolver");
+        this.syntaxConceptResolver = Objects.requireNonNull(syntaxConceptResolver, "syntaxConceptResolver");
         this.ownsRenderer = ownsRenderer;
         this.moveListener = this::onOffsetChanged;
         this.cancelListener = this::cancelHover;
@@ -351,14 +369,25 @@ public final class LearningHoverController {
 
         Optional<SyntaxToken> keyword = syntax.getTokens().stream()
                 .filter(t -> offset >= t.startOffset() && offset <= t.endOffset()
-                        && t.type() == TokenType.KEYWORD
-                        && TYPE_KEYWORDS.contains(t.text()))
+                        && (t.type() == TokenType.KEYWORD
+                        || t.type() == TokenType.IDENTIFIER))
                 .findFirst();
         if (keyword.isEmpty()) {
             return null;
         }
 
         SyntaxToken syntaxToken = keyword.get();
+        Optional<LearningConcept> syntaxConcept = syntaxConceptResolver.apply(syntaxToken.text());
+        if (syntaxConcept.isPresent()) {
+            String key = "syntax:" + syntaxToken.startOffset() + ":" + syntaxToken.endOffset();
+            if (Objects.equals(key, visibleSymbolKey) && popup.isVisible()) {
+                return visibleSnapshot;
+            }
+            return new HoverSnapshot(key, syntaxConcept.get());
+        }
+        if (syntaxToken.type() != TokenType.KEYWORD || !TYPE_KEYWORDS.contains(syntaxToken.text())) {
+            return null;
+        }
         String key = syntaxToken.text() + ":" + syntaxToken.startOffset() + ":" + syntaxToken.endOffset();
 
         if (Objects.equals(key, visibleSymbolKey) && popup.isVisible()) {

@@ -14,6 +14,7 @@ public final class LearningConcept {
     private List<String> relatedConcepts;
     private LearningPage page;
     private String qualifiedName;
+    private String trigger;
 
     public String getId() {
         return id;
@@ -77,5 +78,13 @@ public final class LearningConcept {
 
     public void setQualifiedName(String qualifiedName) {
         this.qualifiedName = qualifiedName;
+    }
+
+    public String getTrigger() {
+        return trigger;
+    }
+
+    public void setTrigger(String trigger) {
+        this.trigger = trigger;
     }
 }

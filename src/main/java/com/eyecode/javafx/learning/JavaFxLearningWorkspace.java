@@ -3,6 +3,7 @@ package com.eyecode.javafx.learning;
 import com.eyecode.javafx.ui.toolwindow.content.JavaFxCeffxLearningSurface;
 import com.eyecode.learning.catalog.DefaultLearningCatalog;
 import com.eyecode.learning.catalog.JdkLearningConceptCatalog;
+import com.eyecode.learning.catalog.JavaSyntaxLearningCatalog;
 import com.eyecode.learning.content.LearningContentEngine;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.language.documentation.JdkSourceTarget;
@@ -70,6 +71,7 @@ public final class JavaFxLearningWorkspace {
         surface.setPointerObserver(() -> anchor.follow(surface));
         var catalog = new DefaultLearningCatalog();
         var jdkCatalog = new JdkLearningConceptCatalog();
+        var syntaxCatalog = new JavaSyntaxLearningCatalog();
         var jdkResolver = new DocumentationAtCaretResolver();
         var conceptEngine = new DefaultLearningConceptEngine(
                 List.of(new ClassConceptProvider(catalog)));
@@ -84,7 +86,8 @@ public final class JavaFxLearningWorkspace {
                         : contentEngine.loadHtml(identifier),
                 false,
                 offset -> jdkResolver.resolveType(codeArea.getText(), offset)
-                        .flatMap(type -> jdkCatalog.find(type.simpleName()))
+                        .flatMap(type -> jdkCatalog.find(type.simpleName())),
+                syntaxCatalog::find
         );
     }
 

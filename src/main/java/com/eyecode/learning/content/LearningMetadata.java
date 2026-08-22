@@ -11,8 +11,16 @@ public record LearningMetadata(
         String category,
         DocumentationTarget officialDocs,
         List<String> related,
-        String next
+        String next,
+        LearningDepth depth
 ) {
+
+    public LearningMetadata(String id, String title, String concept, String level,
+                            int duration, String category, DocumentationTarget officialDocs,
+                            List<String> related, String next) {
+        this(id, title, concept, level, duration, category, officialDocs, related, next,
+                LearningDepth.FULL);
+    }
 
     public LearningMetadata {
         if (id == null || id.isBlank()) {
@@ -33,6 +41,7 @@ public record LearningMetadata(
         if (category == null || category.isBlank()) {
             throw new IllegalArgumentException("Learning metadata category must not be blank");
         }
+        depth = depth == null ? LearningDepth.FULL : depth;
         related = related == null ? List.of() : List.copyOf(related);
     }
 }
