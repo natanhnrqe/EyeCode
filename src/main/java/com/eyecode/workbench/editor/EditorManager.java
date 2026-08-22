@@ -2,6 +2,7 @@ package com.eyecode.workbench.editor;
 
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.editor.intelligence.document.DocumentSnapshot;
 import com.eyecode.eventbus.EventBus;
 import com.eyecode.eventbus.events.EditorActivatedEvent;
 import com.eyecode.eventbus.events.FileClosedEvent;
@@ -199,15 +200,29 @@ public final class EditorManager {
         if (document == null) {
             return Optional.empty();
         }
-        String source = document.getText();
+        return resolveDefinition(sessionId, document.snapshot(), caretOffset);
+    }
+
+    public Optional<DefinitionLocation> resolveDefinition(String sessionId,
+                                                          DocumentSnapshot snapshot,
+                                                          int caretOffset) {
+        if (sessionId == null || snapshot == null) {
+            return Optional.empty();
+        }
+        EditorDocument document = documentsBySession.get(sessionId);
+        if (document == null || !document.sessionId().equals(snapshot.sessionId())
+                || document.currentVersion() != snapshot.version()) {
+            return Optional.empty();
+        }
+        String source = snapshot.getText();
         if (caretOffset < 0 || caretOffset > source.length()) {
             return Optional.empty();
         }
-        Optional<SymbolTable> symbolTable = buildSymbolTable(document);
-        if (symbolTable.isEmpty()) {
+        Optional<SemanticModelSnapshot> model = semanticModelBuilder.build(snapshot);
+        if (model.isEmpty()) {
             return Optional.empty();
         }
-        return definitionAtCaretResolver.resolve(source, caretOffset, symbolTable.get());
+        return definitionAtCaretResolver.resolve(source, caretOffset, model.get().symbolTable());
     }
 
     private EditorSession createSession(Path file, EditorDocument document, EditorBuffer buffer) {

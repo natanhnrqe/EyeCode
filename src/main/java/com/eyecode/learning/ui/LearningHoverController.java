@@ -303,7 +303,7 @@ public final class LearningHoverController {
             return;
         }
         pendingSnapshot = null;
-        popup.update(pending.concept());
+        popup.updateForExternalHover(pending.concept());
         visibleSymbolKey = pending.symbolKey();
         visibleSnapshot = pending;
         if (!Objects.equals(lastConcept, pending.concept())) {

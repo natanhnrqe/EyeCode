@@ -14,6 +14,10 @@ public interface LearningCardRenderer {
 
     void update(LearningConcept concept);
 
+    default void updateForExternalHover(LearningConcept concept) {
+        update(concept);
+    }
+
     void loadHtml(String html);
 
     boolean containsScreen(Point screenPoint);

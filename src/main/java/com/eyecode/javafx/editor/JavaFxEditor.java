@@ -28,7 +28,6 @@ public final class JavaFxEditor extends HBox {
     private final StackPane editorSurface;
     private BooleanSupplier goToDefinitionAction;
     private BooleanSupplier documentationAction;
-    private BooleanSupplier jdkSourceAction;
     private boolean readOnly;
     private Predicate<KeyEvent> completionEventHandler;
 
@@ -72,7 +71,6 @@ public final class JavaFxEditor extends HBox {
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleCompletionEvent);
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleGoToDefinition);
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleDocumentation);
-        codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleJdkSource);
         codeArea.addEventFilter(KeyEvent.KEY_TYPED, this::handleSmartEditing);
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleSmartEditing);
     }
@@ -94,10 +92,6 @@ public final class JavaFxEditor extends HBox {
         handleDocumentationShortcut(event);
     }
 
-    private void handleJdkSource(KeyEvent event) {
-        handleJdkSourceShortcut(event);
-    }
-
     boolean handleGoToDefinitionShortcut(KeyEvent event) {
         if (!isGoToDefinitionKey(event)) {
             return false;
@@ -114,17 +108,6 @@ public final class JavaFxEditor extends HBox {
             return false;
         }
         if (openDocumentation()) {
-            event.consume();
-            return true;
-        }
-        return false;
-    }
-
-    boolean handleJdkSourceShortcut(KeyEvent event) {
-        if (!isJdkSourceKey(event)) {
-            return false;
-        }
-        if (openJdkSource()) {
             event.consume();
             return true;
         }
@@ -169,25 +152,12 @@ public final class JavaFxEditor extends HBox {
                 && !event.isMetaDown();
     }
 
-    private boolean isJdkSourceKey(KeyEvent event) {
-        return event.getEventType() == KeyEvent.KEY_PRESSED
-                && event.getCode() == javafx.scene.input.KeyCode.S
-                && event.isControlDown()
-                && event.isAltDown()
-                && !event.isShiftDown()
-                && !event.isMetaDown();
-    }
-
     public void setGoToDefinitionAction(BooleanSupplier goToDefinitionAction) {
         this.goToDefinitionAction = goToDefinitionAction;
     }
 
     public void setDocumentationAction(BooleanSupplier documentationAction) {
         this.documentationAction = documentationAction;
-    }
-
-    public void setJdkSourceAction(BooleanSupplier jdkSourceAction) {
-        this.jdkSourceAction = jdkSourceAction;
     }
 
     public void setReadOnly(boolean readOnly) {
@@ -205,10 +175,6 @@ public final class JavaFxEditor extends HBox {
 
     public boolean openDocumentation() {
         return documentationAction != null && documentationAction.getAsBoolean();
-    }
-
-    public boolean openJdkSource() {
-        return jdkSourceAction != null && jdkSourceAction.getAsBoolean();
     }
 
     public void revealOffset(int offset) {

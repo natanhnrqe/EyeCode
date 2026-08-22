@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -295,6 +296,10 @@ class JavaFxGoToDefinitionTest {
         return new KeyEvent(KeyEvent.KEY_PRESSED, "", "b", KeyCode.B, false, true, false, false);
     }
 
+    private static KeyEvent ctrlQ() {
+        return new KeyEvent(KeyEvent.KEY_PRESSED, "", "q", KeyCode.Q, false, true, false, false);
+    }
+
     @Test
     void ctrlQIsConsumedOnlyWhenDocumentationResolves() throws Exception {
         runInFx("class Demo { String value; }", editor -> {
@@ -313,21 +318,13 @@ class JavaFxGoToDefinitionTest {
     }
 
     @Test
-    void ctrlAltSIsConsumedOnlyWhenJdkSourceResolves() throws Exception {
+    void ctrlAltSIsNotARegisteredEditorShortcut() throws Exception {
         runInFx("class Demo { String value; }", editor -> {
-            editor.setJdkSourceAction(() -> true);
-            KeyEvent handled = new KeyEvent(
+            KeyEvent event = new KeyEvent(
                     KeyEvent.KEY_PRESSED, "", "s", KeyCode.S,
                     false, true, true, false);
-            assertTrue(editor.handleJdkSourceShortcut(handled));
-            assertTrue(handled.isConsumed());
-
-            editor.setJdkSourceAction(() -> false);
-            KeyEvent ignored = new KeyEvent(
-                    KeyEvent.KEY_PRESSED, "", "s", KeyCode.S,
-                    false, true, true, false);
-            assertFalse(editor.handleJdkSourceShortcut(ignored));
-            assertFalse(ignored.isConsumed());
+            editor.getCodeArea().fireEvent(event);
+            assertFalse(event.isConsumed());
         });
     }
 
@@ -367,7 +364,104 @@ class JavaFxGoToDefinitionTest {
         }
     }
 
+    @Test
+    void ctrlBFallsBackToJdkSourceAfterProjectDefinitionMiss() throws Exception {
+        CountDownLatch done = new CountDownLatch(1);
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Platform.runLater(() -> {
+            try {
+                List<JdkSourceTarget> opened = new ArrayList<>();
+                JavaFxLearningWorkspace learningWorkspace = new JavaFxLearningWorkspace();
+                EditorManager manager = new EditorManager(
+                        new EventBus(),
+                        new NoOpFileSystemService(),
+                        new JavaFxEditorViewFactory(learningWorkspace, opened::add));
+                String source = "import java.util.List; class Demo { String value; List<String> values; Math math; }";
+                EditorSession session = manager.openDocument(Path.of("Demo.java"), source);
+                JavaFxEditorView view = (JavaFxEditorView) manager.getView(session.getSessionId()).orElseThrow();
+                JavaFxEditor editor = view.getEditor();
+                new Scene(editor, 800, 600);
+                editor.getCodeArea().moveTo(source.indexOf("String value"));
+                assertTrue(editor.goToDefinition());
+                assertEquals("java.lang.String", opened.getLast().qualifiedName());
+
+                editor.getCodeArea().moveTo(source.indexOf("List<String>"));
+                assertTrue(editor.goToDefinition());
+                assertEquals("java.util.List", opened.getLast().qualifiedName());
+
+                editor.getCodeArea().moveTo(source.indexOf("Math math"));
+                assertTrue(editor.goToDefinition());
+                assertEquals("java.lang.Math", opened.getLast().qualifiedName());
+            } catch (Throwable throwable) {
+                failure.set(throwable);
+            } finally {
+                done.countDown();
+            }
+        });
+        assertTrue(done.await(15, TimeUnit.SECONDS));
+        if (failure.get() != null) {
+            throw new AssertionError(failure.get());
+        }
+    }
+
+    @Test
+    void ctrlBProjectTypeWinsOverJdkFallback() throws Exception {
+        String source = "package demo; class String {} class Demo { String value; }";
+        runInFx(source, editor -> {
+            putCaret(editor, source.lastIndexOf("String value"));
+            assertTrue(editor.goToDefinition());
+            assertEquals(source.indexOf("class String"), editor.getCodeArea().getCaretPosition());
+        });
+    }
+
+    @Test
+    void ctrlBRepeatedAtSameCaretIsDeterministic() throws Exception {
+        String source = "String value; Object other; Math math;";
+        List<JdkSourceTarget> opened = new ArrayList<>();
+        runInFx(source, new JavaFxLearningWorkspace(), opened::add, editor -> {
+            putCaret(editor, source.indexOf("Math"));
+            assertTrue(editor.handleGoToDefinitionShortcut(ctrlB()));
+            assertTrue(editor.handleGoToDefinitionShortcut(ctrlB()));
+            assertEquals(List.of("java.lang.Math", "java.lang.Math"),
+                    opened.stream().map(JdkSourceTarget::qualifiedName).toList());
+        });
+    }
+
+    @Test
+    void ctrlBTracksCaretMovementAcrossJdkTypes() throws Exception {
+        String source = "String value; Object other; Math math;";
+        List<JdkSourceTarget> opened = new ArrayList<>();
+        runInFx(source, new JavaFxLearningWorkspace(), opened::add, editor -> {
+            putCaret(editor, source.indexOf("String"));
+            assertTrue(editor.handleGoToDefinitionShortcut(ctrlB()));
+            putCaret(editor, source.indexOf("Math"));
+            assertTrue(editor.handleGoToDefinitionShortcut(ctrlB()));
+            assertEquals(List.of("java.lang.String", "java.lang.Math"),
+                    opened.stream().map(JdkSourceTarget::qualifiedName).toList());
+        });
+    }
+
+    @Test
+    void ctrlQUsesCaretForDocumentationNavigation() throws Exception {
+        String source = "String value; Object other; Math math;";
+        List<String> opened = new ArrayList<>();
+        JavaFxLearningWorkspace workspace = new JavaFxLearningWorkspace(
+                target -> opened.add(target.label()));
+        runInFx(source, workspace, target -> { }, editor -> {
+            putCaret(editor, source.indexOf("Object"));
+            assertTrue(editor.handleDocumentationShortcut(ctrlQ()));
+            assertEquals("Object", opened.getLast());
+        });
+    }
+
     private static void runInFx(String source, ThrowingConsumer<JavaFxEditor> assertions) throws Exception {
+        runInFx(source, new JavaFxLearningWorkspace(), target -> { }, assertions);
+    }
+
+    private static void runInFx(String source,
+                                JavaFxLearningWorkspace learningWorkspace,
+                                Consumer<JdkSourceTarget> sourceNavigator,
+                                ThrowingConsumer<JavaFxEditor> assertions) throws Exception {
         CountDownLatch done = new CountDownLatch(1);
         AtomicReference<Throwable> failure = new AtomicReference<>();
         Platform.runLater(() -> {
@@ -375,7 +469,7 @@ class JavaFxGoToDefinitionTest {
                 EditorManager manager = new EditorManager(
                         new EventBus(),
                         new NoOpFileSystemService(),
-                        new JavaFxEditorViewFactory()
+                new JavaFxEditorViewFactory(learningWorkspace, sourceNavigator)
                 );
                 EditorSession session = manager.openDocument(Path.of("Test.java"), source);
                 JavaFxEditorView view = (JavaFxEditorView) manager.getView(session.getSessionId()).orElseThrow();

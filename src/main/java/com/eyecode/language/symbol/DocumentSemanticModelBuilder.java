@@ -1,6 +1,7 @@
 package com.eyecode.language.symbol;
 
 import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.editor.intelligence.document.DocumentSnapshot;
 import com.eyecode.editor.v2.language.java.lexer.JavaTokenStream;
 import com.eyecode.editor.v2.language.java.model.JavaFileModel;
 import com.eyecode.editor.v2.language.java.parser.JavaParser;
@@ -27,18 +28,25 @@ public final class DocumentSemanticModelBuilder {
         if (document == null) {
             return Optional.empty();
         }
+        return build(document.snapshot());
+    }
+
+    public Optional<SemanticModelSnapshot> build(DocumentSnapshot snapshot) {
+        if (snapshot == null) {
+            return Optional.empty();
+        }
         try {
-            String source = document.getText();
-            LexerSnapshot lexerSnapshot = lexerService.lex(document.snapshot());
+            String source = snapshot.getText();
+            LexerSnapshot lexerSnapshot = lexerService.lex(snapshot);
             List<Token> tokens = lexerSnapshot.tokens();
             JavaTokenStream stream = new JavaTokenStream(tokens, source);
             JavaFileModel model = new JavaParser(stream).parse();
-            String sourceFile = document.getSourceFile() != null
-                    ? document.getSourceFile().getFileName().toString()
+            String sourceFile = snapshot.sourceFile() != null
+                    ? snapshot.sourceFile().getFileName().toString()
                     : "Untitled.java";
             return Optional.of(new SymbolTableBuilder(
                     model,
-                    document.currentVersion(),
+                    snapshot.version(),
                     sourceFile,
                     source
             ).build());

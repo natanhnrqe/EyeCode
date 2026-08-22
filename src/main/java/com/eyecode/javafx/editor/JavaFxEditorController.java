@@ -3,6 +3,7 @@ package com.eyecode.javafx.editor;
 import com.eyecode.editor.intelligence.caret.CaretModel;
 import com.eyecode.editor.intelligence.caret.DefaultCaretModel;
 import com.eyecode.editor.intelligence.document.TextRange;
+import com.eyecode.editor.intelligence.document.DocumentSnapshot;
 import com.eyecode.editor.intelligence.events.DocumentChangeListener;
 import com.eyecode.editor.intelligence.events.DocumentTextChangeEvent;
 import com.eyecode.editor.v2.EditorBuffer;
@@ -154,7 +155,6 @@ public final class JavaFxEditorController {
         buffer.addSelectionChangeListener(selectionChangeListener);
         editor.setGoToDefinitionAction(this::goToDefinition);
         editor.setDocumentationAction(this::openDocumentationAtCaret);
-        editor.setJdkSourceAction(this::openJdkSourceAtCaret);
         editor.setCompletionEventHandler(this::handleCompletionEvent);
         editor.getCodeArea().caretPositionProperty().addListener((obs, oldValue, newValue) -> syncCaretFromEditor());
         editor.getCodeArea().selectionProperty().addListener((obs, oldValue, newValue) -> syncSelectionFromEditor());
@@ -282,27 +282,43 @@ public final class JavaFxEditorController {
     }
 
     public boolean goToDefinition() {
-        if (manager == null || sessionId == null) {
+        Optional<CaretInvocation> invocation = captureCaretInvocation();
+        if (invocation.isEmpty() || manager == null || sessionId == null) {
             return false;
         }
-        syncCaretFromEditor();
-        int caretOffset = editor.getCodeArea().getCaretPosition();
-        Optional<DefinitionLocation> location = manager.resolveDefinition(sessionId, caretOffset);
-        if (location.isEmpty()) {
+        CaretInvocation context = invocation.get();
+        Optional<DefinitionLocation> location = manager.resolveDefinition(
+                sessionId, context.snapshot(), context.caretOffset());
+        if (location.isPresent()) {
+            editor.revealOffset(location.get().declarationRange().startOffset());
+            return true;
+        }
+
+        Optional<com.eyecode.language.symbol.SemanticModelSnapshot> model =
+                new DocumentSemanticModelBuilder().build(context.snapshot());
+        Optional<com.eyecode.language.documentation.JavaJdkType> type =
+                documentationAtCaretResolver.resolveType(
+                        context.snapshot().getText(), context.caretOffset(),
+                        model.map(com.eyecode.language.symbol.SemanticModelSnapshot::symbolTable).orElse(null));
+        Optional<JdkSourceTarget> target = type.flatMap(jdkSourceResolver::resolve);
+        if (target.isEmpty()) {
             return false;
         }
-        editor.revealOffset(location.get().declarationRange().startOffset());
+        sourceNavigator.accept(target.get());
         return true;
     }
 
     public boolean openDocumentationAtCaret() {
-        syncCaretFromEditor();
-        EditorDocument document = buffer.getDocument();
+        Optional<CaretInvocation> invocation = captureCaretInvocation();
+        if (invocation.isEmpty()) {
+            return false;
+        }
+        CaretInvocation context = invocation.get();
         Optional<com.eyecode.language.symbol.SemanticModelSnapshot> model =
-                new DocumentSemanticModelBuilder().build(document);
+                new DocumentSemanticModelBuilder().build(context.snapshot());
         Optional<DocumentationTarget> target = documentationAtCaretResolver.resolve(
-                document.getText(),
-                editor.getCodeArea().getCaretPosition(),
+                context.snapshot().getText(),
+                context.caretOffset(),
                 model.map(com.eyecode.language.symbol.SemanticModelSnapshot::symbolTable).orElse(null)
         );
         if (target.isEmpty()) {
@@ -313,13 +329,16 @@ public final class JavaFxEditorController {
     }
 
     public boolean openJdkSourceAtCaret() {
-        syncCaretFromEditor();
-        EditorDocument document = buffer.getDocument();
+        Optional<CaretInvocation> invocation = captureCaretInvocation();
+        if (invocation.isEmpty()) {
+            return false;
+        }
+        CaretInvocation context = invocation.get();
         Optional<com.eyecode.language.symbol.SemanticModelSnapshot> model =
-                new DocumentSemanticModelBuilder().build(document);
+                new DocumentSemanticModelBuilder().build(context.snapshot());
         Optional<com.eyecode.language.documentation.JavaJdkType> type =
                 documentationAtCaretResolver.resolveType(
-                        document.getText(), editor.getCodeArea().getCaretPosition(),
+                        context.snapshot().getText(), context.caretOffset(),
                         model.map(com.eyecode.language.symbol.SemanticModelSnapshot::symbolTable).orElse(null));
         Optional<JdkSourceTarget> target = type.flatMap(jdkSourceResolver::resolve);
         if (target.isEmpty()) {
@@ -327,6 +346,21 @@ public final class JavaFxEditorController {
         }
         sourceNavigator.accept(target.get());
         return true;
+    }
+
+    private Optional<CaretInvocation> captureCaretInvocation() {
+        syncCaretFromEditor();
+        EditorDocument document = buffer.getDocument();
+        if (document == null) {
+            return Optional.empty();
+        }
+        DocumentSnapshot snapshot = document.snapshot();
+        int caretOffset = Math.max(0, Math.min(
+                editor.getCodeArea().getCaretPosition(), snapshot.length()));
+        return Optional.of(new CaretInvocation(snapshot, caretOffset));
+    }
+
+    private record CaretInvocation(DocumentSnapshot snapshot, int caretOffset) {
     }
 
     boolean handleCompletionEvent(KeyEvent event) {

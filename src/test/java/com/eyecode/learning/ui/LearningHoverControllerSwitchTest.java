@@ -46,7 +46,21 @@ class LearningHoverControllerSwitchTest {
         fixture.scheduler.fireHover();
 
         assertEquals(List.of("Object"), fixture.popup.updatedTitles());
+        assertEquals(1, fixture.popup.externalRepositionCount);
         assertTrue(fixture.popup.visible);
+    }
+
+    @Test
+    void repeatedSameTargetDoesNotReloadOrReposition() {
+        Fixture fixture = new Fixture();
+        fixture.move(0);
+        fixture.scheduler.fireHover();
+        fixture.move(0);
+        fixture.move(0);
+        fixture.scheduler.fireHover();
+
+        assertEquals(List.of(), fixture.popup.updatedTitles());
+        assertEquals(0, fixture.popup.externalRepositionCount);
     }
 
     @Test
@@ -150,6 +164,7 @@ class LearningHoverControllerSwitchTest {
     private static final class FakePopup implements LearningCardRenderer {
         private final List<String> shown = new ArrayList<>();
         private final List<String> updated = new ArrayList<>();
+        private int externalRepositionCount;
         private boolean visible;
         private boolean containsPointer;
 
@@ -172,6 +187,12 @@ class LearningHoverControllerSwitchTest {
         @Override
         public void update(LearningConcept concept) {
             updated.add(concept.getTitle());
+        }
+
+        @Override
+        public void updateForExternalHover(LearningConcept concept) {
+            update(concept);
+            externalRepositionCount++;
         }
 
         @Override

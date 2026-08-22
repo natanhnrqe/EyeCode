@@ -114,6 +114,14 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
     }
 
     @Override
+    public void updateForExternalHover(LearningConcept concept) {
+        update(concept);
+        if (concept != null && concept.getPage() != null) {
+            reposition();
+        }
+    }
+
+    @Override
     public void loadHtml(String html) {
         learningSurface.showHtml(html);
     }
