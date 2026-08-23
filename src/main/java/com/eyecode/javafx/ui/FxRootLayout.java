@@ -114,11 +114,14 @@ public final class FxRootLayout extends BorderPane {
                 runService::stop,
                 runService::isRunning,
                 runService::hasLastRequest);
+        toolbar.setRunnable(() -> runService.selectedConfiguration() != null);
+        refreshRunConfigurations();
         runService.addListener(new RunService.Listener() {
             @Override public void onStarted(com.eyecode.runtime.RunRequest request) { refreshRunControls(); }
             @Override public void onOutput(String line, boolean error) { refreshRunControls(); }
             @Override public void onFinished(int exitCode, boolean stopped) { refreshRunControls(); }
         });
+        projectLifecycleService.addListener(project -> refreshRunConfigurations());
         FxBottomToolWindow bottomToolWindow = new FxBottomToolWindow(manager, contentFactory);
         this.bottomToolWindow = bottomToolWindow;
         FxBottomToolWindowBar bottomBar = new FxBottomToolWindowBar(manager);
@@ -212,6 +215,21 @@ public final class FxRootLayout extends BorderPane {
             toolbar.refreshExecutionState();
         } else {
             Platform.runLater(toolbar::refreshExecutionState);
+        }
+    }
+
+    private void refreshRunConfigurations() {
+        Runnable refresh = () -> toolbar.setRunConfigurations(
+                runService.configurations(),
+                runService.selectedConfiguration(),
+                id -> {
+                    runService.selectConfiguration(id);
+                    refreshRunConfigurations();
+                });
+        if (Platform.isFxApplicationThread()) {
+            refresh.run();
+        } else {
+            Platform.runLater(refresh);
         }
     }
 

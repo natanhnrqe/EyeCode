@@ -31,7 +31,7 @@ public final class RunToolWindowContent extends VBox implements RunService.Liste
 
     @Override
     public void onStarted(RunRequest request) {
-        onFx(() -> status.setText("Running " + request.project().getName()));
+        onFx(() -> status.setText("Running " + request.configurationLabel()));
     }
 
     @Override

@@ -16,6 +16,10 @@ public final class RunService {
 
     private final ProjectLifecycleService lifecycleService;
     private final ProjectExecutionResolver resolver;
+    private final RunConfigurationDiscoveryService discoveryService;
+    private final RunConfigurationSelectionStore selectionStore;
+    private volatile List<RunConfiguration> configurations = List.of();
+    private volatile RunConfiguration selectedConfiguration;
     private final List<Listener> listeners = new CopyOnWriteArrayList<>();
     private volatile RunSession activeSession;
     private volatile RunRequest lastRequest;
@@ -27,12 +31,24 @@ public final class RunService {
     private volatile boolean lastStopped;
 
     public RunService(ProjectLifecycleService lifecycleService) {
-        this(lifecycleService, new ProjectExecutionResolver());
+        this(lifecycleService, new ProjectExecutionResolver(), new RunConfigurationDiscoveryService(), new RunConfigurationSelectionStore());
     }
 
     public RunService(ProjectLifecycleService lifecycleService, ProjectExecutionResolver resolver) {
+        this(lifecycleService, resolver, new RunConfigurationDiscoveryService(), new RunConfigurationSelectionStore());
+    }
+
+    public RunService(ProjectLifecycleService lifecycleService, ProjectExecutionResolver resolver,
+                      RunConfigurationDiscoveryService discoveryService,
+                      RunConfigurationSelectionStore selectionStore) {
         this.lifecycleService = lifecycleService;
         this.resolver = resolver == null ? new ProjectExecutionResolver() : resolver;
+        this.discoveryService = discoveryService == null ? new RunConfigurationDiscoveryService() : discoveryService;
+        this.selectionStore = selectionStore == null ? new RunConfigurationSelectionStore() : selectionStore;
+        if (lifecycleService != null) {
+            lifecycleService.addListener(project -> refreshConfigurations());
+            refreshConfigurations();
+        }
     }
 
     public synchronized boolean runCurrent() {
@@ -41,7 +57,12 @@ public final class RunService {
             publishOutput("No project is open.", true);
             return false;
         }
-        return run(new RunRequest(project));
+        refreshConfigurations();
+        if (selectedConfiguration == null) {
+            publishOutput("No Run Configuration", true);
+            return false;
+        }
+        return run(new RunRequest(project, selectedConfiguration));
     }
 
     public synchronized boolean run(RunRequest request) {
@@ -50,7 +71,9 @@ public final class RunService {
         }
         ResolvedExecution execution;
         try {
-            execution = resolver.resolve(request.project());
+            execution = request.configuration() == null
+                    ? resolver.resolve(request.project())
+                    : resolver.resolve(request.project(), request.configuration());
         } catch (RuntimeException exception) {
             publishOutput(exception.getMessage() == null ? exception.toString() : exception.getMessage(), true);
             publishFinished(-1, false);
@@ -106,6 +129,50 @@ public final class RunService {
 
     public boolean hasLastRequest() {
         return lastRequest != null;
+    }
+
+    public List<RunConfiguration> configurations() {
+        return configurations;
+    }
+
+    public RunConfiguration selectedConfiguration() {
+        return selectedConfiguration;
+    }
+
+    public synchronized void refreshConfigurations() {
+        ProjectModel project = lifecycleService == null ? null : lifecycleService.currentProject();
+        if (project == null) {
+            configurations = List.of();
+            selectedConfiguration = null;
+            return;
+        }
+        List<RunConfiguration> discovered = discoveryService.discover(project);
+        configurations = discovered;
+        String stored = selectionStore.selectedId(project.getRootDir());
+        selectedConfiguration = discovered.stream().filter(value -> value.id().equals(stored)).findFirst()
+                .orElseGet(() -> chooseDefault(discovered));
+        if (selectedConfiguration != null && !selectedConfiguration.id().equals(stored)) {
+            selectionStore.select(project.getRootDir(), selectedConfiguration.id());
+        }
+    }
+
+    public synchronized boolean selectConfiguration(String id) {
+        RunConfiguration next = configurations.stream().filter(value -> value.id().equals(id)).findFirst().orElse(null);
+        if (next == null) {
+            return false;
+        }
+        selectedConfiguration = next;
+        if (lifecycleService != null && lifecycleService.currentProject() != null) {
+            selectionStore.select(lifecycleService.currentProject().getRootDir(), next.id());
+        }
+        return true;
+    }
+
+    private RunConfiguration chooseDefault(List<RunConfiguration> values) {
+        return values.stream().filter(value -> value.kind() == RunConfigurationKind.SPRING_BOOT).findFirst()
+                .orElseGet(() -> values.stream().filter(value -> value.mainClass().endsWith(".Main") || value.mainClass().equals("Main")
+                        || value.mainClass().endsWith(".Application") || value.mainClass().equals("Application")).findFirst()
+                        .orElse(values.isEmpty() ? null : values.getFirst()));
     }
 
     public void addListener(Listener listener) {

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -68,5 +69,19 @@ class FxToolbarMenuTest {
         assertEquals(1, run.get());
         assertEquals(1, rerun.get());
         assertEquals(1, stop.get());
+    }
+
+    @Test
+    void runConfigurationSelectorUsesTheSelectedTarget() {
+        FxToolbar toolbar = new FxToolbar();
+        var configuration = new com.eyecode.runtime.RunConfiguration(
+                "java:demo.Main", "Main", com.eyecode.runtime.RunConfigurationKind.JAVA_APPLICATION,
+                Path.of("."), "demo.Main");
+        toolbar.setRunConfigurations(List.of(configuration), configuration, id -> { });
+
+        assertEquals("Main", toolbar.runConfigurationButtonForTest().getText());
+        assertFalse(toolbar.runConfigurationButtonForTest().isDisabled());
+        assertEquals("demo.Main (JAVA APPLICATION)",
+                toolbar.runConfigurationButtonForTest().getTooltip().getText());
     }
 }

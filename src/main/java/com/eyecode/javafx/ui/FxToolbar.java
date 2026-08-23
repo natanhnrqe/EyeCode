@@ -10,6 +10,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.MenuButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -28,9 +29,11 @@ public final class FxToolbar extends HBox {
     private final Button runButton;
     private final Button rerunButton;
     private final Button stopButton;
+    private final MenuButton runConfigurationButton;
 
     private BooleanSupplier running = () -> false;
     private BooleanSupplier rerunAvailable = () -> false;
+    private BooleanSupplier runnable = () -> true;
 
     public FxToolbar() {
         this(null);
@@ -87,6 +90,10 @@ public final class FxToolbar extends HBox {
         execution.getStyleClass().add("toolbar-execution");
         execution.setAlignment(Pos.CENTER);
 
+        this.runConfigurationButton = new MenuButton("No Run Configuration");
+        runConfigurationButton.getStyleClass().add("toolbar-run-configuration");
+        runConfigurationButton.setDisable(true);
+
 
         this.runButton =
                 JavaFxIconButton.create(EyeCodeIcon.RUN, "Run");
@@ -115,6 +122,8 @@ public final class FxToolbar extends HBox {
                 JavaFxIconButton.create(EyeCodeIcon.GIT, "Git"),
 
                 separator(),
+
+                runConfigurationButton,
 
                 execution,
 
@@ -214,13 +223,53 @@ public final class FxToolbar extends HBox {
         boolean active = running.getAsBoolean();
         boolean canRerun = rerunAvailable.getAsBoolean();
 
-        runButton.setDisable(active);
+        runButton.setDisable(active || !runnable.getAsBoolean());
         rerunButton.setDisable(!canRerun);
         stopButton.setDisable(!active);
     }
 
+    public void setRunnable(BooleanSupplier runnable) {
+        this.runnable = runnable == null ? () -> true : runnable;
+        refreshExecutionState();
+    }
+
+    public void setRunConfigurations(
+            java.util.List<com.eyecode.runtime.RunConfiguration> configurations,
+            com.eyecode.runtime.RunConfiguration selected,
+            java.util.function.Consumer<String> onSelect
+    ) {
+        runConfigurationButton.getItems().clear();
+        if (configurations == null || configurations.isEmpty()) {
+            runConfigurationButton.setText("No Run Configuration");
+            runConfigurationButton.setDisable(true);
+            setRunnable(() -> false);
+            return;
+        }
+        runConfigurationButton.setDisable(false);
+        for (com.eyecode.runtime.RunConfiguration configuration : configurations) {
+            MenuItem item = new MenuItem(configuration.displayName());
+            item.setUserData(configuration.id());
+            item.setOnAction(event -> {
+                if (onSelect != null) {
+                    onSelect.accept(configuration.id());
+                }
+                setRunConfigurations(configurations, configuration, onSelect);
+            });
+            runConfigurationButton.getItems().add(item);
+        }
+        if (selected != null) {
+            runConfigurationButton.setText(selected.displayName());
+            runConfigurationButton.setTooltip(new javafx.scene.control.Tooltip(selected.tooltip()));
+        }
+        setRunnable(() -> true);
+    }
+
     java.util.List<Button> executionButtonsForTest() {
         return java.util.List.of(runButton, rerunButton, stopButton);
+    }
+
+    MenuButton runConfigurationButtonForTest() {
+        return runConfigurationButton;
     }
 
     public void setProjectMenuActions(

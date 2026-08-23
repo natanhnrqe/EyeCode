@@ -28,26 +28,54 @@ public final class ProjectExecutionResolver {
             return new ResolvedExecution(ResolvedExecution.Kind.SPRING_GRADLE,
                     List.of(toolCommand(root, wrapper(root, true), "gradle", "bootRun")), null);
         }
+        RunConfigurationDiscoveryService discovery = new RunConfigurationDiscoveryService();
+        List<RunConfiguration> configurations = discovery.discover(project);
+        if (configurations.isEmpty()) {
+            throw new IllegalArgumentException("No main class found");
+        }
+        if (configurations.size() > 1) {
+            throw new IllegalArgumentException("Multiple main classes found: "
+                    + configurations.stream().map(RunConfiguration::mainClass).sorted().toList());
+        }
+        return resolve(project, configurations.getFirst());
+    }
+
+    public ResolvedExecution resolve(ProjectModel project, RunConfiguration configuration) {
+        if (project == null || configuration == null) {
+            throw new IllegalArgumentException("Project and run configuration are required");
+        }
+        Path root = project.getRootDir().toAbsolutePath().normalize();
+        Path pom = root.resolve("pom.xml");
+        Path gradle = existing(root, "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts");
+        if (pom.toFile().isFile() && isSpringMaven(pom)) {
+            return new ResolvedExecution(ResolvedExecution.Kind.SPRING_MAVEN,
+                    List.of(toolCommand(root, mavenWrapper(root), "mvn", "spring-boot:run",
+                            "-Dspring-boot.run.main-class=" + configuration.mainClass())), configuration.mainClass());
+        }
+        if (gradle != null && isSpringGradle(root)) {
+            return new ResolvedExecution(ResolvedExecution.Kind.SPRING_GRADLE,
+                    List.of(toolCommand(root, wrapper(root, true), "gradle", "bootRun",
+                            "-Dspring-boot.run.main-class=" + configuration.mainClass())), configuration.mainClass());
+        }
         if (pom.toFile().isFile()) {
-            String mainClass = singleMainClass(root);
             return new ResolvedExecution(ResolvedExecution.Kind.MAVEN,
                     List.of(toolCommand(root, mavenWrapper(root), "mvn", "compile", "exec:java",
-                            "-Dexec.mainClass=" + mainClass)), mainClass);
+                            "-Dexec.mainClass=" + configuration.mainClass())), configuration.mainClass());
         }
         if (gradle != null) {
             return new ResolvedExecution(ResolvedExecution.Kind.GRADLE,
-                    List.of(toolCommand(root, wrapper(root, true), "gradle", "run")), null);
+                    List.of(toolCommand(root, wrapper(root, true), "gradle", "run",
+                            "-PmainClass=" + configuration.mainClass())), configuration.mainClass());
         }
-        return standardJava(root);
+        return standardJava(root, configuration.mainClass());
     }
 
-    private ResolvedExecution standardJava(Path root) {
+    private ResolvedExecution standardJava(Path root, String mainClass) {
         Path sourceRoot = Files.isDirectory(root.resolve("src/main/java"))
                 ? root.resolve("src/main/java") : root.resolve("src");
         if (!Files.isDirectory(sourceRoot)) {
             throw new IllegalArgumentException("No Java source root found");
         }
-        String mainClass = singleMainClass(sourceRoot);
         Path output = root.resolve(".eyecode/out");
         List<String> files = javaFiles(sourceRoot);
         if (files.isEmpty()) {
@@ -61,16 +89,6 @@ public final class ProjectExecutionResolver {
                 List.of(compile, launch), mainClass);
     }
 
-    private String singleMainClass(Path root) {
-        List<String> mainClasses = new MainClassFinder().findMainClasses(root.toFile());
-        if (mainClasses.isEmpty()) {
-            throw new IllegalArgumentException("No main class found");
-        }
-        if (mainClasses.size() > 1) {
-            throw new IllegalArgumentException("Multiple main classes found: " + String.join(", ", mainClasses));
-        }
-        return mainClasses.getFirst();
-    }
 
     private List<String> javaFiles(Path sourceRoot) {
         try (var stream = Files.walk(sourceRoot)) {
