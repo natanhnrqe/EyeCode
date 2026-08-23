@@ -4,12 +4,18 @@ import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.autosave.AutoSaveManager;
 import com.eyecode.autosave.SavedEvent;
+import com.eyecode.autosave.ExternalFileState;
+import com.eyecode.autosave.ExternalFileEvent;
 import com.eyecode.editor.intelligence.document.DocumentSnapshot;
 import com.eyecode.eventbus.EventBus;
 import com.eyecode.eventbus.events.EditorActivatedEvent;
 import com.eyecode.eventbus.events.FileClosedEvent;
 import com.eyecode.eventbus.events.FileOpenedEvent;
 import com.eyecode.filesystem.FileSystemService;
+import com.eyecode.filesystem.ExternalFileWatcher;
+import com.eyecode.project.ProjectFileOperationService;
+import com.eyecode.project.model.ProjectModel;
+import com.eyecode.eventbus.events.ProjectRefreshEvent;
 import com.eyecode.language.java.JavaLexerService;
 import com.eyecode.language.java.LexerEventBridge;
 import com.eyecode.language.semantic.DefinitionAtCaretResolver;
@@ -19,6 +25,7 @@ import com.eyecode.language.symbol.SemanticModelSnapshot;
 import com.eyecode.language.symbol.SymbolTable;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -38,6 +45,10 @@ public final class EditorManager {
     private final DefinitionAtCaretResolver definitionAtCaretResolver = new DefinitionAtCaretResolver();
     private final LexerEventBridge lexerEventBridge;
     private final AutoSaveManager autoSaveManager;
+    private final Consumer<Runnable> stateDispatcher;
+    private final ExternalFileWatcher externalFileWatcher;
+    private final ProjectFileOperationService fileOperationService = new ProjectFileOperationService();
+    private final List<Consumer<ExternalFileEvent>> externalFileListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     private final WorkspaceState workspaceState = new WorkspaceState();
     private final EditorHistory history = new EditorHistory();
@@ -61,10 +72,14 @@ public final class EditorManager {
         this.eventBus = eventBus;
         this.fileSystemService = fileSystemService;
         this.viewFactory = viewFactory;
+        this.stateDispatcher = stateDispatcher == null ? Runnable::run : stateDispatcher;
         this.lexerEventBridge = eventBus != null
                 ? new LexerEventBridge(lexerService, eventBus)
                 : null;
         this.autoSaveManager = new AutoSaveManager(fileSystemService, stateDispatcher);
+        ExternalFileWatcher watcher = new ExternalFileWatcher();
+        watcher.addListener(this::onExternalPathChanged);
+        this.externalFileWatcher = watcher;
     }
 
     public EditorSession openDocument(Path file) {
@@ -98,6 +113,10 @@ public final class EditorManager {
     }
 
     public boolean closeSession(String sessionId) {
+        return closeSession(sessionId, true);
+    }
+
+    private boolean closeSession(String sessionId, boolean persist) {
         EditorSession session = sessionsById.get(sessionId);
         if (session == null || session.getState() == SessionState.DISPOSED) {
             return false;
@@ -107,7 +126,7 @@ public final class EditorManager {
         EditorBuffer buffer = buffersBySession.get(sessionId);
         EditorDocument document = documentsBySession.get(sessionId);
 
-        if (document != null && !autoSaveManager.saveNow(document)) {
+        if (persist && document != null && !autoSaveManager.saveNow(document)) {
             return false;
         }
 
@@ -145,6 +164,53 @@ public final class EditorManager {
         return true;
     }
 
+    public boolean deletePath(ProjectModel project, Path target) {
+        Path safe;
+        try {
+            safe = fileOperationService.requireTarget(project, target);
+            for (EditorSession session : List.copyOf(sessionsById.values())) {
+                if (session.getFile() != null && session.getFile().toAbsolutePath().normalize().startsWith(safe)) {
+                    autoSaveManager.unregister(documentsBySession.get(session.getSessionId()));
+                }
+            }
+            fileOperationService.delete(project, safe);
+            for (EditorSession session : List.copyOf(sessionsById.values())) {
+                if (session.getFile() != null && session.getFile().toAbsolutePath().normalize().startsWith(safe)) {
+                    closeSession(session.getSessionId(), false);
+                }
+            }
+            return true;
+        } catch (IOException | IllegalArgumentException exception) {
+            return false;
+        }
+    }
+
+    public boolean renamePath(ProjectModel project, Path target, String newName) {
+        try {
+            Path oldPath = fileOperationService.requireTarget(project, target);
+            ProjectFileOperationService.RenameResult result = fileOperationService.rename(project, oldPath, newName);
+            for (EditorSession session : List.copyOf(sessionsById.values())) {
+                Path file = session.getFile();
+                if (file == null) continue;
+                Path normalized = file.toAbsolutePath().normalize();
+                if (normalized.equals(result.oldPath()) || normalized.startsWith(result.oldPath())) {
+                    Path suffix = result.oldPath().relativize(normalized);
+                    Path next = result.newPath().resolve(suffix).normalize();
+                    EditorDocument document = documentsBySession.get(session.getSessionId());
+                    autoSaveManager.rebind(document, next);
+                    session.setFile(next);
+                    if (result.source() != null && normalized.equals(result.oldPath())) {
+                        document.setText(result.source());
+                        document.markClean();
+                    }
+                }
+            }
+            return true;
+        } catch (IOException | IllegalArgumentException exception) {
+            return false;
+        }
+    }
+
     public void closeAllSessions() {
         for (String sessionId : List.copyOf(sessionsById.keySet())) {
             closeSession(sessionId);
@@ -152,6 +218,9 @@ public final class EditorManager {
     }
 
     public boolean flushAutosave() {
+        if (documentsBySession.values().stream().anyMatch(autoSaveManager::hasExternalConflict)) {
+            return false;
+        }
         return autoSaveManager.saveAll();
     }
 
@@ -165,6 +234,35 @@ public final class EditorManager {
         return document != null && autoSaveManager.hasSaveFailure(document);
     }
 
+    public boolean hasExternalConflict(String sessionId) {
+        EditorDocument document = documentsBySession.get(sessionId);
+        return document != null && autoSaveManager.hasExternalConflict(document);
+    }
+
+    public ExternalFileState externalState(String sessionId) {
+        EditorDocument document = documentsBySession.get(sessionId);
+        return autoSaveManager.externalState(document);
+    }
+
+    public boolean keepLocalChanges(String sessionId) {
+        EditorDocument document = documentsBySession.get(sessionId);
+        return document != null && autoSaveManager.keepLocalChanges(document);
+    }
+
+    public boolean reloadFromDisk(String sessionId) {
+        EditorDocument document = documentsBySession.get(sessionId);
+        return document != null && autoSaveManager.reloadFromDisk(document);
+    }
+
+    public void watchProject(Path root) {
+        if (externalFileWatcher == null || root == null) return;
+        externalFileWatcher.clearRoots();
+        try {
+            externalFileWatcher.watchRoot(root);
+        } catch (IOException ignored) {
+        }
+    }
+
     public void addSaveListener(Consumer<SavedEvent> listener) {
         autoSaveManager.addSaveListener(listener);
     }
@@ -175,6 +273,17 @@ public final class EditorManager {
 
     public void shutdownAutosave() {
         autoSaveManager.shutdown();
+        if (externalFileWatcher != null) {
+            externalFileWatcher.close();
+        }
+    }
+
+    public void addExternalFileListener(Consumer<ExternalFileEvent> listener) {
+        if (listener != null) externalFileListeners.add(listener);
+    }
+
+    public void removeExternalFileListener(Consumer<ExternalFileEvent> listener) {
+        externalFileListeners.remove(listener);
     }
 
     public void activateSession(String sessionId) {
@@ -292,6 +401,12 @@ public final class EditorManager {
         workspaceState.addSession(session);
         session.setState(SessionState.VISIBLE);
         autoSaveManager.register(document);
+        if (externalFileWatcher != null && file != null) {
+            try {
+                externalFileWatcher.watchFile(file);
+            } catch (IOException ignored) {
+            }
+        }
 
         if (eventBus != null) {
             eventBus.publish(new FileOpenedEvent(fileOf(session)));
@@ -308,5 +423,30 @@ public final class EditorManager {
     private Optional<SymbolTable> buildSymbolTable(EditorDocument document) {
         Optional<SemanticModelSnapshot> semantic = semanticModelBuilder.build(document);
         return semantic.map(SemanticModelSnapshot::symbolTable);
+    }
+
+    private void onExternalPathChanged(Path path) {
+        Path normalized = path.toAbsolutePath().normalize();
+        ExternalFileState affectedState = ExternalFileState.SYNCED;
+        for (EditorDocument document : List.copyOf(documentsBySession.values())) {
+            Path source = document.getSourceFile();
+            if (source != null && source.toAbsolutePath().normalize().equals(normalized)) {
+                affectedState = autoSaveManager.synchronizeExternal(document);
+            }
+        }
+        ProjectRefreshEvent.Kind kind = Files.isDirectory(normalized)
+                ? ProjectRefreshEvent.Kind.DIRECTORY_CREATED
+                : Files.exists(normalized)
+                        ? ProjectRefreshEvent.Kind.FILE_MODIFIED
+                        : ProjectRefreshEvent.Kind.FILE_DELETED;
+        if (eventBus != null) {
+            stateDispatcher.accept(() -> eventBus.publish(new ProjectRefreshEvent(kind, normalized)));
+        }
+        ExternalFileEvent event = new ExternalFileEvent(normalized, affectedState);
+        stateDispatcher.accept(() -> {
+            for (Consumer<ExternalFileEvent> listener : externalFileListeners) {
+                listener.accept(event);
+            }
+        });
     }
 }

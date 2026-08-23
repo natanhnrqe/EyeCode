@@ -228,6 +228,78 @@ class AutoSaveManagerTest {
         manager.shutdown();
     }
 
+    @Test
+    void cleanExternalChangeReloadsWithoutAutosaveOverwrite() {
+        FakeFileSystem fs = new FakeFileSystem();
+        Path path = Path.of("external.java");
+        fs.files.put(path, "A");
+        AutoSaveManager manager = new AutoSaveManager(fs, DELAY_MS, newExecutor());
+        EditorDocument doc = new EditorDocument(path, "A");
+        manager.register(doc);
+
+        fs.files.put(path, "B");
+
+        assertEquals(ExternalFileState.RELOADED, manager.synchronizeExternal(doc));
+        assertEquals("B", doc.getText());
+        assertFalse(doc.isDirty());
+        manager.shutdown();
+    }
+
+    @Test
+    void dirtyExternalChangeBlocksAutosaveAndSupportsExplicitResolution() {
+        FakeFileSystem fs = new FakeFileSystem();
+        Path path = Path.of("conflict.java");
+        fs.files.put(path, "A");
+        AutoSaveManager manager = new AutoSaveManager(fs, DELAY_MS, newExecutor());
+        EditorDocument doc = new EditorDocument(path, "A");
+        manager.register(doc);
+        doc.insert(0, "B");
+        fs.files.put(path, "C");
+
+        assertEquals(ExternalFileState.CONFLICT, manager.synchronizeExternal(doc));
+        assertFalse(manager.saveNow(doc));
+        assertEquals("C", fs.files.get(path));
+        assertTrue(manager.keepLocalChanges(doc));
+        assertEquals("BA", fs.files.get(path));
+        assertEquals(ExternalFileState.SYNCED, manager.externalState(doc));
+        manager.shutdown();
+    }
+
+    @Test
+    void reloadFromDiskDiscardsConflictAndClearsDirtyState() {
+        FakeFileSystem fs = new FakeFileSystem();
+        Path path = Path.of("reload.java");
+        fs.files.put(path, "A");
+        AutoSaveManager manager = new AutoSaveManager(fs, DELAY_MS, newExecutor());
+        EditorDocument doc = new EditorDocument(path, "A");
+        manager.register(doc);
+        doc.insert(0, "B");
+        fs.files.put(path, "C");
+        assertEquals(ExternalFileState.CONFLICT, manager.synchronizeExternal(doc));
+
+        assertTrue(manager.reloadFromDisk(doc));
+        assertEquals("C", doc.getText());
+        assertFalse(doc.isDirty());
+        assertEquals(ExternalFileState.RELOADED, manager.externalState(doc));
+        manager.shutdown();
+    }
+
+    @Test
+    void externalDeletePreservesEditorContentAndBlocksRunFlush() {
+        FakeFileSystem fs = new FakeFileSystem();
+        Path path = Path.of("deleted.java");
+        fs.files.put(path, "A");
+        AutoSaveManager manager = new AutoSaveManager(fs, DELAY_MS, newExecutor());
+        EditorDocument doc = new EditorDocument(path, "A");
+        manager.register(doc);
+        fs.files.remove(path);
+
+        assertEquals(ExternalFileState.DELETED, manager.synchronizeExternal(doc));
+        assertEquals("A", doc.getText());
+        assertTrue(manager.hasExternalConflict(doc));
+        manager.shutdown();
+    }
+
     private static boolean waitUntil(java.util.function.BooleanSupplier condition) throws InterruptedException {
         long deadline = System.currentTimeMillis() + 2000;
         while (System.currentTimeMillis() < deadline) {

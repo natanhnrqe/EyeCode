@@ -18,6 +18,12 @@ public final class ExplorerContextMenu {
     }
 
     public static ContextMenu create(ProjectNode node, Consumer<ExplorerNewRequest> newAction) {
+        return create(node, newAction, item -> { }, item -> { });
+    }
+
+    public static ContextMenu create(ProjectNode node, Consumer<ExplorerNewRequest> newAction,
+                                     Consumer<ProjectNode> renameAction,
+                                     Consumer<ProjectNode> deleteAction) {
         ContextMenu menu = new ContextMenu();
         Menu newMenu = new Menu("New");
         for (ExplorerNewKind kind : ExplorerNewKind.values()) {
@@ -33,8 +39,8 @@ public final class ExplorerContextMenu {
         }
         menu.getItems().addAll(
                 item("Open"),
-                disabledItem("Rename"),
-                disabledItem("Delete"),
+                actionItem("Rename", node, renameAction),
+                actionItem("Delete", node, deleteAction),
                 new SeparatorMenuItem(),
                 item("Copy Path"),
                 item("Reveal"),
@@ -42,6 +48,15 @@ public final class ExplorerContextMenu {
                 newMenu
         );
         return menu;
+    }
+
+    private static MenuItem actionItem(String text, ProjectNode node, Consumer<ProjectNode> action) {
+        MenuItem menuItem = item(text);
+        menuItem.setDisable(node == null);
+        menuItem.setOnAction(event -> {
+            if (action != null) action.accept(node);
+        });
+        return menuItem;
     }
 
     private static boolean isAllowed(ProjectNode node, ExplorerNewKind kind) {

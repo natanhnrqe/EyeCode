@@ -9,7 +9,7 @@ public final class EditorSession {
 
     private final String sessionId;
     private final String documentId;
-    private final Path file;
+    private Path file;
     private boolean preview;
     private boolean pinned;
     private EditorPosition caretState;
@@ -43,6 +43,10 @@ public final class EditorSession {
 
     public Path getFile() {
         return file;
+    }
+
+    public void setFile(Path file) {
+        this.file = file;
     }
 
     public boolean isPreview() {

@@ -5,6 +5,7 @@ import com.eyecode.javafx.explorer.ExplorerNewKind;
 import com.eyecode.javafx.explorer.ExplorerNewRequest;
 import com.eyecode.javafx.explorer.ProjectCreationDialog;
 import com.eyecode.javafx.explorer.ProjectNode;
+import com.eyecode.javafx.explorer.ProjectNode;
 import com.eyecode.javafx.designsystem.JavaFxButton;
 import com.eyecode.project.ProjectCreationService;
 import com.eyecode.project.model.ProjectModel;
@@ -24,6 +25,8 @@ public final class ProjectToolWindowContent extends VBox {
     private final Consumer<Path> fileOpenHandler;
     private final Runnable openProjectAction;
     private final Runnable newProjectAction;
+    private Consumer<ProjectNode> renameAction = node -> { };
+    private Consumer<ProjectNode> deleteAction = node -> { };
     private final ProjectCreationService creationService = new ProjectCreationService();
     private ProjectModel project;
     private JavaFxExplorer explorer;
@@ -85,13 +88,21 @@ public final class ProjectToolWindowContent extends VBox {
             getChildren().add(emptyState);
             return;
         }
-        explorer = new JavaFxExplorer(model, fileOpenHandler, this::handleNewRequest);
+        explorer = new JavaFxExplorer(model, fileOpenHandler, this::handleNewRequest,
+                renameAction, deleteAction);
         VBox.setVgrow(explorer, Priority.ALWAYS);
         getChildren().add(explorer);
     }
 
     public JavaFxExplorer getExplorer() {
         return explorer;
+    }
+
+    public void setFileOperationHandlers(Consumer<ProjectNode> renameAction,
+                                         Consumer<ProjectNode> deleteAction) {
+        this.renameAction = renameAction == null ? node -> { } : renameAction;
+        this.deleteAction = deleteAction == null ? node -> { } : deleteAction;
+        if (project != null) setProject(project);
     }
 
     public void refresh(ProjectModel model) {

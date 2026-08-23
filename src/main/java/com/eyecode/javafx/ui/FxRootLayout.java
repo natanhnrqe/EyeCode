@@ -10,6 +10,7 @@ import com.eyecode.javafx.ui.toolwindow.content.WorkspaceContentFactory;
 import com.eyecode.project.ProjectInfo;
 import com.eyecode.project.ProjectLifecycleService;
 import com.eyecode.project.model.ProjectModel;
+import com.eyecode.javafx.explorer.ProjectNode;
 import com.eyecode.runtime.RunService;
 import com.eyecode.workbench.toolwindow.ToolWindowManager;
 import com.eyecode.workbench.toolwindow.ToolWindowPosition;
@@ -25,6 +26,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.TextInputDialog;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 
@@ -102,6 +105,8 @@ public final class FxRootLayout extends BorderPane {
                 projectLifecycleService::recentProjects,
                 this::openRecentProject);
         this.editorContainer = editorContainer;
+        contentFactory.setFileOperationHandlers(this::renameTreeNode, this::deleteTreeNode);
+        editorContainer.addExternalFileListener(event -> contentFactory.refreshProjectTree());
         runService.setBeforeRunFlush(editorContainer::flushAutosave);
         toolbar.setExecutionActions(
                 () -> {
@@ -122,7 +127,15 @@ public final class FxRootLayout extends BorderPane {
             @Override public void onOutput(String line, boolean error) { refreshRunControls(); }
             @Override public void onFinished(int exitCode, boolean stopped) { refreshRunControls(); }
         });
-        projectLifecycleService.addListener(project -> refreshRunConfigurations());
+        projectLifecycleService.addListener(project -> {
+            if (project != null) {
+                editorContainer.watchProject(project.getRootDir());
+            }
+            refreshRunConfigurations();
+        });
+        if (initialProject != null) {
+            editorContainer.watchProject(initialProject.getRootDir());
+        }
         FxBottomToolWindow bottomToolWindow = new FxBottomToolWindow(manager, contentFactory);
         this.bottomToolWindow = bottomToolWindow;
         FxBottomToolWindowBar bottomBar = new FxBottomToolWindowBar(manager);
@@ -269,6 +282,49 @@ public final class FxRootLayout extends BorderPane {
         if (editorContainer != null) {
             editorContainer.openFile(file);
         }
+    }
+
+    private void renameTreeNode(ProjectNode node) {
+        if (node == null || projectLifecycleService.currentProject() == null) return;
+        TextInputDialog dialog = new TextInputDialog(node.name());
+        dialog.setTitle("Rename");
+        dialog.setHeaderText("Rename " + node.name());
+        dialog.setContentText("New name:");
+        dialog.showAndWait().ifPresent(name -> {
+            if (!editorContainer.editorManager().renamePath(projectLifecycleService.currentProject(), node.path(), name)) {
+                showError("Rename", "The item could not be renamed.");
+            }
+            contentFactory.refreshProjectTree();
+            refreshRunConfigurations();
+        });
+    }
+
+    private void deleteTreeNode(ProjectNode node) {
+        if (node == null || projectLifecycleService.currentProject() == null) return;
+        long count = 1L;
+        try {
+            if (java.nio.file.Files.isDirectory(node.path())) {
+                try (var stream = java.nio.file.Files.walk(node.path())) {
+                    count = stream.count();
+                }
+            }
+        } catch (java.io.IOException ignored) {
+        }
+        String detail = count > 1 ? "This will permanently delete " + count + " filesystem entries."
+                : "This file will be permanently deleted.";
+        ButtonType delete = new ButtonType("Delete", ButtonBar.ButtonData.OK_DONE);
+        Alert alert = new Alert(Alert.AlertType.WARNING,
+                detail, ButtonType.CANCEL, delete);
+        alert.setTitle("Delete " + node.name() + "?");
+        alert.setHeaderText("Delete " + node.name() + "?");
+        alert.showAndWait().ifPresent(choice -> {
+            if (choice == delete && !editorContainer.editorManager().deletePath(
+                    projectLifecycleService.currentProject(), node.path())) {
+                showError("Delete", "The item could not be deleted.");
+            }
+            contentFactory.refreshProjectTree();
+            refreshRunConfigurations();
+        });
     }
 
     private void showNewProjectSurface() {

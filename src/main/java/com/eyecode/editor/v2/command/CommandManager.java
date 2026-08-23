@@ -21,6 +21,11 @@ public final class CommandManager {
 
     public boolean canRedo() { return !redoStack.isEmpty(); }
 
+    public void clearHistory() {
+        undoStack.clear();
+        redoStack.clear();
+    }
+
     public boolean isApplyingHistory() { return applyingHistory; }
 
     public boolean isProgrammaticUpdate() { return programmaticUpdate; }

@@ -4,6 +4,7 @@ import com.eyecode.javafx.ui.toolwindow.ToolWindowContentFactory;
 import com.eyecode.project.ProjectInfo;
 import com.eyecode.project.ProjectLifecycleService;
 import com.eyecode.project.model.ProjectModel;
+import com.eyecode.javafx.explorer.ProjectNode;
 import com.eyecode.runtime.RunService;
 import javafx.scene.Node;
 
@@ -31,6 +32,8 @@ public final class WorkspaceContentFactory implements ToolWindowContentFactory {
     private final Runnable openProjectHandler;
     private final Runnable newProjectHandler;
     private final RunService runService;
+    private Consumer<ProjectNode> renameAction = node -> { };
+    private Consumer<ProjectNode> deleteAction = node -> { };
     private ProjectModel project;
 
     public WorkspaceContentFactory() {
@@ -135,6 +138,16 @@ public final class WorkspaceContentFactory implements ToolWindowContentFactory {
         }
     }
 
+    public void setFileOperationHandlers(Consumer<ProjectNode> renameAction,
+                                         Consumer<ProjectNode> deleteAction) {
+        this.renameAction = renameAction == null ? node -> { } : renameAction;
+        this.deleteAction = deleteAction == null ? node -> { } : deleteAction;
+        Node node = cache.get("project");
+        if (node instanceof ProjectToolWindowContent content) {
+            content.setFileOperationHandlers(this.renameAction, this.deleteAction);
+        }
+    }
+
     public void dispose() {
         Node preview = cache.get("preview");
         if (preview instanceof PreviewToolWindowContent content) {
@@ -147,6 +160,7 @@ public final class WorkspaceContentFactory implements ToolWindowContentFactory {
             case "project" -> {
                 ProjectToolWindowContent content = new ProjectToolWindowContent(
                         project, fileOpenHandler, openProjectHandler, newProjectHandler);
+                content.setFileOperationHandlers(renameAction, deleteAction);
                 if (lifecycleService != null) {
                     content.setRecentProjects(lifecycleService.recentProjects(), recentOpenHandler);
                 }

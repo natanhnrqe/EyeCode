@@ -4,6 +4,8 @@ import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorSession;
 import com.eyecode.workbench.editor.WorkspaceState;
 import com.eyecode.autosave.SavedEvent;
+import com.eyecode.autosave.ExternalFileEvent;
+import com.eyecode.autosave.ExternalFileState;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.language.documentation.JdkSourceTarget;
 import com.eyecode.editor.v2.EditorBuffer;
@@ -13,6 +15,8 @@ import javafx.scene.Node;
 import javafx.application.Platform;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -30,6 +34,7 @@ public final class FxEditorWorkspacePane extends VBox {
     private final Set<String> dirtyObserved = new HashSet<>();
     private boolean syncing;
     private Path saveFailedFile;
+    private Path externalProblemFile;
 
     private final JavaFxDocumentationWorkspace documentationWorkspace;
     private final JavaFxJdkSourceWorkspace sourceWorkspace;
@@ -65,6 +70,7 @@ public final class FxEditorWorkspacePane extends VBox {
         documentationWorkspace.setPresenter(this::openDocumentation);
         sourceWorkspace.setPresenter(this::openSource);
         manager.addSaveListener(this::onSaveAttempt);
+        manager.addExternalFileListener(this::onExternalFileChange);
         getStyleClass().add("editor-workspace-pane");
 
         this.tabs = new FxEditorTabs();
@@ -213,7 +219,9 @@ public final class FxEditorWorkspacePane extends VBox {
                 session.isPinned(),
                 session.isPreview(),
                 saveFailedFile != null && session.getFile() != null
-                        && saveFailedFile.equals(session.getFile().toAbsolutePath().normalize()));
+                        && saveFailedFile.equals(session.getFile().toAbsolutePath().normalize())
+                        || externalProblemFile != null && session.getFile() != null
+                        && externalProblemFile.equals(session.getFile().toAbsolutePath().normalize()));
     }
 
     private void onSaveAttempt(SavedEvent event) {
@@ -231,6 +239,38 @@ public final class FxEditorWorkspacePane extends VBox {
                 Platform.runLater(update);
             } catch (IllegalStateException ignored) {
             }
+        }
+    }
+
+    private void onExternalFileChange(ExternalFileEvent event) {
+        if (event == null || event.path() == null) return;
+        externalProblemFile = event.path().toAbsolutePath().normalize();
+        refresh();
+        EditorSession session = manager.getWorkspaceState().findSessionByFile(externalProblemFile).orElse(null);
+        if (session == null) return;
+        if (event.state() == ExternalFileState.CONFLICT) {
+            ButtonType reload = new ButtonType("Reload from Disk");
+            ButtonType keep = new ButtonType("Keep My Changes");
+            Alert alert = new Alert(Alert.AlertType.WARNING,
+                    "File changed outside EyeCode.", reload, keep);
+            alert.setTitle("External File Change");
+            alert.showAndWait().ifPresent(choice -> {
+                if (choice == reload) {
+                    manager.reloadFromDisk(session.getSessionId());
+                    externalProblemFile = null;
+                    refresh();
+                } else if (choice == keep) {
+                    if (manager.keepLocalChanges(session.getSessionId())) {
+                        externalProblemFile = null;
+                        refresh();
+                    }
+                }
+            });
+        } else if (event.state() == ExternalFileState.DELETED) {
+            Alert alert = new Alert(Alert.AlertType.WARNING,
+                    "File deleted outside EyeCode. The editor contents remain available.", ButtonType.OK);
+            alert.setTitle("External File Change");
+            alert.showAndWait();
         }
     }
 

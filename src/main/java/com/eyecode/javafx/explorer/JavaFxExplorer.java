@@ -24,9 +24,17 @@ public final class JavaFxExplorer extends VBox {
 
     public JavaFxExplorer(ProjectModel model, Consumer<Path> fileOpenHandler,
                           Consumer<ExplorerNewRequest> newActionHandler) {
+        this(model, fileOpenHandler, newActionHandler, item -> { }, item -> { });
+    }
+
+    public JavaFxExplorer(ProjectModel model, Consumer<Path> fileOpenHandler,
+                          Consumer<ExplorerNewRequest> newActionHandler,
+                          Consumer<ProjectNode> renameAction,
+                          Consumer<ProjectNode> deleteAction) {
         getStyleClass().add("java-fx-explorer");
 
-        this.treeView = new ExplorerTreeView(model, fileOpenHandler, newActionHandler);
+        this.treeView = new ExplorerTreeView(model, fileOpenHandler, newActionHandler,
+                renameAction, deleteAction);
         this.treeView.setMaxHeight(Double.MAX_VALUE);
         VBox.setVgrow(this.treeView, Priority.ALWAYS);
 

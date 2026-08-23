@@ -3,6 +3,7 @@ package com.eyecode.autosave;
 import com.eyecode.editor.intelligence.events.DocumentChangeListener;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.filesystem.FileSystemService;
+import com.eyecode.filesystem.FileFingerprint;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -41,6 +42,8 @@ public final class AutoSaveManager {
 
     private final Map<EditorDocument, Binding> bindings = new ConcurrentHashMap<>();
     private final Map<EditorDocument, IOException> failures = new ConcurrentHashMap<>();
+    private final Map<EditorDocument, FileFingerprint> expectedFingerprints = new ConcurrentHashMap<>();
+    private final Map<EditorDocument, ExternalFileState> externalStates = new ConcurrentHashMap<>();
     private final List<Consumer<SavedEvent>> saveListeners = new CopyOnWriteArrayList<>();
     private volatile boolean shutdown;
 
@@ -97,6 +100,12 @@ public final class AutoSaveManager {
         DocumentChangeListener listener = event -> scheduleSave(document);
         document.addDocumentChangeListener(listener);
         bindings.put(document, new Binding(listener));
+        try {
+            expectedFingerprints.put(document, FileFingerprint.capture(fileSystemService, document.getSourceFile()));
+            externalStates.put(document, ExternalFileState.SYNCED);
+        } catch (IOException exception) {
+            failures.put(document, exception);
+        }
     }
 
     /**
@@ -107,6 +116,9 @@ public final class AutoSaveManager {
         if (binding == null) return;
         document.removeDocumentChangeListener(binding.listener);
         cancelPending(binding);
+        expectedFingerprints.remove(document);
+        externalStates.remove(document);
+        failures.remove(document);
     }
 
     /**
@@ -157,6 +169,102 @@ public final class AutoSaveManager {
         return document != null && failures.containsKey(document);
     }
 
+    public ExternalFileState externalState(EditorDocument document) {
+        return document == null ? ExternalFileState.IGNORED
+                : externalStates.getOrDefault(document, ExternalFileState.IGNORED);
+    }
+
+    public boolean hasExternalConflict(EditorDocument document) {
+        ExternalFileState state = externalState(document);
+        return state == ExternalFileState.CONFLICT || state == ExternalFileState.DELETED;
+    }
+
+    public synchronized ExternalFileState synchronizeExternal(EditorDocument document) {
+        if (document == null || document.getSourceFile() == null || !bindings.containsKey(document)) {
+            return ExternalFileState.IGNORED;
+        }
+        try {
+            FileFingerprint current = FileFingerprint.capture(fileSystemService, document.getSourceFile());
+            FileFingerprint expected = expectedFingerprints.get(document);
+            if (current.equals(expected)) {
+                return ExternalFileState.SYNCED;
+            }
+            if (!current.exists()) {
+                externalStates.put(document, ExternalFileState.DELETED);
+                return ExternalFileState.DELETED;
+            }
+            if (document.isDirty()) {
+                externalStates.put(document, ExternalFileState.CONFLICT);
+                return ExternalFileState.CONFLICT;
+            }
+            String content = fileSystemService.readFile(document.getSourceFile());
+            stateDispatcher.accept(() -> {
+                document.setText(content);
+                document.markClean();
+            });
+            expectedFingerprints.put(document, current);
+            externalStates.put(document, ExternalFileState.RELOADED);
+            return ExternalFileState.RELOADED;
+        } catch (IOException exception) {
+            failures.put(document, exception);
+            return ExternalFileState.IGNORED;
+        }
+    }
+
+    public boolean reloadFromDisk(EditorDocument document) {
+        if (document == null || document.getSourceFile() == null) return false;
+        try {
+            FileFingerprint current = FileFingerprint.capture(fileSystemService, document.getSourceFile());
+            if (!current.exists()) return false;
+            String content = fileSystemService.readFile(document.getSourceFile());
+            stateDispatcher.accept(() -> {
+                document.setText(content);
+                document.markClean();
+            });
+            expectedFingerprints.put(document, current);
+            externalStates.put(document, ExternalFileState.RELOADED);
+            return true;
+        } catch (IOException exception) {
+            failures.put(document, exception);
+            return false;
+        }
+    }
+
+    public boolean keepLocalChanges(EditorDocument document) {
+        if (document == null) return false;
+        try {
+            expectedFingerprints.put(document, FileFingerprint.capture(fileSystemService, document.getSourceFile()));
+        } catch (IOException exception) {
+            failures.put(document, exception);
+            return false;
+        }
+        boolean result = saveNow(document);
+        if (result) externalStates.put(document, ExternalFileState.SYNCED);
+        return result;
+    }
+
+    public synchronized void rebind(EditorDocument document, Path newPath) {
+        if (document == null) return;
+        Binding binding = bindings.get(document);
+        if (binding != null) {
+            synchronized (binding) {
+                cancelPending(binding);
+            }
+        }
+        expectedFingerprints.remove(document);
+        externalStates.remove(document);
+        failures.remove(document);
+        document.setSourceFile(newPath);
+        if (binding != null) {
+            try {
+                expectedFingerprints.put(document, FileFingerprint.capture(fileSystemService, newPath));
+                externalStates.put(document, ExternalFileState.SYNCED);
+            } catch (IOException exception) {
+                failures.put(document, exception);
+            }
+        }
+    }
+
     public void addSaveListener(Consumer<SavedEvent> listener) {
         if (listener != null) saveListeners.add(listener);
     }
@@ -188,10 +296,20 @@ public final class AutoSaveManager {
 
         IOException error = null;
         try {
+            FileFingerprint current = FileFingerprint.capture(fileSystemService, path);
+            FileFingerprint expected = expectedFingerprints.get(document);
+            if (expected != null && !current.equals(expected)) {
+                externalStates.put(document, current.exists()
+                        ? ExternalFileState.CONFLICT : ExternalFileState.DELETED);
+                notifySaved(path, false, new IOException("File changed outside EyeCode"));
+                return false;
+            }
             while (document.isDirty()) {
                 var snapshot = document.snapshot();
                 fileSystemService.writeFile(path, snapshot.getText());
                 if (document.currentVersion() == snapshot.version()) {
+                    expectedFingerprints.put(document, FileFingerprint.capture(fileSystemService, path));
+                    externalStates.put(document, ExternalFileState.SYNCED);
                     failures.remove(document);
                     stateDispatcher.accept(() -> {
                         if (document.currentVersion() == snapshot.version()) {

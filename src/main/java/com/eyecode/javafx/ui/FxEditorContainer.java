@@ -8,6 +8,7 @@ import com.eyecode.javafx.ui.editor.JavaFxDocumentationWorkspace;
 import com.eyecode.javafx.ui.editor.JavaFxJdkSourceWorkspace;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorViewFactory;
+import com.eyecode.autosave.ExternalFileEvent;
 import javafx.application.Platform;
 import com.eyecode.project.model.ProjectModel;
 import com.eyecode.project.ProjectInfo;
@@ -93,6 +94,14 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
 
     public boolean flushAutosave() {
         return manager.flushAutosave();
+    }
+
+    public void watchProject(Path root) {
+        manager.watchProject(root);
+    }
+
+    public void addExternalFileListener(Consumer<ExternalFileEvent> listener) {
+        manager.addExternalFileListener(listener);
     }
 
     public EditorManager editorManager() {
