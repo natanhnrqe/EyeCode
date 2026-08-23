@@ -5,6 +5,7 @@ import com.eyecode.project.model.ProjectModel;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BooleanSupplier;
 
 public final class RunService {
 
@@ -29,6 +30,7 @@ public final class RunService {
     private volatile boolean hasCompletion;
     private volatile int lastExitCode;
     private volatile boolean lastStopped;
+    private volatile BooleanSupplier beforeRunFlush = () -> true;
 
     public RunService(ProjectLifecycleService lifecycleService) {
         this(lifecycleService, new ProjectExecutionResolver(), new RunConfigurationDiscoveryService(), new RunConfigurationSelectionStore());
@@ -69,6 +71,10 @@ public final class RunService {
         if (disposed || request == null || isRunning()) {
             return false;
         }
+        if (!beforeRunFlush.getAsBoolean()) {
+            publishOutput("Could not save pending editor changes.", true);
+            return false;
+        }
         ResolvedExecution execution;
         try {
             execution = request.configuration() == null
@@ -88,6 +94,10 @@ public final class RunService {
         }
         session.start();
         return true;
+    }
+
+    public void setBeforeRunFlush(BooleanSupplier beforeRunFlush) {
+        this.beforeRunFlush = beforeRunFlush == null ? () -> true : beforeRunFlush;
     }
 
     public synchronized boolean rerun() {
@@ -151,9 +161,6 @@ public final class RunService {
         String stored = selectionStore.selectedId(project.getRootDir());
         selectedConfiguration = discovered.stream().filter(value -> value.id().equals(stored)).findFirst()
                 .orElseGet(() -> chooseDefault(discovered));
-        if (selectedConfiguration != null && !selectedConfiguration.id().equals(stored)) {
-            selectionStore.select(project.getRootDir(), selectedConfiguration.id());
-        }
     }
 
     public synchronized boolean selectConfiguration(String id) {

@@ -3,12 +3,14 @@ package com.eyecode.javafx.ui.editor;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorSession;
 import com.eyecode.workbench.editor.WorkspaceState;
+import com.eyecode.autosave.SavedEvent;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.language.documentation.JdkSourceTarget;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.project.ProjectInfo;
 import javafx.scene.Node;
+import javafx.application.Platform;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.nio.file.Path;
 
 public final class FxEditorWorkspacePane extends VBox {
 
@@ -26,6 +29,7 @@ public final class FxEditorWorkspacePane extends VBox {
     private final FxEditorContentPane contentPane;
     private final Set<String> dirtyObserved = new HashSet<>();
     private boolean syncing;
+    private Path saveFailedFile;
 
     private final JavaFxDocumentationWorkspace documentationWorkspace;
     private final JavaFxJdkSourceWorkspace sourceWorkspace;
@@ -60,6 +64,7 @@ public final class FxEditorWorkspacePane extends VBox {
         this.newProjectSurface = new NewProjectSurface(this::showWelcomeSurface);
         documentationWorkspace.setPresenter(this::openDocumentation);
         sourceWorkspace.setPresenter(this::openSource);
+        manager.addSaveListener(this::onSaveAttempt);
         getStyleClass().add("editor-workspace-pane");
 
         this.tabs = new FxEditorTabs();
@@ -206,7 +211,27 @@ public final class FxEditorWorkspacePane extends VBox {
                 session.getDisplayName(),
                 dirty,
                 session.isPinned(),
-                session.isPreview());
+                session.isPreview(),
+                saveFailedFile != null && session.getFile() != null
+                        && saveFailedFile.equals(session.getFile().toAbsolutePath().normalize()));
+    }
+
+    private void onSaveAttempt(SavedEvent event) {
+        if (event == null || event.path() == null) return;
+        Runnable update = () -> {
+            saveFailedFile = event.succeeded()
+                    ? null
+                    : event.path().toAbsolutePath().normalize();
+            refresh();
+        };
+        if (Platform.isFxApplicationThread()) {
+            update.run();
+        } else {
+            try {
+                Platform.runLater(update);
+            } catch (IllegalStateException ignored) {
+            }
+        }
     }
 
     FxEditorTabs tabsForTest() {

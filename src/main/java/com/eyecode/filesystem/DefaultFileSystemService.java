@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -24,7 +25,20 @@ public class DefaultFileSystemService implements FileSystemService {
         if (parent != null) {
             Files.createDirectories(parent);
         }
-        Files.writeString(path, content, StandardCharsets.UTF_8);
+        Path temporary = Files.createTempFile(parent == null ? Path.of(".") : parent,
+                path.getFileName().toString(), ".tmp");
+        try {
+            Files.writeString(temporary, content, StandardCharsets.UTF_8,
+                    StandardOpenOption.TRUNCATE_EXISTING);
+            try {
+                Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+                Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
     }
 
     @Override

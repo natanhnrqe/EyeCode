@@ -2,6 +2,8 @@ package com.eyecode.workbench.editor;
 
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.autosave.AutoSaveManager;
+import com.eyecode.autosave.SavedEvent;
 import com.eyecode.editor.intelligence.document.DocumentSnapshot;
 import com.eyecode.eventbus.EventBus;
 import com.eyecode.eventbus.events.EditorActivatedEvent;
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 public final class EditorManager {
 
@@ -34,6 +37,7 @@ public final class EditorManager {
     private final DocumentSemanticModelBuilder semanticModelBuilder = new DocumentSemanticModelBuilder(lexerService);
     private final DefinitionAtCaretResolver definitionAtCaretResolver = new DefinitionAtCaretResolver();
     private final LexerEventBridge lexerEventBridge;
+    private final AutoSaveManager autoSaveManager;
 
     private final WorkspaceState workspaceState = new WorkspaceState();
     private final EditorHistory history = new EditorHistory();
@@ -47,12 +51,20 @@ public final class EditorManager {
     public EditorManager(EventBus eventBus,
                          FileSystemService fileSystemService,
                          EditorViewFactory viewFactory) {
+        this(eventBus, fileSystemService, viewFactory, Runnable::run);
+    }
+
+    public EditorManager(EventBus eventBus,
+                         FileSystemService fileSystemService,
+                         EditorViewFactory viewFactory,
+                         Consumer<Runnable> stateDispatcher) {
         this.eventBus = eventBus;
         this.fileSystemService = fileSystemService;
         this.viewFactory = viewFactory;
         this.lexerEventBridge = eventBus != null
                 ? new LexerEventBridge(lexerService, eventBus)
                 : null;
+        this.autoSaveManager = new AutoSaveManager(fileSystemService, stateDispatcher);
     }
 
     public EditorSession openDocument(Path file) {
@@ -85,15 +97,19 @@ public final class EditorManager {
         return createSession(file, document, buffer);
     }
 
-    public void closeSession(String sessionId) {
+    public boolean closeSession(String sessionId) {
         EditorSession session = sessionsById.get(sessionId);
         if (session == null || session.getState() == SessionState.DISPOSED) {
-            return;
+            return false;
         }
 
         EditorView view = viewsBySession.get(sessionId);
         EditorBuffer buffer = buffersBySession.get(sessionId);
         EditorDocument document = documentsBySession.get(sessionId);
+
+        if (document != null && !autoSaveManager.saveNow(document)) {
+            return false;
+        }
 
         EditorViewport snapshot = selectionService.captureViewport(session);
         selectionService.unbind(session, buffer);
@@ -126,12 +142,39 @@ public final class EditorManager {
                 activateSession(remaining.get(next).getSessionId());
             }
         }
+        return true;
     }
 
     public void closeAllSessions() {
         for (String sessionId : List.copyOf(sessionsById.keySet())) {
             closeSession(sessionId);
         }
+    }
+
+    public boolean flushAutosave() {
+        return autoSaveManager.saveAll();
+    }
+
+    public boolean flushSession(String sessionId) {
+        EditorDocument document = documentsBySession.get(sessionId);
+        return document == null || autoSaveManager.saveNow(document);
+    }
+
+    public boolean hasSaveFailure(String sessionId) {
+        EditorDocument document = documentsBySession.get(sessionId);
+        return document != null && autoSaveManager.hasSaveFailure(document);
+    }
+
+    public void addSaveListener(Consumer<SavedEvent> listener) {
+        autoSaveManager.addSaveListener(listener);
+    }
+
+    public void removeSaveListener(Consumer<SavedEvent> listener) {
+        autoSaveManager.removeSaveListener(listener);
+    }
+
+    public void shutdownAutosave() {
+        autoSaveManager.shutdown();
     }
 
     public void activateSession(String sessionId) {
@@ -248,6 +291,7 @@ public final class EditorManager {
         selectionService.bind(session, buffer);
         workspaceState.addSession(session);
         session.setState(SessionState.VISIBLE);
+        autoSaveManager.register(document);
 
         if (eventBus != null) {
             eventBus.publish(new FileOpenedEvent(fileOf(session)));

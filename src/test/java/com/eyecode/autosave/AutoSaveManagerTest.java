@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -189,6 +190,44 @@ class AutoSaveManagerTest {
         manager.shutdown();
     }
 
+    @Test
+    void failedSaveKeepsDocumentDirtyAndReportsFailure() {
+        FileSystemService fs = new FakeFileSystem() {
+            @Override
+            public void writeFile(Path path, String content) throws IOException {
+                throw new IOException("denied");
+            }
+        };
+        AutoSaveManager manager = new AutoSaveManager(fs, DELAY_MS, newExecutor());
+        EditorDocument doc = new EditorDocument(Path.of("failed.java"), "old");
+        manager.register(doc);
+        doc.insert(0, "new ");
+
+        assertFalse(manager.saveNow(doc));
+        assertTrue(doc.isDirty());
+        assertTrue(manager.hasSaveFailure(doc));
+        manager.shutdown();
+    }
+
+    @Test
+    void saveCompletionDispatchesDocumentStateSeparatelyFromDiskWrite() {
+        FakeFileSystem fs = new FakeFileSystem();
+        List<Runnable> uiUpdates = new CopyOnWriteArrayList<>();
+        AutoSaveManager manager = new AutoSaveManager(fs, DELAY_MS, newExecutor(), uiUpdates::add);
+        EditorDocument doc = new EditorDocument(Path.of("queued.java"), "old");
+        manager.register(doc);
+        doc.insert(0, "new ");
+
+        assertTrue(manager.saveNow(doc));
+        assertEquals("new old", fs.files.get(Path.of("queued.java")));
+        assertTrue(doc.isDirty());
+        assertEquals(1, uiUpdates.size());
+
+        uiUpdates.getFirst().run();
+        assertFalse(doc.isDirty());
+        manager.shutdown();
+    }
+
     private static boolean waitUntil(java.util.function.BooleanSupplier condition) throws InterruptedException {
         long deadline = System.currentTimeMillis() + 2000;
         while (System.currentTimeMillis() < deadline) {
@@ -198,7 +237,7 @@ class AutoSaveManagerTest {
         return condition.getAsBoolean();
     }
 
-    private static final class FakeFileSystem implements FileSystemService {
+    private static class FakeFileSystem implements FileSystemService {
         final Map<Path, String> files = new ConcurrentHashMap<>();
         final AtomicInteger writeCount = new AtomicInteger();
 
@@ -208,7 +247,7 @@ class AutoSaveManagerTest {
         }
 
         @Override
-        public void writeFile(Path path, String content) {
+        public void writeFile(Path path, String content) throws IOException {
             files.put(path, content);
             writeCount.incrementAndGet();
         }

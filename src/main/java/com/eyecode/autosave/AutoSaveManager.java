@@ -37,25 +37,40 @@ public final class AutoSaveManager {
     private final long delayMillis;
     private final ScheduledExecutorService executor;
     private final boolean ownsExecutor;
+    private final Consumer<Runnable> stateDispatcher;
 
     private final Map<EditorDocument, Binding> bindings = new ConcurrentHashMap<>();
+    private final Map<EditorDocument, IOException> failures = new ConcurrentHashMap<>();
     private final List<Consumer<SavedEvent>> saveListeners = new CopyOnWriteArrayList<>();
     private volatile boolean shutdown;
 
     public AutoSaveManager(FileSystemService fileSystemService) {
-        this(fileSystemService, DEFAULT_DELAY_MILLIS, newDaemonExecutor(), true);
+        this(fileSystemService, DEFAULT_DELAY_MILLIS, newDaemonExecutor(), true, Runnable::run);
     }
 
     public AutoSaveManager(FileSystemService fileSystemService,
                            long delayMillis,
                            ScheduledExecutorService executor) {
-        this(fileSystemService, delayMillis, executor, false);
+        this(fileSystemService, delayMillis, executor, false, Runnable::run);
+    }
+
+    public AutoSaveManager(FileSystemService fileSystemService,
+                           long delayMillis,
+                           ScheduledExecutorService executor,
+                           Consumer<Runnable> stateDispatcher) {
+        this(fileSystemService, delayMillis, executor, false, stateDispatcher);
+    }
+
+    public AutoSaveManager(FileSystemService fileSystemService,
+                           Consumer<Runnable> stateDispatcher) {
+        this(fileSystemService, DEFAULT_DELAY_MILLIS, newDaemonExecutor(), true, stateDispatcher);
     }
 
     private AutoSaveManager(FileSystemService fileSystemService,
                             long delayMillis,
                             ScheduledExecutorService executor,
-                            boolean ownsExecutor) {
+                            boolean ownsExecutor,
+                            Consumer<Runnable> stateDispatcher) {
         if (fileSystemService == null) {
             throw new IllegalArgumentException("fileSystemService must not be null");
         }
@@ -69,6 +84,7 @@ public final class AutoSaveManager {
         this.delayMillis = delayMillis;
         this.executor = executor;
         this.ownsExecutor = ownsExecutor;
+        this.stateDispatcher = stateDispatcher == null ? Runnable::run : stateDispatcher;
     }
 
     /**
@@ -114,24 +130,31 @@ public final class AutoSaveManager {
      * Immediately persists the given document, cancelling any pending
      * debounced save.
      */
-    public void saveNow(EditorDocument document) {
+    public boolean saveNow(EditorDocument document) {
         Binding binding = bindings.get(document);
         if (binding != null) {
             synchronized (binding) {
                 cancelPending(binding);
                 binding.pending = null;
+                return performSave(document);
             }
         }
-        performSave(document);
+        return performSave(document);
     }
 
     /**
      * Immediately persists every registered dirty document.
      */
-    public void saveAll() {
+    public boolean saveAll() {
+        boolean success = true;
         for (EditorDocument document : List.copyOf(bindings.keySet())) {
-            saveNow(document);
+            success &= saveNow(document);
         }
+        return success;
+    }
+
+    public boolean hasSaveFailure(EditorDocument document) {
+        return document != null && failures.containsKey(document);
     }
 
     public void addSaveListener(Consumer<SavedEvent> listener) {
@@ -159,19 +182,31 @@ public final class AutoSaveManager {
         }
     }
 
-    private void performSave(EditorDocument document) {
+    private boolean performSave(EditorDocument document) {
         Path path = document.getSourceFile();
-        if (path == null) return;
-        if (!document.isDirty()) return;
+        if (path == null || !document.isDirty()) return true;
 
         IOException error = null;
         try {
-            fileSystemService.writeFile(path, document.getText());
-            document.markClean();
+            while (document.isDirty()) {
+                var snapshot = document.snapshot();
+                fileSystemService.writeFile(path, snapshot.getText());
+                if (document.currentVersion() == snapshot.version()) {
+                    failures.remove(document);
+                    stateDispatcher.accept(() -> {
+                        if (document.currentVersion() == snapshot.version()) {
+                            document.markClean();
+                        }
+                    });
+                    break;
+                }
+            }
         } catch (IOException ex) {
             error = ex;
+            failures.put(document, ex);
         }
         notifySaved(path, error == null, error);
+        return error == null;
     }
 
     private void notifySaved(Path path, boolean success, IOException error) {

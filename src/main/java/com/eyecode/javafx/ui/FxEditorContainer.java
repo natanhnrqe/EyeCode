@@ -8,6 +8,7 @@ import com.eyecode.javafx.ui.editor.JavaFxDocumentationWorkspace;
 import com.eyecode.javafx.ui.editor.JavaFxJdkSourceWorkspace;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorViewFactory;
+import javafx.application.Platform;
 import com.eyecode.project.model.ProjectModel;
 import com.eyecode.project.ProjectInfo;
 import com.eyecode.javafx.ui.editor.FxEditorWorkspacePane;
@@ -44,7 +45,17 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
                 documentationWorkspace::open, sourceWorkspace::open);
         EditorViewFactory viewFactory = new JavaFxEditorViewFactory(learningWorkspace, sourceWorkspace::open);
         manager = new EditorManager(
-                eventBus, new DefaultFileSystemService(), viewFactory);
+                eventBus, new DefaultFileSystemService(), viewFactory,
+                action -> {
+                    if (Platform.isFxApplicationThread()) {
+                        action.run();
+                    } else {
+                        try {
+                            Platform.runLater(action);
+                        } catch (IllegalStateException ignored) {
+                        }
+                    }
+                });
 
         workspacePane = new FxEditorWorkspacePane(
                 manager, documentationWorkspace, sourceWorkspace,
@@ -54,6 +65,7 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
 
     public void dispose() {
         manager.closeAllSessions();
+        manager.shutdownAutosave();
         learningWorkspace.dispose();
         documentationWorkspace.dispose();
         sourceWorkspace.dispose();
@@ -76,7 +88,11 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
         return manager.getSessions().stream()
                 .anyMatch(session -> manager.getBuffer(session.getSessionId())
                         .map(buffer -> buffer.getDocument().isDirty())
-                        .orElse(false));
+                .orElse(false));
+    }
+
+    public boolean flushAutosave() {
+        return manager.flushAutosave();
     }
 
     public EditorManager editorManager() {

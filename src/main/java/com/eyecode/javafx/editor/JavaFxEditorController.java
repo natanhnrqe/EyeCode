@@ -155,6 +155,9 @@ public final class JavaFxEditorController {
         buffer.addSelectionChangeListener(selectionChangeListener);
         editor.setGoToDefinitionAction(this::goToDefinition);
         editor.setDocumentationAction(this::openDocumentationAtCaret);
+        editor.setUndoAction(this::undo);
+        editor.setRedoAction(this::redo);
+        editor.setSaveAction(this::saveNow);
         editor.setCompletionEventHandler(this::handleCompletionEvent);
         editor.getCodeArea().caretPositionProperty().addListener((obs, oldValue, newValue) -> syncCaretFromEditor());
         editor.getCodeArea().selectionProperty().addListener((obs, oldValue, newValue) -> syncSelectionFromEditor());
@@ -279,6 +282,22 @@ public final class JavaFxEditorController {
     public void bindNavigation(EditorManager manager, String sessionId) {
         this.manager = manager;
         this.sessionId = sessionId;
+    }
+
+    public boolean undo() {
+        if (!buffer.canUndo()) return false;
+        buffer.undo();
+        return true;
+    }
+
+    public boolean redo() {
+        if (!buffer.canRedo()) return false;
+        buffer.redo();
+        return true;
+    }
+
+    public boolean saveNow() {
+        return manager != null && sessionId != null && manager.flushSession(sessionId);
     }
 
     public boolean goToDefinition() {

@@ -28,6 +28,9 @@ public final class JavaFxEditor extends HBox {
     private final StackPane editorSurface;
     private BooleanSupplier goToDefinitionAction;
     private BooleanSupplier documentationAction;
+    private BooleanSupplier undoAction;
+    private BooleanSupplier redoAction;
+    private BooleanSupplier saveAction;
     private boolean readOnly;
     private Predicate<KeyEvent> completionEventHandler;
 
@@ -71,6 +74,7 @@ public final class JavaFxEditor extends HBox {
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleCompletionEvent);
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleGoToDefinition);
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleDocumentation);
+        codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleHistoryAndSave);
         codeArea.addEventFilter(KeyEvent.KEY_TYPED, this::handleSmartEditing);
         codeArea.addEventFilter(KeyEvent.KEY_PRESSED, this::handleSmartEditing);
     }
@@ -90,6 +94,14 @@ public final class JavaFxEditor extends HBox {
 
     private void handleDocumentation(KeyEvent event) {
         handleDocumentationShortcut(event);
+    }
+
+    private void handleHistoryAndSave(KeyEvent event) {
+        BooleanSupplier action = null;
+        if (isUndoKey(event)) action = undoAction;
+        else if (isRedoKey(event)) action = redoAction;
+        else if (isSaveKey(event)) action = saveAction;
+        if (!readOnly && action != null && action.getAsBoolean()) event.consume();
     }
 
     boolean handleGoToDefinitionShortcut(KeyEvent event) {
@@ -152,6 +164,23 @@ public final class JavaFxEditor extends HBox {
                 && !event.isMetaDown();
     }
 
+    private boolean isUndoKey(KeyEvent event) {
+        return event.getEventType() == KeyEvent.KEY_PRESSED && event.getCode() == javafx.scene.input.KeyCode.Z
+                && event.isControlDown() && !event.isShiftDown() && !event.isAltDown() && !event.isMetaDown();
+    }
+
+    private boolean isRedoKey(KeyEvent event) {
+        return event.getEventType() == KeyEvent.KEY_PRESSED && event.isControlDown()
+                && !event.isAltDown() && !event.isMetaDown()
+                && ((event.getCode() == javafx.scene.input.KeyCode.Y && !event.isShiftDown())
+                || (event.getCode() == javafx.scene.input.KeyCode.Z && event.isShiftDown()));
+    }
+
+    private boolean isSaveKey(KeyEvent event) {
+        return event.getEventType() == KeyEvent.KEY_PRESSED && event.getCode() == javafx.scene.input.KeyCode.S
+                && event.isControlDown() && !event.isShiftDown() && !event.isAltDown() && !event.isMetaDown();
+    }
+
     public void setGoToDefinitionAction(BooleanSupplier goToDefinitionAction) {
         this.goToDefinitionAction = goToDefinitionAction;
     }
@@ -159,6 +188,12 @@ public final class JavaFxEditor extends HBox {
     public void setDocumentationAction(BooleanSupplier documentationAction) {
         this.documentationAction = documentationAction;
     }
+
+    public void setUndoAction(BooleanSupplier undoAction) { this.undoAction = undoAction; }
+
+    public void setRedoAction(BooleanSupplier redoAction) { this.redoAction = redoAction; }
+
+    public void setSaveAction(BooleanSupplier saveAction) { this.saveAction = saveAction; }
 
     public void setReadOnly(boolean readOnly) {
         this.readOnly = readOnly;

@@ -102,6 +102,7 @@ public final class FxRootLayout extends BorderPane {
                 projectLifecycleService::recentProjects,
                 this::openRecentProject);
         this.editorContainer = editorContainer;
+        runService.setBeforeRunFlush(editorContainer::flushAutosave);
         toolbar.setExecutionActions(
                 () -> {
                     runService.runCurrent();
@@ -182,6 +183,10 @@ public final class FxRootLayout extends BorderPane {
             return;
         }
         if (runService != null) {
+            if (editorContainer != null && !editorContainer.flushAutosave()) {
+                showError("Save", "Could not save pending editor changes.");
+                return;
+            }
             runService.stop();
         }
         try {
@@ -198,6 +203,9 @@ public final class FxRootLayout extends BorderPane {
     }
 
     public void dispose() {
+        if (editorContainer != null) {
+            editorContainer.flushAutosave();
+        }
         if (runService != null) {
             runService.dispose();
         }

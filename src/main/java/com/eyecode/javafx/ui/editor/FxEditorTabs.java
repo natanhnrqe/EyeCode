@@ -157,10 +157,14 @@ public final class FxEditorTabs extends TabPane {
     }
 
     private void applyModel(Tab tab, TabModel model) {
-        String title = model.displayName() + (model.dirty() ? " *" : "");
+        String title = model.displayName() + (model.dirty() ? " *" : "")
+                + (model.saveFailed() ? " !" : "");
         if (!Objects.equals(tab.getText(), title)) {
             tab.setText(title);
         }
+        tab.setTooltip(model.saveFailed()
+                ? new javafx.scene.control.Tooltip("Could not save " + model.displayName())
+                : null);
         boolean closable = !model.pinned();
         if (tab.isClosable() != closable) {
             tab.setClosable(closable);
