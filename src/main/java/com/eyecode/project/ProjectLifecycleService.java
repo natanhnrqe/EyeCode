@@ -32,7 +32,6 @@ public final class ProjectLifecycleService {
         Path root = normalizeDirectory(directory);
         ProjectModel project = ProjectModel.fromDirectory(root.toFile());
         currentProject = project;
-        projectService.addRecent(project.toInfo());
         notifyListeners(project);
         return project;
     }
@@ -41,7 +40,15 @@ public final class ProjectLifecycleService {
         if (info == null) {
             throw new IllegalArgumentException("Recent project must not be null");
         }
-        return open(Path.of(info.getPath()));
+        ProjectModel project = open(Path.of(info.getPath()));
+        recordRecent(project);
+        return project;
+    }
+
+    public void recordRecent(ProjectModel project) {
+        if (project != null) {
+            projectService.addRecent(project.toInfo());
+        }
     }
 
     public void close() {

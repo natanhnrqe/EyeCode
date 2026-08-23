@@ -2,6 +2,7 @@ package com.eyecode.javafx.ui.editor;
 
 import com.eyecode.designsystem.icon.EyeCodeIcon;
 import com.eyecode.javafx.designsystem.JavaFxIconManager;
+import com.eyecode.javafx.designsystem.JavaFxButton;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -34,9 +35,9 @@ public final class NewProjectSurface extends VBox {
     private final Runnable backAction;
     private final StackPane stepHost = new StackPane();
     private final Label stepLabel = new Label();
-    private final Button back = new Button("Back");
-    private final Button next = new Button("Next");
-    private final Button create = new Button("Create Project");
+    private final Button back = JavaFxButton.create("Back");
+    private final Button next = JavaFxButton.create("Next");
+    private final Button create = JavaFxButton.primary("Create Project");
     private Step step = Step.TYPE;
     private int selectedOption;
 
@@ -60,9 +61,6 @@ public final class NewProjectSurface extends VBox {
         VBox.setVgrow(stepHost, Priority.ALWAYS);
         HBox footer = new HBox(8, back, next, create);
         footer.setAlignment(Pos.CENTER_RIGHT);
-        back.getStyleClass().add("wizard-secondary");
-        next.getStyleClass().add("wizard-secondary");
-        create.getStyleClass().add("wizard-primary");
         back.setOnAction(event -> previousStep());
         next.setOnAction(event -> nextStep());
         create.setOnAction(event -> {
@@ -217,5 +215,9 @@ public final class NewProjectSurface extends VBox {
 
     Button backForTest() {
         return back;
+    }
+
+    Button createForTest() {
+        return create;
     }
 }

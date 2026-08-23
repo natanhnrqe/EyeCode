@@ -13,6 +13,7 @@ import com.eyecode.javafx.explorer.ProjectNodeType;
 import com.eyecode.project.model.ProjectModel;
 import javafx.application.Platform;
 import javafx.scene.control.TreeItem;
+import javafx.scene.control.Menu;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -122,6 +123,34 @@ class JavaFxExplorerTest {
                 .toList();
         assertTrue(labels.containsAll(
                 java.util.List.of("Open", "Rename", "Delete", "Copy Path", "Reveal", "New")));
+    }
+
+    @Test
+    void sourceDirectoryNewMenuExposesJavaCreationActionsAndResourcesDoNot() {
+        ProjectNode source = new ProjectNode("java",
+                tempRoot.resolve("src/main/java"), ProjectNodeType.DIRECTORY);
+        Menu sourceNew = (Menu) ExplorerContextMenu.create(source, request -> { }).getItems().getLast();
+        assertEquals(7, sourceNew.getItems().size());
+        assertTrue(sourceNew.getItems().stream().noneMatch(javafx.scene.control.MenuItem::isDisable));
+
+        ProjectNode resources = new ProjectNode("resources",
+                tempRoot.resolve("src/main/resources"), ProjectNodeType.DIRECTORY);
+        Menu resourceNew = (Menu) ExplorerContextMenu.create(resources, request -> { }).getItems().getLast();
+        assertTrue(resourceNew.getItems().stream()
+                .allMatch(javafx.scene.control.MenuItem::isDisable));
+    }
+
+    @Test
+    void fileSelectionUsesItsJavaParentForCreationAndResourceFilesStayDisabled() {
+        ProjectNode javaFile = new ProjectNode("App.java",
+                tempRoot.resolve("src/main/java/com/demo/App.java"), ProjectNodeType.FILE);
+        Menu javaNew = (Menu) ExplorerContextMenu.create(javaFile, request -> { }).getItems().getLast();
+        assertTrue(javaNew.getItems().stream().noneMatch(javafx.scene.control.MenuItem::isDisable));
+
+        ProjectNode resourceFile = new ProjectNode("application.json",
+                tempRoot.resolve("src/main/resources/application.json"), ProjectNodeType.FILE);
+        Menu resourceNew = (Menu) ExplorerContextMenu.create(resourceFile, request -> { }).getItems().getLast();
+        assertTrue(resourceNew.getItems().stream().allMatch(javafx.scene.control.MenuItem::isDisable));
     }
 
     @Test

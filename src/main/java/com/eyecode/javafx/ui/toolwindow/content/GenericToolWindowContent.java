@@ -8,6 +8,7 @@ import java.util.Map;
 public final class GenericToolWindowContent extends VBox {
 
     private static final Map<String, String> TITLES = Map.of(
+            "run",           "Run",
             "terminal",      "Terminal",
             "output",        "Output",
             "problems",      "Problems",

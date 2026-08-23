@@ -15,6 +15,11 @@ public final class ExplorerTreeView extends TreeView<ProjectNode> {
     }
 
     public ExplorerTreeView(ProjectModel model, Consumer<Path> fileOpenHandler) {
+        this(model, fileOpenHandler, request -> { });
+    }
+
+    public ExplorerTreeView(ProjectModel model, Consumer<Path> fileOpenHandler,
+                            Consumer<ExplorerNewRequest> newActionHandler) {
         getStyleClass().add("explorer-tree-view");
         setShowRoot(true);
 
@@ -42,13 +47,19 @@ public final class ExplorerTreeView extends TreeView<ProjectNode> {
             };
             cell.getStyleClass().add("explorer-row-cell");
             cell.setDisclosureNode(row.getArrowRegion());
-            cell.setContextMenu(ExplorerContextMenu.create());
             cell.setOnMouseClicked(event -> {
                 ProjectNode selected = cell.getItem();
                 if (event.getClickCount() == 2 && selected != null
                         && selected.type() == ProjectNodeType.FILE
                         && fileOpenHandler != null) {
                     fileOpenHandler.accept(selected.path());
+                }
+            });
+            cell.setOnContextMenuRequested(event -> {
+                if (cell.getItem() != null) {
+                    ExplorerContextMenu.create(cell.getItem(), newActionHandler)
+                            .show(cell, event.getScreenX(), event.getScreenY());
+                    event.consume();
                 }
             });
             return cell;

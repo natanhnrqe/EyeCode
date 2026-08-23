@@ -4,6 +4,7 @@ import com.eyecode.javafx.ui.toolwindow.ToolWindowContentFactory;
 import com.eyecode.project.ProjectInfo;
 import com.eyecode.project.ProjectLifecycleService;
 import com.eyecode.project.model.ProjectModel;
+import com.eyecode.runtime.RunService;
 import javafx.scene.Node;
 
 import java.io.File;
@@ -17,7 +18,7 @@ import java.util.function.Consumer;
 public final class WorkspaceContentFactory implements ToolWindowContentFactory {
 
     private static final Set<String> SUPPORTED = Set.of(
-            "project", "search", "learn", "roadmap", "documentation",
+            "project", "search", "learn", "roadmap", "documentation", "run",
             "preview", "dependencies", "extensions", "settings", "profile",
             "terminal", "output", "problems", "git", "professor-ia"
     );
@@ -29,6 +30,7 @@ public final class WorkspaceContentFactory implements ToolWindowContentFactory {
     private final Consumer<ProjectInfo> recentOpenHandler;
     private final Runnable openProjectHandler;
     private final Runnable newProjectHandler;
+    private final RunService runService;
     private ProjectModel project;
 
     public WorkspaceContentFactory() {
@@ -60,6 +62,17 @@ public final class WorkspaceContentFactory implements ToolWindowContentFactory {
                                    Consumer<ProjectInfo> recentOpenHandler,
                                    Runnable openProjectHandler,
                                    Runnable newProjectHandler) {
+        this(lifecycleService, initialProject, fileOpenHandler, recentOpenHandler,
+                openProjectHandler, newProjectHandler, null);
+    }
+
+    public WorkspaceContentFactory(ProjectLifecycleService lifecycleService,
+                                   ProjectModel initialProject,
+                                   Consumer<Path> fileOpenHandler,
+                                   Consumer<ProjectInfo> recentOpenHandler,
+                                   Runnable openProjectHandler,
+                                   Runnable newProjectHandler,
+                                   RunService runService) {
         this.lifecycleService = lifecycleService;
         this.initialProject = initialProject;
         this.project = initialProject;
@@ -67,6 +80,7 @@ public final class WorkspaceContentFactory implements ToolWindowContentFactory {
         this.recentOpenHandler = recentOpenHandler == null ? projectInfo -> { } : recentOpenHandler;
         this.openProjectHandler = openProjectHandler;
         this.newProjectHandler = newProjectHandler;
+        this.runService = runService;
     }
 
     private WorkspaceContentFactory(ProjectModel initialProject,
@@ -79,6 +93,7 @@ public final class WorkspaceContentFactory implements ToolWindowContentFactory {
         this.recentOpenHandler = recentOpenHandler == null ? projectInfo -> { } : recentOpenHandler;
         this.openProjectHandler = null;
         this.newProjectHandler = null;
+        this.runService = null;
     }
 
     @Override
@@ -137,6 +152,7 @@ public final class WorkspaceContentFactory implements ToolWindowContentFactory {
                 }
                 yield content;
             }
+            case "run" -> new RunToolWindowContent(runService);
             case "learn" -> new LearnToolWindowContent();
             case "roadmap" -> new RoadmapToolWindowContent();
             case "documentation" -> new DocumentationToolWindowContent();

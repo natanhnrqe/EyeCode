@@ -156,17 +156,18 @@
 }
 
 /* ============================================================
-   5. Buttons — comportamento unificado
-   (toolbar, bottom tool window, activity bar, window controls)
+   BUTTON BASE
    ============================================================ */
+
 .toolbar-btn,
 .activity-btn,
 .bottom-tw-btn,
 .win-btn {
     -fx-background-color: transparent;
-    -fx-background-radius: 6;
-    -fx-text-fill: -eyecode-text-secondary;
-    -fx-content-display: center;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
     -fx-cursor: hand;
 }
 
@@ -181,11 +182,7 @@
 .toolbar-btn:pressed,
 .activity-btn:pressed,
 .bottom-tw-btn:pressed,
-.win-btn:pressed,
-.toolbar-btn:focused,
-.activity-btn:focused,
-.bottom-tw-btn:focused,
-.win-btn:focused {
+.win-btn:pressed {
     -fx-background-color: -eyecode-pressed;
 }
 
@@ -193,46 +190,137 @@
 .activity-btn:disabled,
 .bottom-tw-btn:disabled,
 .win-btn:disabled {
-    -fx-opacity: 0.4;
+    -fx-opacity: 0.38;
     -fx-cursor: default;
 }
 
-/* Toolbar (top bar) */
+
+/* ============================================================
+   TOP TOOLBAR
+   ============================================================ */
+
 .toolbar-btn {
-    -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 13;
-    -fx-padding: 0 8 0 8;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 12px;
+
+    -fx-padding: 0;
+    -fx-min-width: 28;
+    -fx-pref-width: 28;
+    -fx-max-width: 28;
+
     -fx-min-height: 28;
     -fx-pref-height: 28;
-    -fx-background-radius: 4;
+    -fx-max-height: 28;
+
+    -fx-background-radius: 5;
+    -fx-content-display: graphic-only;
+    -fx-alignment: center;
 }
 
 .toolbar-btn-icon {
     -fx-padding: 0;
     -fx-min-width: 28;
     -fx-pref-width: 28;
+    -fx-max-width: 28;
+
     -fx-min-height: 28;
     -fx-pref-height: 28;
+    -fx-max-height: 28;
+
     -fx-content-display: graphic-only;
-}
-
-/* Run Configuration — seletor com largura maior */
-.toolbar-run-config {
-    -fx-min-width: 96;
-    -fx-pref-width: 96;
     -fx-alignment: center;
-    -fx-padding: 0 10 0 8;
 }
 
-/* Window controls — transparentes; Close vermelho apenas no hover */
-.win-btn {
+
+/* ============================================================
+   EXECUTION CLUSTER
+   ============================================================ */
+
+.toolbar-execution {
+    -fx-alignment: center;
+    -fx-spacing: 4;
+    -fx-padding: 0 2 0 2;
+}
+
+.toolbar-execution .toolbar-btn {
+    -fx-background-radius: 5;
+}
+
+
+/* ============================================================
+   ACTIVITY BAR
+   ============================================================ */
+
+.activity-btn {
     -fx-padding: 0;
-    -fx-min-width: 44;
-    -fx-pref-width: 44;
+
+    -fx-min-width: 36;
+    -fx-pref-width: 36;
+    -fx-max-width: 36;
+
     -fx-min-height: 36;
     -fx-pref-height: 36;
+    -fx-max-height: 36;
+
+    -fx-font-size: 16px;
+    -fx-background-radius: 5;
+    -fx-content-display: graphic-only;
+    -fx-alignment: center;
+}
+
+.activity-btn-selected,
+.activity-btn-selected:hover {
+    -fx-background-color: -eyecode-accent-soft;
+    -fx-text-fill: -eyecode-accent-bright;
+
+    -fx-border-color:
+        transparent
+        transparent
+        transparent
+        -eyecode-accent;
+
+    -fx-border-width: 0 0 0 2;
+}
+
+
+/* ============================================================
+   BOTTOM TOOL WINDOW
+   ============================================================ */
+
+.bottom-tw-btn {
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 12px;
+
+    -fx-padding: 5 9 5 9;
+    -fx-background-radius: 5;
+    -fx-alignment: center;
+}
+
+.bottom-tw-btn-selected,
+.bottom-tw-btn-selected:hover {
+    -fx-background-color: -eyecode-accent-soft;
+    -fx-text-fill: -eyecode-accent-bright;
+}
+
+
+/* ============================================================
+   WINDOW CONTROLS
+   ============================================================ */
+
+.win-btn {
+    -fx-padding: 0;
+
+    -fx-min-width: 42;
+    -fx-pref-width: 42;
+    -fx-max-width: 42;
+
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+    -fx-max-height: 36;
+
     -fx-background-radius: 0;
     -fx-content-display: graphic-only;
+    -fx-alignment: center;
 }
 
 #win-close {
@@ -242,92 +330,100 @@
 
 #win-close:hover {
     -fx-background-color: rgb(232, 17, 35);
-    -fx-text-fill: rgb(255, 255, 255);
-}
-
-/* Activity bar — barra de ícones, sem fundo próprio */
-.activity-btn {
-    -fx-font-size: 18;
-    -fx-min-width: 36;
-    -fx-pref-width: 36;
-    -fx-min-height: 36;
-    -fx-pref-height: 36;
-}
-
-.activity-btn-selected,
-.activity-btn-selected:hover {
-    -fx-background-color: -eyecode-accent-soft;
-    -fx-text-fill: -eyecode-accent-bright;
-    -fx-border-color: -eyecode-accent transparent transparent transparent;
-    -fx-border-width: 0 0 0 3;
-}
-
-/* Bottom tool window bar — inspirada no IntelliJ */
-.bottom-tw-btn {
-    -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 12;
-    -fx-padding: 4 10 4 10;
-    -fx-background-radius: 4;
-}
-
-.bottom-tw-btn-selected,
-.bottom-tw-btn-selected:hover {
-    -fx-background-color: -eyecode-accent-soft;
-    -fx-text-fill: -eyecode-accent-bright;
+    -fx-text-fill: white;
 }
 
 /* ============================================================
-   6. Toolbar (estrutura)
+   6. Toolbar
    ============================================================ */
+
 .toolbar {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
     -fx-border-width: 0;
+
     -fx-pref-height: 40;
-    -fx-padding: 0 8 0 8;
+    -fx-min-height: 40;
+    -fx-max-height: 40;
+
+    -fx-padding: 0 10 0 10;
     -fx-alignment: center-left;
 }
+
+/* ------------------------------------------------------------
+   Left side
+   ------------------------------------------------------------ */
 
 .toolbar-left {
     -fx-alignment: center-left;
-    -fx-spacing: 0;
+    -fx-spacing: 6;
 }
+
+/* ------------------------------------------------------------
+   Right side
+   ------------------------------------------------------------ */
 
 .toolbar-right {
     -fx-alignment: center-right;
-    -fx-spacing: 0;
+    -fx-spacing: 10;
 }
 
+/* Search / Git / execution / debug / settings */
 .toolbar-actions {
     -fx-alignment: center-right;
-    -fx-spacing: 2;
-    -fx-padding: 0 8 0 0;
+    -fx-spacing: 6;
+    -fx-padding: 0;
 }
+
+/* Run / Rerun / Stop */
+.toolbar-execution {
+    -fx-alignment: center;
+    -fx-spacing: 5;
+    -fx-padding: 0 2 0 2;
+}
+
+/* ------------------------------------------------------------
+   Window controls
+   ------------------------------------------------------------ */
 
 .toolbar-window {
     -fx-alignment: center-right;
-    -fx-spacing: 0;
+    -fx-spacing: 2;
 }
+
+/* ------------------------------------------------------------
+   Branding / project
+   ------------------------------------------------------------ */
 
 .toolbar-logo {
     -fx-text-fill: -eyecode-text;
-    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-family: "Segoe UI";
     -fx-font-weight: bold;
-    -fx-font-size: 14;
+    -fx-font-size: 13px;
 }
 
 .toolbar-project {
     -fx-text-fill: -eyecode-muted;
-    -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 12;
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 12px;
 }
+
+/* ------------------------------------------------------------
+   Groups
+   ------------------------------------------------------------ */
 
 .toolbar-separator {
     -fx-background-color: -eyecode-border-strong;
+
     -fx-min-width: 1;
     -fx-pref-width: 1;
-    -fx-min-height: 16;
-    -fx-pref-height: 16;
+    -fx-max-width: 1;
+
+    -fx-min-height: 18;
+    -fx-pref-height: 18;
+    -fx-max-height: 18;
+
+    -fx-translate-y: 0;
 }
 
 /* ============================================================
@@ -828,36 +924,38 @@
 }
 
 /* ============================================================
-   14. Bottom Bar unificada — tools + breadcrumbs + status (uma linha)
+   14. Bottom Bar unificada
    ============================================================ */
-.status-item {
-    -fx-text-fill: -eyecode-text-secondary;
-    -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 12;
+
+.bottom-tool-window-bar {
+    -fx-alignment: center-left;
+    -fx-spacing: 10;
+    -fx-padding: 0 14 0 14;
+
+    -fx-pref-height: 32;
+    -fx-min-height: 32;
+    -fx-max-height: 32;
 }
 
-.status-group {
-    -fx-alignment: center-right;
-    -fx-spacing: 8;
-}
-
-.status-separator {
-    -fx-background-color: -eyecode-border-strong;
-    -fx-min-width: 1;
-    -fx-pref-width: 1;
-    -fx-min-height: 14;
-    -fx-pref-height: 14;
+.bottom-tools {
+    -fx-alignment: center-left;
+    -fx-spacing: 6;
 }
 
 .breadcrumbs {
     -fx-alignment: center-left;
-    -fx-spacing: 2;
+    -fx-spacing: 5;
+    -fx-padding: 0 8 0 4;
 }
 
 .breadcrumb-label {
     -fx-text-fill: -eyecode-muted;
     -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 12;
+    -fx-font-size: 12px;
+}
+
+.breadcrumb-label:hover {
+    -fx-text-fill: -eyecode-text;
 }
 
 .breadcrumb-current {
@@ -867,15 +965,37 @@
 .breadcrumb-separator {
     -fx-text-fill: -eyecode-text-dim;
     -fx-font-family: "JetBrains Mono", monospace;
-    -fx-font-size: 12;
+    -fx-font-size: 12px;
+    -fx-padding: 0 2 0 2;
+}
+
+.status-group {
+    -fx-alignment: center-right;
+    -fx-spacing: 12;
+    -fx-padding: 0 2 0 12;
+}
+
+.status-item {
+    -fx-text-fill: -eyecode-text-secondary;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 12px;
+}
+
+.status-item-strong {
+    -fx-text-fill: -eyecode-text;
 }
 
 .bar-sep {
     -fx-background-color: -eyecode-border-strong;
+    -fx-opacity: 0.65;
+
     -fx-min-width: 1;
     -fx-pref-width: 1;
-    -fx-min-height: 16;
-    -fx-pref-height: 16;
+    -fx-max-width: 1;
+
+    -fx-min-height: 14;
+    -fx-pref-height: 14;
+    -fx-max-height: 14;
 }
 
 /* ============================================================
@@ -1032,21 +1152,258 @@
     -fx-font-weight: bold;
 }
 
-.welcome-action {
-    -fx-font-family: "Segoe UI", "Noto Sans", sans-serif;
-    -fx-font-size: 13;
+/* ============================================================
+   EyeCode Button — tactile / Codeminers-inspired
+   Dark-theme tuned
+   ============================================================ */
+
+.eyecode-button {
+    -fx-background-color: #252930;
+    -fx-text-fill: #F3F4F6;
+
+    -fx-border-color: rgba(255, 255, 255, 0.16);
+    -fx-border-width: 1;
+
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+
+    /*
+     * Bigger desktop CTA dimensions.
+     */
+    -fx-padding: 12 20 12 20;
+
+    -fx-min-height: 44;
+    -fx-pref-height: 44;
+
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+
+    -fx-alignment: center;
+    -fx-cursor: hand;
+
+    /*
+     * Solid offset shadow.
+     * Large enough to be clearly visible on EyeCode dark surfaces.
+     */
+    -fx-effect: dropshadow(
+        one-pass-box,
+        rgba(40, 52, 95, 0.95),
+        0,
+        0,
+        5,
+        6
+    );
+
+    -fx-translate-x: 0;
+    -fx-translate-y: 0;
 }
 
-.welcome-action {
-    -fx-background-color: -eyecode-surface;
-    -fx-text-fill: -eyecode-text;
-    -fx-border-color: -eyecode-border-strong;
-    -fx-border-radius: 4;
-    -fx-background-radius: 4;
-    -fx-padding: 8 14 8 14;
+
+/* ============================================================
+   Hover
+   ============================================================ */
+
+.eyecode-button:hover {
+    -fx-background-color: #2D323B;
+    -fx-text-fill: #FFFFFF;
+
+    /*
+     * Move toward the shadow.
+     */
+    -fx-translate-x: 2;
+    -fx-translate-y: 2;
+
+    -fx-effect: dropshadow(
+        one-pass-box,
+        rgba(40, 52, 95, 0.90),
+        0,
+        0,
+        3,
+        4
+    );
 }
 
-.welcome-action:hover,
+
+/* ============================================================
+   Pressed
+   ============================================================ */
+
+.eyecode-button:pressed {
+    -fx-background-color: #20242B;
+    -fx-text-fill: #FFFFFF;
+
+    -fx-translate-x: 5;
+    -fx-translate-y: 6;
+
+    -fx-effect: none;
+}
+
+
+/* ============================================================
+   Disabled
+   ============================================================ */
+
+.eyecode-button:disabled {
+    -fx-background-color: #25282D;
+    -fx-text-fill: rgba(235, 238, 245, 0.45);
+
+    -fx-border-color: rgba(255, 255, 255, 0.06);
+
+    -fx-opacity: 0.65;
+    -fx-cursor: default;
+
+    -fx-translate-x: 3;
+    -fx-translate-y: 4;
+
+    -fx-effect: dropshadow(
+        one-pass-box,
+        rgba(20, 22, 28, 0.65),
+        0,
+        0,
+        2,
+        3
+    );
+}
+
+
+/* ============================================================
+   Primary
+   ============================================================ */
+
+.eyecode-button-primary {
+    -fx-background-color: #355FD4;
+    -fx-text-fill: #FFFFFF;
+
+    -fx-border-color: #7895FF;
+    -fx-border-width: 1;
+
+    /*
+     * Blue raised base.
+     */
+    -fx-effect: dropshadow(
+        one-pass-box,
+        rgba(32, 48, 135, 1.0),
+        0,
+        0,
+        6,
+        7
+    );
+}
+
+.eyecode-button-primary:hover {
+    -fx-background-color: #4470E8;
+    -fx-text-fill: #FFFFFF;
+
+    -fx-translate-x: 2;
+    -fx-translate-y: 2;
+
+    -fx-effect: dropshadow(
+        one-pass-box,
+        rgba(32, 48, 135, 0.98),
+        0,
+        0,
+        4,
+        5
+    );
+}
+
+.eyecode-button-primary:pressed {
+    -fx-background-color: #2F56C5;
+    -fx-text-fill: #FFFFFF;
+
+    -fx-translate-x: 6;
+    -fx-translate-y: 7;
+
+    -fx-effect: none;
+}
+
+.eyecode-button-primary:disabled {
+    -fx-background-color: #2C417F;
+    -fx-text-fill: rgba(255, 255, 255, 0.45);
+
+    -fx-border-color: rgba(120, 149, 255, 0.18);
+
+    -fx-opacity: 0.65;
+
+    -fx-translate-x: 4;
+    -fx-translate-y: 5;
+
+    -fx-effect: dropshadow(
+        one-pass-box,
+        rgba(27, 37, 88, 0.65),
+        0,
+        0,
+        2,
+        3
+    );
+}
+
+
+/* ============================================================
+   Danger
+   ============================================================ */
+
+.eyecode-button-danger {
+    -fx-background-color: #E24D59;
+    -fx-text-fill: #FFFFFF;
+
+    -fx-border-color: #FF8790;
+
+    -fx-effect: dropshadow(
+        one-pass-box,
+        rgba(130, 35, 44, 1.0),
+        0,
+        0,
+        6,
+        7
+    );
+}
+
+.eyecode-button-danger:hover {
+    -fx-background-color: #F05A68;
+
+    -fx-translate-x: 2;
+    -fx-translate-y: 2;
+
+    -fx-effect: dropshadow(
+        one-pass-box,
+        rgba(130, 35, 44, 0.95),
+        0,
+        0,
+        4,
+        5
+    );
+}
+
+.eyecode-button-danger:pressed {
+    -fx-background-color: #D74350;
+
+    -fx-translate-x: 6;
+    -fx-translate-y: 7;
+
+    -fx-effect: none;
+}
+
+
+/* ============================================================
+   Optional: large Welcome CTA
+   ============================================================ */
+
+.eyecode-button-large {
+    -fx-min-width: 170;
+    -fx-pref-width: 170;
+
+    -fx-min-height: 48;
+    -fx-pref-height: 48;
+
+    -fx-padding: 12 22 12 22;
+
+    -fx-font-size: 15px;
+    -fx-background-radius: 9;
+    -fx-border-radius: 9;
+}
+
 .welcome-recent-item:hover,
 .new-project-option:hover {
     -fx-background-color: -eyecode-hover;

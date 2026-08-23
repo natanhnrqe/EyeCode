@@ -79,6 +79,9 @@ class FxEditorWorkspaceEmptyStateTest {
             assertEquals("CONFIGURATION", newProject.stepForTest());
             newProject.nextForTest().fire();
             assertEquals("PREVIEW", newProject.stepForTest());
+            assertTrue(newProject.backForTest().getStyleClass().contains("eyecode-button"));
+            assertTrue(newProject.nextForTest().getStyleClass().contains("eyecode-button"));
+            assertTrue(newProject.createForTest().getStyleClass().contains("eyecode-button-primary"));
             newProject.backForTest().fire();
             assertEquals("CONFIGURATION", newProject.stepForTest());
             newProject.backForTest().fire();

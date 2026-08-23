@@ -4,6 +4,7 @@ import com.eyecode.project.ProjectInfo;
 import com.eyecode.project.ProjectType;
 import com.eyecode.designsystem.icon.EyeCodeIcon;
 import com.eyecode.javafx.designsystem.JavaFxIconManager;
+import com.eyecode.javafx.designsystem.JavaFxButton;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -137,8 +138,7 @@ public final class WelcomeProjectSurface extends VBox {
     }
 
     private Button actionButton(String text, Runnable action) {
-        Button button = new Button(text);
-        button.getStyleClass().add("welcome-action");
+        Button button = JavaFxButton.create(text);
         button.setOnAction(event -> {
             if (action != null) {
                 action.run();

@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -36,6 +35,8 @@ class ProjectLifecycleServiceTest {
         assertTrue(opened.isValid());
         assertEquals(com.eyecode.project.model.ProjectType.JAVA, opened.getType());
         assertEquals(opened, changed.get());
+        assertTrue(service.recentProjects().isEmpty());
+        service.recordRecent(opened);
         assertEquals(1, service.recentProjects().size());
     }
 
@@ -76,7 +77,7 @@ class ProjectLifecycleServiceTest {
         service.close();
 
         assertNull(service.currentProject());
-        assertFalse(service.recentProjects().isEmpty());
+        assertTrue(service.recentProjects().isEmpty());
     }
 
     @Test
@@ -85,6 +86,8 @@ class ProjectLifecycleServiceTest {
         Path project = Files.createDirectory(tempDir.resolve("project"));
         ProjectLifecycleService first = new ProjectLifecycleService(new ProjectService(storage));
         first.open(project.resolve("."));
+        assertTrue(first.recentProjects().isEmpty());
+        first.recordRecent(first.currentProject());
 
         ProjectLifecycleService second = new ProjectLifecycleService(new ProjectService(storage));
         List<ProjectInfo> recent = second.recentProjects();
@@ -92,5 +95,29 @@ class ProjectLifecycleServiceTest {
         assertEquals(1, recent.size());
         assertEquals(project.toAbsolutePath().normalize().toString(), recent.getFirst().getPath());
         assertEquals(project.toAbsolutePath().normalize(), second.openRecent(recent.getFirst()).getRootDir());
+    }
+
+    @Test
+    void internalFixtureOpeningNeverMutatesRecentProjects() throws Exception {
+        Path project = Files.createDirectory(tempDir.resolve("fixture"));
+        ProjectLifecycleService service = new ProjectLifecycleService(
+                new ProjectService(tempDir.resolve("recent.dat")));
+
+        service.open(project);
+
+        assertTrue(service.recentProjects().isEmpty());
+    }
+
+    @Test
+    void explicitRecordingIsIdempotentForTheSameProject() throws Exception {
+        Path project = Files.createDirectory(tempDir.resolve("user-project"));
+        ProjectLifecycleService service = new ProjectLifecycleService(
+                new ProjectService(tempDir.resolve("recent.dat")));
+
+        ProjectModel opened = service.open(project);
+        service.recordRecent(opened);
+        service.recordRecent(opened);
+
+        assertEquals(1, service.recentProjects().size());
     }
 }

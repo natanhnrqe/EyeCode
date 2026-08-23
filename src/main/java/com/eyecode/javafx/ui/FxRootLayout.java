@@ -10,12 +10,14 @@ import com.eyecode.javafx.ui.toolwindow.content.WorkspaceContentFactory;
 import com.eyecode.project.ProjectInfo;
 import com.eyecode.project.ProjectLifecycleService;
 import com.eyecode.project.model.ProjectModel;
+import com.eyecode.runtime.RunService;
 import com.eyecode.workbench.toolwindow.ToolWindowManager;
 import com.eyecode.workbench.toolwindow.ToolWindowPosition;
 import com.eyecode.workbench.toolwindow.WorkspaceNavigatorItem;
 import com.eyecode.workbench.toolwindow.WorkspaceNavigatorModel;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
+import javafx.application.Platform;
 import javafx.scene.control.SplitPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -39,6 +41,7 @@ public final class FxRootLayout extends BorderPane {
     private FxEditorContainer editorContainer;
     private HBox bottomBar;
     private final ProjectLifecycleService projectLifecycleService;
+    private RunService runService;
     private FxToolbar toolbar;
 
     public FxRootLayout(Runnable onWindowClose) {
@@ -79,13 +82,15 @@ public final class FxRootLayout extends BorderPane {
         ProjectModel initialProject = projectLifecycleService.currentProject() != null
                 ? projectLifecycleService.currentProject()
                 : ProjectModel.fromDirectory(new File("."));
+        this.runService = new RunService(projectLifecycleService);
         WorkspaceContentFactory contentFactory = new WorkspaceContentFactory(
                 projectLifecycleService,
                 initialProject,
                 this::openFile,
                 this::openRecentProject,
                 this::openProjectDialog,
-                this::showNewProjectSurface);
+                this::showNewProjectSurface,
+                runService);
         this.contentFactory = contentFactory;
 
         FxWorkspaceNavigator navigator = new FxWorkspaceNavigator(navigatorModel, manager);
@@ -97,6 +102,23 @@ public final class FxRootLayout extends BorderPane {
                 projectLifecycleService::recentProjects,
                 this::openRecentProject);
         this.editorContainer = editorContainer;
+        toolbar.setExecutionActions(
+                () -> {
+                    runService.runCurrent();
+                    manager.activate("run");
+                },
+                () -> {
+                    runService.rerun();
+                    manager.activate("run");
+                },
+                runService::stop,
+                runService::isRunning,
+                runService::hasLastRequest);
+        runService.addListener(new RunService.Listener() {
+            @Override public void onStarted(com.eyecode.runtime.RunRequest request) { refreshRunControls(); }
+            @Override public void onOutput(String line, boolean error) { refreshRunControls(); }
+            @Override public void onFinished(int exitCode, boolean stopped) { refreshRunControls(); }
+        });
         FxBottomToolWindow bottomToolWindow = new FxBottomToolWindow(manager, contentFactory);
         this.bottomToolWindow = bottomToolWindow;
         FxBottomToolWindowBar bottomBar = new FxBottomToolWindowBar(manager);
@@ -156,8 +178,12 @@ public final class FxRootLayout extends BorderPane {
         if (editorContainer.hasDirtySessions() && !confirmDiscardChanges()) {
             return;
         }
+        if (runService != null) {
+            runService.stop();
+        }
         try {
             ProjectModel project = projectLifecycleService.open(directory);
+            projectLifecycleService.recordRecent(project);
             contentFactory.setProject(project);
             contentFactory.setRecentProjects(projectLifecycleService.recentProjects());
             editorContainer.openProject(project);
@@ -169,6 +195,9 @@ public final class FxRootLayout extends BorderPane {
     }
 
     public void dispose() {
+        if (runService != null) {
+            runService.dispose();
+        }
         if (contentFactory != null) {
             contentFactory.dispose();
         }
@@ -176,6 +205,14 @@ public final class FxRootLayout extends BorderPane {
             editorContainer.dispose();
         }
         projectLifecycleService.close();
+    }
+
+    private void refreshRunControls() {
+        if (Platform.isFxApplicationThread()) {
+            toolbar.refreshExecutionState();
+        } else {
+            Platform.runLater(toolbar::refreshExecutionState);
+        }
     }
 
     private void openProjectDialog() {
@@ -245,6 +282,7 @@ public final class FxRootLayout extends BorderPane {
         manager.register("settings",      "Settings",      "SETTINGS",          ToolWindowPosition.LEFT);
         manager.register("profile",       "Profile",       "PROJECT_DIRECTORY", ToolWindowPosition.LEFT);
 
+        manager.register("run",          "Run",          "RUN",      ToolWindowPosition.BOTTOM);
         manager.register("terminal",     "Terminal",     "TERMINAL", ToolWindowPosition.BOTTOM);
         manager.register("output",       "Output",       "CLEAR",    ToolWindowPosition.BOTTOM);
         manager.register("problems",     "Problems",     "PROBLEM",  ToolWindowPosition.BOTTOM);

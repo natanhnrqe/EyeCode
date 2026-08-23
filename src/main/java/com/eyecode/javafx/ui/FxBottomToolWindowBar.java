@@ -29,14 +29,10 @@ public final class FxBottomToolWindowBar extends HBox {
 
     public FxBottomToolWindowBar(ToolWindowManager manager) {
         getStyleClass().add("bottom-tool-window-bar");
+
         setPrefHeight(FxSpacing.BOTTOM_BAR_HEIGHT);
         setMinHeight(FxSpacing.BOTTOM_BAR_HEIGHT);
-        setPadding(new Insets(
-                FxSpacing.BOTTOM_BAR_BTN_PAD_V,
-                FxSpacing.BOTTOM_BAR_SIDE,
-                FxSpacing.BOTTOM_BAR_BTN_PAD_V,
-                FxSpacing.BOTTOM_BAR_SIDE));
-        setSpacing(FxSpacing.XXS);
+        setMaxHeight(FxSpacing.BOTTOM_BAR_HEIGHT);
 
         this.manager = manager;
         this.breadcrumbs = defaultBreadcrumbs();
@@ -47,7 +43,35 @@ public final class FxBottomToolWindowBar extends HBox {
 
         manager.addChangeListener(() ->
                 rebuild(manager.getToolWindows(ToolWindowPosition.BOTTOM)));
+
         manager.addActiveToolWindowListener(this::onActiveChanged);
+    }
+
+    private void rebuild(List<ToolWindow> windows) {
+        getChildren().clear();
+        buttonsById.clear();
+
+        HBox tools = new HBox();
+        tools.getStyleClass().add("bottom-tools");
+
+        for (ToolWindow window : windows) {
+            Button button = tabButton(window);
+            buttonsById.put(window.getId(), button);
+            tools.getChildren().add(button);
+        }
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        getChildren().addAll(
+                tools,
+                barSeparator(),
+                breadcrumbs,
+                spacer,
+                statusGroup
+        );
+
+        applySelection(manager.getActive(ToolWindowPosition.BOTTOM));
     }
 
     private void onActiveChanged(ToolWindow active) {
@@ -56,23 +80,6 @@ public final class FxBottomToolWindowBar extends HBox {
             return;
         }
         applySelection(active);
-    }
-
-    private void rebuild(List<ToolWindow> windows) {
-        getChildren().clear();
-        buttonsById.clear();
-        for (ToolWindow window : windows) {
-            Button b = tabButton(window);
-            buttonsById.put(window.getId(), b);
-            getChildren().add(b);
-        }
-        getChildren().add(barSeparator());
-        getChildren().add(breadcrumbs);
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        getChildren().add(spacer);
-        getChildren().add(statusGroup);
-        applySelection(manager.getActive(ToolWindowPosition.BOTTOM));
     }
 
     private Button tabButton(ToolWindow window) {
