@@ -6,15 +6,22 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
+import java.nio.file.Path;
+import java.util.function.Consumer;
+
 public final class JavaFxExplorer extends VBox {
 
     private final ExplorerTreeView treeView;
     private ExplorerState state = ExplorerState.PROJECT;
 
     public JavaFxExplorer(ProjectModel model) {
+        this(model, path -> { });
+    }
+
+    public JavaFxExplorer(ProjectModel model, Consumer<Path> fileOpenHandler) {
         getStyleClass().add("java-fx-explorer");
 
-        this.treeView = new ExplorerTreeView(model);
+        this.treeView = new ExplorerTreeView(model, fileOpenHandler);
         this.treeView.setMaxHeight(Double.MAX_VALUE);
         VBox.setVgrow(this.treeView, Priority.ALWAYS);
 
@@ -35,6 +42,10 @@ public final class JavaFxExplorer extends VBox {
 
     public ExplorerTreeView getTreeView() {
         return treeView;
+    }
+
+    public void refresh(ProjectModel model) {
+        treeView.reloadProject(model);
     }
 
     private Node contentFor(ExplorerState s) {

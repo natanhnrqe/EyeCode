@@ -6,6 +6,7 @@ import javafx.scene.control.TreeItem;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -15,7 +16,7 @@ import java.util.Set;
 public final class ProjectModelAdapter {
 
     private static final Set<String> IGNORED_DIRECTORIES = Set.of(
-            ".git", ".idea", "target", "build", "out"
+            ".git", ".idea", ".gradle", "target", "build", "out"
     );
 
     public TreeItem<ProjectNode> toTree(ProjectModel model) {
@@ -49,7 +50,7 @@ public final class ProjectModelAdapter {
         List<Path> paths = visibleChildren(parent.path());
         List<TreeItem<ProjectNode>> items = new ArrayList<>(paths.size());
         for (Path child : paths) {
-            boolean isDirectory = Files.isDirectory(child);
+            boolean isDirectory = Files.isDirectory(child, LinkOption.NOFOLLOW_LINKS);
             ProjectNode node = new ProjectNode(
                     child.getFileName().toString(),
                     child.toAbsolutePath().normalize(),
@@ -76,7 +77,7 @@ public final class ProjectModelAdapter {
     }
 
     private boolean isVisible(Path entry) {
-        return !Files.isDirectory(entry)
+        return !Files.isDirectory(entry, LinkOption.NOFOLLOW_LINKS)
                 || !IGNORED_DIRECTORIES.contains(entry.getFileName().toString());
     }
 }

@@ -7,6 +7,7 @@ import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.language.documentation.JdkSourceTarget;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.project.ProjectInfo;
 import javafx.scene.Node;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -15,6 +16,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public final class FxEditorWorkspacePane extends VBox {
 
@@ -26,17 +29,35 @@ public final class FxEditorWorkspacePane extends VBox {
 
     private final JavaFxDocumentationWorkspace documentationWorkspace;
     private final JavaFxJdkSourceWorkspace sourceWorkspace;
+    private final WelcomeProjectSurface welcomeSurface;
+    private final NewProjectSurface newProjectSurface;
 
     public FxEditorWorkspacePane(EditorManager manager, JavaFxDocumentationWorkspace documentationWorkspace) {
-        this(manager, documentationWorkspace, new JavaFxJdkSourceWorkspace());
+        this(manager, documentationWorkspace, new JavaFxJdkSourceWorkspace(),
+                null, () -> { }, List::of, project -> { });
     }
 
     public FxEditorWorkspacePane(EditorManager manager,
                                  JavaFxDocumentationWorkspace documentationWorkspace,
                                  JavaFxJdkSourceWorkspace sourceWorkspace) {
+        this(manager, documentationWorkspace, sourceWorkspace,
+                null, () -> { }, List::of, project -> { });
+    }
+
+    public FxEditorWorkspacePane(EditorManager manager,
+                                 JavaFxDocumentationWorkspace documentationWorkspace,
+                                 JavaFxJdkSourceWorkspace sourceWorkspace,
+                                 Runnable newProjectAction,
+                                 Runnable openProjectAction,
+                                 Supplier<List<ProjectInfo>> recentProjects,
+                                 Consumer<ProjectInfo> recentProjectAction) {
         this.manager = manager;
         this.documentationWorkspace = documentationWorkspace;
         this.sourceWorkspace = sourceWorkspace;
+        this.welcomeSurface = new WelcomeProjectSurface(
+                newProjectAction == null ? this::showNewProjectSurface : newProjectAction,
+                openProjectAction, recentProjects, recentProjectAction);
+        this.newProjectSurface = new NewProjectSurface(this::showWelcomeSurface);
         documentationWorkspace.setPresenter(this::openDocumentation);
         sourceWorkspace.setPresenter(this::openSource);
         getStyleClass().add("editor-workspace-pane");
@@ -125,6 +146,7 @@ public final class FxEditorWorkspacePane extends VBox {
 
     private void mountSelectedContent(String id) {
         if (id == null) {
+            showWelcomeSurface();
             return;
         }
         if (JavaFxDocumentationWorkspace.TAB_ID.equals(id)) {
@@ -144,6 +166,22 @@ public final class FxEditorWorkspacePane extends VBox {
         if (nativeView instanceof Node node) {
             contentPane.show(node);
         }
+    }
+
+    public void showWelcomeSurface() {
+        contentPane.show(welcomeSurface);
+    }
+
+    public void showNewProjectSurface() {
+        contentPane.show(newProjectSurface);
+    }
+
+    public void refreshWelcomeProjects() {
+        welcomeSurface.refreshRecentProjects();
+    }
+
+    public void setProjectName(String projectName) {
+        welcomeSurface.setProjectName(projectName);
     }
 
     private void observeDirty(EditorSession session) {
@@ -177,5 +215,13 @@ public final class FxEditorWorkspacePane extends VBox {
 
     FxEditorContentPane contentPaneForTest() {
         return contentPane;
+    }
+
+    WelcomeProjectSurface welcomeSurfaceForTest() {
+        return welcomeSurface;
+    }
+
+    NewProjectSurface newProjectSurfaceForTest() {
+        return newProjectSurface;
     }
 }

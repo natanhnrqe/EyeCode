@@ -64,6 +64,8 @@
     -fx-text-fill:                 -eyecode-text;
     -fx-control-inner-background:  -eyecode-surface;
     -fx-mark-color:                -eyecode-text-secondary;
+    -fx-font-family: "Segoe UI", "Noto Sans", sans-serif;
+    -fx-font-size: 13;
 }
 
 /* Scenes de popup re-ancoram a paleta (lookups não cruzam scenes).
@@ -1002,6 +1004,218 @@
     -fx-text-fill: -eyecode-muted;
     -fx-font-family: "JetBrains Mono", monospace;
     -fx-font-size: 13;
+}
+
+.welcome-project-surface,
+.new-project-surface {
+    -fx-background-color: transparent;
+    -fx-alignment: top-center;
+    -fx-font-family: "Segoe UI", "Noto Sans", sans-serif;
+}
+
+.welcome-logo {
+    -fx-text-fill: -eyecode-text;
+    -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
+    -fx-font-size: 26;
+    -fx-font-weight: bold;
+}
+
+.welcome-subtitle,
+.welcome-secondary {
+    -fx-text-fill: -eyecode-muted;
+    -fx-font-size: 13;
+}
+
+.welcome-section-title {
+    -fx-text-fill: -eyecode-text-secondary;
+    -fx-font-size: 14;
+    -fx-font-weight: bold;
+}
+
+.welcome-action {
+    -fx-font-family: "Segoe UI", "Noto Sans", sans-serif;
+    -fx-font-size: 13;
+}
+
+.welcome-action {
+    -fx-background-color: -eyecode-surface;
+    -fx-text-fill: -eyecode-text;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 8 14 8 14;
+}
+
+.welcome-action:hover,
+.welcome-recent-item:hover,
+.new-project-option:hover {
+    -fx-background-color: -eyecode-hover;
+}
+
+.welcome-recent-item {
+    -fx-background-color: transparent;
+    -fx-alignment: center-left;
+    -fx-padding: 8;
+    -fx-border-color: transparent;
+    -fx-background-radius: 4;
+}
+
+.welcome-recent-item-text {
+    -fx-alignment: center-left;
+    -fx-text-fill: -eyecode-text-secondary;
+}
+
+.welcome-recent-viewport {
+    -fx-background-color: -eyecode-surface;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 0;
+}
+
+.welcome-recent-viewport > .viewport {
+    -fx-background-color: transparent;
+}
+
+.welcome-recent-item-kind {
+    -fx-text-fill: -eyecode-muted;
+    -fx-font-size: 12;
+    -fx-padding: 0 8 0 12;
+}
+
+.welcome-recent-item-text .label:first-child {
+    -fx-text-fill: -eyecode-text;
+    -fx-font-size: 13;
+}
+
+.welcome-recent-item-text .label:last-child {
+    -fx-text-fill: -eyecode-text-dim;
+    -fx-font-size: 11;
+}
+
+.new-project-option {
+    -fx-background-color: -eyecode-surface;
+    -fx-background-radius: 4;
+    -fx-border-color: -eyecode-border;
+    -fx-border-radius: 4;
+    -fx-padding: 12;
+    -fx-max-width: 620;
+}
+
+.wizard-title {
+    -fx-text-fill: -eyecode-text;
+    -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
+    -fx-font-size: 22;
+    -fx-font-weight: bold;
+}
+
+.wizard-step,
+.wizard-selection,
+.wizard-explanation {
+    -fx-text-fill: -eyecode-muted;
+}
+
+.wizard-heading,
+.wizard-section-title {
+    -fx-text-fill: -eyecode-text-secondary;
+    -fx-font-size: 16;
+    -fx-font-weight: bold;
+}
+
+.wizard-secondary,
+.wizard-primary {
+    -fx-background-radius: 5;
+    -fx-padding: 8 16 8 16;
+    -fx-font-family: "Segoe UI", "Noto Sans", sans-serif;
+}
+
+.wizard-secondary {
+    -fx-background-color: -eyecode-surface;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-text-fill: -eyecode-text-secondary;
+}
+
+.wizard-primary {
+    -fx-background-color: -eyecode-accent;
+    -fx-text-fill: white;
+}
+
+.project-type-card {
+    -fx-background-color: -eyecode-surface;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 16;
+    -fx-min-height: 210;
+    -fx-pref-width: 165;
+    -fx-cursor: hand;
+}
+
+.project-type-card:hover {
+    -fx-background-color: -eyecode-hover;
+}
+
+.project-type-card-selected {
+    -fx-border-color: -eyecode-accent;
+    -fx-background-color: -eyecode-accent-soft;
+}
+
+.project-type-title {
+    -fx-text-fill: -eyecode-text;
+    -fx-font-size: 15;
+    -fx-font-weight: bold;
+}
+
+.project-type-audience {
+    -fx-text-fill: -eyecode-accent-bright;
+    -fx-font-size: 11;
+}
+
+.project-type-description,
+.project-type-best {
+    -fx-text-fill: -eyecode-muted;
+    -fx-font-size: 12;
+}
+
+.project-type-best {
+    -fx-font-style: italic;
+}
+
+.wizard-field-label {
+    -fx-text-fill: -eyecode-text-secondary;
+    -fx-min-width: 90;
+}
+
+.wizard-field {
+    -fx-pref-width: 360;
+}
+
+.wizard-summary,
+.wizard-structure {
+    -fx-background-color: -eyecode-surface;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 12;
+    -fx-text-fill: -eyecode-text-secondary;
+}
+
+.wizard-structure {
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 12;
+}
+
+.new-project-option .label:first-child {
+    -fx-text-fill: -eyecode-text;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 14;
+    -fx-font-weight: bold;
+}
+
+.new-project-option .label:last-child {
+    -fx-text-fill: -eyecode-muted;
+    -fx-font-family: "JetBrains Mono", monospace;
+    -fx-font-size: 12;
 }
 
 .bottom-tool-window-wrap {

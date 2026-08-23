@@ -4,21 +4,36 @@ import com.eyecode.eventbus.EventBus;
 import com.eyecode.filesystem.DefaultFileSystemService;
 import com.eyecode.javafx.editor.view.JavaFxEditorViewFactory;
 import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
-import com.eyecode.javafx.ui.editor.FxEditorWorkspacePane;
 import com.eyecode.javafx.ui.editor.JavaFxDocumentationWorkspace;
 import com.eyecode.javafx.ui.editor.JavaFxJdkSourceWorkspace;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorViewFactory;
+import com.eyecode.project.model.ProjectModel;
+import com.eyecode.project.ProjectInfo;
+import com.eyecode.javafx.ui.editor.FxEditorWorkspacePane;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxCard {
 
     private final JavaFxLearningWorkspace learningWorkspace;
     private final JavaFxDocumentationWorkspace documentationWorkspace;
     private final JavaFxJdkSourceWorkspace sourceWorkspace;
+    private final EditorManager manager;
+    private final FxEditorWorkspacePane workspacePane;
 
     public FxEditorContainer() {
+        this(null, () -> { }, List::of, project -> { });
+    }
+
+    public FxEditorContainer(Runnable newProjectAction,
+                             Runnable openProjectAction,
+                             Supplier<List<ProjectInfo>> recentProjects,
+                             Consumer<ProjectInfo> recentProjectAction) {
         getStyleClass().add("editor-card");
         getStyleClass().remove("fx-card");
 
@@ -28,70 +43,60 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
         learningWorkspace = new JavaFxLearningWorkspace(
                 documentationWorkspace::open, sourceWorkspace::open);
         EditorViewFactory viewFactory = new JavaFxEditorViewFactory(learningWorkspace, sourceWorkspace::open);
-        EditorManager manager = new EditorManager(
+        manager = new EditorManager(
                 eventBus, new DefaultFileSystemService(), viewFactory);
 
-        openDemoDocuments(manager);
-
-        FxEditorWorkspacePane workspacePane = new FxEditorWorkspacePane(
-                manager, documentationWorkspace, sourceWorkspace);
+        workspacePane = new FxEditorWorkspacePane(
+                manager, documentationWorkspace, sourceWorkspace,
+                newProjectAction, openProjectAction, recentProjects, recentProjectAction);
         setContent(workspacePane);
     }
 
     public void dispose() {
+        manager.closeAllSessions();
         learningWorkspace.dispose();
         documentationWorkspace.dispose();
         sourceWorkspace.dispose();
     }
 
-    private void openDemoDocuments(EditorManager manager) {
-        manager.openDocument(Path.of("src/demo/Animal.java"), ANIMAL_SOURCE);
-        manager.openDocument(Path.of("src/demo/Shape.java"), SHAPE_SOURCE);
-        manager.openDocument(Path.of("src/demo/HelloWorld.java"), HELLO_SOURCE);
+    public void openProject(ProjectModel project) {
+        manager.closeAllSessions();
+        workspacePane.showWelcomeSurface();
     }
 
-    private static final String ANIMAL_SOURCE =
-            "package com.eyecode.demo;\n\n" +
-            "import java.util.Objects;\n\n" +
-            "public class Animal {\n\n" +
-            "    private String name;\n\n" +
-            "    public Animal(String name) {\n" +
-            "        this.name = name;\n" +
-            "    }\n\n" +
-            "    public String getName() {\n" +
-            "        if (name != null) {\n" +
-            "            return name;\n" +
-            "        }\n" +
-            "        return \"Unknown\";\n" +
-            "    }\n\n" +
-            "    public void feed(String food) {\n" +
-            "        System.out.println(\"Feeding with \" + Objects.requireNonNull(food));\n" +
-            "    }\n" +
-            "}\n";
+    public boolean openFile(Path file) {
+        if (file == null || !Files.isRegularFile(file)) {
+            return false;
+        }
+        manager.openDocument(file.toAbsolutePath().normalize());
+        return true;
+    }
 
-    private static final String SHAPE_SOURCE =
-            "package com.eyecode.demo;\n\n" +
-            "public sealed interface Shape permits Circle, Square {\n\n" +
-            "    double area();\n" +
-            "}\n\n" +
-            "record Circle(double radius) implements Shape {\n\n" +
-            "    @Override\n" +
-            "    public double area() {\n" +
-            "        return Math.PI * radius * radius;\n" +
-            "    }\n" +
-            "}\n\n" +
-            "record Square(double side) implements Shape {\n\n" +
-            "    @Override\n" +
-            "    public double area() {\n" +
-            "        return side * side;\n" +
-            "    }\n" +
-            "}\n";
+    public boolean hasDirtySessions() {
+        return manager.getSessions().stream()
+                .anyMatch(session -> manager.getBuffer(session.getSessionId())
+                        .map(buffer -> buffer.getDocument().isDirty())
+                        .orElse(false));
+    }
 
-    private static final String HELLO_SOURCE =
-            "package com.eyecode.demo;\n\n" +
-            "public final class HelloWorld {\n\n" +
-            "    public static void main(String[] args) {\n" +
-            "        System.out.println(\"Hello, EyeCode!\");\n" +
-            "    }\n" +
-            "}\n";
+    public EditorManager editorManager() {
+        return manager;
+    }
+
+    public void showWelcomeSurface() {
+        workspacePane.showWelcomeSurface();
+    }
+
+    public void showNewProjectSurface() {
+        workspacePane.showNewProjectSurface();
+    }
+
+    public void refreshWelcomeProjects() {
+        workspacePane.refreshWelcomeProjects();
+    }
+
+    public void setProjectName(String projectName) {
+        workspacePane.setProjectName(projectName);
+    }
+
 }

@@ -7,6 +7,9 @@ import com.eyecode.javafx.ui.toolwindow.FxLeftToolWindow;
 import com.eyecode.javafx.ui.toolwindow.FxWorkspaceNavigator;
 import com.eyecode.javafx.ui.toolwindow.ToolWindowContentFactory;
 import com.eyecode.javafx.ui.toolwindow.content.WorkspaceContentFactory;
+import com.eyecode.project.ProjectInfo;
+import com.eyecode.project.ProjectLifecycleService;
+import com.eyecode.project.model.ProjectModel;
 import com.eyecode.workbench.toolwindow.ToolWindowManager;
 import com.eyecode.workbench.toolwindow.ToolWindowPosition;
 import com.eyecode.workbench.toolwindow.WorkspaceNavigatorItem;
@@ -18,7 +21,13 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.Window;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 
 public final class FxRootLayout extends BorderPane {
@@ -29,11 +38,29 @@ public final class FxRootLayout extends BorderPane {
     private WorkspaceContentFactory contentFactory;
     private FxEditorContainer editorContainer;
     private HBox bottomBar;
+    private final ProjectLifecycleService projectLifecycleService;
+    private FxToolbar toolbar;
 
     public FxRootLayout(Runnable onWindowClose) {
-        getStyleClass().add("root-layout");
+        this(onWindowClose, new ProjectLifecycleService(), ProjectModel.fromDirectory(new File(".")));
+    }
 
-        FxToolbar toolbar = onWindowClose != null ? new FxToolbar(onWindowClose) : new FxToolbar();
+    public FxRootLayout(Runnable onWindowClose, ProjectLifecycleService projectLifecycleService) {
+        this(onWindowClose, projectLifecycleService, null);
+    }
+
+    private FxRootLayout(Runnable onWindowClose,
+                         ProjectLifecycleService projectLifecycleService,
+                         ProjectModel initialProject) {
+        getStyleClass().add("root-layout");
+        this.projectLifecycleService = projectLifecycleService == null
+                ? new ProjectLifecycleService() : projectLifecycleService;
+
+        this.toolbar = new FxToolbar(onWindowClose);
+        toolbar.setProjectMenuActions(
+                this::showNewProjectSurface,
+                this::openProjectDialog,
+                this::showRecentProjects);
         Region workspace = buildWorkspace();
 
         setTop(toolbar);
@@ -49,13 +76,26 @@ public final class FxRootLayout extends BorderPane {
         WorkspaceNavigatorModel navigatorModel = new WorkspaceNavigatorModel();
         navigatorModel.setItems(defaultNavigatorItems());
 
-        WorkspaceContentFactory contentFactory = new WorkspaceContentFactory();
+        ProjectModel initialProject = projectLifecycleService.currentProject() != null
+                ? projectLifecycleService.currentProject()
+                : ProjectModel.fromDirectory(new File("."));
+        WorkspaceContentFactory contentFactory = new WorkspaceContentFactory(
+                projectLifecycleService,
+                initialProject,
+                this::openFile,
+                this::openRecentProject,
+                this::openProjectDialog,
+                this::showNewProjectSurface);
         this.contentFactory = contentFactory;
 
         FxWorkspaceNavigator navigator = new FxWorkspaceNavigator(navigatorModel, manager);
         FxLeftToolWindow leftToolWindow = new FxLeftToolWindow(manager, contentFactory);
         this.leftToolWindow = leftToolWindow;
-        FxEditorContainer editorContainer = new FxEditorContainer();
+        FxEditorContainer editorContainer = new FxEditorContainer(
+                this::showNewProjectSurface,
+                this::openProjectDialog,
+                projectLifecycleService::recentProjects,
+                this::openRecentProject);
         this.editorContainer = editorContainer;
         FxBottomToolWindow bottomToolWindow = new FxBottomToolWindow(manager, contentFactory);
         this.bottomToolWindow = bottomToolWindow;
@@ -105,6 +145,29 @@ public final class FxRootLayout extends BorderPane {
         return bottomToolWindow;
     }
 
+    public ProjectLifecycleService getProjectLifecycleService() {
+        return projectLifecycleService;
+    }
+
+    public void openProject(Path directory) {
+        if (directory == null) {
+            return;
+        }
+        if (editorContainer.hasDirtySessions() && !confirmDiscardChanges()) {
+            return;
+        }
+        try {
+            ProjectModel project = projectLifecycleService.open(directory);
+            contentFactory.setProject(project);
+            contentFactory.setRecentProjects(projectLifecycleService.recentProjects());
+            editorContainer.openProject(project);
+            toolbar.setProjectName(project.getName());
+            editorContainer.setProjectName(project.getName());
+        } catch (IllegalArgumentException exception) {
+            showError("Open Project", exception.getMessage());
+        }
+    }
+
     public void dispose() {
         if (contentFactory != null) {
             contentFactory.dispose();
@@ -112,6 +175,62 @@ public final class FxRootLayout extends BorderPane {
         if (editorContainer != null) {
             editorContainer.dispose();
         }
+        projectLifecycleService.close();
+    }
+
+    private void openProjectDialog() {
+        Window owner = getScene() == null ? null : getScene().getWindow();
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Open Project");
+        File selected = chooser.showDialog(owner);
+        if (selected != null) {
+            openProject(selected.toPath());
+        }
+    }
+
+    private void openRecentProject(ProjectInfo project) {
+        if (project == null) {
+            return;
+        }
+        Path path = Path.of(project.getPath());
+        if (!java.nio.file.Files.isDirectory(path)) {
+            projectLifecycleService.removeRecent(path);
+            contentFactory.setRecentProjects(projectLifecycleService.recentProjects());
+            showError("Recent Project", "Project directory no longer exists: " + path);
+            return;
+        }
+        openProject(path);
+    }
+
+    private void openFile(Path file) {
+        if (editorContainer != null) {
+            editorContainer.openFile(file);
+        }
+    }
+
+    private void showNewProjectSurface() {
+        editorContainer.showNewProjectSurface();
+    }
+
+    private void showRecentProjects() {
+        editorContainer.refreshWelcomeProjects();
+        editorContainer.showWelcomeSurface();
+    }
+
+    private boolean confirmDiscardChanges() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+                "There are unsaved editor changes. Close them and switch project?",
+                ButtonType.OK, ButtonType.CANCEL);
+        alert.setTitle("Switch Project");
+        alert.setHeaderText("Unsaved Changes");
+        return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
+    }
+
+    private void showError(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, message == null ? "Unable to open project." : message, ButtonType.OK);
+        alert.setTitle(title);
+        alert.setHeaderText(title);
+        alert.showAndWait();
     }
 
     private void registerDefaultToolWindows(ToolWindowManager manager) {

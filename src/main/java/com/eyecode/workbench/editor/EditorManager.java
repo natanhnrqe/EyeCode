@@ -128,6 +128,12 @@ public final class EditorManager {
         }
     }
 
+    public void closeAllSessions() {
+        for (String sessionId : List.copyOf(sessionsById.keySet())) {
+            closeSession(sessionId);
+        }
+    }
+
     public void activateSession(String sessionId) {
         EditorSession session = sessionsById.get(sessionId);
         if (session == null) {

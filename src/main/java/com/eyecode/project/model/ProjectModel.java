@@ -31,13 +31,16 @@ public class ProjectModel {
     }
 
     public static ProjectModel fromDirectory(File root) {
+        if (root == null || !root.isDirectory()) {
+            throw new IllegalArgumentException("Project root must be a directory");
+        }
         com.eyecode.project.ProjectType detected = ProjectDetector.detect(root);
         ProjectType type = TypeMapper.toProjectType(detected);
         BuildSystem buildSystem = TypeMapper.toBuildSystem(detected);
-        boolean isValid = detected != com.eyecode.project.ProjectType.UNKNOWN;
+        boolean isValid = true;
         return new Builder()
                 .name(root.getName())
-                .rootDir(root.toPath())
+                .rootDir(root.toPath().toAbsolutePath().normalize())
                 .type(type)
                 .buildSystem(buildSystem)
                 .valid(isValid)

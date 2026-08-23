@@ -40,7 +40,10 @@ public final class ProjectDetector {
 
     private static boolean hasGradle(File folder) {
         return new File(folder, "build.gradle").exists()
-            || new File(folder, "build.gradle.kts").exists();
+            || new File(folder, "build.gradle.kts").exists()
+            || new File(folder, "settings.gradle").exists()
+            || new File(folder, "settings.gradle.kts").exists()
+            || new File(folder, "gradlew").exists();
     }
 
     private static boolean hasGit(File folder) {

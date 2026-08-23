@@ -5,12 +5,18 @@ import com.eyecode.javafx.designsystem.FxSpacing;
 import com.eyecode.javafx.designsystem.JavaFxIconButton;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.geometry.Side;
 
 public final class FxToolbar extends HBox {
+
+    private final Label projectLabel;
+    private final Button hamburger;
 
     public FxToolbar() {
         this(null);
@@ -26,11 +32,13 @@ public final class FxToolbar extends HBox {
         left.getStyleClass().add("toolbar-left");
         Label logo = logoLabel();
         HBox.setMargin(logo, new Insets(0, FxSpacing.XXL, 0, FxSpacing.XXL));
+        this.projectLabel = projectLabel();
+        this.hamburger = JavaFxIconButton.create(EyeCodeIcon.HAMBURGER, "Menu");
         left.getChildren().addAll(
-                JavaFxIconButton.create(EyeCodeIcon.HAMBURGER, "Menu"),
+                hamburger,
                 logo,
                 JavaFxIconButton.create(EyeCodeIcon.PROJECT, "Project"),
-                projectLabel()
+                projectLabel
         );
 
         HBox actions = new HBox();
@@ -67,6 +75,25 @@ public final class FxToolbar extends HBox {
         getChildren().addAll(left, spacer, right);
     }
 
+    public void setProjectMenuActions(Runnable newProject,
+                                      Runnable openProject,
+                                      Runnable recentProjects) {
+        ContextMenu menu = new ContextMenu();
+        MenuItem projectGroup = new MenuItem("Project / File");
+        projectGroup.setDisable(true);
+        menu.getItems().add(projectGroup);
+        menu.getItems().addAll(
+                menuItem("New Project", newProject),
+                menuItem("Open Project", openProject),
+                menuItem("Recent Projects", recentProjects));
+        hamburger.setOnAction(event -> menu.show(hamburger, Side.BOTTOM, 0, 0));
+        hamburger.setUserData(menu);
+    }
+
+    public void setProjectName(String name) {
+        projectLabel.setText(name == null || name.isBlank() ? "No project" : name);
+    }
+
     private Button windowButton(EyeCodeIcon icon, String id, String tooltip, Runnable onClose) {
         Button b = JavaFxIconButton.windowButton(icon, id, tooltip);
         if (onClose != null) {
@@ -81,6 +108,20 @@ public final class FxToolbar extends HBox {
         b.setContentDisplay(javafx.scene.control.ContentDisplay.LEFT);
         b.getStyleClass().add("toolbar-run-config");
         return b;
+    }
+
+    private MenuItem menuItem(String text, Runnable action) {
+        MenuItem item = new MenuItem(text);
+        item.setOnAction(event -> {
+            if (action != null) {
+                action.run();
+            }
+        });
+        return item;
+    }
+
+    ContextMenu projectMenuForTest() {
+        return hamburger.getUserData() instanceof ContextMenu menu ? menu : null;
     }
 
     private Label logoLabel() {
