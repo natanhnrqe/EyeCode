@@ -8,6 +8,7 @@ import com.eyecode.learning.content.LearningContentEngine;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.language.documentation.JdkSourceTarget;
 import com.eyecode.language.documentation.DocumentationAtCaretResolver;
+import com.eyecode.language.semantic.JavaMemberTargetResolver;
 import com.eyecode.learning.hover.ConceptHoverProvider;
 import com.eyecode.learning.hover.DefaultHoverEngine;
 import com.eyecode.learning.ui.LearningHoverController;
@@ -27,6 +28,7 @@ public final class JavaFxLearningWorkspace {
     private final JavaFxLearningCardRenderer renderer;
     private final LearningContentEngine contentEngine;
     private final DocumentationNavigator documentationNavigator;
+    private final JavaMemberTargetResolver memberTargetResolver = new JavaMemberTargetResolver();
     private boolean disposed;
 
     public JavaFxLearningWorkspace() {
@@ -87,7 +89,9 @@ public final class JavaFxLearningWorkspace {
                 false,
                 offset -> jdkResolver.resolveType(codeArea.getText(), offset)
                         .flatMap(type -> jdkCatalog.find(type.simpleName())),
-                syntaxCatalog::find
+                syntaxCatalog::find,
+                offset -> memberTargetResolver.resolve(codeArea.getText(), offset)
+                        .flatMap(jdkCatalog::find)
         );
     }
 

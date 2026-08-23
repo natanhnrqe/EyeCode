@@ -3,6 +3,7 @@ id: java/jdk/linked-list/add-last
 title: LinkedList.addLast()
 concept: linked-list-add-last
 kind: method
+sourceMember: addLast
 level: beginner
 duration: 1
 category: COLLECTIONS

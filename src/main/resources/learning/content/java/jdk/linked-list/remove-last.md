@@ -3,6 +3,7 @@ id: java/jdk/linked-list/remove-last
 title: LinkedList.removeLast()
 concept: linked-list-remove-last
 kind: method
+sourceMember: removeLast
 level: beginner
 duration: 1
 category: COLLECTIONS

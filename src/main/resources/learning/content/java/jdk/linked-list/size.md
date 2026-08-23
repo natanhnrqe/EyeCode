@@ -3,6 +3,7 @@ id: java/jdk/linked-list/size
 title: LinkedList.size()
 concept: linked-list-size
 kind: method
+sourceMember: size
 level: beginner
 duration: 1
 category: COLLECTIONS

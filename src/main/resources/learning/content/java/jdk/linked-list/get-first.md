@@ -3,6 +3,7 @@ id: java/jdk/linked-list/get-first
 title: LinkedList.getFirst()
 concept: linked-list-get-first
 kind: method
+sourceMember: getFirst
 level: beginner
 duration: 1
 category: COLLECTIONS

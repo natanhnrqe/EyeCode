@@ -2,7 +2,9 @@ package com.eyecode.learning.catalog;
 
 import com.eyecode.language.documentation.JavaJdkType;
 import com.eyecode.language.documentation.JavaJdkTypeCatalog;
+import com.eyecode.language.semantic.JavaMemberTarget;
 import com.eyecode.learning.content.LearningPage;
+import com.eyecode.learning.content.LearningContentRepository;
 import com.eyecode.learning.model.ConceptType;
 import com.eyecode.learning.model.DifficultyLevel;
 import com.eyecode.learning.model.LearningConcept;
@@ -29,8 +31,24 @@ public final class JdkLearningConceptCatalog {
         return JavaJdkTypeCatalog.findSimple(name).flatMap(this::create);
     }
 
+    public Optional<LearningConcept> find(JavaMemberTarget target) {
+        if (target == null || target.memberName() == null) {
+            return Optional.empty();
+        }
+        return JavaJdkTypeCatalog.findQualified(target.ownerQualifiedName())
+                .flatMap(type -> memberIdentifier(type, target.memberName())
+                        .flatMap(identifier -> create(type, identifier)));
+    }
+
     private Optional<LearningConcept> create(JavaJdkType type) {
         String id = IDS.get(type.simpleName());
+        if (id == null) {
+            return Optional.empty();
+        }
+        return create(type, id);
+    }
+
+    private Optional<LearningConcept> create(JavaJdkType type, String id) {
         if (id == null) {
             return Optional.empty();
         }
@@ -46,5 +64,28 @@ public final class JdkLearningConceptCatalog {
         page.setId(id);
         concept.setPage(page);
         return Optional.of(concept);
+    }
+
+    private Optional<String> memberIdentifier(JavaJdkType type, String memberName) {
+        String rootId = IDS.get(type.simpleName());
+        if (rootId == null) {
+            return Optional.empty();
+        }
+        try {
+            LearningContentRepository repository = new LearningContentRepository();
+            return repository.loadDocument(rootId).metadata().members().stream()
+                    .map(member -> member.identifier())
+                    .filter(identifier -> {
+                        try {
+                            return memberName.equals(repository.loadDocument(identifier)
+                                    .metadata().sourceMember());
+                        } catch (RuntimeException ignored) {
+                            return false;
+                        }
+                    })
+                    .findFirst();
+        } catch (RuntimeException ignored) {
+            return Optional.empty();
+        }
     }
 }

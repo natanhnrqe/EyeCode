@@ -78,6 +78,40 @@ class LearningHoverControllerSwitchTest {
         assertTrue(fixture.popup.visible);
     }
 
+    @Test
+    void memberResolverTakesPriorityOverDirectJdkTypeResolution() {
+        FakeSurface surface = new FakeSurface();
+        FakePopup popup = new FakePopup();
+        FakeScheduler scheduler = new FakeScheduler();
+        AtomicLong clock = new AtomicLong();
+        LearningConcept type = concept("String", "java/jdk/string");
+        LearningConcept member = concept("String.contains()", "java/jdk/string/contains");
+        SyntaxSnapshot syntax = new SyntaxSnapshot(List.of(
+                new SyntaxToken(TokenType.IDENTIFIER, 0, 8, "contains")));
+        LearningHoverController controller = new LearningHoverController(
+                surface,
+                popup,
+                scheduler,
+                context -> Optional.empty(),
+                () -> syntax,
+                identifier -> "",
+                false,
+                offset -> Optional.of(type),
+                token -> Optional.empty(),
+                offset -> Optional.of(member),
+                new HoverStateMachine(clock::get));
+
+        try {
+            surface.move(2);
+            clock.addAndGet(500L);
+            scheduler.fireHover();
+
+            assertEquals(List.of("String.contains()"), popup.shownTitles());
+        } finally {
+            controller.dispose();
+        }
+    }
+
     private static final class Fixture {
         private final FakeSurface surface = new FakeSurface();
         private final FakePopup popup = new FakePopup();

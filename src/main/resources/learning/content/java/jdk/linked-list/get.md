@@ -3,6 +3,7 @@ id: java/jdk/linked-list/get
 title: LinkedList.get()
 concept: linked-list-get
 kind: method
+sourceMember: get
 level: beginner
 duration: 1
 category: COLLECTIONS

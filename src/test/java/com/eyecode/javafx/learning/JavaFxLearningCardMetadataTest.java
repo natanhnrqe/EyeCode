@@ -3,6 +3,8 @@ package com.eyecode.javafx.learning;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.learning.content.LearningMetadata;
 import com.eyecode.learning.content.LearningMember;
+import com.eyecode.learning.model.LearningConcept;
+import com.eyecode.learning.content.LearningPage;
 import com.eyecode.language.documentation.JdkSourceTarget;
 import javafx.application.Platform;
 import org.junit.jupiter.api.BeforeAll;
@@ -143,6 +145,44 @@ class JavaFxLearningCardMetadataTest {
             assertEquals(0, footer.relatedLinkCountForTest());
             assertEquals("String API ↗", footer.documentationTextForTest());
         });
+    }
+
+    @Test
+    void semanticAndInternalMemberCardsPreserveTheSameSourceTarget() throws Exception {
+        runInFx(() -> {
+            var opened = new java.util.ArrayList<JdkSourceTarget>();
+            JavaFxLearningWorkspace workspace = new JavaFxLearningWorkspace(
+                    ignored -> { }, opened::add);
+            try {
+                LearningConcept member = concept("java/jdk/string/contains", "java.lang.String");
+                workspace.rendererForTest().show(member);
+                workspace.rendererForTest().footerForTest().fireSourceForTest();
+
+                workspace.rendererForTest().navigateToIdentifier("java/jdk/string");
+                workspace.rendererForTest().footerForTest().fireMemberForTest(3);
+                workspace.rendererForTest().footerForTest().fireSourceForTest();
+
+                JdkSourceTarget expected = new JdkSourceTarget(
+                        "java.lang.String", "java.base",
+                        "java.base/java/lang/String.java", "String.java", "contains");
+                assertEquals(List.of(expected, expected), opened);
+
+                workspace.rendererForTest().navigateToIdentifier("java/jdk/string");
+                workspace.rendererForTest().footerForTest().fireSourceForTest();
+                assertEquals(null, opened.getLast().memberName());
+            } finally {
+                workspace.dispose();
+            }
+        });
+    }
+
+    private static LearningConcept concept(String identifier, String qualifiedName) {
+        LearningConcept concept = new LearningConcept();
+        concept.setQualifiedName(qualifiedName);
+        LearningPage page = new LearningPage(identifier);
+        page.setId(identifier);
+        concept.setPage(page);
+        return concept;
     }
 
     private static void runInFx(ThrowingRunnable action) throws Exception {

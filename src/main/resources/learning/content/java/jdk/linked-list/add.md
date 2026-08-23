@@ -3,6 +3,7 @@ id: java/jdk/linked-list/add
 title: LinkedList.add()
 concept: linked-list-add
 kind: method
+sourceMember: add
 level: beginner
 duration: 1
 category: COLLECTIONS

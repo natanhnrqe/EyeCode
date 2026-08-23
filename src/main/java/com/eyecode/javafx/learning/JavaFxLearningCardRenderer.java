@@ -204,8 +204,7 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
                 this::navigate,
                 this::titleFor,
                 documentationTarget(document.metadata()),
-                explicitSourceTarget != null
-                        ? explicitSourceTarget : sourceTarget(document.metadata()),
+                effectiveSourceTarget(document.metadata()),
                         sourceNavigator::open,
                         this::navigate
         );
@@ -240,6 +239,18 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
                 .flatMap(sourceResolver::resolve)
                 .map(target -> target.withMember(metadata.sourceMember()))
                 .orElse(null);
+    }
+
+    private JdkSourceTarget effectiveSourceTarget(
+            com.eyecode.learning.content.LearningMetadata metadata) {
+        if (explicitSourceTarget == null) {
+            return sourceTarget(metadata);
+        }
+        if (explicitSourceTarget.memberName() == null
+                && metadata != null && metadata.sourceMember() != null) {
+            return explicitSourceTarget.withMember(metadata.sourceMember());
+        }
+        return explicitSourceTarget;
     }
 
     private com.eyecode.learning.content.DocumentationTarget documentationTarget(

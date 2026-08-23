@@ -3,6 +3,7 @@ id: java/jdk/linked-list/add-first
 title: LinkedList.addFirst()
 concept: linked-list-add-first
 kind: method
+sourceMember: addFirst
 level: beginner
 duration: 1
 category: COLLECTIONS

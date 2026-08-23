@@ -3,6 +3,7 @@ id: java/jdk/linked-list/remove-first
 title: LinkedList.removeFirst()
 concept: linked-list-remove-first
 kind: method
+sourceMember: removeFirst
 level: beginner
 duration: 1
 category: COLLECTIONS

@@ -3,6 +3,7 @@ id: java/jdk/linked-list/get-last
 title: LinkedList.getLast()
 concept: linked-list-get-last
 kind: method
+sourceMember: getLast
 level: beginner
 duration: 1
 category: COLLECTIONS

@@ -36,6 +36,7 @@ public final class LearningHoverController {
     private final LearningContextResolver resolver;
     private final Function<String, String> contentLoader;
     private final Function<Integer, Optional<LearningConcept>> jdkConceptResolver;
+    private final Function<Integer, Optional<LearningConcept>> memberConceptResolver;
     private final Function<String, Optional<LearningConcept>> syntaxConceptResolver;
     private final boolean ownsRenderer;
     private final IntConsumer moveListener;
@@ -114,7 +115,23 @@ public final class LearningHoverController {
             Function<String, Optional<LearningConcept>> syntaxConceptResolver
     ) {
         this(surface, popup, scheduler, hoverEngine, syntaxSupplier, contentLoader, ownsRenderer,
-                jdkConceptResolver, syntaxConceptResolver, new HoverStateMachine());
+                jdkConceptResolver, syntaxConceptResolver, offset -> Optional.empty(), new HoverStateMachine());
+    }
+
+    public LearningHoverController(
+            LearningHoverSurface surface,
+            LearningCardRenderer popup,
+            LearningHoverScheduler scheduler,
+            HoverEngine hoverEngine,
+            Supplier<SyntaxSnapshot> syntaxSupplier,
+            Function<String, String> contentLoader,
+            boolean ownsRenderer,
+            Function<Integer, Optional<LearningConcept>> jdkConceptResolver,
+            Function<String, Optional<LearningConcept>> syntaxConceptResolver,
+            Function<Integer, Optional<LearningConcept>> memberConceptResolver
+    ) {
+        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, contentLoader, ownsRenderer,
+                jdkConceptResolver, syntaxConceptResolver, memberConceptResolver, new HoverStateMachine());
     }
 
     LearningHoverController(
@@ -129,6 +146,23 @@ public final class LearningHoverController {
             Function<String, Optional<LearningConcept>> syntaxConceptResolver,
             HoverStateMachine stateMachine
     ) {
+        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, contentLoader, ownsRenderer,
+                jdkConceptResolver, syntaxConceptResolver, offset -> Optional.empty(), stateMachine);
+    }
+
+    LearningHoverController(
+            LearningHoverSurface surface,
+            LearningCardRenderer popup,
+            LearningHoverScheduler scheduler,
+            HoverEngine hoverEngine,
+            Supplier<SyntaxSnapshot> syntaxSupplier,
+            Function<String, String> contentLoader,
+            boolean ownsRenderer,
+            Function<Integer, Optional<LearningConcept>> jdkConceptResolver,
+            Function<String, Optional<LearningConcept>> syntaxConceptResolver,
+            Function<Integer, Optional<LearningConcept>> memberConceptResolver,
+            HoverStateMachine stateMachine
+    ) {
         this.surface = surface;
         this.popup = popup;
         this.scheduler = scheduler;
@@ -138,6 +172,7 @@ public final class LearningHoverController {
         this.resolver = new DefaultLearningContextResolver();
         this.contentLoader = Objects.requireNonNull(contentLoader, "contentLoader");
         this.jdkConceptResolver = Objects.requireNonNull(jdkConceptResolver, "jdkConceptResolver");
+        this.memberConceptResolver = Objects.requireNonNull(memberConceptResolver, "memberConceptResolver");
         this.syntaxConceptResolver = Objects.requireNonNull(syntaxConceptResolver, "syntaxConceptResolver");
         this.ownsRenderer = ownsRenderer;
         this.moveListener = this::onOffsetChanged;
@@ -357,6 +392,14 @@ public final class LearningHoverController {
 
         if (token.isPresent()) {
             SyntaxToken syntaxToken = token.get();
+            Optional<LearningConcept> memberConcept = memberConceptResolver.apply(offset);
+            if (memberConcept.isPresent()) {
+                String key = "member:" + syntaxToken.startOffset() + ":" + syntaxToken.endOffset();
+                if (Objects.equals(key, visibleSymbolKey) && popup.isVisible()) {
+                    return visibleSnapshot;
+                }
+                return new HoverSnapshot(key, memberConcept.get());
+            }
             Optional<LearningConcept> jdkConcept = jdkConceptResolver.apply(offset);
             if (jdkConcept.isPresent()) {
                 String key = "jdk:" + syntaxToken.startOffset() + ":" + syntaxToken.endOffset();
