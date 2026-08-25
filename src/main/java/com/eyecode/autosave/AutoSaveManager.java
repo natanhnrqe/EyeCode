@@ -43,6 +43,7 @@ public final class AutoSaveManager {
     private final Map<EditorDocument, Binding> bindings = new ConcurrentHashMap<>();
     private final Map<EditorDocument, IOException> failures = new ConcurrentHashMap<>();
     private final Map<EditorDocument, FileFingerprint> expectedFingerprints = new ConcurrentHashMap<>();
+    private final Map<EditorDocument, FileFingerprint> selfWrittenFingerprints = new ConcurrentHashMap<>();
     private final Map<EditorDocument, ExternalFileState> externalStates = new ConcurrentHashMap<>();
     private final List<Consumer<SavedEvent>> saveListeners = new CopyOnWriteArrayList<>();
     private volatile boolean shutdown;
@@ -117,6 +118,7 @@ public final class AutoSaveManager {
         document.removeDocumentChangeListener(binding.listener);
         cancelPending(binding);
         expectedFingerprints.remove(document);
+        selfWrittenFingerprints.remove(document);
         externalStates.remove(document);
         failures.remove(document);
     }
@@ -186,6 +188,13 @@ public final class AutoSaveManager {
         try {
             FileFingerprint current = FileFingerprint.capture(fileSystemService, document.getSourceFile());
             FileFingerprint expected = expectedFingerprints.get(document);
+            FileFingerprint selfWritten = selfWrittenFingerprints.get(document);
+            if (selfWritten != null && current.equals(selfWritten)) {
+                selfWrittenFingerprints.remove(document, selfWritten);
+                expectedFingerprints.put(document, current);
+                externalStates.put(document, ExternalFileState.SYNCED);
+                return ExternalFileState.SYNCED;
+            }
             if (current.equals(expected)) {
                 return ExternalFileState.SYNCED;
             }
@@ -252,6 +261,7 @@ public final class AutoSaveManager {
             }
         }
         expectedFingerprints.remove(document);
+        selfWrittenFingerprints.remove(document);
         externalStates.remove(document);
         failures.remove(document);
         document.setSourceFile(newPath);
@@ -309,6 +319,7 @@ public final class AutoSaveManager {
                 fileSystemService.writeFile(path, snapshot.getText());
                 if (document.currentVersion() == snapshot.version()) {
                     expectedFingerprints.put(document, FileFingerprint.capture(fileSystemService, path));
+                    selfWrittenFingerprints.put(document, expectedFingerprints.get(document));
                     externalStates.put(document, ExternalFileState.SYNCED);
                     failures.remove(document);
                     stateDispatcher.accept(() -> {

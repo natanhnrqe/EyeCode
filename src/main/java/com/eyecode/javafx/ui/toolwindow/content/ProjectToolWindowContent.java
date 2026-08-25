@@ -111,6 +111,14 @@ public final class ProjectToolWindowContent extends VBox {
         }
     }
 
+    public void applyPathChange(Path path) {
+        if (explorer != null && path != null) explorer.applyPathChange(path);
+    }
+
+    public void applyRename(Path oldPath, Path newPath) {
+        if (explorer != null) explorer.applyRename(oldPath, newPath);
+    }
+
     public void setRecentProjects(List<ProjectInfo> projects, Consumer<ProjectInfo> recentOpenHandler) {
         if (emptyState == null) {
             return;
@@ -193,7 +201,7 @@ public final class ProjectToolWindowContent extends VBox {
                 result = creationService.createJavaType(context, request.kind().javaTypeKind(), name);
             }
             if (explorer != null) {
-                explorer.reloadProject(project);
+                explorer.applyPathChange(result.path());
             }
             if (request.kind() != ExplorerNewKind.PACKAGE) {
                 fileOpenHandler.accept(result.path());

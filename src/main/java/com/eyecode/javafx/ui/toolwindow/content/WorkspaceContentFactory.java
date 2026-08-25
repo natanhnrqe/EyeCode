@@ -138,6 +138,16 @@ public final class WorkspaceContentFactory implements ToolWindowContentFactory {
         }
     }
 
+    public void applyProjectPathChange(Path path) {
+        Node node = cache.get("project");
+        if (node instanceof ProjectToolWindowContent content) content.applyPathChange(path);
+    }
+
+    public void applyProjectRename(Path oldPath, Path newPath) {
+        Node node = cache.get("project");
+        if (node instanceof ProjectToolWindowContent content) content.applyRename(oldPath, newPath);
+    }
+
     public void setFileOperationHandlers(Consumer<ProjectNode> renameAction,
                                          Consumer<ProjectNode> deleteAction) {
         this.renameAction = renameAction == null ? node -> { } : renameAction;

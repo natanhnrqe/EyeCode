@@ -10,6 +10,9 @@ import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.language.documentation.JdkSourceTarget;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.javafx.monaco.JavaFxMonacoEditorSurface;
+import com.eyecode.javafx.monaco.MonacoEvent;
+import com.eyecode.javafx.monaco.MonacoModelId;
 import com.eyecode.project.ProjectInfo;
 import javafx.scene.Node;
 import javafx.application.Platform;
@@ -40,6 +43,7 @@ public final class FxEditorWorkspacePane extends VBox {
     private final JavaFxJdkSourceWorkspace sourceWorkspace;
     private final WelcomeProjectSurface welcomeSurface;
     private final NewProjectSurface newProjectSurface;
+    private final JavaFxMonacoEditorSurface monacoSurface;
 
     public FxEditorWorkspacePane(EditorManager manager, JavaFxDocumentationWorkspace documentationWorkspace) {
         this(manager, documentationWorkspace, new JavaFxJdkSourceWorkspace(),
@@ -60,15 +64,31 @@ public final class FxEditorWorkspacePane extends VBox {
                                  Runnable openProjectAction,
                                  Supplier<List<ProjectInfo>> recentProjects,
                                  Consumer<ProjectInfo> recentProjectAction) {
+        this(manager, documentationWorkspace, sourceWorkspace, null, newProjectAction,
+                openProjectAction, recentProjects, recentProjectAction);
+    }
+
+    public FxEditorWorkspacePane(EditorManager manager,
+                                 JavaFxDocumentationWorkspace documentationWorkspace,
+                                 JavaFxJdkSourceWorkspace sourceWorkspace,
+                                 JavaFxMonacoEditorSurface monacoSurface,
+                                 Runnable newProjectAction,
+                                 Runnable openProjectAction,
+                                 Supplier<List<ProjectInfo>> recentProjects,
+                                 Consumer<ProjectInfo> recentProjectAction) {
         this.manager = manager;
         this.documentationWorkspace = documentationWorkspace;
         this.sourceWorkspace = sourceWorkspace;
+        this.monacoSurface = monacoSurface;
         this.welcomeSurface = new WelcomeProjectSurface(
                 newProjectAction == null ? this::showNewProjectSurface : newProjectAction,
                 openProjectAction, recentProjects, recentProjectAction);
         this.newProjectSurface = new NewProjectSurface(this::showWelcomeSurface);
         documentationWorkspace.setPresenter(this::openDocumentation);
         sourceWorkspace.setPresenter(this::openSource);
+        if (monacoSurface != null) {
+            monacoSurface.setEventListener(this::onMonacoEvent);
+        }
         manager.addSaveListener(this::onSaveAttempt);
         manager.addExternalFileListener(this::onExternalFileChange);
         getStyleClass().add("editor-workspace-pane");
@@ -143,6 +163,7 @@ public final class FxEditorWorkspacePane extends VBox {
             List<TabModel> models = new ArrayList<>();
             for (EditorSession session : manager.getSessions()) {
                 observeDirty(session);
+                syncMonacoModel(session);
                 models.add(toModel(session));
             }
             EditorSession active = manager.getCurrentSession();
@@ -174,6 +195,11 @@ public final class FxEditorWorkspacePane extends VBox {
             return;
         }
         Object nativeView = manager.getNativeView(id);
+        if (monacoSurface != null && manager.getSession(id).isPresent()) {
+            monacoSurface.activateModel(MonacoModelId.forSession(manager.getSession(id).orElseThrow()));
+            contentPane.show(monacoSurface);
+            return;
+        }
         if (nativeView instanceof Node node) {
             contentPane.show(node);
         }
@@ -204,7 +230,44 @@ public final class FxEditorWorkspacePane extends VBox {
         manager.getBuffer(sessionId).ifPresent(buffer -> {
             EditorDocument document = buffer.getDocument();
             document.addDirtyChangeListener(dirty -> refresh());
+            if (monacoSurface != null) {
+                document.addDocumentChangeListener(event -> {
+                    Runnable update = () -> monacoSurface.updateModelContent(
+                            MonacoModelId.forSession(session),
+                            event.getAfter().getText(), event.getAfter().version(), "host");
+                    if (Platform.isFxApplicationThread()) update.run();
+                    else {
+                        try { Platform.runLater(update); } catch (IllegalStateException ignored) { }
+                    }
+                });
+            }
         });
+    }
+
+    private void syncMonacoModel(EditorSession session) {
+        if (monacoSurface == null) return;
+        manager.getBuffer(session.getSessionId()).ifPresent(buffer -> {
+            var snapshot = buffer.getDocument().snapshot();
+            String id = MonacoModelId.forSession(session);
+            if (!monacoSurface.containsModel(id)) {
+                monacoSurface.openModel(id, "java", snapshot.getText(), false);
+            } else {
+                monacoSurface.updateModelContent(id, snapshot.getText(), snapshot.version(), "host");
+            }
+        });
+    }
+
+    private void onMonacoEvent(MonacoEvent event) {
+        if (event == null || event.type() != MonacoEvent.Type.CONTENT_CHANGED || event.modelId() == null) return;
+        manager.getSessions().stream()
+                .filter(session -> MonacoModelId.forSession(session).equals(event.modelId()))
+                .findFirst()
+                .flatMap(session -> manager.getBuffer(session.getSessionId()))
+                .ifPresent(buffer -> {
+                    if (!event.content().equals(buffer.getDocument().snapshot().getText())) {
+                        buffer.replaceText(event.content());
+                    }
+                });
     }
 
     private TabModel toModel(EditorSession session) {
@@ -288,5 +351,11 @@ public final class FxEditorWorkspacePane extends VBox {
 
     NewProjectSurface newProjectSurfaceForTest() {
         return newProjectSurface;
+    }
+
+    public void dispose() {
+        if (monacoSurface != null) {
+            monacoSurface.dispose();
+        }
     }
 }

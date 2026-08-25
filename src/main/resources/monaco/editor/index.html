@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="./vs/editor/editor.main.css">
+    <style>html, body, #editor { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #202124; }</style>
+</head>
+<body>
+<div id="editor"></div>
+<script>var require = { paths: { vs: './vs' } };</script>
+<script src="./vs/loader.js"></script>
+<script>
+require(['vs/editor/editor.main'], function () {
+    const models = new Map();
+    const hostUpdates = new Set();
+    let editor;
+    function query(value) { if (window.cefQuery) window.cefQuery({ request: JSON.stringify(value) }); }
+    function getModel(command) {
+        let model = models.get(command.id);
+        if (!model) {
+            model = monaco.editor.createModel(command.content || '', command.language || 'java', monaco.Uri.parse(command.id));
+            models.set(command.id, model);
+            model.onDidChangeContent(function () {
+                if (hostUpdates.delete(command.id)) return;
+                if (editor && editor.getModel() === model) query({ kind: 'change', id: command.id, content: model.getValue(), version: model.getAlternativeVersionId() });
+            });
+        }
+        return model;
+    }
+    window.eyecodeMonacoCommand = function (command) {
+        if (command.type === 'openModel') getModel(command);
+        else if (command.type === 'activateModel') { const model = models.get(command.id); if (model && editor) { editor.setModel(model); editor.updateOptions({ readOnly: !!command.readOnly }); } }
+        else if (command.type === 'updateModel') { const model = models.get(command.id); if (model && model.getValue() !== command.content) { hostUpdates.add(command.id); model.setValue(command.content || ''); } }
+        else if (command.type === 'closeModel') { const model = models.get(command.id); if (model) { if (editor && editor.getModel() === model) editor.setModel(null); model.dispose(); models.delete(command.id); } }
+        else if (command.type === 'setReadOnly' && editor && editor.getModel() === models.get(command.id)) editor.updateOptions({ readOnly: !!command.readOnly });
+        else if (command.type === 'revealPosition') { const model = models.get(command.id); if (model && editor) { editor.setModel(model); editor.setPosition({ lineNumber: command.line, column: command.column }); editor.revealPositionInCenter({ lineNumber: command.line, column: command.column }); } }
+        else if (command.type === 'focus' && editor) editor.focus();
+    };
+    editor = monaco.editor.create(document.getElementById('editor'), { theme: 'vs-dark', fontFamily: 'JetBrains Mono', fontSize: 13, fontLigatures: false, minimap: { enabled: false }, automaticLayout: true, scrollBeyondLastLine: false, smoothScrolling: false });
+    editor.onDidChangeCursorSelection(function (event) { const model = editor.getModel(); if (model) query({ kind: 'selection', id: model.uri.toString(), line: event.selection.positionLineNumber, column: event.selection.positionColumn, endLine: event.selection.endLineNumber, endColumn: event.selection.endColumn }); });
+    query({ kind: 'ready' });
+});
+</script>
+</body>
+</html>

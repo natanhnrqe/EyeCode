@@ -17,6 +17,7 @@ import javafx.scene.control.Menu;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CountDownLatch;
@@ -56,6 +57,7 @@ class JavaFxExplorerTest {
         createFile(tempRoot.resolve("mods").resolve("module-info.java"));
         createDir(tempRoot.resolve(".git"));
         createDir(tempRoot.resolve("target"));
+        createDir(tempRoot.resolve(".eyecode"));
         createDir(tempRoot.resolve("styles"));
     }
 
@@ -94,6 +96,7 @@ class JavaFxExplorerTest {
             TreeItem<ProjectNode> root = explorer.getTreeView().getRoot();
             assertNull(findChild(root, ".git"), ".git não deve aparecer");
             assertNull(findChild(root, "target"), "target não deve aparecer");
+            assertNull(findChild(root, ".eyecode"), ".eyecode não deve aparecer");
         });
     }
 
@@ -234,6 +237,77 @@ class JavaFxExplorerTest {
         });
     }
 
+    @Test
+    void incrementalChangesPreserveExpansionSelectionAndOrdering() throws Exception {
+        Path demo = tempRoot.resolve("src/main/java/com/demo");
+        Path app = demo.resolve("App.java");
+        Path person = demo.resolve("Person.java");
+        Path user = demo.resolve("User.java");
+        Files.deleteIfExists(person);
+        Files.deleteIfExists(user);
+        runOnFx(explorer -> {
+            ExplorerTreeView tree = explorer.getTreeView();
+            TreeItem<ProjectNode> src = findChild(tree.getRoot(), "src");
+            src.setExpanded(true);
+            TreeItem<ProjectNode> main = findChild(src, "main");
+            main.setExpanded(true);
+            TreeItem<ProjectNode> java = findChild(main, "java");
+            java.setExpanded(true);
+            TreeItem<ProjectNode> com = findChild(java, "com");
+            com.setExpanded(true);
+            TreeItem<ProjectNode> demoItem = findChild(com, "demo");
+            demoItem.setExpanded(true);
+            TreeItem<ProjectNode> appItem = findChild(demoItem, "App.java");
+            tree.getSelectionModel().select(appItem);
+
+            writeText(person, "class Person {}\n");
+            explorer.applyPathChange(person);
+            explorer.applyPathChange(person);
+
+            assertNotNull(findChild(demoItem, "Person.java"));
+            assertEquals(1L, demoItem.getChildren().stream().filter(item -> item.getValue() != null
+                    && item.getValue().name().equals("Person.java")).count());
+            assertTrue(src.isExpanded() && main.isExpanded() && java.isExpanded()
+                    && com.isExpanded() && demoItem.isExpanded());
+            assertSame(appItem, tree.getSelectionModel().getSelectedItem());
+            assertEquals("App.java", demoItem.getChildren().getFirst().getValue().name());
+
+            TreeItem<ProjectNode> personItem = findChild(demoItem, "Person.java");
+            tree.getSelectionModel().select(personItem);
+            move(person, user);
+            explorer.applyRename(person, user);
+            assertNull(findChild(demoItem, "Person.java"));
+            TreeItem<ProjectNode> userItem = findChild(demoItem, "User.java");
+            assertNotNull(userItem);
+            assertSame(userItem, tree.getSelectionModel().getSelectedItem());
+
+            delete(user);
+            explorer.applyPathChange(user);
+            assertNull(findChild(demoItem, "User.java"));
+            assertSame(demoItem, tree.getSelectionModel().getSelectedItem());
+            assertTrue(demoItem.isExpanded());
+        });
+    }
+
+    @Test
+    void ignoredBuildOutputDoesNotMutateVisibleTree() throws Exception {
+        Path targetOutput = tempRoot.resolve("target/generated/Generated.java");
+        Path eyeCodeOutput = tempRoot.resolve(".eyecode/out/Generated.java");
+        Files.createDirectories(targetOutput.getParent());
+        Files.createDirectories(eyeCodeOutput.getParent());
+        Files.writeString(targetOutput, "class Generated {}\n");
+        Files.writeString(eyeCodeOutput, "class Generated {}\n");
+        runOnFx(explorer -> {
+            TreeItem<ProjectNode> root = explorer.getTreeView().getRoot();
+            int childCount = root.getChildren().size();
+            explorer.applyPathChange(targetOutput);
+            explorer.applyPathChange(eyeCodeOutput);
+            assertNull(findChild(root, "target"));
+            assertNull(findChild(root, ".eyecode"));
+            assertEquals(childCount, root.getChildren().size());
+        });
+    }
+
     private JavaFxExplorer newExplorer() {
         ProjectModel model = ProjectModel.fromDirectory(tempRoot.toFile());
         return new JavaFxExplorer(model);
@@ -298,5 +372,29 @@ class JavaFxExplorerTest {
 
     private static void createDir(Path path) throws Exception {
         Files.createDirectories(path);
+    }
+
+    private static void writeText(Path path, String text) {
+        try {
+            Files.writeString(path, text);
+        } catch (java.io.IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
+
+    private static void move(Path source, Path target) {
+        try {
+            Files.move(source, target);
+        } catch (java.io.IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
+
+    private static void delete(Path path) {
+        try {
+            Files.delete(path);
+        } catch (java.io.IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
     }
 }

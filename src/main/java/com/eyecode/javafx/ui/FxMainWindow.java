@@ -48,6 +48,7 @@ public final class FxMainWindow {
         stage.show();
         Region r = root;
         r.requestLayout();
+
     }
 
     private void shutdown() {

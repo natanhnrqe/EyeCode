@@ -8,6 +8,10 @@ import javafx.stage.Stage;
 public final class FxApplication extends Application {
 
     public static void main(String[] args) {
+        System.setProperty("prism.lcdtext", "true");
+        System.setProperty("prism.text", "native");
+        System.setProperty("prism.allowhidpi", "false");
+        System.setProperty("glass.win.uiScale", "1.0");
         CeffxRuntime.startup(args);
         launch(args);
     }

@@ -65,6 +65,14 @@ public final class JavaFxExplorer extends VBox {
         refresh(model);
     }
 
+    public void applyPathChange(Path path) {
+        treeView.applyPathChange(path);
+    }
+
+    public void applyRename(Path oldPath, Path newPath) {
+        treeView.applyRename(oldPath, newPath);
+    }
+
     private Node contentFor(ExplorerState s) {
         return switch (s) {
             case PROJECT -> treeView;

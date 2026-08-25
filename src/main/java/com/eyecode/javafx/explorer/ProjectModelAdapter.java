@@ -16,13 +16,31 @@ import java.util.Set;
 public final class ProjectModelAdapter {
 
     private static final Set<String> IGNORED_DIRECTORIES = Set.of(
-            ".git", ".idea", ".gradle", "target", "build", "out"
+            ".git", ".idea", ".gradle", ".eyecode", "target", "build", "out"
     );
 
     public TreeItem<ProjectNode> toTree(ProjectModel model) {
         Path rootPath = model.getRootDir().toAbsolutePath().normalize();
         ProjectNode rootValue = new ProjectNode(model.getName(), rootPath, ProjectNodeType.PROJECT);
         return lazyItem(rootValue);
+    }
+
+    public TreeItem<ProjectNode> itemFor(Path path) {
+        Path normalized = path.toAbsolutePath().normalize();
+        boolean isDirectory = Files.isDirectory(normalized, LinkOption.NOFOLLOW_LINKS);
+        return lazyItem(new ProjectNode(normalized.getFileName().toString(), normalized,
+                isDirectory ? ProjectNodeType.DIRECTORY : ProjectNodeType.FILE));
+    }
+
+    public boolean isVisible(Path path) {
+        Path normalized = path.toAbsolutePath().normalize();
+        return !Files.isDirectory(normalized, LinkOption.NOFOLLOW_LINKS)
+                || !IGNORED_DIRECTORIES.contains(normalized.getFileName().toString());
+    }
+
+    public Comparator<TreeItem<ProjectNode>> ordering() {
+        return Comparator.comparing((TreeItem<ProjectNode> item) -> !item.getValue().isDirectory())
+                .thenComparing(item -> item.getValue().name(), String.CASE_INSENSITIVE_ORDER);
     }
 
     private TreeItem<ProjectNode> lazyItem(ProjectNode value) {
@@ -76,8 +94,4 @@ public final class ProjectModelAdapter {
         return children;
     }
 
-    private boolean isVisible(Path entry) {
-        return !Files.isDirectory(entry, LinkOption.NOFOLLOW_LINKS)
-                || !IGNORED_DIRECTORIES.contains(entry.getFileName().toString());
-    }
 }

@@ -229,6 +229,23 @@ class AutoSaveManagerTest {
     }
 
     @Test
+    void ownAtomicSaveIsNotReportedAsExternalConflictBeforeUiCleanRuns() {
+        FakeFileSystem fs = new FakeFileSystem();
+        AutoSaveManager manager = new AutoSaveManager(fs, DELAY_MS, newExecutor(), ignored -> { });
+        Path path = Path.of("own-save.java");
+        fs.files.put(path, "old");
+        EditorDocument doc = new EditorDocument(path, "old");
+        manager.register(doc);
+        doc.insert(0, "new ");
+
+        assertTrue(manager.saveNow(doc));
+        assertTrue(doc.isDirty());
+        assertEquals(ExternalFileState.SYNCED, manager.synchronizeExternal(doc));
+        assertFalse(manager.hasExternalConflict(doc));
+        manager.shutdown();
+    }
+
+    @Test
     void cleanExternalChangeReloadsWithoutAutosaveOverwrite() {
         FakeFileSystem fs = new FakeFileSystem();
         Path path = Path.of("external.java");

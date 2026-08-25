@@ -34,7 +34,7 @@
 .root {
     /* EyeCode palette */
     -eyecode-canvas:          rgb(38, 40, 44);
-    -eyecode-card:            rgb(30, 31, 34);
+    -eyecode-card:            rgb(25, 26, 28);
     -eyecode-surface:         rgb(37, 38, 42);
     -eyecode-autocomplete-bg: rgb(43, 43, 43);
     -eyecode-border:          rgba(255, 255, 255, 0.05);
@@ -1030,6 +1030,7 @@
     -fx-fill: rgb(188, 190, 196);
     -fx-font-family: "JetBrains Mono", monospace;
     -fx-font-size: 13;
+    -fx-font-smoothing-type: lcd;
 }
 
 .code-area .paragraph-box:has-caret {
@@ -1893,4 +1894,9 @@
 
 .documentation-browser {
     -fx-background-color: -eyecode-surface;
+}
+
+.style-classed-text-area .text,
+.code-area .text {
+    -fx-font-smoothing-type: lcd !important;
 }

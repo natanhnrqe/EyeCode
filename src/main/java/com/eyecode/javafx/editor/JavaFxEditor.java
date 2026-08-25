@@ -7,10 +7,20 @@ import com.eyecode.editor.intelligence.pipeline.SmartEditResult;
 import com.eyecode.editor.intelligence.pipeline.TypingPipeline;
 import com.eyecode.editor.intelligence.pipeline.strategy.SmartEditingStrategies;
 import com.eyecode.editor.v2.EditorBuffer;
+import javafx.application.Platform;
+import javafx.geometry.Bounds;
+import javafx.geometry.Point2D;
+import javafx.scene.CacheHint;
+import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
+import javafx.stage.Window;
 import org.fxmisc.flowless.VirtualizedScrollPane;
 import org.fxmisc.richtext.CodeArea;
 
@@ -49,6 +59,7 @@ public final class JavaFxEditor extends HBox {
         codeArea.setWrapText(false);
         codeArea.useInitialStyleForInsertionProperty().set(true);
 
+
         codeArea.setParagraphGraphicFactory(new JavaFxGutterFactory(codeArea));
         installSmartEditingFilters();
 
@@ -59,11 +70,44 @@ public final class JavaFxEditor extends HBox {
         editorSurface.getStyleClass().add("editor-surface");
         HBox.setHgrow(editorSurface, Priority.ALWAYS);
 
+
+
         getStyleClass().add("editor-root");
         setMaxWidth(Double.MAX_VALUE);
         setMaxHeight(Double.MAX_VALUE);
 
         getChildren().add(editorSurface);
+
+        Platform.runLater(() -> {
+            Scene scene = codeArea.getScene();
+
+            System.out.println("=== REAL JAVAFX CANVAS NODES ===");
+
+            scene.getRoot()
+                    .lookupAll("*")
+                    .stream()
+                    .filter(javafx.scene.canvas.Canvas.class::isInstance)
+                    .map(javafx.scene.canvas.Canvas.class::cast)
+                    .forEach(canvas -> {
+                        Bounds bounds = canvas.localToScene(canvas.getBoundsInLocal());
+
+                        System.out.printf(
+                                "%s visible=%s managed=%s opacity=%.2f " +
+                                        "scene=(%.1f, %.1f %.1fx%.1f) parent=%s%n",
+                                canvas.getClass().getName(),
+                                canvas.isVisible(),
+                                canvas.isManaged(),
+                                canvas.getOpacity(),
+                                bounds.getMinX(),
+                                bounds.getMinY(),
+                                bounds.getWidth(),
+                                bounds.getHeight(),
+                                canvas.getParent() == null
+                                        ? "null"
+                                        : canvas.getParent().getClass().getName()
+                        );
+                    });
+        });
     }
 
     private static TypingPipeline defaultSmartEditingPipeline() {

@@ -13,6 +13,7 @@ import javafx.application.Platform;
 import com.eyecode.project.model.ProjectModel;
 import com.eyecode.project.ProjectInfo;
 import com.eyecode.javafx.ui.editor.FxEditorWorkspacePane;
+import com.eyecode.javafx.monaco.JavaFxMonacoEditorSurface;
 
 import java.nio.file.Path;
 import java.nio.file.Files;
@@ -59,7 +60,7 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
                 });
 
         workspacePane = new FxEditorWorkspacePane(
-                manager, documentationWorkspace, sourceWorkspace,
+                manager, documentationWorkspace, sourceWorkspace, new JavaFxMonacoEditorSurface(),
                 newProjectAction, openProjectAction, recentProjects, recentProjectAction);
         setContent(workspacePane);
     }
@@ -70,6 +71,7 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
         learningWorkspace.dispose();
         documentationWorkspace.dispose();
         sourceWorkspace.dispose();
+        workspacePane.dispose();
     }
 
     public void openProject(ProjectModel project) {

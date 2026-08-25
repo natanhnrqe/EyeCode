@@ -106,7 +106,7 @@ public final class FxRootLayout extends BorderPane {
                 this::openRecentProject);
         this.editorContainer = editorContainer;
         contentFactory.setFileOperationHandlers(this::renameTreeNode, this::deleteTreeNode);
-        editorContainer.addExternalFileListener(event -> contentFactory.refreshProjectTree());
+        editorContainer.addExternalFileListener(event -> contentFactory.applyProjectPathChange(event.path()));
         runService.setBeforeRunFlush(editorContainer::flushAutosave);
         toolbar.setExecutionActions(
                 () -> {
@@ -291,10 +291,13 @@ public final class FxRootLayout extends BorderPane {
         dialog.setHeaderText("Rename " + node.name());
         dialog.setContentText("New name:");
         dialog.showAndWait().ifPresent(name -> {
-            if (!editorContainer.editorManager().renamePath(projectLifecycleService.currentProject(), node.path(), name)) {
+            boolean renamed = editorContainer.editorManager().renamePath(
+                    projectLifecycleService.currentProject(), node.path(), name);
+            if (!renamed) {
                 showError("Rename", "The item could not be renamed.");
+            } else {
+                contentFactory.applyProjectRename(node.path(), node.path().resolveSibling(name));
             }
-            contentFactory.refreshProjectTree();
             refreshRunConfigurations();
         });
     }
@@ -318,11 +321,15 @@ public final class FxRootLayout extends BorderPane {
         alert.setTitle("Delete " + node.name() + "?");
         alert.setHeaderText("Delete " + node.name() + "?");
         alert.showAndWait().ifPresent(choice -> {
-            if (choice == delete && !editorContainer.editorManager().deletePath(
-                    projectLifecycleService.currentProject(), node.path())) {
-                showError("Delete", "The item could not be deleted.");
+            if (choice == delete) {
+                boolean deleted = editorContainer.editorManager().deletePath(
+                        projectLifecycleService.currentProject(), node.path());
+                if (!deleted) {
+                    showError("Delete", "The item could not be deleted.");
+                } else {
+                    contentFactory.applyProjectPathChange(node.path());
+                }
             }
-            contentFactory.refreshProjectTree();
             refreshRunConfigurations();
         });
     }
