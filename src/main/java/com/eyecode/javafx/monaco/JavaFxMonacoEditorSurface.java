@@ -11,32 +11,41 @@ import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Region;
+import javafx.geometry.Point2D;
 
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public final class JavaFxMonacoEditorSurface extends Region {
+    private static final String MONACO_BRIDGE_VERSION = "6.0C.2";
     private final MonacoBridge injectedBridge;
     private final Map<String, ModelState> models = new LinkedHashMap<>();
     private MonacoBridge bridge;
     private Node browserNode;
     private String activeModel;
     private boolean disposed;
+    private boolean layoutQueued;
     private Consumer<MonacoEvent> eventListener;
 
     public JavaFxMonacoEditorSurface() {
-        this(null);
+        this(null, null);
     }
 
     public JavaFxMonacoEditorSurface(MonacoBridge bridge) {
+        this(bridge, null);
+    }
+
+    JavaFxMonacoEditorSurface(MonacoBridge bridge, Node browserNode) {
         this.injectedBridge = bridge;
         getStyleClass().add("monaco-editor-surface");
         setMinSize(0, 0);
-        setPrefSize(800, 600);
+        setPrefSize(0, 0);
         setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         if (bridge != null) {
-            attachBridge(bridge, null);
+            attachBridge(bridge, browserNode);
         } else {
             createBrowser();
         }
@@ -80,10 +89,21 @@ public final class JavaFxMonacoEditorSurface extends Region {
         if (id.equals(activeModel)) activeModel = models.keySet().stream().findFirst().orElse(null);
     }
 
+    public void retainModels(Set<String> ids) {
+        Set<String> retained = ids == null ? Set.of() : new HashSet<>(ids);
+        for (String id : Set.copyOf(models.keySet())) {
+            if (!retained.contains(id)) closeModel(id);
+        }
+    }
+
     public boolean containsModel(String id) { return models.containsKey(id); }
     public String getActiveModel() { return activeModel; }
     public int modelCount() { return models.size(); }
     public String modelContent(String id) { return models.containsKey(id) ? models.get(id).content : null; }
+
+    public Point2D screenPointForClient(double x, double y) {
+        return localToScreen(x, y);
+    }
 
     public void setReadOnly(String id, boolean readOnly) {
         ModelState state = models.get(id);
@@ -114,7 +134,10 @@ public final class JavaFxMonacoEditorSurface extends Region {
 
     @Override
     protected void layoutChildren() {
-        if (browserNode != null) browserNode.resizeRelocate(0, 0, getWidth(), getHeight());
+        if (browserNode != null) {
+            browserNode.resizeRelocate(0, 0, getWidth(), getHeight());
+            queueMonacoLayout();
+        }
     }
 
     private void send(MonacoCommand command) {
@@ -129,7 +152,8 @@ public final class JavaFxMonacoEditorSurface extends Region {
                     CefClient client = CeffxRuntime.app().createClient();
                     CefMessageRouter router = CefMessageRouter.create(new RouterHandler());
                     client.addMessageRouter(router);
-                    String url = getClass().getResource("/monaco/editor/index.html").toExternalForm();
+                    String url = getClass().getResource("/monaco/editor/index.html").toExternalForm()
+                            + "?eyecodeBridge=" + MONACO_BRIDGE_VERSION;
                     CefBrowser browser = client.createBrowser(url, true, false);
                     browser.createImmediately();
                     Platform.runLater(() -> attachBridge(new CeffxMonacoBridge(client, browser, router), browser.getPane()));
@@ -148,6 +172,11 @@ public final class JavaFxMonacoEditorSurface extends Region {
         created.setEventListener(this::dispatchEvent);
         if (node != null) {
             browserNode = node;
+            browserNode.setManaged(true);
+            if (browserNode instanceof Region region) {
+                region.setMinSize(0, 0);
+                region.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+            }
             getChildren().setAll(node);
             requestLayout();
         }
@@ -156,6 +185,15 @@ public final class JavaFxMonacoEditorSurface extends Region {
             send(new MonacoCommand.OpenModel(entry.getKey(), state.language, state.content, state.readOnly));
         }
         if (activeModel != null) send(new MonacoCommand.ActivateModel(activeModel, models.get(activeModel).readOnly));
+    }
+
+    private void queueMonacoLayout() {
+        if (disposed || bridge == null || layoutQueued) return;
+        layoutQueued = true;
+        Platform.runLater(() -> {
+            layoutQueued = false;
+            if (!disposed && bridge != null) send(new MonacoCommand.Layout());
+        });
     }
 
     private void dispatchEvent(MonacoEvent event) {
@@ -167,9 +205,12 @@ public final class JavaFxMonacoEditorSurface extends Region {
             }
         }
         Platform.runLater(() -> {
-            if (!disposed && eventListener != null) eventListener.accept(event);
+            if (!disposed && eventListener != null) {
+                eventListener.accept(event);
+            }
         });
     }
+
 
     private void showFailure(Throwable failure) {
         if (!disposed) {
@@ -184,58 +225,54 @@ public final class JavaFxMonacoEditorSurface extends Region {
         public boolean onQuery(CefBrowser browser, CefFrame frame, long queryId, String request,
                                boolean persistent, CefQueryCallback callback) {
             MonacoEvent event = parseEvent(request);
-            if (event != null) dispatchEvent(event);
+                            if (event != null) dispatchEvent(event);
             callback.success("ok");
             return true;
         }
     }
 
     private static MonacoEvent parseEvent(String json) {
-        String kind = value(json, "kind");
-        String id = value(json, "id");
-        if ("ready".equals(kind)) return MonacoEvent.ready();
-        if ("change".equals(kind)) return MonacoEvent.contentChanged(id, value(json, "content"), number(json, "version"));
-        if ("selection".equals(kind)) return MonacoEvent.caretChanged(id, number(json, "line"), number(json, "column"),
-                number(json, "endLine"), number(json, "endColumn"));
-        return null;
-    }
-
-    private static String value(String json, String key) {
-        String marker = "\"" + key + "\":";
-        int start = json.indexOf(marker);
-        if (start < 0) return null;
-        start += marker.length();
-        if (start < json.length() && json.charAt(start) == '\"') {
-            int end = start + 1;
-            StringBuilder result = new StringBuilder();
-            boolean escaped = false;
-            for (; end < json.length(); end++) {
-                char c = json.charAt(end);
-                if (escaped) {
-                    switch (c) {
-                        case 'n' -> result.append('\n');
-                        case 'r' -> result.append('\r');
-                        case 't' -> result.append('\t');
-                        case 'b' -> result.append('\b');
-                        case 'f' -> result.append('\f');
-                        case '"', '\\', '/' -> result.append(c);
-                        default -> result.append(c);
-                    }
-                    escaped = false;
-                }
-                else if (c == '\\') escaped = true;
-                else if (c == '\"') break;
-                else result.append(c);
-            }
-            return result.toString();
+        try {
+            Map<String, Object> values = MonacoJsonParser.parseObject(json);
+            String kind = string(values, "kind");
+            String id = string(values, "id");
+            if ("ready".equals(kind)) return MonacoEvent.ready();
+            if ("change".equals(kind)) return MonacoEvent.contentChanged(id, string(values, "content"), numberLong(values, "version"));
+            if ("caret".equals(kind)) return MonacoEvent.caretChanged(id, number(values, "line"), number(values, "column"),
+                    number(values, "line"), number(values, "column"), numberLong(values, "version"));
+            if ("selection".equals(kind)) return MonacoEvent.caretChanged(id, number(values, "line"), number(values, "column"),
+                    number(values, "endLine"), number(values, "endColumn"), numberLong(values, "version"));
+            if ("hover".equals(kind)) return MonacoEvent.hover(id, numberLong(values, "version"), number(values, "line"),
+                    number(values, "column"), decimal(values, "x"), decimal(values, "y"));
+            if ("hoverExit".equals(kind)) return MonacoEvent.hoverExit(id, numberLong(values, "version"));
+            if ("command".equals(kind)) return MonacoEvent.command(id, numberLong(values, "version"),
+                    "documentation".equals(string(values, "command"))
+                            ? MonacoEvent.Command.DOCUMENTATION : MonacoEvent.Command.GO_TO_DEFINITION,
+                    number(values, "line"), number(values, "column"));
+            return null;
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
-        int end = json.indexOf(',', start);
-        if (end < 0) end = json.indexOf('}', start);
-        return end < 0 ? json.substring(start) : json.substring(start, end);
     }
 
-    private static int number(String json, String key) {
-        try { return Integer.parseInt(value(json, key)); } catch (Exception ignored) { return 0; }
+    private static String string(Map<String, Object> values, String key) {
+        Object value = values.get(key);
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private static int number(Map<String, Object> values, String key) {
+        Object value = values.get(key);
+        return value instanceof Number number ? number.intValue() : 0;
+    }
+
+    private static long numberLong(Map<String, Object> values, String key) {
+        Object value = values.get(key);
+        return value instanceof Number number ? number.longValue() : 0;
+    }
+
+    private static double decimal(Map<String, Object> values, String key) {
+        Object value = values.get(key);
+        return value instanceof Number number ? number.doubleValue() : 0;
     }
 
     private static final class ModelState {
@@ -285,6 +322,7 @@ public final class JavaFxMonacoEditorSurface extends Region {
         else if (command instanceof MonacoCommand.RevealPosition c) { values.put("type", "revealPosition"); values.put("id", c.id()); values.put("line", c.line()); values.put("column", c.column()); }
         else if (command instanceof MonacoCommand.Focus) values.put("type", "focus");
         else if (command instanceof MonacoCommand.ApplyEdit c) { values.put("type", "applyEdit"); values.put("id", c.id()); values.put("start", c.start()); values.put("end", c.end()); values.put("text", c.text()); }
+        else if (command instanceof MonacoCommand.Layout) values.put("type", "layout");
         return object(values);
     }
 

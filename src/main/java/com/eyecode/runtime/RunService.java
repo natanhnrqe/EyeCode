@@ -160,7 +160,7 @@ public final class RunService {
         configurations = discovered;
         String stored = selectionStore.selectedId(project.getRootDir());
         selectedConfiguration = discovered.stream().filter(value -> value.id().equals(stored)).findFirst()
-                .orElseGet(() -> chooseDefault(discovered));
+                .orElseGet(() -> discoveryService.defaultConfiguration(discovered).orElse(null));
     }
 
     public synchronized boolean selectConfiguration(String id) {
@@ -173,13 +173,6 @@ public final class RunService {
             selectionStore.select(lifecycleService.currentProject().getRootDir(), next.id());
         }
         return true;
-    }
-
-    private RunConfiguration chooseDefault(List<RunConfiguration> values) {
-        return values.stream().filter(value -> value.kind() == RunConfigurationKind.SPRING_BOOT).findFirst()
-                .orElseGet(() -> values.stream().filter(value -> value.mainClass().endsWith(".Main") || value.mainClass().equals("Main")
-                        || value.mainClass().endsWith(".Application") || value.mainClass().equals("Application")).findFirst()
-                        .orElse(values.isEmpty() ? null : values.getFirst()));
     }
 
     public void addListener(Listener listener) {

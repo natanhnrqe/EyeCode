@@ -5,9 +5,10 @@ import com.eyecode.language.documentation.JdkSourceTarget;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
-public final class JavaFxJdkSourceWorkspace {
+public final class JavaFxJdkSourceWorkspace implements ExternalSourceViewer {
 
     private final JdkSourceLoader loader;
     private final Map<String, JavaFxJdkSourceTab> tabs = new LinkedHashMap<>();
@@ -54,6 +55,12 @@ public final class JavaFxJdkSourceWorkspace {
 
     public boolean contains(String tabId) {
         return tabs.containsKey(tabId);
+    }
+
+    public Set<String> sourceModelIds() {
+        return tabs.values().stream()
+                .map(JavaFxJdkSourceTab::sourceIdentity)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
     public void close(String tabId) {

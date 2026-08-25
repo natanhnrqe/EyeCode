@@ -64,6 +64,18 @@ class LearningHoverControllerSwitchTest {
     }
 
     @Test
+    void movementInsideOneSemanticRangeKeepsOnePendingDelay() {
+        Fixture fixture = new Fixture();
+        fixture.move(0);
+        fixture.move(1);
+        fixture.move(0);
+
+        assertEquals(1, fixture.scheduler.hoverStarts);
+        fixture.scheduler.fireHover();
+        assertEquals(List.of("String"), fixture.popup.shownTitles());
+    }
+
+    @Test
     void enteringCardCancelsPendingTargetReplacement() {
         Fixture fixture = new Fixture();
         fixture.move(0);
@@ -254,9 +266,11 @@ class LearningHoverControllerSwitchTest {
     private static final class FakeScheduler implements LearningHoverScheduler {
         private Runnable hoverTask;
         private Runnable monitorTask;
+        private int hoverStarts;
 
         @Override
         public void restartHover(Runnable task) {
+            hoverStarts++;
             hoverTask = task;
         }
 

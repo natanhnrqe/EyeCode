@@ -26,6 +26,7 @@ public final class FxBottomToolWindowBar extends HBox {
     private final Map<String, Button> buttonsById = new HashMap<>();
     private final FxBreadcrumbs breadcrumbs;
     private final FxStatusBarGroup statusGroup;
+    private FxStatusItem positionItem;
 
     public FxBottomToolWindowBar(ToolWindowManager manager) {
         getStyleClass().add("bottom-tool-window-bar");
@@ -120,8 +121,21 @@ public final class FxBottomToolWindowBar extends HBox {
         group.addItem(new FxStatusItem("UTF-8"));
         group.addItem(new FxStatusItem("LF"));
         group.addItem(new FxStatusItem("Spaces: 4"));
-        group.addItem(new FxStatusItem("Ln 15, Col 8"));
+        positionItem = new FxStatusItem("Ln 1, Col 1");
+        group.addItem(positionItem);
         return group;
+    }
+
+    public void updateCaretPosition(int line, int column) {
+        Runnable update = () -> positionItem.setText("Ln " + Math.max(1, line)
+                + ", Col " + Math.max(1, column));
+        if (javafx.application.Platform.isFxApplicationThread()) update.run();
+        else {
+            try {
+                javafx.application.Platform.runLater(update);
+            } catch (IllegalStateException ignored) {
+            }
+        }
     }
 
     private Region barSeparator() {

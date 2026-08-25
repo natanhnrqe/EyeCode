@@ -6,13 +6,21 @@ import com.eyecode.workbench.editor.WorkspaceState;
 import com.eyecode.autosave.SavedEvent;
 import com.eyecode.autosave.ExternalFileEvent;
 import com.eyecode.autosave.ExternalFileState;
-import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.language.documentation.JdkSourceTarget;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.javafx.monaco.JavaFxMonacoEditorSurface;
 import com.eyecode.javafx.monaco.MonacoEvent;
 import com.eyecode.javafx.monaco.MonacoModelId;
+import com.eyecode.javafx.monaco.MonacoPositionAdapter;
+import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
+import com.eyecode.javafx.learning.MonacoLearningHoverSurface;
+import com.eyecode.learning.content.DocumentationTarget;
+import com.eyecode.learning.ui.LearningHoverController;
+import com.eyecode.language.documentation.DocumentationAtCaretResolver;
+import com.eyecode.language.documentation.JdkSourceResolver;
+import com.eyecode.editor.v2.syntax.JavaSyntaxAnalyzer;
+import com.eyecode.language.symbol.DocumentSemanticModelBuilder;
 import com.eyecode.project.ProjectInfo;
 import javafx.scene.Node;
 import javafx.application.Platform;
@@ -26,6 +34,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.nio.file.Path;
 
@@ -44,17 +53,24 @@ public final class FxEditorWorkspacePane extends VBox {
     private final WelcomeProjectSurface welcomeSurface;
     private final NewProjectSurface newProjectSurface;
     private final JavaFxMonacoEditorSurface monacoSurface;
+    private final MonacoLearningHoverSurface monacoHoverSurface;
+    private final LearningHoverController learningHoverController;
+    private final DocumentationAtCaretResolver documentationAtCaretResolver = new DocumentationAtCaretResolver();
+    private final JdkSourceResolver jdkSourceResolver = new JdkSourceResolver();
+    private final DocumentSemanticModelBuilder semanticModelBuilder = new DocumentSemanticModelBuilder();
+    private final JavaSyntaxAnalyzer syntaxAnalyzer = new JavaSyntaxAnalyzer();
+    private BiConsumer<Integer, Integer> caretPositionListener = (line, column) -> { };
 
     public FxEditorWorkspacePane(EditorManager manager, JavaFxDocumentationWorkspace documentationWorkspace) {
         this(manager, documentationWorkspace, new JavaFxJdkSourceWorkspace(),
-                null, () -> { }, List::of, project -> { });
+                null, null, () -> { }, () -> { }, List::of, project -> { });
     }
 
     public FxEditorWorkspacePane(EditorManager manager,
                                  JavaFxDocumentationWorkspace documentationWorkspace,
                                  JavaFxJdkSourceWorkspace sourceWorkspace) {
         this(manager, documentationWorkspace, sourceWorkspace,
-                null, () -> { }, List::of, project -> { });
+                null, null, () -> { }, () -> { }, List::of, project -> { });
     }
 
     public FxEditorWorkspacePane(EditorManager manager,
@@ -64,14 +80,15 @@ public final class FxEditorWorkspacePane extends VBox {
                                  Runnable openProjectAction,
                                  Supplier<List<ProjectInfo>> recentProjects,
                                  Consumer<ProjectInfo> recentProjectAction) {
-        this(manager, documentationWorkspace, sourceWorkspace, null, newProjectAction,
-                openProjectAction, recentProjects, recentProjectAction);
+        this(manager, documentationWorkspace, sourceWorkspace, null, null,
+                newProjectAction, openProjectAction, recentProjects, recentProjectAction);
     }
 
     public FxEditorWorkspacePane(EditorManager manager,
                                  JavaFxDocumentationWorkspace documentationWorkspace,
                                  JavaFxJdkSourceWorkspace sourceWorkspace,
                                  JavaFxMonacoEditorSurface monacoSurface,
+                                 JavaFxLearningWorkspace learningWorkspace,
                                  Runnable newProjectAction,
                                  Runnable openProjectAction,
                                  Supplier<List<ProjectInfo>> recentProjects,
@@ -80,6 +97,18 @@ public final class FxEditorWorkspacePane extends VBox {
         this.documentationWorkspace = documentationWorkspace;
         this.sourceWorkspace = sourceWorkspace;
         this.monacoSurface = monacoSurface;
+        this.monacoHoverSurface = monacoSurface == null || learningWorkspace == null
+                ? null : new MonacoLearningHoverSurface(monacoSurface,
+                () -> monacoSurface.getScene() == null ? null : monacoSurface.getScene().getWindow(),
+                monacoSurface::screenPointForClient);
+        this.learningHoverController = monacoHoverSurface == null ? null : learningWorkspace.createHoverController(
+                monacoHoverSurface,
+                () -> currentMonacoText(),
+                () -> currentMonacoSyntax(),
+                monacoSurface::getScene);
+        if (learningHoverController != null) {
+            learningHoverController.setTelemetry(message -> System.out.println(message));
+        }
         this.welcomeSurface = new WelcomeProjectSurface(
                 newProjectAction == null ? this::showNewProjectSurface : newProjectAction,
                 openProjectAction, recentProjects, recentProjectAction);
@@ -128,14 +157,20 @@ public final class FxEditorWorkspacePane extends VBox {
             return;
         }
         tab.reveal(target);
+        if (monacoSurface != null && !monacoSurface.containsModel(tab.sourceIdentity())) {
+            monacoSurface.openModel(tab.sourceIdentity(), "java", tab.source(), true);
+        }
         String id = target.tabId();
         tabs.addSourceTab(id, target.displayName(), () -> {
+            if (monacoSurface != null) {
+                monacoSurface.closeModel(tab.sourceIdentity());
+            }
             sourceWorkspace.close(id);
             tabs.removeSource(id);
             refresh();
         });
         tabs.showSource(id);
-        contentPane.show(tab);
+        showJdkSource(tab);
     }
 
     private void openDocumentation(DocumentationTarget target) {
@@ -161,10 +196,16 @@ public final class FxEditorWorkspacePane extends VBox {
         syncing = true;
         try {
             List<TabModel> models = new ArrayList<>();
+            Set<String> monacoModelIds = new HashSet<>();
             for (EditorSession session : manager.getSessions()) {
                 observeDirty(session);
                 syncMonacoModel(session);
+                monacoModelIds.add(MonacoModelId.forSession(session));
                 models.add(toModel(session));
+            }
+            if (monacoSurface != null) {
+                monacoModelIds.addAll(sourceWorkspace.sourceModelIds());
+                monacoSurface.retainModels(monacoModelIds);
             }
             EditorSession active = manager.getCurrentSession();
             String activeId = active != null ? active.getSessionId() : null;
@@ -190,19 +231,42 @@ public final class FxEditorWorkspacePane extends VBox {
         if (sourceWorkspace.contains(id)) {
             JavaFxJdkSourceTab sourceTab = sourceWorkspace.tab(id);
             if (sourceTab != null) {
-                contentPane.show(sourceTab);
+                showJdkSource(sourceTab);
             }
             return;
         }
         Object nativeView = manager.getNativeView(id);
         if (monacoSurface != null && manager.getSession(id).isPresent()) {
-            monacoSurface.activateModel(MonacoModelId.forSession(manager.getSession(id).orElseThrow()));
+            EditorSession session = manager.getSession(id).orElseThrow();
+            monacoSurface.activateModel(MonacoModelId.forSession(session));
+            notifyCaretPosition(session);
             contentPane.show(monacoSurface);
             return;
         }
         if (nativeView instanceof Node node) {
             contentPane.show(node);
         }
+    }
+
+    private void showJdkSource(JavaFxJdkSourceTab sourceTab) {
+        if (monacoSurface == null) {
+            contentPane.show(new javafx.scene.control.Label(sourceTab.source()));
+            return;
+        }
+        monacoSurface.activateModel(sourceTab.sourceIdentity());
+        int offset = sourceTab.revealedOffset();
+        int line = 1;
+        int column = 1;
+        for (int i = 0; i < Math.min(Math.max(0, offset), sourceTab.source().length()); i++) {
+            if (sourceTab.source().charAt(i) == '\n') {
+                line++;
+                column = 1;
+            } else {
+                column++;
+            }
+        }
+        monacoSurface.revealPosition(sourceTab.sourceIdentity(), line, column);
+        contentPane.show(monacoSurface);
     }
 
     public void showWelcomeSurface() {
@@ -215,6 +279,12 @@ public final class FxEditorWorkspacePane extends VBox {
 
     public void refreshWelcomeProjects() {
         welcomeSurface.refreshRecentProjects();
+    }
+
+    public void setCaretPositionListener(BiConsumer<Integer, Integer> listener) {
+        caretPositionListener = listener == null ? (line, column) -> { } : listener;
+        EditorSession active = manager.getCurrentSession();
+        if (active != null) notifyCaretPosition(active);
     }
 
     public void setProjectName(String projectName) {
@@ -258,16 +328,113 @@ public final class FxEditorWorkspacePane extends VBox {
     }
 
     private void onMonacoEvent(MonacoEvent event) {
-        if (event == null || event.type() != MonacoEvent.Type.CONTENT_CHANGED || event.modelId() == null) return;
+        if (event == null || event.modelId() == null) return;
+        EditorSession session = sessionForModel(event.modelId());
+        if (session == null) return;
+        if (event.type() == MonacoEvent.Type.CARET_CHANGED) {
+            manager.getBuffer(session.getSessionId()).ifPresent(buffer -> {
+                var snapshot = buffer.getDocument().snapshot();
+                int offset = MonacoPositionAdapter.toOffset(snapshot, event.line(), event.column());
+                buffer.moveCaret(buffer.getDocument().positionOf(offset));
+                session.setCaretState(buffer.getCaret());
+                caretPositionListener.accept(event.line(), event.column());
+            });
+            return;
+        }
+        if (event.type() == MonacoEvent.Type.HOVER) {
+            manager.getBuffer(session.getSessionId()).ifPresent(buffer -> {
+                var snapshot = buffer.getDocument().snapshot();
+                int offset = MonacoPositionAdapter.toOffset(snapshot, event.line(), event.column());
+                System.out.println("LEARNING_SESSION_OK");
+                System.out.println("LEARNING_OFFSET=" + offset);
+                if (monacoHoverSurface != null) {
+                    monacoHoverSurface.move(offset, event.x(), event.y());
+                }
+            });
+            return;
+        }
+        if (event.type() == MonacoEvent.Type.HOVER_EXIT) {
+            if (monacoHoverSurface != null) monacoHoverSurface.leave();
+            return;
+        }
+        if (event.type() == MonacoEvent.Type.COMMAND) {
+            if (event.command() == MonacoEvent.Command.GO_TO_DEFINITION) {
+                System.out.println("[MONACO CONSUMER] CTRL_B");
+                goToDefinition(session, event.line(), event.column());
+            } else if (event.command() == MonacoEvent.Command.DOCUMENTATION) {
+                System.out.println("[MONACO CONSUMER] CTRL_Q");
+                openDocumentationAtCaret(session, event.line(), event.column());
+            }
+            return;
+        }
+        if (event.type() != MonacoEvent.Type.CONTENT_CHANGED) return;
         manager.getSessions().stream()
-                .filter(session -> MonacoModelId.forSession(session).equals(event.modelId()))
+                .filter(candidate -> MonacoModelId.matches(event.modelId(), candidate.getFile()))
                 .findFirst()
-                .flatMap(session -> manager.getBuffer(session.getSessionId()))
+                .flatMap(candidate -> manager.getBuffer(candidate.getSessionId()))
                 .ifPresent(buffer -> {
                     if (!event.content().equals(buffer.getDocument().snapshot().getText())) {
                         buffer.replaceText(event.content());
                     }
                 });
+    }
+
+    private EditorSession sessionForModel(String modelId) {
+        for (EditorSession session : manager.getSessions()) {
+            boolean match = MonacoModelId.matches(modelId, session.getFile());
+            if (match) return session;
+        }
+        return null;
+    }
+
+    private void goToDefinition(EditorSession session, int line, int column) {
+        manager.getBuffer(session.getSessionId()).ifPresent(buffer -> {
+            var snapshot = buffer.getDocument().snapshot();
+            int offset = MonacoPositionAdapter.toOffset(snapshot, line, column);
+            var location = manager.resolveDefinition(session.getSessionId(), snapshot, offset);
+            if (location.isPresent()) {
+                int declaration = location.get().declarationRange().startOffset();
+                monacoSurface.revealPosition(MonacoModelId.forSession(session),
+                        snapshot.lineMap().lineOfOffset(declaration) + 1,
+                        snapshot.lineMap().columnOfOffset(declaration) + 1);
+                return;
+            }
+            semanticModelBuilder.build(snapshot).flatMap(model -> documentationAtCaretResolver.resolveType(
+                    snapshot.getText(), offset, model.symbolTable())).flatMap(jdkSourceResolver::resolve)
+                    .ifPresent(sourceWorkspace::open);
+        });
+    }
+
+    private void openDocumentationAtCaret(EditorSession session, int line, int column) {
+        manager.getBuffer(session.getSessionId()).ifPresent(buffer -> {
+            var snapshot = buffer.getDocument().snapshot();
+            int offset = MonacoPositionAdapter.toOffset(snapshot, line, column);
+            semanticModelBuilder.build(snapshot).flatMap(model -> documentationAtCaretResolver.resolve(
+                    snapshot.getText(), offset, model.symbolTable())).ifPresent(documentationWorkspace::open);
+        });
+    }
+
+    private String currentMonacoText() {
+        EditorSession session = manager.getCurrentSession();
+        return session == null ? "" : manager.getBuffer(session.getSessionId())
+                .map(buffer -> buffer.getDocument().snapshot().getText()).orElse("");
+    }
+
+    private void notifyCaretPosition(EditorSession session) {
+        manager.getBuffer(session.getSessionId()).ifPresent(buffer -> {
+            var snapshot = buffer.getDocument().snapshot();
+            int offset = buffer.getDocument().offsetOf(buffer.getCaret());
+            caretPositionListener.accept(snapshot.lineMap().lineOfOffset(offset) + 1,
+                    snapshot.lineMap().columnOfOffset(offset) + 1);
+        });
+    }
+
+    private com.eyecode.editor.v2.syntax.SyntaxSnapshot currentMonacoSyntax() {
+        EditorSession session = manager.getCurrentSession();
+        return session == null ? new com.eyecode.editor.v2.syntax.SyntaxSnapshot(List.of())
+                : manager.getBuffer(session.getSessionId()).map(buffer -> (com.eyecode.editor.v2.syntax.SyntaxSnapshot)
+                        syntaxAnalyzer.analyze(buffer.getDocument()))
+                .orElse(new com.eyecode.editor.v2.syntax.SyntaxSnapshot(List.of()));
     }
 
     private TabModel toModel(EditorSession session) {
@@ -356,6 +523,12 @@ public final class FxEditorWorkspacePane extends VBox {
     public void dispose() {
         if (monacoSurface != null) {
             monacoSurface.dispose();
+        }
+        if (monacoHoverSurface != null) {
+            monacoHoverSurface.dispose();
+        }
+        if (learningHoverController != null) {
+            learningHoverController.dispose();
         }
     }
 }

@@ -111,6 +111,7 @@ public final class ExternalFileWatcher implements AutoCloseable {
                 for (WatchEvent<?> event : key.pollEvents()) {
                     if (event.kind() == StandardWatchEventKinds.OVERFLOW) continue;
                     Path path = directory.resolve((Path) event.context()).toAbsolutePath().normalize();
+                    if (isInternalAtomicSaveArtifact(path)) continue;
                     if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE && Files.isDirectory(path)) {
                         try {
                             watchRoot(path);
@@ -125,6 +126,13 @@ public final class ExternalFileWatcher implements AutoCloseable {
             if (!key.reset()) keys.remove(key);
             flushPending();
         }
+    }
+
+    static boolean isInternalAtomicSaveArtifact(Path path) {
+        if (path == null || path.getFileName() == null) return false;
+        String name = path.getFileName().toString();
+        return name.startsWith(DefaultFileSystemService.ATOMIC_SAVE_PREFIX)
+                && name.endsWith(DefaultFileSystemService.ATOMIC_SAVE_SUFFIX);
     }
 
     private void flushPending() {

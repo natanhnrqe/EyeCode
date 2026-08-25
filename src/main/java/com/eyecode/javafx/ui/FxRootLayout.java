@@ -139,6 +139,7 @@ public final class FxRootLayout extends BorderPane {
         FxBottomToolWindow bottomToolWindow = new FxBottomToolWindow(manager, contentFactory);
         this.bottomToolWindow = bottomToolWindow;
         FxBottomToolWindowBar bottomBar = new FxBottomToolWindowBar(manager);
+        editorContainer.setCaretPositionListener(bottomBar::updateCaretPosition);
 
         manager.activate("project");
         manager.activate("terminal");

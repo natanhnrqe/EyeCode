@@ -41,6 +41,7 @@ public final class LearningHoverController {
     private final boolean ownsRenderer;
     private final IntConsumer moveListener;
     private final Runnable cancelListener;
+    private java.util.function.Consumer<String> telemetry = ignored -> { };
 
     private volatile int lastOffset = -1;
     private volatile HoverSnapshot currentSnapshot;
@@ -194,28 +195,38 @@ public final class LearningHoverController {
         surface.dispose();
     }
 
-    private void onOffsetChanged(int offset) {
-        if (offset == lastOffset) {
-            return;
-        }
+    public void setTelemetry(java.util.function.Consumer<String> telemetry) {
+        this.telemetry = telemetry == null ? ignored -> { } : telemetry;
+    }
 
+    private void onOffsetChanged(int offset) {
         lastOffset = offset;
         HoverSnapshot snapshot = resolveCurrentHover(offset);
+        telemetry.accept("LEARNING_SYMBOL=" + (snapshot == null ? "null" : snapshot.symbolKey()));
 
         if (snapshot != null) {
+            boolean sameTarget = currentSnapshot != null
+                    && Objects.equals(currentSnapshot.symbolKey(), snapshot.symbolKey());
+            telemetry.accept(sameTarget ? "LEARNING_CANDIDATE_SAME" : "LEARNING_CANDIDATE_NEW");
             currentSnapshot = snapshot;
-            stateMachine.enter(snapshot.symbolKey());
 
             if (popup.isVisible()) {
                 if (Objects.equals(visibleSymbolKey, snapshot.symbolKey())) {
                     cancelPendingSwitch();
-                } else {
+                } else if (pendingSnapshot == null
+                        || !Objects.equals(pendingSnapshot.symbolKey(), snapshot.symbolKey())) {
                     schedulePendingSwitch(snapshot);
                 }
                 return;
             }
 
+            if (sameTarget && stateMachine.getState() == HoverState.WAITING) {
+                return;
+            }
+
+            stateMachine.enter(snapshot.symbolKey());
             if (stateMachine.getState() == HoverState.WAITING) {
+                telemetry.accept("LEARNING_DELAY_STARTED");
                 scheduler.restartHover(this::tryShow);
                 scheduler.startMonitor(this::monitorHover);
             }
@@ -298,6 +309,7 @@ public final class LearningHoverController {
 
     private void tryShow() {
         HoverDiagnosticLogger.log("controller.tryShow()");
+        telemetry.accept("LEARNING_DELAY_COMPLETED");
         if (!stateMachine.canShow()) {
             return;
         }
@@ -315,7 +327,9 @@ public final class LearningHoverController {
         lastConcept = snapshot.concept();
         lastLessonPath = null;
 
+        telemetry.accept("LEARNING_CARD_REQUEST");
         popup.show(snapshot.concept());
+        telemetry.accept("LEARNING_CARD_SHOWN");
         HoverDiagnosticLogger.logRendererShow();
         visibleSymbolKey = snapshot.symbolKey();
         visibleSnapshot = snapshot;

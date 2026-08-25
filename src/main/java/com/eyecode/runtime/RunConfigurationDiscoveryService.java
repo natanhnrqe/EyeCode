@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +39,17 @@ public final class RunConfigurationDiscoveryService {
         }
         result.sort(Comparator.comparing(RunConfiguration::id));
         return List.copyOf(result);
+    }
+
+    public Optional<RunConfiguration> defaultConfiguration(List<RunConfiguration> configurations) {
+        if (configurations == null || configurations.isEmpty()) return Optional.empty();
+        return configurations.stream()
+                .filter(value -> value.kind() == RunConfigurationKind.SPRING_BOOT)
+                .findFirst()
+                .or(() -> configurations.stream().filter(value -> value.mainClass().endsWith(".Main")
+                        || value.mainClass().equals("Main") || value.mainClass().endsWith(".Application")
+                        || value.mainClass().equals("Application")).findFirst())
+                .or(() -> configurations.stream().findFirst());
     }
 
     private void inspect(Path file, Path root, List<RunConfiguration> result) {

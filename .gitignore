@@ -46,6 +46,7 @@ out/
 *.class
 
 .docs/
+docs/*
 docs/
 
 AGENTS.md

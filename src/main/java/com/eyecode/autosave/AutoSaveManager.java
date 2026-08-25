@@ -44,6 +44,7 @@ public final class AutoSaveManager {
     private final Map<EditorDocument, IOException> failures = new ConcurrentHashMap<>();
     private final Map<EditorDocument, FileFingerprint> expectedFingerprints = new ConcurrentHashMap<>();
     private final Map<EditorDocument, FileFingerprint> selfWrittenFingerprints = new ConcurrentHashMap<>();
+    private final Map<EditorDocument, PendingWrite> pendingWrites = new ConcurrentHashMap<>();
     private final Map<EditorDocument, ExternalFileState> externalStates = new ConcurrentHashMap<>();
     private final List<Consumer<SavedEvent>> saveListeners = new CopyOnWriteArrayList<>();
     private volatile boolean shutdown;
@@ -119,6 +120,7 @@ public final class AutoSaveManager {
         cancelPending(binding);
         expectedFingerprints.remove(document);
         selfWrittenFingerprints.remove(document);
+        pendingWrites.remove(document);
         externalStates.remove(document);
         failures.remove(document);
     }
@@ -188,6 +190,15 @@ public final class AutoSaveManager {
         try {
             FileFingerprint current = FileFingerprint.capture(fileSystemService, document.getSourceFile());
             FileFingerprint expected = expectedFingerprints.get(document);
+            PendingWrite pending = pendingWrites.get(document);
+            Path sourcePath = document.getSourceFile().toAbsolutePath().normalize();
+            if (pending != null && pending.path.equals(sourcePath)
+                    && current.sameContent(pending.content)) {
+                pendingWrites.remove(document, pending);
+                expectedFingerprints.put(document, current);
+                externalStates.put(document, ExternalFileState.SYNCED);
+                return ExternalFileState.SYNCED;
+            }
             FileFingerprint selfWritten = selfWrittenFingerprints.get(document);
             if (selfWritten != null && current.equals(selfWritten)) {
                 selfWrittenFingerprints.remove(document, selfWritten);
@@ -211,6 +222,8 @@ public final class AutoSaveManager {
                 document.setText(content);
                 document.markClean();
             });
+            pendingWrites.remove(document);
+            selfWrittenFingerprints.remove(document);
             expectedFingerprints.put(document, current);
             externalStates.put(document, ExternalFileState.RELOADED);
             return ExternalFileState.RELOADED;
@@ -231,6 +244,8 @@ public final class AutoSaveManager {
                 document.markClean();
             });
             expectedFingerprints.put(document, current);
+            pendingWrites.remove(document);
+            selfWrittenFingerprints.remove(document);
             externalStates.put(document, ExternalFileState.RELOADED);
             return true;
         } catch (IOException exception) {
@@ -262,6 +277,7 @@ public final class AutoSaveManager {
         }
         expectedFingerprints.remove(document);
         selfWrittenFingerprints.remove(document);
+        pendingWrites.remove(document);
         externalStates.remove(document);
         failures.remove(document);
         document.setSourceFile(newPath);
@@ -316,10 +332,14 @@ public final class AutoSaveManager {
             }
             while (document.isDirty()) {
                 var snapshot = document.snapshot();
+                pendingWrites.put(document, new PendingWrite(
+                        path.toAbsolutePath().normalize(), snapshot.version(),
+                        FileFingerprint.contentOnly(snapshot.getText())));
                 fileSystemService.writeFile(path, snapshot.getText());
                 if (document.currentVersion() == snapshot.version()) {
                     expectedFingerprints.put(document, FileFingerprint.capture(fileSystemService, path));
                     selfWrittenFingerprints.put(document, expectedFingerprints.get(document));
+                    pendingWrites.remove(document);
                     externalStates.put(document, ExternalFileState.SYNCED);
                     failures.remove(document);
                     stateDispatcher.accept(() -> {
@@ -332,6 +352,7 @@ public final class AutoSaveManager {
             }
         } catch (IOException ex) {
             error = ex;
+            pendingWrites.remove(document);
             failures.put(document, ex);
         }
         notifySaved(path, error == null, error);
@@ -369,5 +390,8 @@ public final class AutoSaveManager {
         Binding(DocumentChangeListener listener) {
             this.listener = listener;
         }
+    }
+
+    private record PendingWrite(Path path, long version, FileFingerprint content) {
     }
 }

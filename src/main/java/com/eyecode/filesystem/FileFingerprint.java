@@ -9,6 +9,17 @@ import java.security.NoSuchAlgorithmException;
 
 public record FileFingerprint(boolean exists, long size, long lastModifiedMillis, String contentHash) {
 
+    public boolean sameContent(FileFingerprint other) {
+        return other != null && exists == other.exists && size == other.size
+                && contentHash.equals(other.contentHash);
+    }
+
+    public static FileFingerprint contentOnly(String content) {
+        String value = content == null ? "" : content;
+        return new FileFingerprint(true, value.getBytes(StandardCharsets.UTF_8).length,
+                -1L, hash(value));
+    }
+
     public static FileFingerprint capture(FileSystemService fileSystemService, Path path) throws IOException {
         if (path == null || !fileSystemService.exists(path)) {
             return absent();

@@ -12,6 +12,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MonacoModelIdTest {
     @Test
@@ -28,6 +29,30 @@ class MonacoModelIdTest {
         } finally {
             manager.shutdownAutosave();
         }
+    }
+
+    @Test
+    void encodedWindowsUriMatchesCanonicalSessionPath() {
+        Path path = Path.of("C:\\Users\\JoyBoy\\project\\Main.java");
+
+        assertTrue(MonacoModelId.matches(
+                "file:///c%3A/Users/JoyBoy/project/Main.java", path));
+        assertTrue(MonacoModelId.matches(
+                "file:///C:/Users/JoyBoy/project/Main.java", path));
+    }
+
+    @Test
+    void uriPathDecodingPreservesSpacesPlusAndUnicode() {
+        Path path = Path.of("C:\\Users\\JoyBoy\\Meu Projeto\\Mais+Fonte\\ação.java");
+
+        assertTrue(MonacoModelId.matches(
+                "file:///c%3A/Users/JoyBoy/Meu%20Projeto/Mais%2BFonte/a%C3%A7%C3%A3o.java", path));
+    }
+
+    @Test
+    void nonFileModelDoesNotMatchSessionPath() {
+        assertFalse(MonacoModelId.matches("eyecode://workspace/Main.java",
+                Path.of("C:\\Users\\JoyBoy\\project\\Main.java")));
     }
 
     private static EditorViewFactory factory() {

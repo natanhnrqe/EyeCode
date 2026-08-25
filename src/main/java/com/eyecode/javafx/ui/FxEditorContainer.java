@@ -14,11 +14,13 @@ import com.eyecode.project.model.ProjectModel;
 import com.eyecode.project.ProjectInfo;
 import com.eyecode.javafx.ui.editor.FxEditorWorkspacePane;
 import com.eyecode.javafx.monaco.JavaFxMonacoEditorSurface;
+import com.eyecode.runtime.ProjectStartupFileResolver;
 
 import java.nio.file.Path;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxCard {
@@ -28,6 +30,7 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
     private final JavaFxJdkSourceWorkspace sourceWorkspace;
     private final EditorManager manager;
     private final FxEditorWorkspacePane workspacePane;
+    private final ProjectStartupFileResolver startupFileResolver;
 
     public FxEditorContainer() {
         this(null, () -> { }, List::of, project -> { });
@@ -60,8 +63,9 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
                 });
 
         workspacePane = new FxEditorWorkspacePane(
-                manager, documentationWorkspace, sourceWorkspace, new JavaFxMonacoEditorSurface(),
+                manager, documentationWorkspace, sourceWorkspace, new JavaFxMonacoEditorSurface(), learningWorkspace,
                 newProjectAction, openProjectAction, recentProjects, recentProjectAction);
+        startupFileResolver = new ProjectStartupFileResolver();
         setContent(workspacePane);
     }
 
@@ -76,7 +80,13 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
 
     public void openProject(ProjectModel project) {
         manager.closeAllSessions();
-        workspacePane.showWelcomeSurface();
+        if (project == null || !manager.getSessions().isEmpty()) {
+            workspacePane.showWelcomeSurface();
+            return;
+        }
+        startupFileResolver.resolve(project).ifPresentOrElse(
+                file -> manager.openDocument(file),
+                workspacePane::showWelcomeSurface);
     }
 
     public boolean openFile(Path file) {
@@ -124,6 +134,10 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
 
     public void setProjectName(String projectName) {
         workspacePane.setProjectName(projectName);
+    }
+
+    public void setCaretPositionListener(BiConsumer<Integer, Integer> listener) {
+        workspacePane.setCaretPositionListener(listener);
     }
 
 }

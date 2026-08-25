@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -241,6 +242,32 @@ class AutoSaveManagerTest {
         assertTrue(manager.saveNow(doc));
         assertTrue(doc.isDirty());
         assertEquals(ExternalFileState.SYNCED, manager.synchronizeExternal(doc));
+        assertFalse(manager.hasExternalConflict(doc));
+        manager.shutdown();
+    }
+
+    @Test
+    void watcherCheckDuringOwnedWriteUsesPendingContentOwnership() {
+        AtomicReference<AutoSaveManager> holder = new AtomicReference<>();
+        AtomicReference<EditorDocument> document = new AtomicReference<>();
+        FakeFileSystem fs = new FakeFileSystem() {
+            @Override
+            public void writeFile(Path path, String content) throws IOException {
+                super.writeFile(path, content);
+                assertEquals(ExternalFileState.SYNCED,
+                        holder.get().synchronizeExternal(document.get()));
+            }
+        };
+        AutoSaveManager manager = new AutoSaveManager(fs, DELAY_MS, newExecutor(), ignored -> { });
+        holder.set(manager);
+        Path path = Path.of("pending-write.java");
+        fs.files.put(path, "old");
+        EditorDocument doc = new EditorDocument(path, "old");
+        document.set(doc);
+        manager.register(doc);
+        doc.insert(0, "new ");
+
+        assertTrue(manager.saveNow(doc));
         assertFalse(manager.hasExternalConflict(doc));
         manager.shutdown();
     }

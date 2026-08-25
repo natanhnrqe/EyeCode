@@ -14,6 +14,9 @@ import java.util.stream.Stream;
 
 public class DefaultFileSystemService implements FileSystemService {
 
+    public static final String ATOMIC_SAVE_PREFIX = ".eyecode-save-";
+    public static final String ATOMIC_SAVE_SUFFIX = ".tmp";
+
     @Override
     public String readFile(Path path) throws IOException {
         return Files.readString(path, StandardCharsets.UTF_8);
@@ -26,7 +29,7 @@ public class DefaultFileSystemService implements FileSystemService {
             Files.createDirectories(parent);
         }
         Path temporary = Files.createTempFile(parent == null ? Path.of(".") : parent,
-                path.getFileName().toString(), ".tmp");
+                ATOMIC_SAVE_PREFIX, ATOMIC_SAVE_SUFFIX);
         try {
             Files.writeString(temporary, content, StandardCharsets.UTF_8,
                     StandardOpenOption.TRUNCATE_EXISTING);

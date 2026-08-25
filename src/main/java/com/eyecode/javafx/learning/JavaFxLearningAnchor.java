@@ -2,6 +2,7 @@ package com.eyecode.javafx.learning;
 
 import java.awt.Point;
 import java.util.function.Supplier;
+import com.eyecode.learning.ui.LearningHoverSurface;
 
 final class JavaFxLearningAnchor {
 
@@ -9,8 +10,12 @@ final class JavaFxLearningAnchor {
     private Supplier<javafx.stage.Window> windowSupplier = () -> null;
 
     void follow(JavaFxLearningHoverSurface surface) {
+        follow(surface, surface::ownerWindow);
+    }
+
+    void follow(LearningHoverSurface surface, Supplier<javafx.stage.Window> windowSupplier) {
         pointSupplier = surface::pointerScreenLocation;
-        windowSupplier = surface::ownerWindow;
+        this.windowSupplier = windowSupplier;
     }
 
     Point point() {

@@ -26,6 +26,10 @@ public record JdkSourceTarget(
         return "jdk-source:" + qualifiedName;
     }
 
+    public String sourceIdentity() {
+        return "jdk://" + module + "/" + sourceEntryPath;
+    }
+
     public JdkSourceTarget withMember(String memberName) {
         return new JdkSourceTarget(qualifiedName, module, sourceEntryPath, displayName, memberName);
     }

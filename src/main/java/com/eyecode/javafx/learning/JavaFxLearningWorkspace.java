@@ -12,6 +12,7 @@ import com.eyecode.language.semantic.JavaMemberTargetResolver;
 import com.eyecode.learning.hover.ConceptHoverProvider;
 import com.eyecode.learning.hover.DefaultHoverEngine;
 import com.eyecode.learning.ui.LearningHoverController;
+import com.eyecode.learning.ui.LearningHoverSurface;
 import com.eyecode.learning.concepts.DefaultLearningConceptEngine;
 import com.eyecode.learning.concepts.providers.ClassConceptProvider;
 import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
@@ -71,6 +72,16 @@ public final class JavaFxLearningWorkspace {
         }
         JavaFxLearningHoverSurface surface = new JavaFxLearningHoverSurface(codeArea);
         surface.setPointerObserver(() -> anchor.follow(surface));
+        return createHoverController(surface, codeArea::getText, syntaxSupplier, codeArea::getScene);
+    }
+
+    public LearningHoverController createHoverController(
+            LearningHoverSurface surface,
+            Supplier<String> textSupplier,
+            Supplier<SyntaxSnapshot> syntaxSupplier,
+            Supplier<javafx.scene.Scene> sceneSupplier
+    ) {
+        anchor.follow(surface, () -> sceneSupplier.get() == null ? null : sceneSupplier.get().getWindow());
         var catalog = new DefaultLearningCatalog();
         var jdkCatalog = new JdkLearningConceptCatalog();
         var syntaxCatalog = new JavaSyntaxLearningCatalog();
@@ -87,10 +98,10 @@ public final class JavaFxLearningWorkspace {
                         ? contentEngine.loadHtmlByIdentifier(identifier)
                         : contentEngine.loadHtml(identifier),
                 false,
-                offset -> jdkResolver.resolveType(codeArea.getText(), offset)
+                offset -> jdkResolver.resolveType(textSupplier.get(), offset)
                         .flatMap(type -> jdkCatalog.find(type.simpleName())),
                 syntaxCatalog::find,
-                offset -> memberTargetResolver.resolve(codeArea.getText(), offset)
+                offset -> memberTargetResolver.resolve(textSupplier.get(), offset)
                         .flatMap(jdkCatalog::find)
         );
     }

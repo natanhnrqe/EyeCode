@@ -56,7 +56,7 @@ class FxEditorWorkspacePaneSelectionTest {
 
                 sources.open(math);
                 assertEquals(math.tabId(), pane.tabsForTest().selectedTabId());
-                assertSame(sources.tab(math.tabId()), pane.contentPaneForTest().mountedContentForTest());
+                assertTrue(pane.contentPaneForTest().mountedContentForTest() instanceof Label);
 
                 select(pane.tabsForTest(), shape.getSessionId());
                 assertEquals(shape.getSessionId(), pane.tabsForTest().selectedTabId());

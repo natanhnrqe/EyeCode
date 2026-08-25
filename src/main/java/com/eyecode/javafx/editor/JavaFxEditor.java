@@ -77,37 +77,6 @@ public final class JavaFxEditor extends HBox {
         setMaxHeight(Double.MAX_VALUE);
 
         getChildren().add(editorSurface);
-
-        Platform.runLater(() -> {
-            Scene scene = codeArea.getScene();
-
-            System.out.println("=== REAL JAVAFX CANVAS NODES ===");
-
-            scene.getRoot()
-                    .lookupAll("*")
-                    .stream()
-                    .filter(javafx.scene.canvas.Canvas.class::isInstance)
-                    .map(javafx.scene.canvas.Canvas.class::cast)
-                    .forEach(canvas -> {
-                        Bounds bounds = canvas.localToScene(canvas.getBoundsInLocal());
-
-                        System.out.printf(
-                                "%s visible=%s managed=%s opacity=%.2f " +
-                                        "scene=(%.1f, %.1f %.1fx%.1f) parent=%s%n",
-                                canvas.getClass().getName(),
-                                canvas.isVisible(),
-                                canvas.isManaged(),
-                                canvas.getOpacity(),
-                                bounds.getMinX(),
-                                bounds.getMinY(),
-                                bounds.getWidth(),
-                                bounds.getHeight(),
-                                canvas.getParent() == null
-                                        ? "null"
-                                        : canvas.getParent().getClass().getName()
-                        );
-                    });
-        });
     }
 
     private static TypingPipeline defaultSmartEditingPipeline() {

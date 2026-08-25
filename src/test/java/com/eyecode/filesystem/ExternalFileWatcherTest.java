@@ -9,9 +9,20 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ExternalFileWatcherTest {
+
+    @Test
+    void recognizesOnlyEyeCodeAtomicSaveArtifacts() {
+        assertTrue(ExternalFileWatcher.isInternalAtomicSaveArtifact(
+                Path.of("C:/project/.eyecode-save-123.tmp")));
+        assertFalse(ExternalFileWatcher.isInternalAtomicSaveArtifact(
+                Path.of("C:/project/Main.java.tmp")));
+        assertFalse(ExternalFileWatcher.isInternalAtomicSaveArtifact(
+                Path.of("C:/project/.user-save-123.tmp")));
+    }
 
     @Test
     void watchesExternalFileAndClosesWithoutJavaFx() throws Exception {
