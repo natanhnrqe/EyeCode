@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 import com.eyecode.learning.content.LearningResourceLoader;
 
@@ -71,6 +73,24 @@ class LearningContentEngineTest {
         assertTrue(document.renderedHtml().contains("<main class=\"learning-content\">"));
         assertTrue(document.renderedHtml().contains("objeto"));
         assertEquals(document.metadata().id(), document.identifier());
+    }
+
+    @Test
+    void reusesRenderedDocumentForRepeatedIdentifier() {
+        LearningDocument first = engine.loadDocument("java/types/object");
+        LearningDocument second = engine.loadDocument("java/types/object");
+
+        assertSame(first, second);
+    }
+
+    @Test
+    void cachesDocumentsByIdentifierWithoutReusingDifferentLessonContent() {
+        LearningDocument object = engine.loadDocument("java/types/object");
+        LearningDocument string = engine.loadDocument("java/jdk/string");
+
+        assertNotSame(object, string);
+        assertEquals("java/types/object", object.identifier());
+        assertEquals("java/jdk/string", string.identifier());
     }
 
     @Test

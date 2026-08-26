@@ -4,6 +4,8 @@ import com.eyecode.eventbus.EventBus;
 import com.eyecode.filesystem.DefaultFileSystemService;
 import com.eyecode.javafx.editor.view.JavaFxEditorViewFactory;
 import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
+import com.eyecode.javafx.learning.MonacoLearningCardRenderer;
+import com.eyecode.learning.content.LearningContentEngine;
 import com.eyecode.javafx.ui.editor.JavaFxDocumentationWorkspace;
 import com.eyecode.javafx.ui.editor.JavaFxJdkSourceWorkspace;
 import com.eyecode.workbench.editor.EditorManager;
@@ -46,8 +48,10 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
         EventBus eventBus = new EventBus();
         documentationWorkspace = new JavaFxDocumentationWorkspace();
         sourceWorkspace = new JavaFxJdkSourceWorkspace();
-        learningWorkspace = new JavaFxLearningWorkspace(
-                documentationWorkspace::open, sourceWorkspace::open);
+        JavaFxMonacoEditorSurface monacoSurface = new JavaFxMonacoEditorSurface();
+        MonacoLearningCardRenderer learningRenderer = new MonacoLearningCardRenderer(
+                monacoSurface, new LearningContentEngine(), documentationWorkspace::open, sourceWorkspace::open);
+        learningWorkspace = new JavaFxLearningWorkspace(learningRenderer, documentationWorkspace::open);
         EditorViewFactory viewFactory = new JavaFxEditorViewFactory(learningWorkspace, sourceWorkspace::open);
         manager = new EditorManager(
                 eventBus, new DefaultFileSystemService(), viewFactory,
@@ -63,7 +67,7 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
                 });
 
         workspacePane = new FxEditorWorkspacePane(
-                manager, documentationWorkspace, sourceWorkspace, new JavaFxMonacoEditorSurface(), learningWorkspace,
+                manager, documentationWorkspace, sourceWorkspace, monacoSurface, learningWorkspace,
                 newProjectAction, openProjectAction, recentProjects, recentProjectAction);
         startupFileResolver = new ProjectStartupFileResolver();
         setContent(workspacePane);

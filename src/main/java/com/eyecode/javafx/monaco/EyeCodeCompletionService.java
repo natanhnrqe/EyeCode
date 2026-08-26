@@ -19,7 +19,8 @@ public final class EyeCodeCompletionService {
                                                LanguageContext context) {
         if (request == null || context == null) return List.of();
         CompletionSnapshot snapshot = engine.complete(context,
-                request.triggerKind() == MonacoCompletionRequest.TriggerKind.INVOKED);
+                request.explicit()
+                        || request.triggerKind() == MonacoCompletionRequest.TriggerKind.TRIGGER_CHARACTER);
         String prefix = CompletionPrefixResolver.resolvePrefix(context);
         int caret = context.getDocument().offsetOf(context.getCaret());
         int replaceStart = Math.max(0, caret - prefix.length());

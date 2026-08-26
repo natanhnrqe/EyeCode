@@ -9,6 +9,8 @@ import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public final class LearningContentEngine {
 
@@ -17,6 +19,8 @@ public final class LearningContentEngine {
     private final LearningHtmlBuilder htmlBuilder;
     private final Parser parser;
     private final HtmlRenderer renderer;
+    private final ConcurrentMap<String, LearningDocument> documentCache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, String> htmlCache = new ConcurrentHashMap<>();
 
     public LearningContentEngine() {
         this(new LearningResourceLoader());
@@ -45,11 +49,7 @@ public final class LearningContentEngine {
     }
 
     public String loadHtml(String resourcePath) {
-        String markdown = loadMarkdown(resourcePath);
-        if (markdown.trim().startsWith("---")) {
-            return convert(frontMatterParser().parse(markdown, resourcePath).body());
-        }
-        return convert(markdown);
+        return htmlCache.computeIfAbsent(resourcePath, this::loadHtmlUncached);
     }
 
     public String loadHtmlByIdentifier(String identifier) {
@@ -57,6 +57,18 @@ public final class LearningContentEngine {
     }
 
     public LearningDocument loadDocument(String identifier) {
+        return documentCache.computeIfAbsent(identifier, this::loadDocumentUncached);
+    }
+
+    private String loadHtmlUncached(String resourcePath) {
+        String markdown = loadMarkdown(resourcePath);
+        if (markdown.trim().startsWith("---")) {
+            return convert(frontMatterParser().parse(markdown, resourcePath).body());
+        }
+        return convert(markdown);
+    }
+
+    private LearningDocument loadDocumentUncached(String identifier) {
         LearningDocument source = contentRepository.loadDocument(identifier);
         return new LearningDocument(
                 source.identifier(),

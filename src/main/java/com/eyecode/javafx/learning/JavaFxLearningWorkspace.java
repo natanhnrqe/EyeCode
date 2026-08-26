@@ -13,11 +13,18 @@ import com.eyecode.learning.hover.ConceptHoverProvider;
 import com.eyecode.learning.hover.DefaultHoverEngine;
 import com.eyecode.learning.ui.LearningHoverController;
 import com.eyecode.learning.ui.LearningHoverSurface;
+import com.eyecode.learning.renderer.LearningCardRenderer;
 import com.eyecode.learning.concepts.DefaultLearningConceptEngine;
 import com.eyecode.learning.concepts.providers.ClassConceptProvider;
 import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
+import com.eyecode.editor.v2.syntax.TokenType;
+import javafx.application.Platform;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
 import org.fxmisc.richtext.CodeArea;
@@ -26,10 +33,18 @@ public final class JavaFxLearningWorkspace {
 
     private final JavaFxLearningAnchor anchor = new JavaFxLearningAnchor();
     private final JavaFxCeffxLearningSurface learningSurface;
-    private final JavaFxLearningCardRenderer renderer;
+    private final LearningCardRenderer renderer;
     private final LearningContentEngine contentEngine;
     private final DocumentationNavigator documentationNavigator;
     private final JavaMemberTargetResolver memberTargetResolver = new JavaMemberTargetResolver();
+    private final JdkLearningConceptCatalog jdkCatalog = new JdkLearningConceptCatalog();
+    private final JavaSyntaxLearningCatalog syntaxCatalog = new JavaSyntaxLearningCatalog();
+    private final DocumentationAtCaretResolver jdkResolver = new DocumentationAtCaretResolver();
+    private final ExecutorService monacoLearningExecutor = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "eyecode-learning-preparation");
+        thread.setDaemon(true);
+        return thread;
+    });
     private boolean disposed;
 
     public JavaFxLearningWorkspace() {
@@ -52,7 +67,16 @@ public final class JavaFxLearningWorkspace {
                 documentationNavigator,
                 sourceNavigator
         );
-        learningSurface.setInternalNavigationListener(renderer::navigateToIdentifier);
+        learningSurface.setInternalNavigationListener(
+                ((JavaFxLearningCardRenderer) this.renderer)::navigateToIdentifier);
+    }
+
+    public JavaFxLearningWorkspace(LearningCardRenderer renderer,
+                                   DocumentationNavigator documentationNavigator) {
+        this.documentationNavigator = documentationNavigator == null ? target -> { } : documentationNavigator;
+        contentEngine = new LearningContentEngine();
+        learningSurface = null;
+        this.renderer = renderer;
     }
 
     public void openDocumentation(DocumentationTarget target) {
@@ -60,11 +84,57 @@ public final class JavaFxLearningWorkspace {
     }
 
     public void setJdkSourceTarget(JdkSourceTarget target) {
-        renderer.setJdkSourceTarget(target);
+        if (renderer instanceof JavaFxLearningCardRenderer legacy) legacy.setJdkSourceTarget(target);
     }
 
     public void setWorkspaceWindow(javafx.stage.Window window) {
         anchor.setWorkspaceWindow(window);
+    }
+
+    public void setMonacoAnchor(int line, int column) {
+        if (renderer instanceof MonacoLearningCardRenderer monaco) {
+            monaco.setAnchor(line, column);
+        }
+    }
+
+    public void handleMonacoOverlayEvent(com.eyecode.javafx.monaco.MonacoOverlayEvent event) {
+        if (renderer instanceof MonacoLearningCardRenderer monaco) {
+            monaco.onOverlayEvent(event);
+        }
+    }
+
+    public MonacoLearningHoverPipeline createMonacoHoverPipeline() {
+        if (!(renderer instanceof MonacoLearningCardRenderer monaco)) {
+            throw new IllegalStateException("Monaco learning pipeline requires a Monaco renderer");
+        }
+        return new MonacoLearningHoverPipeline(
+                new JavaFxMonacoLearningIntentTimer(),
+                target -> CompletableFuture.supplyAsync(() -> resolveMonacoTarget(target).map(monaco::prepare),
+                        monacoLearningExecutor),
+                monaco,
+                action -> {
+                    if (Platform.isFxApplicationThread()) action.run();
+                    else {
+                        try { Platform.runLater(action); }
+                        catch (IllegalStateException ignored) { }
+                    }
+                });
+    }
+
+    private Optional<com.eyecode.learning.model.LearningConcept> resolveMonacoTarget(MonacoLearningTarget target) {
+        if (target.tokenType() != TokenType.IDENTIFIER && target.tokenType() != TokenType.KEYWORD) {
+            return Optional.empty();
+        }
+        if (target.tokenType() == TokenType.IDENTIFIER) {
+            Optional<com.eyecode.learning.model.LearningConcept> member = memberTargetResolver
+                    .resolve(target.documentText(), target.startOffset()).flatMap(jdkCatalog::find);
+            if (member.isPresent()) return member;
+            Optional<com.eyecode.learning.model.LearningConcept> type = jdkResolver
+                    .resolveType(target.documentText(), target.startOffset())
+                    .flatMap(resolved -> jdkCatalog.find(resolved.simpleName()));
+            if (type.isPresent()) return type;
+        }
+        return syntaxCatalog.find(target.text());
     }
 
     public LearningHoverController createHoverController(
@@ -85,11 +155,10 @@ public final class JavaFxLearningWorkspace {
             Supplier<SyntaxSnapshot> syntaxSupplier,
             Supplier<javafx.scene.Scene> sceneSupplier
     ) {
-        anchor.follow(surface, () -> sceneSupplier.get() == null ? null : sceneSupplier.get().getWindow());
+        if (!(renderer instanceof MonacoLearningCardRenderer)) {
+            anchor.follow(surface, () -> sceneSupplier.get() == null ? null : sceneSupplier.get().getWindow());
+        }
         var catalog = new DefaultLearningCatalog();
-        var jdkCatalog = new JdkLearningConceptCatalog();
-        var syntaxCatalog = new JavaSyntaxLearningCatalog();
-        var jdkResolver = new DocumentationAtCaretResolver();
         var conceptEngine = new DefaultLearningConceptEngine(
                 List.of(new ClassConceptProvider(catalog)));
         return new LearningHoverController(
@@ -116,12 +185,13 @@ public final class JavaFxLearningWorkspace {
             return;
         }
         disposed = true;
+        monacoLearningExecutor.shutdownNow();
         renderer.dispose();
-        learningSurface.dispose();
+        if (learningSurface != null) learningSurface.dispose();
     }
 
     JavaFxLearningCardRenderer rendererForTest() {
-        return renderer;
+        return (JavaFxLearningCardRenderer) renderer;
     }
 
     JavaFxCeffxLearningSurface surfaceForTest() {

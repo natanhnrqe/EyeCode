@@ -11,6 +11,10 @@ public interface LearningCardRenderer {
 
     void hide();
 
+    default void hardHide() {
+        hide();
+    }
+
     boolean isVisible();
 
     void update(LearningConcept concept);

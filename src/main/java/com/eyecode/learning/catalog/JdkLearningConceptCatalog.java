@@ -27,6 +27,9 @@ public final class JdkLearningConceptCatalog {
             Map.entry("Map", "java/jdk/map"),
             Map.entry("HashMap", "java/jdk/hash-map"));
 
+    private final LearningContentRepository repository = new LearningContentRepository();
+    private final Map<String, Map<String, String>> memberIndexes = new java.util.concurrent.ConcurrentHashMap<>();
+
     public Optional<LearningConcept> find(String name) {
         return JavaJdkTypeCatalog.findSimple(name).flatMap(this::create);
     }
@@ -72,18 +75,13 @@ public final class JdkLearningConceptCatalog {
             return Optional.empty();
         }
         try {
-            LearningContentRepository repository = new LearningContentRepository();
-            return repository.loadDocument(rootId).metadata().members().stream()
-                    .map(member -> member.identifier())
-                    .filter(identifier -> {
-                        try {
-                            return memberName.equals(repository.loadDocument(identifier)
-                                    .metadata().sourceMember());
-                        } catch (RuntimeException ignored) {
-                            return false;
-                        }
-                    })
-                    .findFirst();
+            Map<String, String> members = memberIndexes.computeIfAbsent(rootId, ignored ->
+                    repository.loadDocument(rootId).metadata().members().stream()
+                            .collect(java.util.stream.Collectors.toUnmodifiableMap(
+                                    member -> member.label().replaceAll("\\(.*\\)$", ""),
+                                    member -> member.identifier(),
+                                    (first, ignoredDuplicate) -> first)));
+            return Optional.ofNullable(members.get(memberName));
         } catch (RuntimeException ignored) {
             return Optional.empty();
         }

@@ -45,6 +45,21 @@ class HoverStateMachineTest {
     }
 
     @Test
+    void changingKeyWhileWaitingRestartsTheIntentWindow() {
+        HoverStateMachine machine = new HoverStateMachine(supplier);
+
+        machine.enter("String:1:6");
+        clock.addAndGet(250L);
+        machine.enter("Object:8:14");
+        clock.addAndGet(250L);
+
+        assertFalse(machine.canShow());
+        clock.addAndGet(250L);
+        assertTrue(machine.canShow());
+        assertEquals("Object:8:14", machine.getActiveKey());
+    }
+
+    @Test
     void interactsWithPopupAndHidesAfterDelay() {
         HoverStateMachine machine = new HoverStateMachine(supplier);
 

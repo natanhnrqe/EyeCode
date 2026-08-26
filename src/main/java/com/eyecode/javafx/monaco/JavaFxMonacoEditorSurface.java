@@ -29,6 +29,8 @@ public final class JavaFxMonacoEditorSurface extends Region {
     private boolean disposed;
     private boolean layoutQueued;
     private Consumer<MonacoEvent> eventListener;
+    private Consumer<MonacoCompletionRequest> completionListener;
+    private Consumer<MonacoOverlayEvent> overlayEventListener;
 
     public JavaFxMonacoEditorSurface() {
         this(null, null);
@@ -53,6 +55,39 @@ public final class JavaFxMonacoEditorSurface extends Region {
 
     public void setEventListener(Consumer<MonacoEvent> listener) {
         eventListener = listener;
+    }
+
+    public void setCompletionListener(Consumer<MonacoCompletionRequest> listener) {
+        completionListener = listener;
+    }
+
+    public void setOverlayEventListener(Consumer<MonacoOverlayEvent> listener) {
+        overlayEventListener = listener;
+    }
+
+    public void sendCompletionResponse(MonacoCompletionRequest request,
+                                       java.util.List<MonacoCompletionItem> items) {
+        if (request == null) return;
+        send(new MonacoCommand.CompletionResponse(request.modelId(), request.requestId(),
+                items == null ? java.util.List.of() : items));
+    }
+
+    public void showOverlay(String overlayId, MonacoOverlayType type, int line, int column,
+                            String content, long generation) {
+        send(new MonacoCommand.ShowOverlay(overlayId, type, line, column, content, generation));
+    }
+
+    public void updateOverlay(String overlayId, MonacoOverlayType type, int line, int column,
+                              String content, long generation) {
+        send(new MonacoCommand.UpdateOverlay(overlayId, type, line, column, content, generation));
+    }
+
+    public void hideOverlay(String overlayId, long generation) {
+        send(new MonacoCommand.HideOverlay(overlayId, generation, false));
+    }
+
+    public void hardHideOverlay(String overlayId, long generation) {
+        send(new MonacoCommand.HideOverlay(overlayId, generation, true));
     }
 
     public void openModel(String id, String language, String content, boolean readOnly) {
@@ -100,6 +135,7 @@ public final class JavaFxMonacoEditorSurface extends Region {
     public String getActiveModel() { return activeModel; }
     public int modelCount() { return models.size(); }
     public String modelContent(String id) { return models.containsKey(id) ? models.get(id).content : null; }
+    public boolean isReadOnly(String id) { return models.containsKey(id) && models.get(id).readOnly; }
 
     public Point2D screenPointForClient(double x, double y) {
         return localToScreen(x, y);
@@ -121,6 +157,14 @@ public final class JavaFxMonacoEditorSurface extends Region {
     void receiveEventForTest(MonacoEvent event) { dispatchEvent(event); }
 
     static MonacoEvent parseEventForTest(String json) { return parseEvent(json); }
+
+    static MonacoCompletionRequest parseCompletionRequestForTest(String json) {
+        return parseCompletionRequest(json);
+    }
+
+    static String commandJsonForTest(MonacoCommand command) {
+        return json(command);
+    }
 
     public void dispose() {
         if (disposed) return;
@@ -225,7 +269,19 @@ public final class JavaFxMonacoEditorSurface extends Region {
         public boolean onQuery(CefBrowser browser, CefFrame frame, long queryId, String request,
                                boolean persistent, CefQueryCallback callback) {
             MonacoEvent event = parseEvent(request);
-                            if (event != null) dispatchEvent(event);
+            MonacoCompletionRequest completion = parseCompletionRequest(request);
+            MonacoOverlayEvent overlay = parseOverlayEvent(request);
+            if (completion != null) {
+                Platform.runLater(() -> {
+                    if (!disposed && completionListener != null) completionListener.accept(completion);
+                });
+            } else if (overlay != null) {
+                Platform.runLater(() -> {
+                    if (!disposed && overlayEventListener != null) overlayEventListener.accept(overlay);
+                });
+            } else if (event != null) {
+                dispatchEvent(event);
+            }
             callback.success("ok");
             return true;
         }
@@ -243,13 +299,69 @@ public final class JavaFxMonacoEditorSurface extends Region {
             if ("selection".equals(kind)) return MonacoEvent.caretChanged(id, number(values, "line"), number(values, "column"),
                     number(values, "endLine"), number(values, "endColumn"), numberLong(values, "version"));
             if ("hover".equals(kind)) return MonacoEvent.hover(id, numberLong(values, "version"), number(values, "line"),
-                    number(values, "column"), decimal(values, "x"), decimal(values, "y"));
+                    number(values, "column"), decimal(values, "x"), decimal(values, "y"),
+                    number(values, "start"), number(values, "end"), string(values, "word"));
             if ("hoverExit".equals(kind)) return MonacoEvent.hoverExit(id, numberLong(values, "version"));
             if ("command".equals(kind)) return MonacoEvent.command(id, numberLong(values, "version"),
                     "documentation".equals(string(values, "command"))
                             ? MonacoEvent.Command.DOCUMENTATION : MonacoEvent.Command.GO_TO_DEFINITION,
                     number(values, "line"), number(values, "column"));
             return null;
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    private static MonacoCompletionRequest parseCompletionRequest(String json) {
+        try {
+            Map<String, Object> values = MonacoJsonParser.parseObject(json);
+            if (!"completion".equals(string(values, "kind"))) return null;
+            MonacoCompletionRequest.TriggerKind trigger = switch (string(values, "triggerKind")) {
+                case "triggerCharacter" -> MonacoCompletionRequest.TriggerKind.TRIGGER_CHARACTER;
+                case "incomplete" -> MonacoCompletionRequest.TriggerKind.INCOMPLETE;
+                default -> MonacoCompletionRequest.TriggerKind.INVOKED;
+            };
+            return new MonacoCompletionRequest(
+                    string(values, "id"), numberLong(values, "version"),
+                    number(values, "line"), number(values, "column"), trigger,
+                    string(values, "triggerCharacter"), numberLong(values, "requestId"),
+                    Boolean.TRUE.equals(values.get("explicit")));
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    static MonacoOverlayEvent parseOverlayEventForTest(String json) {
+        return parseOverlayEvent(json);
+    }
+
+    private static MonacoOverlayEvent parseOverlayEvent(String json) {
+        try {
+            Map<String, Object> values = MonacoJsonParser.parseObject(json);
+            String kind = string(values, "kind");
+            if (!"overlayPointer".equals(kind) && !"overlayAction".equals(kind)
+                    && !"overlayHidden".equals(kind)) return null;
+            if ("overlayPointer".equals(kind)) {
+                MonacoOverlayEvent.Type type = Boolean.TRUE.equals(values.get("entered"))
+                        ? MonacoOverlayEvent.Type.POINTER_ENTER
+                        : MonacoOverlayEvent.Type.POINTER_LEAVE;
+                return new MonacoOverlayEvent(type, string(values, "overlayId"), null,
+                        numberLong(values, "generation"), string(values, "target"));
+            }
+            if ("overlayHidden".equals(kind)) {
+                return new MonacoOverlayEvent(MonacoOverlayEvent.Type.HIDDEN,
+                        string(values, "overlayId"), null, numberLong(values, "generation"), "");
+            }
+            MonacoOverlayAction action;
+            try {
+                String actionValue = string(values, "action");
+                if (actionValue == null) return null;
+                action = MonacoOverlayAction.valueOf(actionValue);
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
+            return new MonacoOverlayEvent(MonacoOverlayEvent.Type.ACTION, string(values, "overlayId"),
+                    action, numberLong(values, "generation"), string(values, "target"));
         } catch (IllegalArgumentException ignored) {
             return null;
         }
@@ -323,7 +435,47 @@ public final class JavaFxMonacoEditorSurface extends Region {
         else if (command instanceof MonacoCommand.Focus) values.put("type", "focus");
         else if (command instanceof MonacoCommand.ApplyEdit c) { values.put("type", "applyEdit"); values.put("id", c.id()); values.put("start", c.start()); values.put("end", c.end()); values.put("text", c.text()); }
         else if (command instanceof MonacoCommand.Layout) values.put("type", "layout");
+        else if (command instanceof MonacoCommand.CompletionResponse c) return completionResponseJson(c);
+        else if (command instanceof MonacoCommand.ShowOverlay c) return overlayJson("showOverlay", c.overlayId(), c.type(), c.line(), c.column(), c.content(), c.generation());
+        else if (command instanceof MonacoCommand.UpdateOverlay c) return overlayJson("updateOverlay", c.overlayId(), c.type(), c.line(), c.column(), c.content(), c.generation());
+        else if (command instanceof MonacoCommand.HideOverlay c) return overlayHideJson(c);
         return object(values);
+    }
+
+    private static String overlayJson(String type, String id, MonacoOverlayType overlayType,
+                                      int line, int column, String content, long generation) {
+        return "{\"type\":\"" + type + "\",\"overlayId\":\"" + escape(id)
+                + "\",\"overlayType\":\"" + (overlayType == null ? "LEARNING" : overlayType.name())
+                + "\",\"line\":" + line + ",\"column\":" + column
+                + ",\"content\":\"" + escape(content) + "\",\"generation\":" + generation + "}";
+    }
+
+    private static String overlayHideJson(MonacoCommand.HideOverlay command) {
+        return "{\"type\":\"hideOverlay\",\"overlayId\":\"" + escape(command.overlayId())
+                + "\",\"generation\":" + command.generation()
+                + ",\"hard\":" + command.hard() + "}";
+    }
+
+    private static String completionResponseJson(MonacoCommand.CompletionResponse response) {
+        StringBuilder json = new StringBuilder("{\"type\":\"completionResponse\",\"id\":");
+        json.append('"').append(escape(response.id())).append("\",\"requestId\":")
+                .append(response.requestId()).append(",\"items\":[");
+        boolean first = true;
+        for (MonacoCompletionItem item : response.items()) {
+            if (!first) json.append(',');
+            first = false;
+            json.append('{')
+                    .append("\"label\":\"").append(escape(item.label())).append("\"")
+                    .append(",\"kind\":\"").append(item.kind()).append("\"")
+                    .append(",\"detail\":\"").append(escape(item.detail())).append("\"")
+                    .append(",\"documentation\":\"").append(escape(item.documentation())).append("\"")
+                    .append(",\"insertText\":\"").append(escape(item.insertText())).append("\"")
+                    .append(",\"replaceStart\":").append(item.replaceStart())
+                    .append(",\"replaceEnd\":").append(item.replaceEnd())
+                    .append(",\"sortKey\":").append(item.sortKey())
+                    .append('}');
+        }
+        return json.append("]}").toString();
     }
 
     private static String object(Map<String, Object> values) {
@@ -341,7 +493,28 @@ public final class JavaFxMonacoEditorSurface extends Region {
     }
 
     private static String escape(String value) {
-        return value.replace("\\", "\\\\").replace("\"", "\\\"")
-                .replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t");
+        String text = value == null ? "" : value;
+        StringBuilder result = new StringBuilder(text.length() + 16);
+        for (int index = 0; index < text.length(); index++) {
+            char character = text.charAt(index);
+            switch (character) {
+                case '\\' -> result.append("\\\\");
+                case '"' -> result.append("\\\"");
+                case '\b' -> result.append("\\b");
+                case '\f' -> result.append("\\f");
+                case '\n' -> result.append("\\n");
+                case '\r' -> result.append("\\r");
+                case '\t' -> result.append("\\t");
+                default -> {
+                    if (character < 0x20 || character > 0x7e) {
+                        result.append("\\u");
+                        result.append(String.format("%04x", (int) character));
+                    } else {
+                        result.append(character);
+                    }
+                }
+            }
+        }
+        return result.toString();
     }
 }

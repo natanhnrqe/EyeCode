@@ -14,12 +14,28 @@ import com.eyecode.javafx.monaco.MonacoEvent;
 import com.eyecode.javafx.monaco.MonacoModelId;
 import com.eyecode.javafx.monaco.MonacoPositionAdapter;
 import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
-import com.eyecode.javafx.learning.MonacoLearningHoverSurface;
+import com.eyecode.javafx.learning.MonacoLearningHoverPipeline;
+import com.eyecode.javafx.learning.MonacoLearningTarget;
 import com.eyecode.learning.content.DocumentationTarget;
-import com.eyecode.learning.ui.LearningHoverController;
 import com.eyecode.language.documentation.DocumentationAtCaretResolver;
 import com.eyecode.language.documentation.JdkSourceResolver;
 import com.eyecode.editor.v2.syntax.JavaSyntaxAnalyzer;
+import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
+import com.eyecode.editor.v2.syntax.SyntaxToken;
+import com.eyecode.editor.v2.EditorPosition;
+import com.eyecode.editor.v2.EditorSelection;
+import com.eyecode.editor.v2.completion.CompletionEngine;
+import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
+import com.eyecode.editor.v2.completion.JavaSnippetProvider;
+import com.eyecode.editor.v2.completion.JavaStandardLibraryProvider;
+import com.eyecode.editor.v2.completion.ContextAwareCompletionProvider;
+import com.eyecode.editor.v2.completion.semantic.SemanticCompletionProvider;
+import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
+import com.eyecode.editor.v2.language.LanguageContext;
+import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
+import com.eyecode.javafx.monaco.EyeCodeCompletionService;
+import com.eyecode.javafx.monaco.MonacoCompletionItem;
+import com.eyecode.javafx.monaco.MonacoCompletionRequest;
 import com.eyecode.language.symbol.DocumentSemanticModelBuilder;
 import com.eyecode.project.ProjectInfo;
 import javafx.scene.Node;
@@ -31,12 +47,15 @@ import javafx.scene.control.ButtonType;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
 
 public final class FxEditorWorkspacePane extends VBox {
 
@@ -47,18 +66,29 @@ public final class FxEditorWorkspacePane extends VBox {
     private boolean syncing;
     private Path saveFailedFile;
     private Path externalProblemFile;
+    private String cachedSyntaxSessionId;
+    private long cachedSyntaxVersion = Long.MIN_VALUE;
+    private SyntaxSnapshot cachedMonacoSyntax;
+    private Map<TokenRange, SyntaxToken> cachedSyntaxTokens = Map.of();
 
     private final JavaFxDocumentationWorkspace documentationWorkspace;
     private final JavaFxJdkSourceWorkspace sourceWorkspace;
     private final WelcomeProjectSurface welcomeSurface;
     private final NewProjectSurface newProjectSurface;
     private final JavaFxMonacoEditorSurface monacoSurface;
-    private final MonacoLearningHoverSurface monacoHoverSurface;
-    private final LearningHoverController learningHoverController;
+    private final JavaFxLearningWorkspace learningWorkspace;
+    private final MonacoLearningHoverPipeline monacoLearningPipeline;
     private final DocumentationAtCaretResolver documentationAtCaretResolver = new DocumentationAtCaretResolver();
     private final JdkSourceResolver jdkSourceResolver = new JdkSourceResolver();
     private final DocumentSemanticModelBuilder semanticModelBuilder = new DocumentSemanticModelBuilder();
     private final JavaSyntaxAnalyzer syntaxAnalyzer = new JavaSyntaxAnalyzer();
+    private final EyeCodeCompletionService completionService = new EyeCodeCompletionService(
+            new CompletionEngine(List.of(
+                    new SemanticCompletionProvider(new SemanticSymbolRegistry()),
+                    new ContextAwareCompletionProvider(),
+                    new JavaKeywordCompletionProvider(),
+                    new JavaStandardLibraryProvider(),
+                    new JavaSnippetProvider())));
     private BiConsumer<Integer, Integer> caretPositionListener = (line, column) -> { };
 
     public FxEditorWorkspacePane(EditorManager manager, JavaFxDocumentationWorkspace documentationWorkspace) {
@@ -97,15 +127,9 @@ public final class FxEditorWorkspacePane extends VBox {
         this.documentationWorkspace = documentationWorkspace;
         this.sourceWorkspace = sourceWorkspace;
         this.monacoSurface = monacoSurface;
-        this.monacoHoverSurface = monacoSurface == null || learningWorkspace == null
-                ? null : new MonacoLearningHoverSurface(monacoSurface,
-                () -> monacoSurface.getScene() == null ? null : monacoSurface.getScene().getWindow(),
-                monacoSurface::screenPointForClient);
-        this.learningHoverController = monacoHoverSurface == null ? null : learningWorkspace.createHoverController(
-                monacoHoverSurface,
-                () -> currentMonacoText(),
-                () -> currentMonacoSyntax(),
-                monacoSurface::getScene);
+        this.learningWorkspace = learningWorkspace;
+        this.monacoLearningPipeline = monacoSurface == null || learningWorkspace == null
+                ? null : learningWorkspace.createMonacoHoverPipeline();
         this.welcomeSurface = new WelcomeProjectSurface(
                 newProjectAction == null ? this::showNewProjectSurface : newProjectAction,
                 openProjectAction, recentProjects, recentProjectAction);
@@ -114,6 +138,19 @@ public final class FxEditorWorkspacePane extends VBox {
         sourceWorkspace.setPresenter(this::openSource);
         if (monacoSurface != null) {
             monacoSurface.setEventListener(this::onMonacoEvent);
+            monacoSurface.setCompletionListener(this::onCompletionRequest);
+            monacoSurface.setOverlayEventListener(event -> {
+                if (learningWorkspace != null) learningWorkspace.handleMonacoOverlayEvent(event);
+                if (monacoLearningPipeline != null) {
+                    if (event.type() == com.eyecode.javafx.monaco.MonacoOverlayEvent.Type.POINTER_ENTER) {
+                        monacoLearningPipeline.setOverlayHovered(true);
+                    } else if (event.type() == com.eyecode.javafx.monaco.MonacoOverlayEvent.Type.POINTER_LEAVE) {
+                        monacoLearningPipeline.setOverlayHovered(false);
+                    } else if (event.type() == com.eyecode.javafx.monaco.MonacoOverlayEvent.Type.HIDDEN) {
+                        monacoLearningPipeline.onOverlayHidden();
+                    }
+                }
+            });
         }
         manager.addSaveListener(this::onSaveAttempt);
         manager.addExternalFileListener(this::onExternalFileChange);
@@ -302,9 +339,7 @@ public final class FxEditorWorkspacePane extends VBox {
     }
 
     private void cancelLearningHover() {
-        if (learningHoverController != null) {
-            learningHoverController.cancel();
-        }
+        if (monacoLearningPipeline != null) monacoLearningPipeline.hardHide();
     }
 
     public void refreshWelcomeProjects() {
@@ -374,15 +409,22 @@ public final class FxEditorWorkspacePane extends VBox {
         if (event.type() == MonacoEvent.Type.HOVER) {
             manager.getBuffer(session.getSessionId()).ifPresent(buffer -> {
                 var snapshot = buffer.getDocument().snapshot();
-                int offset = MonacoPositionAdapter.toOffset(snapshot, event.line(), event.column());
-                if (monacoHoverSurface != null) {
-                    monacoHoverSurface.move(offset, event.x(), event.y());
+                SyntaxToken token = tokenForMonacoRange(session, snapshot.version(),
+                        event.targetStartOffset(), event.targetEndOffset());
+                if (monacoLearningPipeline != null) {
+                    if (token == null) {
+                        monacoLearningPipeline.leaveEditorTarget();
+                    } else {
+                        monacoLearningPipeline.enterTarget(new MonacoLearningTarget(
+                                event.modelId(), event.version(), event.targetStartOffset(), event.targetEndOffset(),
+                                event.line(), event.column(), event.targetText(), snapshot.getText(), token.type()));
+                    }
                 }
             });
             return;
         }
         if (event.type() == MonacoEvent.Type.HOVER_EXIT) {
-            if (monacoHoverSurface != null) monacoHoverSurface.leave();
+            if (monacoLearningPipeline != null) monacoLearningPipeline.leaveEditorTarget();
             return;
         }
         if (event.type() == MonacoEvent.Type.COMMAND) {
@@ -405,6 +447,42 @@ public final class FxEditorWorkspacePane extends VBox {
                         buffer.replaceText(event.content());
                     }
                 });
+    }
+
+    private void onCompletionRequest(MonacoCompletionRequest request) {
+        if (monacoSurface == null || request == null
+                || request.modelId().startsWith("jdk://")
+                || monacoSurface.isReadOnly(request.modelId())) {
+            if (monacoSurface != null) monacoSurface.sendCompletionResponse(request, List.of());
+            return;
+        }
+        EditorSession session = sessionForModel(request.modelId());
+        if (session == null) {
+            monacoSurface.sendCompletionResponse(request, List.of());
+            return;
+        }
+        manager.getBuffer(session.getSessionId()).ifPresentOrElse(buffer -> {
+            String content = monacoSurface.modelContent(request.modelId());
+            if (content == null) content = buffer.getDocument().getText();
+            Path file = session.getFile();
+            EditorDocument snapshotDocument = new EditorDocument(file, content);
+            int offset = MonacoPositionAdapter.toOffset(snapshotDocument.snapshot(),
+                    request.line(), request.column());
+            EditorPosition caret = snapshotDocument.positionOf(offset);
+            LanguageContext context = new LanguageContext(
+                    snapshotDocument,
+                    caret,
+                    new EditorSelection(caret, caret),
+                    syntaxAnalyzer.analyze(snapshotDocument),
+                    DiagnosticSnapshot.empty());
+            CompletableFuture.supplyAsync(() -> completionService.complete(request, context))
+                    .exceptionally(failure -> List.<MonacoCompletionItem>of())
+                    .thenAccept(items -> Platform.runLater(() -> {
+                        if (monacoSurface != null && !monacoSurface.isReadOnly(request.modelId())) {
+                            monacoSurface.sendCompletionResponse(request, items);
+                        }
+                    }));
+        }, () -> monacoSurface.sendCompletionResponse(request, List.of()));
     }
 
     private EditorSession sessionForModel(String modelId) {
@@ -442,12 +520,6 @@ public final class FxEditorWorkspacePane extends VBox {
         });
     }
 
-    private String currentMonacoText() {
-        EditorSession session = manager.getCurrentSession();
-        return session == null ? "" : manager.getBuffer(session.getSessionId())
-                .map(buffer -> buffer.getDocument().snapshot().getText()).orElse("");
-    }
-
     private void notifyCaretPosition(EditorSession session) {
         manager.getBuffer(session.getSessionId()).ifPresent(buffer -> {
             var snapshot = buffer.getDocument().snapshot();
@@ -457,12 +529,22 @@ public final class FxEditorWorkspacePane extends VBox {
         });
     }
 
-    private com.eyecode.editor.v2.syntax.SyntaxSnapshot currentMonacoSyntax() {
-        EditorSession session = manager.getCurrentSession();
-        return session == null ? new com.eyecode.editor.v2.syntax.SyntaxSnapshot(List.of())
-                : manager.getBuffer(session.getSessionId()).map(buffer -> (com.eyecode.editor.v2.syntax.SyntaxSnapshot)
-                        syntaxAnalyzer.analyze(buffer.getDocument()))
-                .orElse(new com.eyecode.editor.v2.syntax.SyntaxSnapshot(List.of()));
+    private SyntaxToken tokenForMonacoRange(EditorSession session, long documentVersion,
+                                            int startOffset, int endOffset) {
+        if (!session.getSessionId().equals(cachedSyntaxSessionId)
+                || documentVersion != cachedSyntaxVersion || cachedMonacoSyntax == null) {
+            manager.getBuffer(session.getSessionId()).ifPresent(buffer -> {
+                cachedSyntaxSessionId = session.getSessionId();
+                cachedSyntaxVersion = documentVersion;
+                cachedMonacoSyntax = (SyntaxSnapshot) syntaxAnalyzer.analyze(buffer.getDocument());
+                Map<TokenRange, SyntaxToken> tokens = new HashMap<>();
+                for (SyntaxToken token : cachedMonacoSyntax.getTokens()) {
+                    tokens.put(new TokenRange(token.startOffset(), token.endOffset()), token);
+                }
+                cachedSyntaxTokens = Map.copyOf(tokens);
+            });
+        }
+        return cachedSyntaxTokens.get(new TokenRange(startOffset, endOffset));
     }
 
     private TabModel toModel(EditorSession session) {
@@ -552,11 +634,8 @@ public final class FxEditorWorkspacePane extends VBox {
         if (monacoSurface != null) {
             monacoSurface.dispose();
         }
-        if (monacoHoverSurface != null) {
-            monacoHoverSurface.dispose();
-        }
-        if (learningHoverController != null) {
-            learningHoverController.dispose();
-        }
+        if (monacoLearningPipeline != null) monacoLearningPipeline.dispose();
     }
+
+    private record TokenRange(int startOffset, int endOffset) { }
 }

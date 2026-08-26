@@ -5,6 +5,7 @@ import com.eyecode.editor.v2.completion.CompletionItemKind;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MonacoCompletionProtocolTest {
     @Test
@@ -16,6 +17,16 @@ class MonacoCompletionProtocolTest {
         assertEquals("file:///C:/Main.java", request.modelId());
         assertEquals(7, request.modelVersion());
         assertEquals(MonacoCompletionRequest.TriggerKind.INVOKED, request.triggerKind());
+    }
+
+    @Test
+    void requestCarriesLatestRequestIdentityAndExplicitInvocation() {
+        MonacoCompletionRequest request = new MonacoCompletionRequest(
+                "file:///C:/Main.java", 9, 2, 4,
+                MonacoCompletionRequest.TriggerKind.INVOKED, null, 42L, true);
+
+        assertEquals(42L, request.requestId());
+        assertTrue(request.explicit());
     }
 
     @Test
@@ -33,5 +44,17 @@ class MonacoCompletionProtocolTest {
         assertEquals(10, item.replaceStart());
         assertEquals(13, item.replaceEnd());
         assertEquals(4, item.sortKey());
+    }
+
+    @Test
+    void completionRequestJsonCarriesExplicitTriggerAndIdentity() {
+        MonacoCompletionRequest request = JavaFxMonacoEditorSurface.parseCompletionRequestForTest(
+                "{\"kind\":\"completion\",\"id\":\"file:///C:/Main.java\","
+                        + "\"version\":7,\"line\":2,\"column\":4,"
+                        + "\"triggerKind\":\"invoked\",\"requestId\":42,\"explicit\":true}");
+
+        assertEquals(42L, request.requestId());
+        assertTrue(request.explicit());
+        assertEquals(2, request.line());
     }
 }

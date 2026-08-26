@@ -108,13 +108,17 @@ class JavaFxMonacoEditorSurfaceTest {
 
         MonacoEvent hover = JavaFxMonacoEditorSurface.parseEventForTest(
                 "{\"kind\":\"hover\",\"id\":\"file:///Main.java\","
-                        + "\"version\":7,\"line\":3,\"column\":5,\"x\":12.5,\"y\":48.25}");
+                        + "\"version\":7,\"line\":3,\"column\":5,\"x\":12.5,\"y\":48.25,"
+                        + "\"start\":20,\"end\":26,\"word\":\"String\"}");
         assertEquals(MonacoEvent.Type.HOVER, hover.type());
         assertEquals(7, hover.version());
         assertEquals(3, hover.line());
         assertEquals(5, hover.column());
         assertEquals(12.5, hover.x());
         assertEquals(48.25, hover.y());
+        assertEquals(20, hover.targetStartOffset());
+        assertEquals(26, hover.targetEndOffset());
+        assertEquals("String", hover.targetText());
 
         MonacoEvent command = JavaFxMonacoEditorSurface.parseEventForTest(
                 "{\"kind\":\"command\",\"id\":\"file:///C:/work/My%20File.java\","

@@ -51,7 +51,6 @@ public final class LearningHoverController {
     private HoverSnapshot visibleSnapshot;
     private HoverSnapshot pendingSnapshot;
 
-    private boolean loadingContent;
     private boolean editorTargetActive;
     private boolean cardHovered;
     private long lifecycleGeneration;
@@ -213,7 +212,7 @@ public final class LearningHoverController {
 
     public void dispose() {
         scheduler.dispose();
-        popup.hide();
+        popup.hardHide();
         if (ownsRenderer) {
             popup.dispose();
         }
@@ -279,8 +278,7 @@ public final class LearningHoverController {
         scheduler.stopMonitor();
         stateMachine.reset();
         cancelPendingSwitch();
-        popup.hide();
-        loadingContent = false;
+        popup.hardHide();
         editorTargetActive = false;
         cardHovered = false;
         resetHover();
@@ -323,7 +321,6 @@ public final class LearningHoverController {
 
         if (stateMachine.canHide()) {
             popup.hide();
-            loadingContent = false;
             visibleSymbolKey = null;
             visibleSnapshot = null;
             currentSnapshot = null;
@@ -362,7 +359,6 @@ public final class LearningHoverController {
             return;
         }
 
-        loadingContent = false;
         lastConcept = snapshot.concept();
         lastLessonPath = null;
 
@@ -407,7 +403,6 @@ public final class LearningHoverController {
         visibleSymbolKey = pending.symbolKey();
         visibleSnapshot = pending;
         if (!Objects.equals(lastConcept, pending.concept())) {
-            loadingContent = false;
             lastConcept = pending.concept();
             lastLessonPath = null;
             loadLessonContent(pending);
@@ -437,7 +432,6 @@ public final class LearningHoverController {
         scheduler.stopMonitor();
         stateMachine.reset();
         cancelPendingSwitch();
-        loadingContent = false;
         editorTargetActive = false;
         cardHovered = false;
         resetHover();
@@ -451,10 +445,6 @@ public final class LearningHoverController {
     }
 
     private void loadLessonContent(HoverSnapshot snapshot) {
-        if (loadingContent) {
-            return;
-        }
-
         LearningPage page = snapshot.concept().getPage();
         if (page == null) {
             return;
@@ -466,7 +456,6 @@ public final class LearningHoverController {
             return;
         }
 
-        loadingContent = true;
         lastLessonPath = contentIdentifier;
 
         telemetry.accept("LEARNING_CONTENT_REQUEST target=" + contentIdentifier);
@@ -485,64 +474,47 @@ public final class LearningHoverController {
             return null;
         }
 
-        Optional<SyntaxToken> token = syntax.getTokens().stream()
-                .filter(t -> offset >= t.startOffset() && offset <= t.endOffset()
-                        && t.type() == TokenType.IDENTIFIER)
+        Optional<SyntaxToken> identifier = syntax.getTokens().stream()
+                .filter(token -> offset >= token.startOffset() && offset <= token.endOffset()
+                        && token.type() == TokenType.IDENTIFIER)
                 .findFirst();
 
-        if (token.isPresent()) {
-            SyntaxToken syntaxToken = token.get();
+        if (identifier.isPresent()) {
+            SyntaxToken token = identifier.get();
             Optional<LearningConcept> memberConcept = memberConceptResolver.apply(offset);
             if (memberConcept.isPresent()) {
-                String key = "member:" + syntaxToken.startOffset() + ":" + syntaxToken.endOffset();
-                if (Objects.equals(key, visibleSymbolKey) && popup.isVisible()) {
-                    return visibleSnapshot;
-                }
+                String key = "member:" + token.startOffset() + ":" + token.endOffset();
                 return new HoverSnapshot(key, memberConcept.get());
             }
             Optional<LearningConcept> jdkConcept = jdkConceptResolver.apply(offset);
             if (jdkConcept.isPresent()) {
-                String key = "jdk:" + syntaxToken.startOffset() + ":" + syntaxToken.endOffset();
-                if (Objects.equals(key, visibleSymbolKey) && popup.isVisible()) {
-                    return visibleSnapshot;
-                }
+                String key = "jdk:" + token.startOffset() + ":" + token.endOffset();
                 return new HoverSnapshot(key, jdkConcept.get());
             }
         }
 
-        Optional<SyntaxToken> keyword = syntax.getTokens().stream()
-                .filter(t -> offset >= t.startOffset() && offset <= t.endOffset()
-                        && (t.type() == TokenType.KEYWORD
-                        || t.type() == TokenType.IDENTIFIER))
+        Optional<SyntaxToken> candidate = syntax.getTokens().stream()
+                .filter(token -> offset >= token.startOffset() && offset <= token.endOffset()
+                        && (token.type() == TokenType.IDENTIFIER || token.type() == TokenType.KEYWORD))
                 .findFirst();
-        if (keyword.isEmpty()) {
-            return null;
-        }
+        if (candidate.isEmpty()) return null;
+        SyntaxToken token = candidate.get();
 
-        SyntaxToken syntaxToken = keyword.get();
-        Optional<LearningConcept> syntaxConcept = syntaxConceptResolver.apply(syntaxToken.text());
+        Optional<LearningConcept> syntaxConcept = syntaxConceptResolver.apply(token.text());
         if (syntaxConcept.isPresent()) {
-            String key = "syntax:" + syntaxToken.startOffset() + ":" + syntaxToken.endOffset();
-            if (Objects.equals(key, visibleSymbolKey) && popup.isVisible()) {
-                return visibleSnapshot;
-            }
-            return new HoverSnapshot(key, syntaxConcept.get());
+            return new HoverSnapshot("syntax:" + token.startOffset() + ":" + token.endOffset(), syntaxConcept.get());
         }
-        if (syntaxToken.type() != TokenType.KEYWORD || !TYPE_KEYWORDS.contains(syntaxToken.text())) {
+        if (token.type() != TokenType.KEYWORD || !TYPE_KEYWORDS.contains(token.text())) {
             return null;
         }
-        String key = syntaxToken.text() + ":" + syntaxToken.startOffset() + ":" + syntaxToken.endOffset();
+        String key = token.text() + ":" + token.startOffset() + ":" + token.endOffset();
 
-        if (Objects.equals(key, visibleSymbolKey) && popup.isVisible()) {
-            return visibleSnapshot;
-        }
-
-        SymbolKind kind = keywordToKind(syntaxToken.text());
+        SymbolKind kind = keywordToKind(token.text());
         if (kind == null) {
             return null;
         }
 
-        LearningAnalysisContext analysisContext = resolveContext(kind, syntaxToken.text(), offset);
+        LearningAnalysisContext analysisContext = resolveContext(kind, token.text(), offset);
         if (analysisContext == null) {
             return null;
         }

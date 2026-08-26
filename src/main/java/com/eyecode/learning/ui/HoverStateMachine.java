@@ -54,15 +54,17 @@ public final class HoverStateMachine {
             return;
         }
 
-        activeKey = key;
-
         switch (state) {
-            case IDLE -> beginWaiting();
-            case WAITING -> restartWaitingIfNeeded(key);
-            case HIDING -> enterVisible();
-            case VISIBLE, INTERACTING -> {
-                // keep current visible lifecycle
+            case IDLE -> {
+                activeKey = key;
+                beginWaiting();
             }
+            case WAITING -> restartWaitingIfNeeded(key);
+            case HIDING -> {
+                activeKey = key;
+                enterVisible();
+            }
+            case VISIBLE, INTERACTING -> activeKey = key;
         }
     }
 
@@ -139,6 +141,7 @@ public final class HoverStateMachine {
         if (!Objects.equals(activeKey, key)) {
             waitingSince = clock.getAsLong();
         }
+        activeKey = key;
         hidingSince = -1L;
     }
 

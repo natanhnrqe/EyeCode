@@ -13,6 +13,14 @@ public record MonacoCompletionItem(
         int replaceEnd,
         int sortKey
 ) {
+    public MonacoCompletionItem {
+        label = label == null ? "" : label;
+        kind = kind == null ? CompletionItemKind.VARIABLE : kind;
+        detail = detail == null ? "" : detail;
+        documentation = documentation == null ? "" : documentation;
+        insertText = insertText == null ? label : insertText;
+    }
+
     public static MonacoCompletionItem from(CompletionItem item, int replaceStart, int replaceEnd) {
         return new MonacoCompletionItem(
                 item.getLabel(), item.getKind(), item.getDetail(), item.getDocumentation(),

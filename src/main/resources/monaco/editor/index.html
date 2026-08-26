@@ -1,16 +1,38 @@
 <!doctype html>
 <html>
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <link rel="stylesheet" href="./vs/editor/editor.main.css">
     <style>
         html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #202124; }
+        body { position: relative; }
         #editor { width: 100%; height: 100%; margin: 0; padding: 0; cursor: text; }
         #editor .monaco-editor, #editor .view-lines { cursor: text; }
+        #eyecode-context-layer { position: absolute; inset: 0; pointer-events: none; z-index: 100; }
+        .eyecode-context-overlay { position: absolute; display: block; max-width: min(420px, calc(100% - 16px));
+            box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--eyecode-border, #4b4f54);
+            border-radius: 6px; background: var(--eyecode-surface, #292b2f); color: var(--eyecode-text, #e6e6e6);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .35); white-space: pre-wrap; pointer-events: auto;
+            font: 13px/1.4 system-ui, sans-serif; }
+        .eyecode-context-overlay.eyecode-context-learning { width: min(600px, calc(100% - 16px)); max-width: min(600px, calc(100% - 16px));
+            padding: 0; white-space: normal; overflow: hidden; }
+        .eyecode-learning-card { display: flex; flex-direction: column; max-height: min(500px, calc(100vh - 16px)); pointer-events: auto; }
+        .eyecode-learning-header, .eyecode-learning-footer { flex: 0 0 auto; padding: 12px 16px; background: var(--eyecode-surface-elevated, #36383b); }
+        .eyecode-learning-header { border-bottom: 1px solid var(--eyecode-border, #4b4f54); }
+        .eyecode-learning-title { color: var(--eyecode-text, #e6e6e6); font-size: 16px; font-weight: 600; }
+        .eyecode-learning-subtitle, .eyecode-learning-breadcrumb, .eyecode-learning-footer { color: var(--eyecode-muted, #9aa0a6); font-size: 12px; }
+        .eyecode-learning-breadcrumb { margin-top: 5px; }
+        .eyecode-learning-body { min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 16px; }
+        .eyecode-learning-body .learning-content { max-width: none; padding: 10px 0; }
+        .eyecode-learning-body pre { overflow-x: auto; }
+        .eyecode-learning-footer { border-top: 1px solid var(--eyecode-border, #4b4f54); display: flex; gap: 12px; flex-wrap: wrap; }
+        .eyecode-learning-footer a, .eyecode-learning-breadcrumb a { color: var(--eyecode-accent, #589df6); cursor: pointer; }
+        .eyecode-learning-footer a:hover, .eyecode-learning-breadcrumb a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
 <div id="editor"></div>
+<div id="eyecode-context-layer" aria-live="polite"></div>
 <script>var require = { paths: { vs: './vs' } };</script>
 <script src="./vs/loader.js"></script>
 <script>
@@ -19,6 +41,19 @@ require(['vs/editor/editor.main'], function () {
     console.log('[MONACO JS] EYECODE BRIDGE LOADED ' + EYECODE_MONACO_BRIDGE_VERSION);
     const models = new Map();
     const hostUpdates = new Set();
+    const completionResolvers = new Map();
+    const contextOverlays = new Map();
+    const overlayGenerations = new Map();
+    let editorSemanticTargetHovered = false;
+    let learningOverlayHovered = false;
+    let handoffGeneration = 0;
+    let pendingHandoffHide = null;
+    let entryGracePending = false;
+    let lastHoverRangeKey = null;
+    let completionRequestId = 0;
+    let latestCompletionRequestId = 0;
+    let explicitCompletionRequested = false;
+    const overlayLayer = document.getElementById('eyecode-context-layer');
     let editor;
     function query(value) {
         if (window.cefQuery) window.cefQuery({ request: JSON.stringify(value) });
@@ -45,8 +80,228 @@ require(['vs/editor/editor.main'], function () {
         else if (command.type === 'revealPosition') { const model = models.get(command.id); if (model && editor) { editor.setModel(model); editor.setPosition({ lineNumber: command.line, column: command.column }); editor.revealPositionInCenter({ lineNumber: command.line, column: command.column }); } }
         else if (command.type === 'focus' && editor) editor.focus();
         else if (command.type === 'layout' && editor) editor.layout();
+        else if (command.type === 'completionResponse') {
+            if (command.requestId < latestCompletionRequestId) {
+                const stale = completionResolvers.get(command.requestId);
+                completionResolvers.delete(command.requestId);
+                if (stale) stale({ suggestions: [] });
+            } else {
+                const resolve = completionResolvers.get(command.requestId);
+                completionResolvers.delete(command.requestId);
+                if (resolve) resolve(toCompletionList(command));
+            }
+        }
+        else if (command.type === 'showOverlay') showContextOverlay(command);
+        else if (command.type === 'updateOverlay') updateContextOverlay(command);
+        else if (command.type === 'hideOverlay') hideContextOverlay(command);
     };
-    editor = monaco.editor.create(document.getElementById('editor'), { theme: 'vs-dark', fontFamily: 'JetBrains Mono', fontSize: 13, fontLigatures: false, minimap: { enabled: false }, automaticLayout: true, scrollBeyondLastLine: false, smoothScrolling: false });
+    function acceptsOverlayGeneration(command) {
+        const current = overlayGenerations.get(command.overlayId);
+        if (current !== undefined && command.generation < current) return false;
+        overlayGenerations.set(command.overlayId, command.generation);
+        return true;
+    }
+    function overlayAnchor(command) {
+        if (!editor) return null;
+        const position = editor.getScrolledVisiblePosition({ lineNumber: command.line, column: command.column });
+        if (!position) return null;
+        return { left: position.left, top: position.top + position.height };
+    }
+    function positionContextOverlay(node, command) {
+        const anchor = overlayAnchor(command);
+        if (!anchor) return;
+        const width = node.offsetWidth;
+        const height = node.offsetHeight;
+        const maxX = Math.max(0, overlayLayer.clientWidth - width - 8);
+        const maxY = Math.max(0, overlayLayer.clientHeight - height - 8);
+        let left = anchor.left;
+        if (left + width > overlayLayer.clientWidth - 8) left = anchor.left - width - 4;
+        let top = anchor.top;
+        if (top + height > overlayLayer.clientHeight - 8) top = anchor.top - height - 4;
+        node.style.left = Math.min(Math.max(8, left), maxX) + 'px';
+        node.style.top = Math.min(Math.max(8, top), maxY) + 'px';
+    }
+    function emitOverlayPointer(overlayId, generation, entered) {
+        query({ kind: 'overlayPointer', overlayId: overlayId, generation: generation, entered: entered });
+    }
+    function emitOverlayHidden(overlayId, generation) {
+        query({ kind: 'overlayHidden', overlayId: overlayId, generation: generation });
+    }
+    function createContextOverlay(command) {
+        const node = document.createElement('div');
+        node._overlayGeneration = command.generation;
+        node.className = 'eyecode-context-overlay eyecode-context-' + String(command.overlayType || 'LEARNING').toLowerCase();
+        node.setAttribute('role', 'dialog');
+        renderOverlayContent(node, command);
+        node.addEventListener('pointerenter', function () {
+            if (command.overlayId === 'learning') {
+                learningOverlayHovered = true;
+                cancelHandoffHide();
+            }
+            emitOverlayPointer(command.overlayId, node._overlayGeneration, true);
+        });
+        node.addEventListener('pointerleave', function () {
+            if (command.overlayId === 'learning') {
+                learningOverlayHovered = false;
+                scheduleHandoffHide();
+            }
+            emitOverlayPointer(command.overlayId, node._overlayGeneration, false);
+        });
+        node.addEventListener('click', function (event) {
+            const actionNode = event.target.closest('[data-action]');
+            if (actionNode) query({ kind: 'overlayAction', overlayId: command.overlayId,
+                action: actionNode.getAttribute('data-action'), target: actionNode.getAttribute('data-target') || '', generation: node._overlayGeneration });
+        });
+        return node;
+    }
+    function showContextOverlay(command) {
+        if (!acceptsOverlayGeneration(command)) return;
+        if (command.overlayId === 'learning') cancelHandoffHide();
+        const previous = contextOverlays.get(command.overlayId);
+        if (previous) previous.remove();
+        const node = createContextOverlay(command);
+        contextOverlays.set(command.overlayId, node);
+        overlayLayer.appendChild(node);
+        positionContextOverlay(node, command);
+    }
+    function updateContextOverlay(command) {
+        if (!acceptsOverlayGeneration(command)) return;
+        const node = contextOverlays.get(command.overlayId);
+        if (!node) {
+            showContextOverlay(command);
+            return;
+        }
+        node._overlayGeneration = command.generation;
+        renderOverlayContent(node, command);
+        node.className = 'eyecode-context-overlay eyecode-context-' + String(command.overlayType || 'LEARNING').toLowerCase();
+        positionContextOverlay(node, command);
+    }
+    function escapeText(value) {
+        return String(value == null ? '' : value).replace(/[&<>\"']/g, function (character) {
+            return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' }[character];
+        });
+    }
+    function learningLink(action, label, target) {
+        return '<a href="#" data-action="' + action + '" data-target="' + escapeText(target) + '">' + escapeText(label) + '</a>';
+    }
+    function renderLearningOverlay(node, payload) {
+        const breadcrumb = (payload.breadcrumb || []).map(function (item) {
+            return learningLink('NAVIGATE_LEARNING', item.title, item.id);
+        }).join(' <span>›</span> ');
+        const related = (payload.relatedItems || []).map(function (item) {
+            return learningLink('NAVIGATE_LEARNING', item.title, item.id);
+        }).join(' · ');
+        const actions = [];
+        if (payload.docsAvailable) actions.push(learningLink('OPEN_DOCS', 'API Docs', ''));
+        if (payload.sourceAvailable) actions.push(learningLink('OPEN_SOURCE', 'View Source </>', ''));
+        node.innerHTML = '<div class="eyecode-learning-card">'
+            + '<header class="eyecode-learning-header"><div class="eyecode-learning-title">'
+            + escapeText(payload.title) + '</div><div class="eyecode-learning-subtitle">'
+            + escapeText(payload.subtitle) + '</div>'
+            + (breadcrumb ? '<div class="eyecode-learning-breadcrumb">' + breadcrumb + '</div>' : '')
+            + '</header><section class="eyecode-learning-body">' + (payload.renderedBodyHtml || '')
+            + '</section>' + ((related || actions.length) ? '<footer class="eyecode-learning-footer">'
+            + (related ? '<span>Related: ' + related + '</span>' : '') + actions.join(' ') + '</footer>' : '')
+            + '</div>';
+    }
+    function renderOverlayContent(node, command) {
+        if (String(command.overlayType || '').toUpperCase() !== 'LEARNING') {
+            node.textContent = command.content || '';
+            return;
+        }
+        try { renderLearningOverlay(node, JSON.parse(command.content || '{}')); }
+        catch (error) { node.textContent = ''; }
+    }
+    function hideContextOverlay(command) {
+        if (!acceptsOverlayGeneration(command)) return;
+        if (command.overlayId === 'learning') {
+            if (!command.hard) {
+                if (learningOverlayHovered) {
+                    cancelHandoffHide();
+                    return;
+                }
+                if (editorSemanticTargetHovered) return;
+                scheduleHandoffHide();
+                return;
+            }
+            learningOverlayHovered = false;
+            cancelHandoffHide();
+        }
+        const node = contextOverlays.get(command.overlayId);
+        if (node) node.remove();
+        contextOverlays.delete(command.overlayId);
+    }
+    function cancelHandoffHide() {
+        handoffGeneration++;
+        entryGracePending = false;
+        if (pendingHandoffHide !== null) {
+            clearTimeout(pendingHandoffHide);
+            pendingHandoffHide = null;
+        }
+    }
+    function scheduleHandoffHide() {
+        if (learningOverlayHovered || editorSemanticTargetHovered) return;
+        cancelHandoffHide();
+        entryGracePending = true;
+        const ticket = handoffGeneration;
+        pendingHandoffHide = setTimeout(function () {
+            pendingHandoffHide = null;
+            entryGracePending = false;
+            if (ticket !== handoffGeneration || learningOverlayHovered || editorSemanticTargetHovered) return;
+            const node = contextOverlays.get('learning');
+            if (node) node.remove();
+            contextOverlays.delete('learning');
+            if (node) emitOverlayHidden('learning', node._overlayGeneration);
+        }, 140);
+    }
+    function monacoCompletionKind(kind) {
+        return { METHOD: 2, CONSTRUCTOR: 4, FIELD: 5, VARIABLE: 6, CLASS: 7,
+            INTERFACE: 8, ENUM: 13, KEYWORD: 17, SNIPPET: 27 }[kind] || 1;
+    }
+    function toCompletionList(response) {
+        const model = models.get(response.id);
+        if (!model) return { suggestions: [] };
+        return { suggestions: (response.items || []).map(function (item) {
+            const start = model.getPositionAt(item.replaceStart);
+            const end = model.getPositionAt(item.replaceEnd);
+            return {
+                label: item.label,
+                kind: monacoCompletionKind(item.kind),
+                detail: item.detail || undefined,
+                documentation: item.documentation || undefined,
+                insertText: item.insertText,
+                sortText: String(item.sortKey).padStart(6, '0'),
+                range: { startLineNumber: start.lineNumber, startColumn: start.column,
+                    endLineNumber: end.lineNumber, endColumn: end.column }
+            };
+        }) };
+    }
+    function requestCompletion(model, position, context) {
+        const requestId = ++completionRequestId;
+        latestCompletionRequestId = requestId;
+        const trigger = context && context.triggerKind === monaco.languages.CompletionTriggerKind.TriggerCharacter
+            ? 'triggerCharacter' : 'invoked';
+        return new Promise(function (resolve) {
+            completionResolvers.set(requestId, resolve);
+            query({ kind: 'completion', requestId: requestId, id: model.uri.toString(),
+                version: model.getAlternativeVersionId(), line: position.lineNumber,
+                column: position.column, triggerKind: trigger,
+                triggerCharacter: context && context.triggerCharacter || null,
+                explicit: explicitCompletionRequested });
+            explicitCompletionRequested = false;
+        });
+    }
+    monaco.languages.registerCompletionItemProvider('java', {
+        triggerCharacters: ['.'],
+        provideCompletionItems: function (model, position, context) {
+            if (model.uri.toString().indexOf('jdk://') === 0) {
+                explicitCompletionRequested = false;
+                return Promise.resolve({ suggestions: [] });
+            }
+            return requestCompletion(model, position, context);
+        }
+    });
+    editor = monaco.editor.create(document.getElementById('editor'), { theme: 'vs-dark', fontFamily: 'JetBrains Mono', fontSize: 13, fontLigatures: false, minimap: { enabled: false }, automaticLayout: true, scrollBeyondLastLine: false, smoothScrolling: false, wordBasedSuggestions: false, suggestOnTriggerCharacters: true });
     function emitCaret() { const model = editor.getModel(); const position = editor.getPosition(); if (model && position) query({ kind: 'caret', id: model.uri.toString(), version: model.getAlternativeVersionId(), line: position.lineNumber, column: position.column }); }
     editor.onDidChangeCursorPosition(emitCaret);
     console.log('[MONACO JS] CARET_HANDLER_REGISTERED');
@@ -56,14 +311,46 @@ require(['vs/editor/editor.main'], function () {
         const position = event.target && event.target.position;
         if (!model) return;
         if (!position || event.target.type !== monaco.editor.MouseTargetType.CONTENT_TEXT) {
+            editorSemanticTargetHovered = false;
+            lastHoverRangeKey = null;
+            scheduleHandoffHide();
             query({ kind: 'hoverExit', id: model.uri.toString(), version: model.getAlternativeVersionId() });
             return;
         }
+        editorSemanticTargetHovered = true;
+        cancelHandoffHide();
+        const word = model.getWordAtPosition(position);
+        if (!word) {
+            editorSemanticTargetHovered = false;
+            lastHoverRangeKey = null;
+            scheduleHandoffHide();
+            query({ kind: 'hoverExit', id: model.uri.toString(), version: model.getAlternativeVersionId() });
+            return;
+        }
+        const startOffset = word ? model.getOffsetAt({ lineNumber: position.lineNumber, column: word.startColumn }) : 0;
+        const endOffset = word ? model.getOffsetAt({ lineNumber: position.lineNumber, column: word.endColumn }) : 0;
+        const rangeKey = word
+            ? model.uri.toString() + ':' + model.getAlternativeVersionId() + ':'
+                + word.startColumn + ':' + word.endColumn
+            : model.uri.toString() + ':' + model.getAlternativeVersionId() + ':none:'
+                + position.lineNumber + ':' + position.column;
+        if (rangeKey === lastHoverRangeKey) return;
+        lastHoverRangeKey = rangeKey;
         const visible = editor.getScrolledVisiblePosition(position);
-        if (visible) query({ kind: 'hover', id: model.uri.toString(), version: model.getAlternativeVersionId(), line: position.lineNumber, column: position.column, x: visible.left, y: visible.top + visible.height });
+        if (visible) query({ kind: 'hover', id: model.uri.toString(), version: model.getAlternativeVersionId(), line: position.lineNumber, column: position.column, x: visible.left, y: visible.top + visible.height, start: startOffset, end: endOffset, word: word ? word.word : '' });
     });
     console.log('[MONACO JS] HOVER_HANDLER_REGISTERED');
-    editor.onMouseLeave(function () { const model = editor.getModel(); if (model) query({ kind: 'hoverExit', id: model.uri.toString(), version: model.getAlternativeVersionId() }); });
+    editor.onMouseLeave(function () {
+        editorSemanticTargetHovered = false;
+        lastHoverRangeKey = null;
+        scheduleHandoffHide();
+        const model = editor.getModel();
+        if (model) query({ kind: 'hoverExit', id: model.uri.toString(), version: model.getAlternativeVersionId() });
+    });
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, function () {
+        explicitCompletionRequested = true;
+        editor.trigger('keyboard', 'editor.action.triggerSuggest', {});
+    });
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB, function () { const model = editor.getModel(); const position = editor.getPosition(); if (model && position) { console.log('[MONACO JS] COMMAND_EMIT GO_TO_DEFINITION'); query({ kind: 'command', command: 'definition', id: model.uri.toString(), version: model.getAlternativeVersionId(), line: position.lineNumber, column: position.column }); } });
     console.log('[MONACO JS] CTRL_B_REGISTERED');
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyQ, function () { const model = editor.getModel(); const position = editor.getPosition(); if (model && position) { console.log('[MONACO JS] COMMAND_EMIT DOCUMENTATION'); query({ kind: 'command', command: 'documentation', id: model.uri.toString(), version: model.getAlternativeVersionId(), line: position.lineNumber, column: position.column }); } });
