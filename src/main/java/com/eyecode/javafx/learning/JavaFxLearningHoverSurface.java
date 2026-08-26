@@ -15,9 +15,11 @@ public final class JavaFxLearningHoverSurface implements LearningHoverSurface {
 
     private final CodeArea codeArea;
     private final javafx.event.EventHandler<MouseEvent> mouseHandler = this::handleMouseMove;
+    private final javafx.event.EventHandler<MouseEvent> mouseExitHandler = event -> leaveHover();
     private final javafx.event.EventHandler<KeyEvent> keyHandler = event -> cancelHover();
     private IntConsumer moveListener;
     private Runnable cancelListener;
+    private Runnable leaveListener;
     private Runnable pointerObserver;
     private Point lastPointer;
 
@@ -25,6 +27,7 @@ public final class JavaFxLearningHoverSurface implements LearningHoverSurface {
         this.codeArea = codeArea;
         codeArea.addEventHandler(MouseEvent.MOUSE_MOVED, mouseHandler);
         codeArea.addEventHandler(MouseEvent.MOUSE_DRAGGED, mouseHandler);
+        codeArea.addEventHandler(MouseEvent.MOUSE_EXITED, mouseExitHandler);
         codeArea.addEventHandler(KeyEvent.KEY_PRESSED, keyHandler);
         codeArea.focusedProperty().addListener((observable, oldValue, focused) -> {
             if (!focused) {
@@ -54,6 +57,18 @@ public final class JavaFxLearningHoverSurface implements LearningHoverSurface {
     public void removeCancelListener(Runnable listener) {
         if (cancelListener == listener) {
             cancelListener = null;
+        }
+    }
+
+    @Override
+    public void addLeaveListener(Runnable listener) {
+        leaveListener = listener;
+    }
+
+    @Override
+    public void removeLeaveListener(Runnable listener) {
+        if (leaveListener == listener) {
+            leaveListener = null;
         }
     }
 
@@ -90,9 +105,11 @@ public final class JavaFxLearningHoverSurface implements LearningHoverSurface {
     public void dispose() {
         codeArea.removeEventHandler(MouseEvent.MOUSE_MOVED, mouseHandler);
         codeArea.removeEventHandler(MouseEvent.MOUSE_DRAGGED, mouseHandler);
+        codeArea.removeEventHandler(MouseEvent.MOUSE_EXITED, mouseExitHandler);
         codeArea.removeEventHandler(KeyEvent.KEY_PRESSED, keyHandler);
         moveListener = null;
         cancelListener = null;
+        leaveListener = null;
         pointerObserver = null;
         lastPointer = null;
     }
@@ -114,6 +131,12 @@ public final class JavaFxLearningHoverSurface implements LearningHoverSurface {
     private void cancelHover() {
         if (cancelListener != null) {
             cancelListener.run();
+        }
+    }
+
+    private void leaveHover() {
+        if (leaveListener != null) {
+            leaveListener.run();
         }
     }
 }

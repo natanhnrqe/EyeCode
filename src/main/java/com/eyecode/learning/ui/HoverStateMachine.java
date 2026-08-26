@@ -5,10 +5,11 @@ import java.util.function.LongSupplier;
 
 public final class HoverStateMachine {
 
-    private static final long SHOW_DELAY_MS = 500L;
+    private static final long DEFAULT_SHOW_DELAY_MS = 500L;
     private static final long HIDE_DELAY_MS = 300L;
 
     private final LongSupplier clock;
+    private final long showDelayMs;
 
     private HoverState state = HoverState.IDLE;
     private String activeKey;
@@ -16,10 +17,22 @@ public final class HoverStateMachine {
     private long hidingSince = -1L;
 
     public HoverStateMachine() {
-        this(System::currentTimeMillis);
+        this(DEFAULT_SHOW_DELAY_MS, System::currentTimeMillis);
     }
 
     public HoverStateMachine(LongSupplier clock) {
+        this(DEFAULT_SHOW_DELAY_MS, clock);
+    }
+
+    public HoverStateMachine(long showDelayMs) {
+        this(showDelayMs, System::currentTimeMillis);
+    }
+
+    public HoverStateMachine(long showDelayMs, LongSupplier clock) {
+        if (showDelayMs < 0) {
+            throw new IllegalArgumentException("showDelayMs must be non-negative");
+        }
+        this.showDelayMs = showDelayMs;
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -86,7 +99,7 @@ public final class HoverStateMachine {
         }
 
         long elapsed = clock.getAsLong() - waitingSince;
-        if (elapsed < SHOW_DELAY_MS) {
+        if (elapsed < showDelayMs) {
             return false;
         }
 

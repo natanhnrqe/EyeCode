@@ -15,7 +15,6 @@ import com.eyecode.learning.model.LearningContext;
 import com.eyecode.learning.render.LearningRenderer;
 import com.eyecode.learning.renderer.LearningCardRenderer;
 
-import java.awt.Point;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -41,6 +40,9 @@ public final class LearningHoverController {
     private final boolean ownsRenderer;
     private final IntConsumer moveListener;
     private final Runnable cancelListener;
+    private final Runnable leaveListener;
+    private final java.util.function.Consumer<Boolean> cardHoverListener;
+    private final Runnable popupHiddenListener;
     private java.util.function.Consumer<String> telemetry = ignored -> { };
 
     private volatile int lastOffset = -1;
@@ -50,9 +52,11 @@ public final class LearningHoverController {
     private HoverSnapshot pendingSnapshot;
 
     private boolean loadingContent;
+    private boolean editorTargetActive;
+    private boolean cardHovered;
+    private long lifecycleGeneration;
     private LearningConcept lastConcept;
     private String lastLessonPath;
-    private long popupShownAt = -1L;
 
     public LearningHoverController(
             LearningHoverSurface surface,
@@ -135,6 +139,24 @@ public final class LearningHoverController {
                 jdkConceptResolver, syntaxConceptResolver, memberConceptResolver, new HoverStateMachine());
     }
 
+    public LearningHoverController(
+            LearningHoverSurface surface,
+            LearningCardRenderer popup,
+            LearningHoverScheduler scheduler,
+            HoverEngine hoverEngine,
+            Supplier<SyntaxSnapshot> syntaxSupplier,
+            Function<String, String> contentLoader,
+            boolean ownsRenderer,
+            Function<Integer, Optional<LearningConcept>> jdkConceptResolver,
+            Function<String, Optional<LearningConcept>> syntaxConceptResolver,
+            Function<Integer, Optional<LearningConcept>> memberConceptResolver,
+            long initialHoverDelayMs
+    ) {
+        this(surface, popup, scheduler, hoverEngine, syntaxSupplier, contentLoader, ownsRenderer,
+                jdkConceptResolver, syntaxConceptResolver, memberConceptResolver,
+                new HoverStateMachine(initialHoverDelayMs));
+    }
+
     LearningHoverController(
             LearningHoverSurface surface,
             LearningCardRenderer popup,
@@ -178,21 +200,33 @@ public final class LearningHoverController {
         this.ownsRenderer = ownsRenderer;
         this.moveListener = this::onOffsetChanged;
         this.cancelListener = this::cancelHover;
+        this.leaveListener = this::leaveHover;
+        this.cardHoverListener = this::onCardHoverChanged;
+        this.popupHiddenListener = this::onPopupHidden;
 
         this.surface.addMoveListener(moveListener);
         this.surface.addCancelListener(cancelListener);
+        this.surface.addLeaveListener(leaveListener);
+        this.popup.setCardHoverListener(cardHoverListener);
+        this.popup.setPopupHiddenListener(popupHiddenListener);
     }
 
     public void dispose() {
         scheduler.dispose();
-        popupShownAt = -1L;
         popup.hide();
         if (ownsRenderer) {
             popup.dispose();
         }
         surface.removeMoveListener(moveListener);
         surface.removeCancelListener(cancelListener);
+        surface.removeLeaveListener(leaveListener);
+        popup.setCardHoverListener(null);
+        popup.setPopupHiddenListener(null);
         surface.dispose();
+    }
+
+    public void cancel() {
+        cancelHover();
     }
 
     public void setTelemetry(java.util.function.Consumer<String> telemetry) {
@@ -205,10 +239,13 @@ public final class LearningHoverController {
         telemetry.accept("LEARNING_SYMBOL=" + (snapshot == null ? "null" : snapshot.symbolKey()));
 
         if (snapshot != null) {
+            editorTargetActive = true;
             boolean sameTarget = currentSnapshot != null
                     && Objects.equals(currentSnapshot.symbolKey(), snapshot.symbolKey());
             telemetry.accept(sameTarget ? "LEARNING_CANDIDATE_SAME" : "LEARNING_CANDIDATE_NEW");
             currentSnapshot = snapshot;
+
+            stateMachine.enter(snapshot.symbolKey());
 
             if (popup.isVisible()) {
                 if (Objects.equals(visibleSymbolKey, snapshot.symbolKey())) {
@@ -224,70 +261,67 @@ public final class LearningHoverController {
                 return;
             }
 
-            stateMachine.enter(snapshot.symbolKey());
             if (stateMachine.getState() == HoverState.WAITING) {
+                telemetry.accept("LEARNING_STATE_ACCEPTED");
                 telemetry.accept("LEARNING_DELAY_STARTED");
-                scheduler.restartHover(this::tryShow);
+                scheduleInitialShow();
                 scheduler.startMonitor(this::monitorHover);
             }
             return;
         }
 
-        cancelPendingSwitch();
-        if (withinGracePeriod()) {
-            return;
-        }
-
-        stateMachine.leave();
-        if (stateMachine.getState() == HoverState.IDLE) {
-            scheduler.stopHover();
-            scheduler.stopMonitor();
-        }
+        leaveHover();
     }
 
     private void cancelHover() {
+        lifecycleGeneration++;
         scheduler.stopHover();
         scheduler.stopMonitor();
         stateMachine.reset();
         cancelPendingSwitch();
-        popupShownAt = -1L;
         popup.hide();
         loadingContent = false;
+        editorTargetActive = false;
+        cardHovered = false;
         resetHover();
     }
 
-    private boolean withinGracePeriod() {
-        return popup.isVisible() && System.currentTimeMillis() - popupShownAt < 300L;
+    private void leaveHover() {
+        editorTargetActive = false;
+        currentSnapshot = null;
+        cancelPendingSwitch();
+        if (cardHovered) {
+            stateMachine.setPopupHover(true);
+        } else {
+            stateMachine.leave();
+        }
+        if (stateMachine.getState() == HoverState.IDLE) {
+            scheduler.stopHover();
+            scheduler.stopMonitor();
+            return;
+        }
+        scheduler.startMonitor(this::monitorHover);
     }
 
     private void monitorHover() {
-        Point mouse = surface.pointerScreenLocation();
-        if (mouse == null) {
-            return;
+        boolean pointerOverCard = popup.isPointerOverCard();
+        if (pointerOverCard && !cardHovered) {
+            onCardHoverChanged(true);
+        }
+        if (cardHovered && popup.supportsPointerOverCard()
+                && !pointerOverCard && !editorTargetActive) {
+            onCardHoverChanged(false);
         }
 
-        boolean insideEditor = surface.containsScreen(mouse);
-        boolean insidePopup = popup.containsScreen(mouse);
-
-        stateMachine.setPopupHover(insidePopup);
-        if (insidePopup) {
+        if (cardHovered || pointerOverCard) {
+            stateMachine.setPopupHover(true);
             cancelPendingSwitch();
-        }
-
-        if (!insideEditor && !insidePopup) {
+        } else if (!editorTargetActive) {
             cancelPendingSwitch();
-            if (!withinGracePeriod()) {
-                stateMachine.leave();
-            }
-            lastOffset = -1;
-            if (stateMachine.getState() == HoverState.IDLE) {
-                scheduler.stopHover();
-                scheduler.stopMonitor();
-            }
+            stateMachine.leave();
         }
 
         if (stateMachine.canHide()) {
-            popupShownAt = -1L;
             popup.hide();
             loadingContent = false;
             visibleSymbolKey = null;
@@ -296,6 +330,8 @@ public final class LearningHoverController {
             lastOffset = -1;
             lastConcept = null;
             lastLessonPath = null;
+            editorTargetActive = false;
+            cardHovered = false;
             scheduler.stopHover();
             scheduler.stopMonitor();
             return;
@@ -311,15 +347,18 @@ public final class LearningHoverController {
         HoverDiagnosticLogger.log("controller.tryShow()");
         telemetry.accept("LEARNING_DELAY_COMPLETED");
         if (!stateMachine.canShow()) {
+            telemetry.accept("LEARNING_REJECTED reason=delay-not-accepted");
             return;
         }
 
         HoverSnapshot snapshot = currentSnapshot;
         if (snapshot == null) {
+            telemetry.accept("LEARNING_REJECTED reason=no-current-target");
             return;
         }
 
         if (popup.isVisible()) {
+            telemetry.accept("LEARNING_REJECTED reason=card-already-visible");
             return;
         }
 
@@ -329,19 +368,31 @@ public final class LearningHoverController {
 
         telemetry.accept("LEARNING_CARD_REQUEST");
         popup.show(snapshot.concept());
-        telemetry.accept("LEARNING_CARD_SHOWN");
         HoverDiagnosticLogger.logRendererShow();
         visibleSymbolKey = snapshot.symbolKey();
         visibleSnapshot = snapshot;
-        popupShownAt = System.currentTimeMillis();
 
         loadLessonContent(snapshot);
     }
 
     private void schedulePendingSwitch(HoverSnapshot snapshot) {
         pendingSnapshot = snapshot;
-        scheduler.restartHover(this::applyPendingSwitch);
+        long generation = lifecycleGeneration;
+        scheduler.restartHover(() -> {
+            if (generation == lifecycleGeneration) {
+                applyPendingSwitch();
+            }
+        });
         scheduler.startMonitor(this::monitorHover);
+    }
+
+    private void scheduleInitialShow() {
+        long generation = lifecycleGeneration;
+        scheduler.restartInitialHover(() -> {
+            if (generation == lifecycleGeneration) {
+                tryShow();
+            }
+        });
     }
 
     private void applyPendingSwitch() {
@@ -361,6 +412,35 @@ public final class LearningHoverController {
             lastLessonPath = null;
             loadLessonContent(pending);
         }
+    }
+
+    private void onCardHoverChanged(boolean hovering) {
+        cardHovered = hovering;
+        if (hovering) {
+            lifecycleGeneration++;
+        }
+        stateMachine.setPopupHover(hovering);
+        if (hovering) {
+            cancelPendingSwitch();
+            scheduler.startMonitor(this::monitorHover);
+            return;
+        }
+        if (!editorTargetActive) {
+            stateMachine.leave();
+            scheduler.startMonitor(this::monitorHover);
+        }
+    }
+
+    private void onPopupHidden() {
+        lifecycleGeneration++;
+        scheduler.stopHover();
+        scheduler.stopMonitor();
+        stateMachine.reset();
+        cancelPendingSwitch();
+        loadingContent = false;
+        editorTargetActive = false;
+        cardHovered = false;
+        resetHover();
     }
 
     private void cancelPendingSwitch() {
@@ -389,8 +469,14 @@ public final class LearningHoverController {
         loadingContent = true;
         lastLessonPath = contentIdentifier;
 
-        String html = contentLoader.apply(contentIdentifier);
-        popup.loadHtml(html);
+        telemetry.accept("LEARNING_CONTENT_REQUEST target=" + contentIdentifier);
+        try {
+            String html = contentLoader.apply(contentIdentifier);
+            telemetry.accept("LEARNING_CONTENT_READY");
+            popup.loadHtml(html);
+        } catch (RuntimeException failure) {
+            telemetry.accept("LEARNING_REJECTED reason=content-error");
+        }
     }
 
     private HoverSnapshot resolveCurrentHover(int offset) {

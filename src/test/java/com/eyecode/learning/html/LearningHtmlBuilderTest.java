@@ -26,6 +26,15 @@ class LearningHtmlBuilderTest {
         assertFalse(html.contains("style=\""));
     }
 
+    @Test
+    void buildsPersistentShellWithStableContentTarget() {
+        String shell = builder.buildShell();
+
+        assertTrue(shell.contains("id=\"learning-content\""));
+        assertTrue(shell.contains("class=\"learning-content\""));
+        assertFalse(shell.contains("<h1>"));
+    }
+
     private static int countOccurrences(String text, String needle) {
         int count = 0;
         int index = 0;

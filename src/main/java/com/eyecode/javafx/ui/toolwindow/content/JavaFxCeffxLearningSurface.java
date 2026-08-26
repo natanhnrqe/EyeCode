@@ -5,14 +5,18 @@ import com.eyecode.javafx.ceffx.CeffxRuntime;
 import com.techsenger.ceffx.core.CefClient;
 import com.techsenger.ceffx.core.browser.CefBrowser;
 import com.techsenger.ceffx.core.browser.CefFrame;
+import com.techsenger.ceffx.core.browser.CefMessageRouter;
 import com.techsenger.ceffx.core.callback.CefAuthCallback;
 import com.techsenger.ceffx.core.callback.CefCallback;
+import com.techsenger.ceffx.core.callback.CefQueryCallback;
+import com.techsenger.ceffx.core.handler.CefMessageRouterHandlerAdapter;
 import com.techsenger.ceffx.core.handler.CefRequestHandler;
 import com.techsenger.ceffx.core.handler.CefResourceRequestHandler;
 import com.techsenger.ceffx.core.handler.CefLoadHandler;
 import com.techsenger.ceffx.core.misc.BoolRef;
 import com.techsenger.ceffx.core.network.CefRequest;
 import com.eyecode.learning.content.LearningLink;
+import com.eyecode.learning.html.LearningHtmlBuilder;
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
@@ -26,6 +30,7 @@ public final class JavaFxCeffxLearningSurface extends Region {
     private String html = "";
     private boolean ceffxBacked;
     private boolean disposed;
+    private boolean browserReady;
     private Consumer<String> navigationListener;
 
     public JavaFxCeffxLearningSurface() {
@@ -59,8 +64,8 @@ public final class JavaFxCeffxLearningSurface extends Region {
         }
         html = newHtml == null ? "" : newHtml;
         BrowserAdapter current = browser;
-        if (current != null) {
-            loadHtml(current, html);
+        if (current != null && browserReady) {
+            updateHtml(current, html);
         }
     }
 
@@ -82,6 +87,7 @@ public final class JavaFxCeffxLearningSurface extends Region {
         if (current != null) {
             disposeBrowser(current);
         }
+        browserReady = false;
     }
 
     @Override
@@ -109,6 +115,14 @@ public final class JavaFxCeffxLearningSurface extends Region {
 
         void loadHtml(String html);
 
+        default void updateHtml(String html) {
+            loadHtml(html);
+        }
+
+        default boolean isReady() {
+            return true;
+        }
+
         void dispose();
     }
 
@@ -117,12 +131,13 @@ public final class JavaFxCeffxLearningSurface extends Region {
             CeffxRuntime.runLater(() -> {
                 try {
                     CefClient client = CeffxRuntime.app().createClient();
-                    String initialHtml = html;
+                    CefMessageRouter router = CefMessageRouter.create(new LearningRouterHandler());
+                    client.addMessageRouter(router);
                     client.addRequestHandler(new LearningRequestHandler());
 
                     CefBrowser cefBrowser =
                             client.createBrowser(
-                                    CeffxDataUrl.html(initialHtml),
+                                    CeffxDataUrl.html(new LearningHtmlBuilder().buildShell()),
                                     true,
                                     false
                             );
@@ -131,9 +146,10 @@ public final class JavaFxCeffxLearningSurface extends Region {
 
                     Platform.runLater(
                             () -> attach(
-                                    new CeffxBrowserAdapter(
+                                            new CeffxBrowserAdapter(
                                             client,
-                                            cefBrowser
+                                            cefBrowser,
+                                            router
                                     )
                             )
                     );
@@ -153,18 +169,21 @@ public final class JavaFxCeffxLearningSurface extends Region {
         }
 
         browser = created;
+        browserReady = created.isReady();
 
         getChildren().setAll(created.node());
         requestLayout();
 
-        loadHtml(created, html);
+        if (browserReady && !html.isEmpty()) {
+            updateHtml(created, html);
+        }
     }
 
-    private void loadHtml(BrowserAdapter current, String content) {
+    private void updateHtml(BrowserAdapter current, String content) {
         if (ceffxBacked) {
-            CeffxRuntime.runLater(() -> current.loadHtml(content));
+            CeffxRuntime.runLater(() -> current.updateHtml(content));
         } else {
-            current.loadHtml(content);
+            current.updateHtml(content);
         }
     }
 
@@ -188,11 +207,13 @@ public final class JavaFxCeffxLearningSurface extends Region {
     private static final class CeffxBrowserAdapter implements BrowserAdapter {
         private final CefClient client;
         private final CefBrowser browser;
+        private final CefMessageRouter router;
         private boolean disposed;
 
-        private CeffxBrowserAdapter(CefClient client, CefBrowser browser) {
+        private CeffxBrowserAdapter(CefClient client, CefBrowser browser, CefMessageRouter router) {
             this.client = client;
             this.browser = browser;
+            this.router = router;
         }
 
         @Override
@@ -206,13 +227,48 @@ public final class JavaFxCeffxLearningSurface extends Region {
         }
 
         @Override
+        public void updateHtml(String html) {
+            browser.executeJavaScript(
+                    LearningHtmlPayload.updateScript(html),
+                    browser.getURL(),
+                    0
+            );
+        }
+
+        @Override
+        public boolean isReady() {
+            return false;
+        }
+
+        @Override
         public void dispose() {
             if (disposed) {
                 return;
             }
             disposed = true;
+            router.dispose();
             browser.close(true);
             client.dispose();
+        }
+    }
+
+    private final class LearningRouterHandler extends CefMessageRouterHandlerAdapter {
+        @Override
+        public boolean onQuery(CefBrowser browser, CefFrame frame, long queryId, String request,
+                               boolean persistent, CefQueryCallback callback) {
+            if (request != null && request.contains("learningReady")) {
+                Platform.runLater(() -> {
+                    if (!disposed) {
+                        browserReady = true;
+                        BrowserAdapter current = JavaFxCeffxLearningSurface.this.browser;
+                        if (current != null) {
+                            updateHtml(current, html);
+                        }
+                    }
+                });
+            }
+            callback.success("ok");
+            return true;
         }
     }
 

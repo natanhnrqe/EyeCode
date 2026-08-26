@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntConsumer;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -81,13 +82,67 @@ class LearningHoverControllerSwitchTest {
         fixture.move(0);
         fixture.scheduler.fireHover();
         fixture.move(2);
-        fixture.surface.insideEditor = false;
-        fixture.popup.containsPointer = true;
+        fixture.surface.leave();
+        fixture.popup.cardHover(true);
         fixture.scheduler.fireMonitor();
         fixture.scheduler.fireHover();
 
         assertEquals(List.of(), fixture.popup.updatedTitles());
         assertTrue(fixture.popup.visible);
+    }
+
+    @Test
+    void leavingTheSemanticTargetHidesAfterTheCardEntryGrace() {
+        Fixture fixture = new Fixture();
+        fixture.move(0);
+        fixture.scheduler.fireHover();
+
+        fixture.surface.leave();
+        fixture.clock.addAndGet(300L);
+        fixture.scheduler.fireMonitor();
+
+        assertFalse(fixture.popup.visible);
+    }
+
+    @Test
+    void enteringTheCardDuringGraceKeepsTheCardVisible() {
+        Fixture fixture = new Fixture();
+        fixture.move(0);
+        fixture.scheduler.fireHover();
+
+        fixture.surface.leave();
+        fixture.popup.cardHover(true);
+        fixture.clock.addAndGet(300L);
+        fixture.scheduler.fireMonitor();
+
+        assertTrue(fixture.popup.visible);
+    }
+
+    @Test
+    void leavingTheCardWithoutAnEditorTargetHidesAfterGrace() {
+        Fixture fixture = new Fixture();
+        fixture.move(0);
+        fixture.scheduler.fireHover();
+        fixture.surface.leave();
+        fixture.popup.cardHover(true);
+        fixture.popup.cardHover(false);
+        fixture.clock.addAndGet(300L);
+        fixture.scheduler.fireMonitor();
+
+        assertFalse(fixture.popup.visible);
+    }
+
+    @Test
+    void hardCancellationIgnoresLateHoverTimer() {
+        Fixture fixture = new Fixture();
+        fixture.move(0);
+        Runnable staleTimer = fixture.scheduler.hoverTask;
+
+        fixture.controller.cancel();
+        staleTimer.run();
+
+        assertFalse(fixture.popup.visible);
+        assertEquals(List.of(), fixture.popup.shownTitles());
     }
 
     @Test
@@ -124,11 +179,27 @@ class LearningHoverControllerSwitchTest {
         }
     }
 
+    @Test
+    void acceptedHoverReportsCardAndContentStages() {
+        Fixture fixture = new Fixture();
+        fixture.controller.setTelemetry(fixture.telemetry::add);
+
+        fixture.move(0);
+        fixture.scheduler.fireHover();
+
+        assertTrue(fixture.telemetry.contains("LEARNING_STATE_ACCEPTED"));
+        assertTrue(fixture.telemetry.contains("LEARNING_DELAY_COMPLETED"));
+        assertTrue(fixture.telemetry.contains("LEARNING_CARD_REQUEST"));
+        assertTrue(fixture.telemetry.contains("LEARNING_CONTENT_REQUEST target=java/jdk/string"));
+        assertTrue(fixture.telemetry.contains("LEARNING_CONTENT_READY"));
+    }
+
     private static final class Fixture {
         private final FakeSurface surface = new FakeSurface();
         private final FakePopup popup = new FakePopup();
         private final FakeScheduler scheduler = new FakeScheduler();
         private final AtomicLong clock = new AtomicLong();
+        private final List<String> telemetry = new ArrayList<>();
         private final LearningHoverController controller;
 
         private Fixture() {
@@ -168,6 +239,7 @@ class LearningHoverControllerSwitchTest {
 
     private static final class FakeSurface implements LearningHoverSurface {
         private final List<IntConsumer> moveListeners = new ArrayList<>();
+        private final List<Runnable> leaveListeners = new ArrayList<>();
         private boolean insideEditor = true;
 
         @Override
@@ -189,6 +261,16 @@ class LearningHoverControllerSwitchTest {
         }
 
         @Override
+        public void addLeaveListener(Runnable listener) {
+            leaveListeners.add(listener);
+        }
+
+        @Override
+        public void removeLeaveListener(Runnable listener) {
+            leaveListeners.remove(listener);
+        }
+
+        @Override
         public boolean containsScreen(Point point) {
             return insideEditor;
         }
@@ -205,6 +287,10 @@ class LearningHoverControllerSwitchTest {
         private void move(int offset) {
             moveListeners.forEach(listener -> listener.accept(offset));
         }
+
+        private void leave() {
+            leaveListeners.forEach(Runnable::run);
+        }
     }
 
     private static final class FakePopup implements LearningCardRenderer {
@@ -213,6 +299,8 @@ class LearningHoverControllerSwitchTest {
         private int externalRepositionCount;
         private boolean visible;
         private boolean containsPointer;
+        private Consumer<Boolean> cardHoverListener = ignored -> { };
+        private Runnable popupHiddenListener = () -> { };
 
         @Override
         public void show(LearningConcept concept) {
@@ -223,6 +311,7 @@ class LearningHoverControllerSwitchTest {
         @Override
         public void hide() {
             visible = false;
+            popupHiddenListener.run();
         }
 
         @Override
@@ -251,6 +340,16 @@ class LearningHoverControllerSwitchTest {
         }
 
         @Override
+        public void setCardHoverListener(Consumer<Boolean> listener) {
+            cardHoverListener = listener == null ? ignored -> { } : listener;
+        }
+
+        @Override
+        public void setPopupHiddenListener(Runnable listener) {
+            popupHiddenListener = listener == null ? () -> { } : listener;
+        }
+
+        @Override
         public void dispose() {
         }
 
@@ -260,6 +359,10 @@ class LearningHoverControllerSwitchTest {
 
         private List<String> updatedTitles() {
             return updated;
+        }
+
+        private void cardHover(boolean hovering) {
+            cardHoverListener.accept(hovering);
         }
     }
 

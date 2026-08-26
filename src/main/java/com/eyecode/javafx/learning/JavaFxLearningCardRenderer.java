@@ -14,12 +14,17 @@ import javafx.stage.Popup;
 import javafx.stage.Screen;
 import javafx.stage.Window;
 import javafx.geometry.Rectangle2D;
+import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.scene.input.MouseEvent;
 
 import java.awt.Point;
+import java.awt.MouseInfo;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
 
@@ -36,8 +41,24 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
     private final Popup popup = new Popup();
     private final VBox card;
     private boolean disposed;
+    private boolean deferredShow;
+    private boolean deferredShowAttempted;
+    private long presentationGeneration;
     private String currentIdentifier;
     private JdkSourceTarget explicitSourceTarget;
+    private Consumer<Boolean> cardHoverListener = ignored -> { };
+    private Runnable popupHiddenListener = () -> { };
+    private Window observedOwner;
+    private final ChangeListener<Boolean> ownerVisibleListener = (observable, wasShowing, isShowing) -> {
+        if (!isShowing) {
+            hide();
+        }
+    };
+    private final ChangeListener<Boolean> ownerFocusListener = (observable, wasFocused, isFocused) -> {
+        if (!isFocused) {
+            hide();
+        }
+    };
 
     public JavaFxLearningCardRenderer(
             JavaFxLearningAnchor anchor,
@@ -65,14 +86,22 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
         applySizing(null);
         learningSurface.getStyleClass().add("learning-card-body");
         VBox.setVgrow(learningSurface, Priority.ALWAYS);
-        popup.setAutoHide(false);
-        popup.setHideOnEscape(false);
+        popup.setAutoHide(true);
+        popup.setHideOnEscape(true);
+        popup.setConsumeAutoHidingEvents(false);
+        card.addEventFilter(MouseEvent.MOUSE_ENTERED, event -> cardHoverListener.accept(true));
+        card.addEventFilter(MouseEvent.MOUSE_EXITED, event -> cardHoverListener.accept(false));
+        popup.setOnHidden(event -> popupHiddenListener.run());
         popup.getContent().setAll(card);
     }
 
     @Override
     public void show(LearningConcept concept) {
         if (disposed) {
+            return;
+        }
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(() -> show(concept));
             return;
         }
         explicitSourceTarget = concept == null || concept.getQualifiedName() == null
@@ -90,15 +119,24 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
         Point point = anchor.point();
         Window owner = anchor.window();
         if (point == null || owner == null) {
+            deferShow(concept, presentationGeneration);
             return;
         }
+        if (!owner.isShowing()) {
+            deferShow(concept, presentationGeneration);
+            return;
+        }
+        observeOwner(owner);
+        deferredShowAttempted = false;
         popup.show(owner, point.x + OFFSET, point.y + OFFSET);
         positionWithinScreen(point.x + OFFSET, point.y + OFFSET);
     }
 
     @Override
     public void hide() {
+        presentationGeneration++;
         popup.hide();
+        deferredShowAttempted = false;
     }
 
     @Override
@@ -138,11 +176,40 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
     }
 
     @Override
+    public boolean isPointerOverCard() {
+        if (!isVisible()) {
+            return false;
+        }
+        try {
+            var pointer = MouseInfo.getPointerInfo();
+            return pointer != null && containsScreen(pointer.getLocation());
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean supportsPointerOverCard() {
+        return true;
+    }
+
+    @Override
+    public void setCardHoverListener(Consumer<Boolean> listener) {
+        cardHoverListener = listener == null ? ignored -> { } : listener;
+    }
+
+    @Override
+    public void setPopupHiddenListener(Runnable listener) {
+        popupHiddenListener = listener == null ? () -> { } : listener;
+    }
+
+    @Override
     public void dispose() {
         if (disposed) {
             return;
         }
         disposed = true;
+        detachOwner();
         popup.hide();
     }
 
@@ -209,6 +276,39 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
                         this::navigate
         );
         learningSurface.showHtml(document.renderedHtml());
+    }
+
+    private void deferShow(LearningConcept concept, long generation) {
+        if (deferredShow || deferredShowAttempted || disposed) {
+            return;
+        }
+        deferredShowAttempted = true;
+        deferredShow = true;
+        Platform.runLater(() -> {
+            deferredShow = false;
+            if (generation == presentationGeneration) {
+                show(concept);
+            }
+        });
+    }
+
+    private void observeOwner(Window owner) {
+        if (observedOwner == owner) {
+            return;
+        }
+        detachOwner();
+        observedOwner = owner;
+        owner.showingProperty().addListener(ownerVisibleListener);
+        owner.focusedProperty().addListener(ownerFocusListener);
+    }
+
+    private void detachOwner() {
+        if (observedOwner == null) {
+            return;
+        }
+        observedOwner.showingProperty().removeListener(ownerVisibleListener);
+        observedOwner.focusedProperty().removeListener(ownerFocusListener);
+        observedOwner = null;
     }
 
     private List<com.eyecode.learning.content.LearningMetadata> ancestorsFor(

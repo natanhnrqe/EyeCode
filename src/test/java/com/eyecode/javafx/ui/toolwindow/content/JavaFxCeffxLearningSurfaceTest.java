@@ -35,6 +35,12 @@ class JavaFxCeffxLearningSurfaceTest {
 
             assertSame(browser.node, surface.hostedNodeForTest());
             assertEquals("<h1>Variables</h1>", browser.html);
+            assertEquals(0, browser.loadCount);
+            assertEquals(1, browser.updateCount);
+            surface.showHtml("<h1>Methods</h1>");
+            assertSame(browser.node, surface.hostedNodeForTest());
+            assertEquals("<h1>Methods</h1>", browser.html);
+            assertEquals(2, browser.updateCount);
             surface.dispose();
         });
     }
@@ -62,7 +68,8 @@ class JavaFxCeffxLearningSurfaceTest {
             surface.attachForTest(browser);
 
             assertEquals("<h1>Latest</h1>", browser.html);
-            assertEquals(1, browser.loadCount);
+            assertEquals(0, browser.loadCount);
+            assertEquals(1, browser.updateCount);
             surface.dispose();
         });
     }
@@ -108,6 +115,7 @@ class JavaFxCeffxLearningSurfaceTest {
         private String html;
         private int disposeCount;
         private int loadCount;
+        private int updateCount;
 
         @Override
         public javafx.scene.Node node() {
@@ -118,6 +126,12 @@ class JavaFxCeffxLearningSurfaceTest {
         public void loadHtml(String html) {
             this.html = html;
             loadCount++;
+        }
+
+        @Override
+        public void updateHtml(String html) {
+            this.html = html;
+            updateCount++;
         }
 
         @Override

@@ -54,7 +54,11 @@ require(['vs/editor/editor.main'], function () {
     editor.onMouseMove(function (event) {
         const model = editor.getModel();
         const position = event.target && event.target.position;
-        if (!model || !position || event.target.type !== monaco.editor.MouseTargetType.CONTENT_TEXT) return;
+        if (!model) return;
+        if (!position || event.target.type !== monaco.editor.MouseTargetType.CONTENT_TEXT) {
+            query({ kind: 'hoverExit', id: model.uri.toString(), version: model.getAlternativeVersionId() });
+            return;
+        }
         const visible = editor.getScrolledVisiblePosition(position);
         if (visible) query({ kind: 'hover', id: model.uri.toString(), version: model.getAlternativeVersionId(), line: position.lineNumber, column: position.column, x: visible.left, y: visible.top + visible.height });
     });

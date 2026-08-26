@@ -8,6 +8,7 @@ final class JavaFxLearningAnchor {
 
     private Supplier<Point> pointSupplier = () -> null;
     private Supplier<javafx.stage.Window> windowSupplier = () -> null;
+    private javafx.stage.Window workspaceWindow;
 
     void follow(JavaFxLearningHoverSurface surface) {
         follow(surface, surface::ownerWindow);
@@ -23,6 +24,10 @@ final class JavaFxLearningAnchor {
     }
 
     javafx.stage.Window window() {
-        return windowSupplier.get();
+        return workspaceWindow != null ? workspaceWindow : windowSupplier.get();
+    }
+
+    void setWorkspaceWindow(javafx.stage.Window window) {
+        workspaceWindow = window;
     }
 }

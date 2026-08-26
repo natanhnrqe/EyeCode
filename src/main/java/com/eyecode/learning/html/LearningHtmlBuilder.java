@@ -24,6 +24,14 @@ public final class LearningHtmlBuilder {
 
     public String build(String bodyContent) {
         String body = bodyContent == null ? "" : bodyContent;
+        return document("<main class=\"learning-content\">\n" + body + "\n</main>");
+    }
+
+    public String buildShell() {
+        return document("<main id=\"learning-content\" class=\"learning-content\"></main>");
+    }
+
+    private String document(String body) {
         return "<!DOCTYPE html>\n"
                 + "<html>\n"
                 + "<head>\n"
@@ -34,9 +42,7 @@ public final class LearningHtmlBuilder {
                 + "<script defer src=\"" + jsSrc + "\"></script>\n"
                 + "</head>\n"
                 + "<body class=\"learning-markdown\">\n"
-                + "<main class=\"learning-content\">\n"
                 + body
-                + "\n</main>\n"
                 + "</body>\n"
                 + "</html>\n";
     }

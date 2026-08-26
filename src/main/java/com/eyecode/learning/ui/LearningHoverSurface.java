@@ -13,6 +13,12 @@ public interface LearningHoverSurface {
 
     void removeCancelListener(Runnable listener);
 
+    default void addLeaveListener(Runnable listener) {
+    }
+
+    default void removeLeaveListener(Runnable listener) {
+    }
+
     boolean containsScreen(Point screenPoint);
 
     Point pointerScreenLocation();

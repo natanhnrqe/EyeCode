@@ -3,6 +3,7 @@ package com.eyecode.learning.renderer;
 import com.eyecode.learning.model.LearningConcept;
 
 import java.awt.Point;
+import java.util.function.Consumer;
 
 public interface LearningCardRenderer {
 
@@ -21,6 +22,20 @@ public interface LearningCardRenderer {
     void loadHtml(String html);
 
     boolean containsScreen(Point screenPoint);
+
+    default void setCardHoverListener(Consumer<Boolean> listener) {
+    }
+
+    default void setPopupHiddenListener(Runnable listener) {
+    }
+
+    default boolean isPointerOverCard() {
+        return false;
+    }
+
+    default boolean supportsPointerOverCard() {
+        return false;
+    }
 
     void dispose();
 }

@@ -11,6 +11,7 @@ public final class JavaFxLearningHoverScheduler implements LearningHoverSchedule
 
     private Runnable hoverTask;
     private Runnable monitorTask;
+    private final PauseTransition initialHoverTimer = new PauseTransition(Duration.millis(320));
     private final PauseTransition hoverTimer = new PauseTransition(Duration.millis(500));
     private final Timeline monitorTimer = new Timeline(
             new KeyFrame(Duration.millis(40), event -> {
@@ -20,6 +21,11 @@ public final class JavaFxLearningHoverScheduler implements LearningHoverSchedule
             }));
 
     public JavaFxLearningHoverScheduler() {
+        initialHoverTimer.setOnFinished(event -> {
+            if (hoverTask != null) {
+                hoverTask.run();
+            }
+        });
         hoverTimer.setOnFinished(event -> {
             if (hoverTask != null) {
                 hoverTask.run();
@@ -35,7 +41,14 @@ public final class JavaFxLearningHoverScheduler implements LearningHoverSchedule
     }
 
     @Override
+    public void restartInitialHover(Runnable task) {
+        hoverTask = task;
+        initialHoverTimer.playFromStart();
+    }
+
+    @Override
     public void stopHover() {
+        initialHoverTimer.stop();
         hoverTimer.stop();
         hoverTask = null;
     }

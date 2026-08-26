@@ -106,9 +106,6 @@ public final class FxEditorWorkspacePane extends VBox {
                 () -> currentMonacoText(),
                 () -> currentMonacoSyntax(),
                 monacoSurface::getScene);
-        if (learningHoverController != null) {
-            learningHoverController.setTelemetry(message -> System.out.println(message));
-        }
         this.welcomeSurface = new WelcomeProjectSurface(
                 newProjectAction == null ? this::showNewProjectSurface : newProjectAction,
                 openProjectAction, recentProjects, recentProjectAction);
@@ -127,9 +124,29 @@ public final class FxEditorWorkspacePane extends VBox {
         VBox.setVgrow(contentPane, Priority.ALWAYS);
 
         tabs.setOnTabSelected(this::selectTab);
-        tabs.setOnTabCloseRequested(manager::closeSession);
+        tabs.setOnTabCloseRequested(id -> {
+            cancelLearningHover();
+            manager.closeSession(id);
+        });
 
         getChildren().addAll(tabs, contentPane);
+
+        if (learningWorkspace != null) {
+            sceneProperty().addListener((observable, oldScene, newScene) -> {
+                if (newScene == null) {
+                    learningWorkspace.setWorkspaceWindow(null);
+                } else {
+                    learningWorkspace.setWorkspaceWindow(newScene.getWindow());
+                    newScene.windowProperty().addListener((window, oldWindow, newWindow) ->
+                            learningWorkspace.setWorkspaceWindow(newWindow));
+                }
+            });
+            if (getScene() != null) {
+                learningWorkspace.setWorkspaceWindow(getScene().getWindow());
+                getScene().windowProperty().addListener((window, oldWindow, newWindow) ->
+                        learningWorkspace.setWorkspaceWindow(newWindow));
+            }
+        }
 
         WorkspaceState state = manager.getWorkspaceState();
         state.addChangeListener(this::refresh);
@@ -141,6 +158,7 @@ public final class FxEditorWorkspacePane extends VBox {
         if (id == null) {
             return;
         }
+        cancelLearningHover();
         if (JavaFxDocumentationWorkspace.TAB_ID.equals(id)) {
             mountSelectedContent(id);
         } else if (sourceWorkspace.contains(id)) {
@@ -152,6 +170,7 @@ public final class FxEditorWorkspacePane extends VBox {
     }
 
     private void openSource(JdkSourceTarget target) {
+        cancelLearningHover();
         JavaFxJdkSourceTab tab = sourceWorkspace.ensureTab(target);
         if (tab == null) {
             return;
@@ -162,6 +181,7 @@ public final class FxEditorWorkspacePane extends VBox {
         }
         String id = target.tabId();
         tabs.addSourceTab(id, target.displayName(), () -> {
+            cancelLearningHover();
             if (monacoSurface != null) {
                 monacoSurface.closeModel(tab.sourceIdentity());
             }
@@ -174,6 +194,7 @@ public final class FxEditorWorkspacePane extends VBox {
     }
 
     private void openDocumentation(DocumentationTarget target) {
+        cancelLearningHover();
         JavaFxDocumentationTab tab = documentationWorkspace.ensureTab();
         addDocumentationTab();
         tab.open(target);
@@ -183,6 +204,7 @@ public final class FxEditorWorkspacePane extends VBox {
 
     private void addDocumentationTab() {
         tabs.addDocumentationTab(documentationWorkspace.tab(), () -> {
+            cancelLearningHover();
             documentationWorkspace.closeTab();
             tabs.removeDocumentation();
             refresh();
@@ -270,11 +292,19 @@ public final class FxEditorWorkspacePane extends VBox {
     }
 
     public void showWelcomeSurface() {
+        cancelLearningHover();
         contentPane.show(welcomeSurface);
     }
 
     public void showNewProjectSurface() {
+        cancelLearningHover();
         contentPane.show(newProjectSurface);
+    }
+
+    private void cancelLearningHover() {
+        if (learningHoverController != null) {
+            learningHoverController.cancel();
+        }
     }
 
     public void refreshWelcomeProjects() {
@@ -345,8 +375,6 @@ public final class FxEditorWorkspacePane extends VBox {
             manager.getBuffer(session.getSessionId()).ifPresent(buffer -> {
                 var snapshot = buffer.getDocument().snapshot();
                 int offset = MonacoPositionAdapter.toOffset(snapshot, event.line(), event.column());
-                System.out.println("LEARNING_SESSION_OK");
-                System.out.println("LEARNING_OFFSET=" + offset);
                 if (monacoHoverSurface != null) {
                     monacoHoverSurface.move(offset, event.x(), event.y());
                 }

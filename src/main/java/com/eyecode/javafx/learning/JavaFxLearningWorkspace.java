@@ -63,6 +63,10 @@ public final class JavaFxLearningWorkspace {
         renderer.setJdkSourceTarget(target);
     }
 
+    public void setWorkspaceWindow(javafx.stage.Window window) {
+        anchor.setWorkspaceWindow(window);
+    }
+
     public LearningHoverController createHoverController(
             CodeArea codeArea,
             Supplier<SyntaxSnapshot> syntaxSupplier
@@ -102,7 +106,8 @@ public final class JavaFxLearningWorkspace {
                         .flatMap(type -> jdkCatalog.find(type.simpleName())),
                 syntaxCatalog::find,
                 offset -> memberTargetResolver.resolve(textSupplier.get(), offset)
-                        .flatMap(jdkCatalog::find)
+                        .flatMap(jdkCatalog::find),
+                320L
         );
     }
 

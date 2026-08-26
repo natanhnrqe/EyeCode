@@ -18,6 +18,7 @@ public final class MonacoLearningHoverSurface implements LearningHoverSurface {
     private final PauseTransition throttle = new PauseTransition(Duration.millis(40));
     private IntConsumer moveListener;
     private Runnable cancelListener;
+    private Runnable leaveListener;
     private Point pointer;
     private int pendingOffset;
 
@@ -39,18 +40,22 @@ public final class MonacoLearningHoverSurface implements LearningHoverSurface {
         javafx.geometry.Point2D screen = clientToScreen.apply(x, y);
         if (screen != null) pointer = new Point((int) Math.round(screen.getX()), (int) Math.round(screen.getY()));
         pendingOffset = offset;
-        throttle.playFromStart();
+        if (throttle.getStatus() != javafx.animation.Animation.Status.RUNNING) {
+            throttle.playFromStart();
+        }
     }
 
     public void leave() {
         throttle.stop();
-        if (cancelListener != null) cancelListener.run();
+        if (leaveListener != null) leaveListener.run();
     }
 
     @Override public void addMoveListener(IntConsumer listener) { moveListener = listener; }
     @Override public void removeMoveListener(IntConsumer listener) { if (moveListener == listener) moveListener = null; }
     @Override public void addCancelListener(Runnable listener) { cancelListener = listener; }
     @Override public void removeCancelListener(Runnable listener) { if (cancelListener == listener) cancelListener = null; }
+    @Override public void addLeaveListener(Runnable listener) { leaveListener = listener; }
+    @Override public void removeLeaveListener(Runnable listener) { if (leaveListener == listener) leaveListener = null; }
 
     @Override public boolean containsScreen(Point screenPoint) {
         if (screenPoint == null) return false;
@@ -65,6 +70,7 @@ public final class MonacoLearningHoverSurface implements LearningHoverSurface {
         throttle.stop();
         moveListener = null;
         cancelListener = null;
+        leaveListener = null;
         pointer = null;
     }
 }
