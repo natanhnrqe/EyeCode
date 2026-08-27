@@ -43,4 +43,19 @@ class LearningCardSizingPolicyTest {
         assertTrue(sizing.preferredHeight() > LearningCardSizingPolicy.forDepth(LearningDepth.QUICK).preferredHeight());
         assertTrue(sizing.preferredHeight() < LearningCardSizingPolicy.forDepth(LearningDepth.FULL).preferredHeight());
     }
+
+    @Test
+    void metadataMapsToTheThreeOverlaySizeClasses() {
+        assertEquals(LearningCardSizeClass.QUICK, LearningCardSizingPolicy.classFor(
+                metadata(LearningKind.SYNTAX, LearningDepth.QUICK)));
+        assertEquals(LearningCardSizeClass.MEDIUM, LearningCardSizingPolicy.classFor(
+                metadata(LearningKind.MEMBER, LearningDepth.QUICK)));
+        assertEquals(LearningCardSizeClass.FULL, LearningCardSizingPolicy.classFor(
+                metadata(LearningKind.CONCEPT, LearningDepth.FULL)));
+    }
+
+    private static LearningMetadata metadata(LearningKind kind, LearningDepth depth) {
+        return new LearningMetadata("java/test", "Test", "class", "beginner", 1,
+                "JAVA", null, java.util.List.of(), null, null, java.util.List.of(), depth, kind);
+    }
 }

@@ -23,9 +23,18 @@ public record LearningCardSizingPolicy(
     }
 
     public static LearningCardSizingPolicy forMetadata(LearningMetadata metadata) {
-        if (metadata != null && metadata.kind() == LearningKind.MEMBER) {
+        if (classFor(metadata) == LearningCardSizeClass.MEDIUM) {
             return MEMBER;
         }
         return forDepth(metadata == null ? LearningDepth.FULL : metadata.depth());
+    }
+
+    public static LearningCardSizeClass classFor(LearningMetadata metadata) {
+        if (metadata != null && metadata.kind() == LearningKind.MEMBER) {
+            return LearningCardSizeClass.MEDIUM;
+        }
+        return metadata != null && metadata.depth() == LearningDepth.QUICK
+                ? LearningCardSizeClass.QUICK
+                : LearningCardSizeClass.FULL;
     }
 }

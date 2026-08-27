@@ -11,6 +11,7 @@ import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.learning.content.LearningContentEngine;
 import com.eyecode.learning.content.LearningDocument;
 import com.eyecode.learning.content.LearningMetadata;
+import com.eyecode.learning.content.LearningMember;
 import com.eyecode.learning.content.LearningPage;
 import com.eyecode.learning.model.LearningConcept;
 import com.eyecode.learning.renderer.LearningCardRenderer;
@@ -175,10 +176,12 @@ public final class MonacoLearningCardRenderer implements LearningCardRenderer, M
             sourceTarget = sourceTarget.withMember(document.metadata().sourceMember());
         }
         List<LearningMetadata> related = relatedFor(document.metadata());
+        List<LearningMember> commonMethods = commonMethodsFor(document.metadata());
         DocumentationTarget docs = documentationTarget(document.metadata());
         boolean source = sourceTarget != null || sourceTarget(document.metadata()) != null;
         MonacoLearningOverlayPayload payload = MonacoLearningOverlayPayload.from(document.metadata(),
-                ancestorsFor(document.metadata()), bodyHtml(document.renderedHtml()), related, docs, source);
+                ancestorsFor(document.metadata()), bodyHtml(document.renderedHtml()), commonMethods,
+                related, docs, source);
         return new MonacoLearningContent(concept, document.metadata(), sourceTarget, payload.json());
     }
 
@@ -188,7 +191,7 @@ public final class MonacoLearningCardRenderer implements LearningCardRenderer, M
         DocumentationTarget docs = documentationTarget(metadata);
         boolean source = currentSourceTarget != null || sourceTarget(metadata) != null;
         MonacoLearningOverlayPayload payload = MonacoLearningOverlayPayload.from(metadata, ancestors,
-                bodyHtml, related, docs, source);
+                bodyHtml, commonMethodsFor(metadata), related, docs, source);
         if (show && !visible) surface.showOverlay(OVERLAY_ID, MonacoOverlayType.LEARNING,
                 line, column, payload.json(), currentGeneration);
         else surface.updateOverlay(OVERLAY_ID, MonacoOverlayType.LEARNING,
@@ -203,6 +206,21 @@ public final class MonacoLearningCardRenderer implements LearningCardRenderer, M
             catch (RuntimeException ignored) { }
         }
         return related;
+    }
+
+    private List<LearningMember> commonMethodsFor(LearningMetadata metadata) {
+        return metadata.members().stream()
+                .filter(member -> canLoad(member.identifier()))
+                .toList();
+    }
+
+    private boolean canLoad(String identifier) {
+        try {
+            contentEngine.loadDocument(identifier);
+            return true;
+        } catch (RuntimeException ignored) {
+            return false;
+        }
     }
 
     private DocumentationTarget documentationTarget(LearningMetadata metadata) {

@@ -1,0 +1,400 @@
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: var(--eyecode-editor-bg);
+}
+
+body {
+    position: relative;
+}
+
+#editor {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    cursor: text;
+}
+
+#editor .monaco-editor,
+#editor .view-lines {
+    cursor: text;
+}
+
+#eyecode-context-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.eyecode-context-overlay {
+    position: absolute;
+    display: block;
+    max-width: min(420px, calc(100% - 16px));
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid var(--eyecode-border);
+    border-radius: var(--eyecode-radius-md);
+    background: var(--eyecode-surface);
+    color: var(--eyecode-text);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+    white-space: pre-wrap;
+    pointer-events: auto;
+    font: 13px/1.4 var(--eyecode-font-ui);
+}
+
+.eyecode-context-overlay.eyecode-context-learning {
+    width: min(600px, calc(100% - 16px));
+    max-width: min(600px, calc(100% - 16px));
+    padding: 0;
+    white-space: normal;
+    overflow: hidden;
+}
+
+.eyecode-context-overlay.eyecode-learning-size-quick {
+    width: min(390px, calc(100% - 16px));
+}
+
+.eyecode-context-overlay.eyecode-learning-size-medium {
+    width: min(520px, calc(100% - 16px));
+}
+
+.eyecode-context-overlay.eyecode-learning-size-full {
+    width: min(600px, calc(100% - 16px));
+}
+
+.eyecode-learning-card {
+    display: flex;
+    flex-direction: column;
+    max-height: min(500px, calc(100vh - 16px));
+    pointer-events: auto;
+}
+
+.eyecode-learning-size-quick .eyecode-learning-card {
+    max-height: min(360px, calc(100vh - 16px));
+}
+
+.eyecode-learning-size-medium .eyecode-learning-card {
+    max-height: min(450px, calc(100vh - 16px));
+}
+
+.eyecode-learning-header,
+.eyecode-learning-footer {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    background: var(--eyecode-surface-elevated);
+}
+
+.eyecode-learning-header {
+    border-bottom: 1px solid var(--eyecode-border);
+}
+
+.eyecode-learning-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.eyecode-learning-icon {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    color: var(--eyecode-accent-bright);
+    font: 600 10px/1 var(--eyecode-font-code);
+}
+
+img.eyecode-learning-icon {
+    border: 0;
+    border-radius: 0;
+}
+
+.eyecode-learning-title {
+    color: var(--eyecode-text);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.eyecode-learning-subtitle,
+.eyecode-learning-breadcrumb,
+.eyecode-learning-footer {
+    color: var(--eyecode-muted);
+    font-size: 11px;
+}
+
+.eyecode-learning-subtitle {
+    margin: 3px 0 0 26px;
+    letter-spacing: .04em;
+}
+
+.eyecode-learning-breadcrumb {
+    margin: 7px 0 0 26px;
+}
+
+.eyecode-learning-body {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 14px;
+    color: var(--eyecode-text-secondary);
+    font: 13px/1.5 var(--eyecode-font-ui);
+}
+
+.eyecode-learning-body .learning-content {
+    max-width: none;
+    padding: 8px 0;
+}
+
+.eyecode-learning-body p {
+    margin: 0 0 8px;
+}
+
+.eyecode-learning-body h1,
+.eyecode-learning-body h2,
+.eyecode-learning-body h3,
+.eyecode-learning-body h4,
+.eyecode-learning-body h5,
+.eyecode-learning-body h6 {
+    color: var(--eyecode-text);
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.eyecode-learning-body h1 {
+    font-size: 18px;
+    margin: 4px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--eyecode-border);
+}
+
+.eyecode-learning-body h2 {
+    font-size: 15px;
+    margin: 12px 0 6px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid var(--eyecode-border);
+}
+
+.eyecode-learning-body h3 {
+    font-size: 14px;
+    margin: 10px 0 5px;
+}
+
+.eyecode-learning-body h4,
+.eyecode-learning-body h5,
+.eyecode-learning-body h6 {
+    font-size: 13px;
+    margin: 8px 0 4px;
+}
+
+.eyecode-learning-body ul,
+.eyecode-learning-body ol {
+    margin: 0 0 8px;
+    padding-left: 20px;
+}
+
+.eyecode-learning-body li {
+    margin: 2px 0;
+}
+
+.eyecode-learning-body strong {
+    color: var(--eyecode-text);
+}
+
+.eyecode-learning-body em {
+    color: var(--eyecode-text-secondary);
+}
+
+.eyecode-learning-body code {
+    padding: 1px 4px;
+    border: 1px solid var(--eyecode-border);
+    border-radius: var(--eyecode-radius-sm);
+    background: var(--eyecode-code-bg);
+    color: var(--eyecode-text);
+    font: .9em/1.35 var(--eyecode-font-code);
+}
+
+.eyecode-learning-body pre {
+    margin: 8px 0 10px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    border: 1px solid var(--eyecode-border-strong);
+    border-radius: var(--eyecode-radius-md);
+    background: var(--eyecode-code-bg);
+}
+
+.eyecode-learning-body pre code {
+    display: block;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--eyecode-text);
+    font: 11px/1.45 var(--eyecode-font-code);
+    white-space: pre;
+}
+
+.eyecode-learning-body blockquote {
+    margin: 8px 0 10px;
+    padding: 5px 10px;
+    border-left: 3px solid var(--eyecode-accent);
+    background: var(--eyecode-accent-soft);
+    color: var(--eyecode-muted);
+}
+
+.eyecode-learning-body blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+.eyecode-learning-body table {
+    width: 100%;
+    margin: 8px 0 10px;
+    border-collapse: collapse;
+    border: 1px solid var(--eyecode-border);
+}
+
+.eyecode-learning-body th,
+.eyecode-learning-body td {
+    padding: 4px 7px;
+    border: 1px solid var(--eyecode-border);
+    text-align: left;
+    vertical-align: top;
+}
+
+.eyecode-learning-body th {
+    background: var(--eyecode-surface-elevated);
+    color: var(--eyecode-text);
+}
+
+.eyecode-learning-body a {
+    color: var(--eyecode-accent-bright);
+    text-decoration: none;
+    transition: background-color 100ms ease, color 100ms ease;
+}
+
+.eyecode-learning-body a:hover {
+    color: var(--eyecode-text);
+    background: var(--eyecode-hover);
+    border-radius: var(--eyecode-radius-sm);
+}
+
+.eyecode-learning-body img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.hljs-comment,
+.hljs-quote { color: var(--eyecode-syntax-comment); }
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-type,
+.hljs-built_in,
+.hljs-doctag { color: var(--eyecode-syntax-keyword); }
+.hljs-string,
+.hljs-regexp,
+.hljs-addition { color: var(--eyecode-syntax-string); }
+.hljs-number,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-attr,
+.hljs-attribute { color: var(--eyecode-syntax-number); }
+.hljs-title,
+.hljs-function,
+.hljs-class { color: var(--eyecode-syntax-method); }
+.hljs-meta,
+.hljs-link { color: var(--eyecode-syntax-constant); }
+
+.eyecode-learning-common-methods {
+    flex: 0 0 auto;
+    padding: 7px 14px;
+    border-top: 1px solid var(--eyecode-border);
+    background: var(--eyecode-surface);
+    color: var(--eyecode-muted);
+    font-size: 11px;
+}
+
+.eyecode-learning-common-methods > span,
+.eyecode-learning-related > span {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--eyecode-muted);
+    font-size: 10px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.eyecode-learning-common-methods > div,
+.eyecode-learning-related > div {
+    display: flex;
+    gap: 3px 5px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.eyecode-learning-footer {
+    display: flex;
+    gap: 8px 12px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    border-top: 1px solid var(--eyecode-border);
+}
+
+.eyecode-learning-related,
+.eyecode-learning-actions {
+    min-width: 0;
+}
+
+.eyecode-learning-actions {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.eyecode-learning-footer a,
+.eyecode-learning-breadcrumb a {
+    color: var(--eyecode-accent-bright);
+    cursor: pointer;
+    border-radius: var(--eyecode-radius-sm);
+    padding: 2px 4px;
+    transition: background-color 100ms ease, color 100ms ease;
+}
+
+.eyecode-learning-footer a:hover,
+.eyecode-learning-breadcrumb a:hover {
+    color: var(--eyecode-text);
+    background: var(--eyecode-hover);
+    text-decoration: none;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--eyecode-scroll-thumb, #43464c);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--eyecode-scroll-thumb-hover, #575a60);
+}

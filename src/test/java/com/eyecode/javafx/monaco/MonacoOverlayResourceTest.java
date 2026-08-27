@@ -21,9 +21,22 @@ class MonacoOverlayResourceTest {
             assertTrue(page.contains("pointerleave"));
             assertTrue(page.contains("getScrolledVisiblePosition"));
             assertTrue(page.contains("renderLearningOverlay"));
+            assertTrue(page.contains("eyecode-dark"));
+            assertTrue(page.contains("eyecode-overlays.css"));
+            assertTrue(page.contains("highlight.min.js"));
+            assertTrue(page.contains("defineTheme"));
+            assertTrue(page.contains("editorBracketMatch.background"));
+            assertTrue(page.contains("bracketPairColorization"));
+            assertTrue(page.contains("semanticIconFor"));
+            assertTrue(page.contains("commonMethods"));
+            assertTrue(page.contains("highlightLearningCode"));
+            assertTrue(page.contains("eyecode-learning-common-methods"));
+            assertTrue(page.contains("eyecode-learning-size-quick"));
+            assertTrue(page.contains("+ position.lineNumber + ':' + word.startColumn"));
+            assertTrue(page.contains("<link rel=\"stylesheet\" href=\"../eyecode-overlays.css\">"));
+            assertTrue(!page.contains("<style>"));
             assertTrue(page.contains("eyecode-learning-body"));
             assertTrue(page.contains("NAVIGATE_LEARNING"));
-            assertTrue(page.contains("pointer-events: none"));
             assertTrue(page.contains("editorSemanticTargetHovered"));
             assertTrue(page.contains("learningOverlayHovered"));
             assertTrue(page.contains("entryGracePending"));
@@ -31,8 +44,30 @@ class MonacoOverlayResourceTest {
             assertTrue(page.contains("getWordAtPosition"));
             assertTrue(page.contains("scheduleHandoffHide"));
             assertTrue(page.contains("if (!command.hard)"));
-            assertTrue(page.contains("pointer-events: auto"));
             assertTrue(page.contains("meta charset=\"UTF-8\""));
+        }
+    }
+
+    @Test
+    void sharedThemeResourceContainsEyeCodePaletteTokens() throws IOException {
+        try (InputStream stream = getClass().getResourceAsStream("/monaco/eyecode-theme.css")) {
+            String theme = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            assertTrue(theme.contains("--eyecode-editor-bg: #191a1c"));
+            assertTrue(theme.contains("--eyecode-accent: #3574f0"));
+            assertTrue(theme.contains("--eyecode-syntax-keyword: #cf8e6d"));
+            assertTrue(theme.contains("--eyecode-syntax-type: #4ec9b0"));
+            assertTrue(theme.contains("--eyecode-font-code: \"JetBrains Mono\""));
+        }
+
+        try (InputStream stream = getClass().getResourceAsStream("/monaco/eyecode-overlays.css")) {
+            String overlays = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            assertTrue(overlays.contains(".eyecode-learning-body pre code"));
+            assertTrue(overlays.contains("overflow-y: auto"));
+            assertTrue(overlays.contains("overflow-x: auto"));
+            assertTrue(overlays.contains(".hljs-keyword"));
+            assertTrue(overlays.contains(".eyecode-learning-common-methods"));
+            assertTrue(overlays.contains("pointer-events: none"));
+            assertTrue(overlays.contains("pointer-events: auto"));
         }
     }
 }

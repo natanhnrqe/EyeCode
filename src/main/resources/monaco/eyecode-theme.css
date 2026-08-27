@@ -1,0 +1,33 @@
+:root {
+    --eyecode-editor-bg: #191a1c;
+    --eyecode-canvas: #26282c;
+    --eyecode-surface: #25262a;
+    --eyecode-surface-elevated: #313338;
+    --eyecode-code-bg: #1f2023;
+    --eyecode-border: rgba(255, 255, 255, 0.08);
+    --eyecode-border-strong: rgba(255, 255, 255, 0.14);
+    --eyecode-hover: rgba(255, 255, 255, 0.07);
+    --eyecode-selection: rgba(53, 116, 240, 0.34);
+    --eyecode-accent: #3574f0;
+    --eyecode-accent-soft: rgba(53, 116, 240, 0.18);
+    --eyecode-accent-bright: #8cafff;
+    --eyecode-text: #dcdcdc;
+    --eyecode-text-secondary: #bbbbbb;
+    --eyecode-muted: #9196a0;
+    --eyecode-text-dim: #787878;
+    --eyecode-syntax-keyword: #cf8e6d;
+    --eyecode-syntax-type: #4ec9b0;
+    --eyecode-syntax-annotation: #b3ae60;
+    --eyecode-syntax-constant: #c77dbb;
+    --eyecode-syntax-string: #6aab73;
+    --eyecode-syntax-comment: #7a7e85;
+    --eyecode-syntax-number: #2aacb8;
+    --eyecode-syntax-method: #56a8f5;
+    --eyecode-syntax-identifier: #bcbec4;
+    --eyecode-syntax-separator: #a9b7c6;
+    --eyecode-font-ui: "Segoe UI", "Noto Sans", sans-serif;
+    --eyecode-font-code: "JetBrains Mono", monospace;
+    --eyecode-radius-sm: 4px;
+    --eyecode-radius-md: 6px;
+    --eyecode-bg: var(--eyecode-editor-bg);
+}

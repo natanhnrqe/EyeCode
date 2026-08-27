@@ -8,6 +8,7 @@ import java.util.Base64;
 public final class LearningHtmlBuilder {
 
     private static final String CSS_RESOURCE = "/learning/css/learning.css";
+    private static final String THEME_CSS_RESOURCE = "/monaco/eyecode-theme.css";
     private static final String HIGHLIGHT_JS_RESOURCE = "/learning/js/highlight.min.js";
     private static final String JS_RESOURCE = "/learning/js/learning.js";
 
@@ -17,7 +18,8 @@ public final class LearningHtmlBuilder {
 
     public LearningHtmlBuilder() {
         LearningResourceLoader resourceLoader = new LearningResourceLoader();
-        cssHref = toDataUrl("text/css", resourceLoader.load(CSS_RESOURCE));
+        cssHref = toDataUrl("text/css", resourceLoader.load(THEME_CSS_RESOURCE)
+                + "\n" + resourceLoader.load(CSS_RESOURCE));
         highlightJsSrc = toDataUrl("text/javascript", resourceLoader.load(HIGHLIGHT_JS_RESOURCE));
         jsSrc = toDataUrl("text/javascript", resourceLoader.load(JS_RESOURCE));
     }
