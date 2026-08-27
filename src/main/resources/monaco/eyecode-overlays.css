@@ -76,6 +76,7 @@ body {
     display: flex;
     flex-direction: column;
     max-height: min(500px, calc(100vh - 16px));
+    background: var(--eyecode-surface);
     pointer-events: auto;
 }
 
@@ -91,7 +92,7 @@ body {
 .eyecode-learning-footer {
     flex: 0 0 auto;
     padding: 10px 14px;
-    background: var(--eyecode-surface-elevated);
+    background: transparent;
 }
 
 .eyecode-learning-header {
@@ -148,13 +149,16 @@ img.eyecode-learning-icon {
     overflow-y: auto;
     overflow-x: hidden;
     padding: 0 14px;
+    background: transparent;
     color: var(--eyecode-text-secondary);
     font: 13px/1.5 var(--eyecode-font-ui);
 }
 
-.eyecode-learning-body .learning-content {
+.eyecode-learning-body .learning-content,
+.eyecode-learning-body .learning-content .learning-content {
     max-width: none;
     padding: 8px 0;
+    background: transparent;
 }
 
 .eyecode-learning-body p {
@@ -279,18 +283,6 @@ img.eyecode-learning-icon {
     color: var(--eyecode-text);
 }
 
-.eyecode-learning-body a {
-    color: var(--eyecode-accent-bright);
-    text-decoration: none;
-    transition: background-color 100ms ease, color 100ms ease;
-}
-
-.eyecode-learning-body a:hover {
-    color: var(--eyecode-text);
-    background: var(--eyecode-hover);
-    border-radius: var(--eyecode-radius-sm);
-}
-
 .eyecode-learning-body img {
     display: block;
     max-width: 100%;
@@ -323,7 +315,7 @@ img.eyecode-learning-icon {
     flex: 0 0 auto;
     padding: 7px 14px;
     border-top: 1px solid var(--eyecode-border);
-    background: var(--eyecode-surface);
+    background: transparent;
     color: var(--eyecode-muted);
     font-size: 11px;
 }
@@ -365,20 +357,41 @@ img.eyecode-learning-icon {
     flex-wrap: wrap;
 }
 
-.eyecode-learning-footer a,
-.eyecode-learning-breadcrumb a {
+.eyecode-context-learning .eyecode-learning-card a,
+.eyecode-context-learning .eyecode-learning-card a:visited {
     color: var(--eyecode-accent-bright);
     cursor: pointer;
     border-radius: var(--eyecode-radius-sm);
     padding: 2px 4px;
-    transition: background-color 100ms ease, color 100ms ease;
+    text-decoration: none;
+    transition: background-color 100ms ease, color 100ms ease, border-color 100ms ease;
 }
 
-.eyecode-learning-footer a:hover,
-.eyecode-learning-breadcrumb a:hover {
+.eyecode-context-learning .eyecode-learning-card a:hover {
     color: var(--eyecode-text);
     background: var(--eyecode-hover);
     text-decoration: none;
+}
+
+.eyecode-context-learning .eyecode-learning-card a:active {
+    color: var(--eyecode-accent-bright);
+    background: var(--eyecode-accent-soft);
+}
+
+.eyecode-context-learning .eyecode-learning-card a:focus-visible {
+    outline: 1px solid var(--eyecode-accent-bright);
+    outline-offset: 1px;
+}
+
+.eyecode-learning-common-methods a,
+.eyecode-learning-common-methods a:visited {
+    color: var(--eyecode-muted);
+    font: 11px/1.35 var(--eyecode-font-code);
+    padding: 1px 3px;
+}
+
+.eyecode-learning-common-methods a:hover {
+    color: var(--eyecode-text);
 }
 
 ::-webkit-scrollbar {

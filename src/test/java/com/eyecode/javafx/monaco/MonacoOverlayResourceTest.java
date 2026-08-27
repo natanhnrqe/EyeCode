@@ -66,6 +66,10 @@ class MonacoOverlayResourceTest {
             assertTrue(overlays.contains("overflow-x: auto"));
             assertTrue(overlays.contains(".hljs-keyword"));
             assertTrue(overlays.contains(".eyecode-learning-common-methods"));
+            assertTrue(overlays.contains(".eyecode-learning-card a:visited"));
+            assertTrue(overlays.contains(".eyecode-learning-card a:focus-visible"));
+            assertTrue(overlays.contains("font: 11px/1.35 var(--eyecode-font-code)"));
+            assertTrue(overlays.contains("background: transparent"));
             assertTrue(overlays.contains("pointer-events: none"));
             assertTrue(overlays.contains("pointer-events: auto"));
         }
