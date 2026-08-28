@@ -103,6 +103,10 @@
     -fx-background-color: transparent;
 }
 
+.eyecode-completion-global-overlay {
+    -fx-background-color: transparent;
+}
+
 /* ============================================================
    3. Card System
    ============================================================ */
@@ -834,6 +838,96 @@
 .completion-list .list-cell:filled:selected:focused,
 .completion-list .list-cell:focused {
     -fx-background-color: transparent;
+}
+
+.eyecode-completion-global-overlay {
+    -fx-background-color: transparent;
+}
+
+.eyecode-completion-popup-fx {
+    -fx-background-color: -eyecode-autocomplete-bg;
+    -fx-background-radius: 10;
+    -fx-border-color: -eyecode-border-strong;
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.48), 18, 0.32, 0, 8);
+    -fx-padding: 8;
+}
+
+.eyecode-completion-list-fx {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-border-width: 0;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.eyecode-completion-list-fx .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -eyecode-text;
+    -fx-padding: 0 6 0 6;
+    -fx-font-family: "JetBrains Mono";
+    -fx-font-size: 13;
+}
+
+.eyecode-completion-list-fx .list-cell:filled:selected,
+.eyecode-completion-list-fx .list-cell:filled:selected:focused {
+    -fx-background-color: -eyecode-accent-soft;
+    -fx-background-radius: 4;
+}
+
+.eyecode-completion-row-fx {
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 0;
+}
+
+.eyecode-completion-main-fx {
+    -fx-text-fill: -eyecode-text;
+    -fx-font-family: "JetBrains Mono";
+}
+
+.eyecode-completion-return-fx,
+.eyecode-completion-owner-fx,
+.eyecode-completion-detail-return-fx,
+.eyecode-completion-detail-owner-fx {
+    -fx-text-fill: -eyecode-text-secondary;
+    -fx-font-family: "JetBrains Mono";
+}
+
+.eyecode-completion-owner-fx,
+.eyecode-completion-detail-owner-fx {
+    -fx-text-fill: -eyecode-accent;
+}
+
+.eyecode-completion-details-fx {
+    -fx-border-color: -eyecode-border;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 10 6 4 6;
+    -fx-spacing: 7;
+}
+
+.eyecode-completion-detail-header-fx {
+    -fx-alignment: CENTER_LEFT;
+}
+
+.eyecode-completion-detail-name-fx {
+    -fx-text-fill: -eyecode-text;
+    -fx-font-family: "JetBrains Mono";
+    -fx-font-weight: bold;
+}
+
+.eyecode-completion-documentation-fx,
+.eyecode-completion-example-fx {
+    -fx-text-fill: -eyecode-text-secondary;
+    -fx-font-family: "JetBrains Mono";
+    -fx-font-size: 12;
+}
+
+.eyecode-completion-example-title-fx {
+    -fx-text-fill: -eyecode-accent;
+    -fx-font-family: "JetBrains Mono";
 }
 
 .completion-row-shell {
@@ -1899,6 +1993,10 @@
 
 .documentation-browser {
     -fx-background-color: -eyecode-surface;
+}
+
+.web-shell-surface {
+    -fx-background-color: -eyecode-canvas;
 }
 
 .style-classed-text-area .text,

@@ -1,6 +1,8 @@
 package com.eyecode.javafx.ui;
 
 import com.eyecode.javafx.ceffx.CeffxRuntime;
+import com.eyecode.javafx.web.JavaFxWebShellSurface;
+import com.eyecode.javafx.web.WebShellMode;
 import javafx.application.Platform;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
@@ -18,11 +20,13 @@ public final class FxMainWindow {
     private static final double MIN_HEIGHT = 600;
 
     private final Stage stage;
-    private final FxRootLayout root;
+    private final Region root;
 
     public FxMainWindow(Stage stage) {
         this.stage = stage;
-        this.root = new FxRootLayout(this::shutdown);
+        this.root = WebShellMode.configured() == WebShellMode.WEB_SHELL
+                ? new JavaFxWebShellSurface()
+                : new FxRootLayout(this::shutdown);
 
         stage.initStyle(StageStyle.UNDECORATED);
         stage.setOnCloseRequest(e -> {
@@ -52,7 +56,11 @@ public final class FxMainWindow {
     }
 
     private void shutdown() {
-        root.dispose();
+        if (root instanceof FxRootLayout legacyRoot) {
+            legacyRoot.dispose();
+        } else if (root instanceof JavaFxWebShellSurface webShell) {
+            webShell.dispose();
+        }
         CeffxRuntime.dispose();
         Platform.exit();
         System.exit(0);

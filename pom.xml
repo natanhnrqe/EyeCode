@@ -13,7 +13,11 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>26</javafx.version>
+
         <eyecode.mainClass>com.eyecode.javafx.FxApplication</eyecode.mainClass>
+
+        <eyecode.ui>LEGACY_JAVAFX</eyecode.ui>
+        <eyecode.webshell.devUrl></eyecode.webshell.devUrl>
     </properties>
 
     <repositories>
@@ -175,15 +179,18 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>${eyecode.mainClass}</mainClass>
-                    <options>
 
-                        <!-- CEFFX / Chromium native libraries -->
+                    <options>
+                        <option>-Deyecode.ui=${eyecode.ui}</option>
+                        <option>-Deyecode.webshell.devUrl=${eyecode.webshell.devUrl}</option>
+
                         <option>-Djava.library.path=${project.basedir}/chromium</option>
 
-
-                        <!-- Native access required by CEFFX / JDK 25+ -->
                         <option>--enable-native-access=javafx.graphics</option>
                         <option>--enable-native-access=ALL-UNNAMED</option>
+
+                        <option>--add-opens</option>
+                        <option>java.desktop/sun.awt=ALL-UNNAMED</option>
 
                         <option>--add-opens</option>
                         <option>java.desktop/sun.awt=ALL-UNNAMED</option>
