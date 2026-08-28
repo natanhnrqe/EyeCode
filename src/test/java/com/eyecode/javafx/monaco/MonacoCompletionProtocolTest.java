@@ -4,6 +4,8 @@ import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionItemKind;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,17 +46,46 @@ class MonacoCompletionProtocolTest {
         assertEquals(10, item.replaceStart());
         assertEquals(13, item.replaceEnd());
         assertEquals(4, item.sortKey());
+        assertEquals("String", item.filterText());
+        assertTrue(!item.snippet());
     }
 
     @Test
     void completionRequestJsonCarriesExplicitTriggerAndIdentity() {
         MonacoCompletionRequest request = JavaFxMonacoEditorSurface.parseCompletionRequestForTest(
                 "{\"kind\":\"completion\",\"id\":\"file:///C:/Main.java\","
-                        + "\"version\":7,\"line\":2,\"column\":4,"
+                        + "\"version\":7,\"line\":2,\"column\":4,\"offset\":15,"
+                        + "\"replaceStart\":12,\"replaceEnd\":15,\"content\":\"String value\","
                         + "\"triggerKind\":\"invoked\",\"requestId\":42,\"explicit\":true}");
 
         assertEquals(42L, request.requestId());
         assertTrue(request.explicit());
         assertEquals(2, request.line());
+        assertEquals(15, request.caretOffset());
+        assertEquals(12, request.replaceStart());
+        assertEquals(15, request.replaceEnd());
+        assertEquals("String value", request.content());
+    }
+
+    @Test
+    void snippetItemsPreserveMonacoSnippetMetadata() {
+        CompletionItem source = CompletionItem.builder("sout", "System.out.println(${0});", CompletionItemKind.SNIPPET)
+                .build();
+
+        MonacoCompletionItem item = MonacoCompletionItem.from(source, 0, 4);
+
+        assertTrue(item.snippet());
+        assertEquals("sout", item.filterText());
+    }
+
+    @Test
+    void completionResponseJsonIncludesMonacoFilterAndSnippetFields() {
+        CompletionItem source = CompletionItem.builder("sout", "System.out.println(${0});", CompletionItemKind.SNIPPET)
+                .build();
+        String json = JavaFxMonacoEditorSurface.commandJsonForTest(new MonacoCommand.CompletionResponse(
+                "file:///C:/Main.java", 4, List.of(MonacoCompletionItem.from(source, 0, 4))));
+
+        assertTrue(json.contains("\"filterText\":\"sout\""));
+        assertTrue(json.contains("\"snippet\":true"));
     }
 }

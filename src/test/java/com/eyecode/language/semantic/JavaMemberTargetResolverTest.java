@@ -22,6 +22,22 @@ class JavaMemberTargetResolverTest {
     }
 
     @Test
+    void resolvesLocalReceiverBeforeTheMemberIsTyped() {
+        String source = "class Demo { void run() { String name = \"\"; name. } }";
+
+        assertEquals("java.lang.String", resolver.resolveReceiverType(source, source.indexOf("name.") + 5)
+                .orElseThrow().qualifiedName());
+    }
+
+    @Test
+    void resolvesLocalReceiverWithAPartialMemberPrefix() {
+        String source = "class Demo { void run() { String name = \"\"; name.sub } }";
+
+        assertEquals("java.lang.String", resolver.resolveReceiverType(source, source.indexOf("name.sub") + 8)
+                .orElseThrow().qualifiedName());
+    }
+
+    @Test
     void resolvesImportedGenericInterfaceType() {
         String source = "import java.util.List; class Demo { void run() { "
                 + "List<String> names = null; names.add(\"Ana\"); } }";

@@ -150,7 +150,7 @@ class JavaFxSemanticAutocompleteTest {
     }
 
     @Test
-    void ctrlSpaceInUnsupportedObjectQualifiedContextRemainsConservative() throws Exception {
+    void ctrlSpaceInProjectObjectQualifiedContextReturnsProjectMembers() throws Exception {
         runInFx("""
                 class Helper {
                     void ping() { }
@@ -163,7 +163,11 @@ class JavaFxSemanticAutocompleteTest {
                 }
                 """, "", harness -> {
             assertTrue(harness.controller().handleCompletionEvent(ctrlSpace()));
-            assertTrue(harness.buffer().getCompletionSnapshot().isEmpty());
+            List<String> labels = harness.buffer().getCompletionSnapshot().getItems().stream()
+                    .map(CompletionItem::getLabel)
+                    .toList();
+            assertTrue(labels.contains("ping"));
+            assertFalse(labels.contains("public"));
         });
     }
 

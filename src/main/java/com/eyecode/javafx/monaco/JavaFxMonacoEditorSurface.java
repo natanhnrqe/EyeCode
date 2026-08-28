@@ -67,7 +67,7 @@ public final class JavaFxMonacoEditorSurface extends Region {
 
     public void sendCompletionResponse(MonacoCompletionRequest request,
                                        java.util.List<MonacoCompletionItem> items) {
-        if (request == null) return;
+        if (request == null || disposed) return;
         send(new MonacoCommand.CompletionResponse(request.modelId(), request.requestId(),
                 items == null ? java.util.List.of() : items));
     }
@@ -268,12 +268,23 @@ public final class JavaFxMonacoEditorSurface extends Region {
         @Override
         public boolean onQuery(CefBrowser browser, CefFrame frame, long queryId, String request,
                                boolean persistent, CefQueryCallback callback) {
+            if (isCompletionDebug(request)) {
+                printCompletionDebug(request);
+                callback.success("ok");
+                return true;
+            }
             MonacoEvent event = parseEvent(request);
             MonacoCompletionRequest completion = parseCompletionRequest(request);
             MonacoOverlayEvent overlay = parseOverlayEvent(request);
             if (completion != null) {
                 Platform.runLater(() -> {
-                    if (!disposed && completionListener != null) completionListener.accept(completion);
+                    if (disposed) return;
+                    ModelState state = models.get(completion.modelId());
+                    if (state != null && state.version <= completion.modelVersion()) {
+                        state.version = completion.modelVersion();
+                        if (completion.hasSnapshot()) state.content = completion.content();
+                    }
+                    if (completionListener != null) completionListener.accept(completion);
                 });
             } else if (overlay != null) {
                 Platform.runLater(() -> {
@@ -284,6 +295,40 @@ public final class JavaFxMonacoEditorSurface extends Region {
             }
             callback.success("ok");
             return true;
+        }
+    }
+
+    private static boolean isCompletionDebug(String json) {
+        try {
+            return "completionDebug".equals(string(MonacoJsonParser.parseObject(json), "kind"));
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+    }
+
+    private static void printCompletionDebug(String json) {
+        try {
+            Map<String, Object> values = MonacoJsonParser.parseObject(json);
+            String stage = string(values, "stage");
+            long requestId = numberLong(values, "requestId");
+            if ("command".equals(stage)) {
+                System.out.println("COMPLETION_DEBUG stage=command requestId=" + requestId
+                        + " itemCount=" + number(values, "itemCount"));
+            } else if ("settle".equals(stage)) {
+                System.out.println("COMPLETION_DEBUG stage=settle requestId=" + requestId
+                        + " pendingFound=" + Boolean.TRUE.equals(values.get("pendingFound"))
+                        + " modelId=" + string(values, "modelId")
+                        + " pendingModelId=" + string(values, "pendingModelId")
+                        + " currentVersion=" + numberLong(values, "currentVersion")
+                        + " pendingVersion=" + numberLong(values, "pendingVersion"));
+            } else if ("resolve".equals(stage)) {
+                System.out.println("COMPLETION_DEBUG stage=resolve requestId=" + requestId
+                        + " stale=" + Boolean.TRUE.equals(values.get("stale"))
+                        + " currentVersion=" + numberLong(values, "currentVersion")
+                        + " pendingVersion=" + numberLong(values, "pendingVersion")
+                        + " suggestions=" + number(values, "suggestions"));
+            }
+        } catch (IllegalArgumentException ignored) {
         }
     }
 
@@ -325,7 +370,9 @@ public final class JavaFxMonacoEditorSurface extends Region {
                     string(values, "id"), numberLong(values, "version"),
                     number(values, "line"), number(values, "column"), trigger,
                     string(values, "triggerCharacter"), numberLong(values, "requestId"),
-                    Boolean.TRUE.equals(values.get("explicit")));
+                    Boolean.TRUE.equals(values.get("explicit")), optionalNumber(values, "offset", -1),
+                    optionalNumber(values, "replaceStart", -1), optionalNumber(values, "replaceEnd", -1),
+                    string(values, "content"));
         } catch (IllegalArgumentException ignored) {
             return null;
         }
@@ -375,6 +422,10 @@ public final class JavaFxMonacoEditorSurface extends Region {
     private static int number(Map<String, Object> values, String key) {
         Object value = values.get(key);
         return value instanceof Number number ? number.intValue() : 0;
+    }
+
+    private static int optionalNumber(Map<String, Object> values, String key, int fallback) {
+        return values.containsKey(key) ? number(values, key) : fallback;
     }
 
     private static long numberLong(Map<String, Object> values, String key) {
@@ -470,9 +521,16 @@ public final class JavaFxMonacoEditorSurface extends Region {
                     .append(",\"detail\":\"").append(escape(item.detail())).append("\"")
                     .append(",\"documentation\":\"").append(escape(item.documentation())).append("\"")
                     .append(",\"insertText\":\"").append(escape(item.insertText())).append("\"")
+                    .append(",\"filterText\":\"").append(escape(item.filterText())).append("\"")
+                    .append(",\"snippet\":").append(item.snippet())
                     .append(",\"replaceStart\":").append(item.replaceStart())
                     .append(",\"replaceEnd\":").append(item.replaceEnd())
                     .append(",\"sortKey\":").append(item.sortKey())
+                    .append(",\"signature\":\"").append(escape(item.signature())).append("\"")
+                    .append(",\"returnType\":\"").append(escape(item.returnType())).append("\"")
+                    .append(",\"owner\":\"").append(escape(item.owner())).append("\"")
+                    .append(",\"example\":\"").append(escape(item.example())).append("\"")
+                    .append(",\"category\":\"").append(escape(item.category())).append("\"")
                     .append('}');
         }
         return json.append("]}").toString();

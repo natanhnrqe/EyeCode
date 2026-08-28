@@ -158,6 +158,22 @@ class JavaFxMonacoEditorSurfaceTest {
         });
     }
 
+    @Test
+    void completionResponseIsSentEvenWhenTheModelRequestIsNoLongerCurrent() throws Exception {
+        FakeBridge bridge = new FakeBridge();
+        runInFx(() -> {
+            JavaFxMonacoEditorSurface surface = new JavaFxMonacoEditorSurface(bridge);
+            MonacoCompletionRequest request = new MonacoCompletionRequest("file:///workspace/Main.java", 9,
+                    1, 1, MonacoCompletionRequest.TriggerKind.INVOKED, null, 4, false,
+                    0, 0, 0, "");
+
+            surface.sendCompletionResponse(request, List.of());
+
+            assertTrue(bridge.commands.stream().anyMatch(MonacoCommand.CompletionResponse.class::isInstance));
+            surface.dispose();
+        });
+    }
+
     private static void runInFx(ThrowingRunnable action) throws Exception {
         CountDownLatch done = new CountDownLatch(1);
         AtomicReference<Throwable> failure = new AtomicReference<>();

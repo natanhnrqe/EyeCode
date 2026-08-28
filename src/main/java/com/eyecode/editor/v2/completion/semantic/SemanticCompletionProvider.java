@@ -2,6 +2,7 @@ package com.eyecode.editor.v2.completion.semantic;
 
 import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionItemKind;
+import com.eyecode.editor.v2.completion.CompletionContextKind;
 import com.eyecode.editor.v2.completion.CompletionProvider;
 import com.eyecode.editor.v2.completion.CompletionSnapshot;
 import com.eyecode.editor.v2.completion.insert.CompletionPrefixResolver;
@@ -38,6 +39,11 @@ public final class SemanticCompletionProvider implements CompletionProvider {
                                       DocumentSemanticModelBuilder semanticModelBuilder) {
         this.registry = registry;
         this.semanticModelBuilder = semanticModelBuilder;
+    }
+
+    @Override
+    public boolean supports(CompletionContextKind contextKind) {
+        return contextKind != CompletionContextKind.MEMBER_ACCESS;
     }
 
     @Override

@@ -28,8 +28,12 @@ public final class CompletionEngine {
         if (context == null || isSuppressedContext(context)) {
             return CompletionSnapshot.empty();
         }
+        CompletionContextKind contextKind = CompletionContextResolver.resolve(context);
         Map<String, CompletionItem> merged = new LinkedHashMap<>();
         for (CompletionProvider provider : providers) {
+            if (!provider.supports(contextKind)) {
+                continue;
+            }
             CompletionSnapshot snapshot = provider.complete(context, manual);
             for (CompletionItem item : snapshot.getItems()) {
                 merged.putIfAbsent(item.getLabel() + "\u0000" + item.getKind(), item);

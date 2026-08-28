@@ -16,7 +16,6 @@ import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionItemKind;
 import com.eyecode.editor.v2.completion.CompletionManager;
 import com.eyecode.editor.v2.completion.CompletionSnapshot;
-import com.eyecode.editor.v2.completion.ContextAwareCompletionProvider;
 import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
 import com.eyecode.editor.v2.completion.JavaSnippetProvider;
 import com.eyecode.editor.v2.completion.JavaStandardLibraryProvider;
@@ -26,6 +25,7 @@ import com.eyecode.editor.v2.completion.insert.CompletionPrefixResolver;
 import com.eyecode.editor.v2.completion.insert.SnippetInsertionEngine;
 import com.eyecode.editor.v2.completion.knowledge.JavaKnowledgeBaseProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticCompletionProvider;
+import com.eyecode.editor.v2.completion.semantic.JavaSemanticMemberCompletionProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
 import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
 import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
@@ -122,7 +122,7 @@ public final class JavaFxEditorController {
         this.languageManager = new LanguageManager(new DefaultLanguageService());
         this.completionManager = new CompletionManager(new CompletionEngine(List.of(
                 new JavaKeywordCompletionProvider(),
-                new ContextAwareCompletionProvider(),
+                new JavaSemanticMemberCompletionProvider(),
                 new JavaKnowledgeBaseProvider(),
                 new JavaStandardLibraryProvider(),
                 new JavaSnippetProvider(),

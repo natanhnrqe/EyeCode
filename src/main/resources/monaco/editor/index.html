@@ -19,6 +19,7 @@ require(['vs/editor/editor.main'], function () {
     const models = new Map();
     const hostUpdates = new Set();
     const completionResolvers = new Map();
+    const latestCompletionRequestByModel = new Map();
     const contextOverlays = new Map();
     const overlayGenerations = new Map();
     let editorSemanticTargetHovered = false;
@@ -28,45 +29,54 @@ require(['vs/editor/editor.main'], function () {
     let entryGracePending = false;
     let lastHoverRangeKey = null;
     let completionRequestId = 0;
-    let latestCompletionRequestId = 0;
     let explicitCompletionRequested = false;
+    let eyeCodeCompletionState = null;
+    const COMPLETION_REQUEST_TIMEOUT_MS = 5000;
     const overlayLayer = document.getElementById('eyecode-context-layer');
     let editor;
     function query(value) {
-        if (window.cefQuery) window.cefQuery({ request: JSON.stringify(value) });
-        else console.log('[MONACO JS] cefQuery UNAVAILABLE');
+        if (!window.cefQuery) return false;
+        window.cefQuery({ request: JSON.stringify(value) });
+        return true;
+    }
+    function modelKey(id) {
+        if (!id) return id;
+        try { return monaco.Uri.parse(id).toString(); }
+        catch (error) { return id; }
+    }
+    function modelForId(id) {
+        return models.get(modelKey(id));
     }
     function getModel(command) {
-        let model = models.get(command.id);
+        let model = modelForId(command.id);
         if (!model) {
             model = monaco.editor.createModel(command.content || '', command.language || 'java', monaco.Uri.parse(command.id));
-            models.set(command.id, model);
-            model.onDidChangeContent(function () {
+            models.set(model.uri.toString(), model);
+            model.onDidChangeContent(function (event) {
+                hideEyeCodeCompletion('contentChanged');
+                cancelCompletionsForModel(command.id);
                 if (hostUpdates.delete(command.id)) return;
                 if (editor && editor.getModel() === model) query({ kind: 'change', id: command.id, content: model.getValue(), version: model.getAlternativeVersionId() });
+                if (editor && editor.getModel() === model && eventContainsEyeCodeTrigger(event)) {
+                    requestEyeCodeCompletion(false, eventContainsMemberAccess(event) ? '.' : null);
+                }
             });
         }
         return model;
     }
     window.eyecodeMonacoCommand = function (command) {
         if (command.type === 'openModel') getModel(command);
-        else if (command.type === 'activateModel') { const model = models.get(command.id); if (model && editor) { editor.setModel(model); editor.updateOptions({ readOnly: !!command.readOnly }); editor.focus(); emitCaret(); } }
-        else if (command.type === 'updateModel') { const model = models.get(command.id); if (model && model.getValue() !== command.content) { hostUpdates.add(command.id); model.setValue(command.content || ''); } }
-        else if (command.type === 'closeModel') { const model = models.get(command.id); if (model) { if (editor && editor.getModel() === model) editor.setModel(null); model.dispose(); models.delete(command.id); } }
-        else if (command.type === 'setReadOnly' && editor && editor.getModel() === models.get(command.id)) editor.updateOptions({ readOnly: !!command.readOnly });
-        else if (command.type === 'revealPosition') { const model = models.get(command.id); if (model && editor) { editor.setModel(model); editor.setPosition({ lineNumber: command.line, column: command.column }); editor.revealPositionInCenter({ lineNumber: command.line, column: command.column }); } }
+        else if (command.type === 'activateModel') { const model = modelForId(command.id); if (model && editor) { hideEyeCodeCompletion('modelActivated'); cancelCompletionsExcept(command.id); editor.setModel(model); editor.updateOptions({ readOnly: !!command.readOnly }); editor.focus(); emitCaret(); } }
+        else if (command.type === 'updateModel') { const model = modelForId(command.id); if (model && model.getValue() !== command.content) { hostUpdates.add(command.id); model.setValue(command.content || ''); } }
+        else if (command.type === 'closeModel') { const model = modelForId(command.id); if (model) { hideEyeCodeCompletion('modelClosed'); cancelCompletionsForModel(command.id); if (editor && editor.getModel() === model) editor.setModel(null); models.delete(model.uri.toString()); model.dispose(); } }
+        else if (command.type === 'setReadOnly' && editor && editor.getModel() === modelForId(command.id)) editor.updateOptions({ readOnly: !!command.readOnly });
+        else if (command.type === 'revealPosition') { const model = modelForId(command.id); if (model && editor) { hideEyeCodeCompletion('revealPosition'); editor.setModel(model); editor.setPosition({ lineNumber: command.line, column: command.column }); editor.revealPositionInCenter({ lineNumber: command.line, column: command.column }); } }
         else if (command.type === 'focus' && editor) editor.focus();
         else if (command.type === 'layout' && editor) editor.layout();
         else if (command.type === 'completionResponse') {
-            if (command.requestId < latestCompletionRequestId) {
-                const stale = completionResolvers.get(command.requestId);
-                completionResolvers.delete(command.requestId);
-                if (stale) stale({ suggestions: [] });
-            } else {
-                const resolve = completionResolvers.get(command.requestId);
-                completionResolvers.delete(command.requestId);
-                if (resolve) resolve(toCompletionList(command));
-            }
+            query({ kind: 'completionDebug', stage: 'command', requestId: command.requestId,
+                itemCount: (command.items || []).length, modelId: command.id });
+            settleCompletion(command);
         }
         else if (command.type === 'showOverlay') showContextOverlay(command);
         else if (command.type === 'updateOverlay') updateContextOverlay(command);
@@ -251,52 +261,292 @@ require(['vs/editor/editor.main'], function () {
             if (node) emitOverlayHidden('learning', node._overlayGeneration);
         }, 140);
     }
-    function monacoCompletionKind(kind) {
-        return { METHOD: 2, CONSTRUCTOR: 4, FIELD: 5, VARIABLE: 6, CLASS: 7,
-            INTERFACE: 8, ENUM: 13, KEYWORD: 17, SNIPPET: 27 }[kind] || 1;
+    function completionIconFor(kind) {
+        const icons = { METHOD: 'method', CONSTRUCTOR: 'method', FIELD: 'field', VARIABLE: 'variable',
+            CLASS: 'class', RECORD: 'class', INTERFACE: 'interface', ENUM: 'class', PACKAGE: 'package',
+            KEYWORD: 'keyword', SNIPPET: 'snippet' };
+        return '../../icons/completion/' + (icons[kind] || 'variable') + '.svg';
     }
-    function toCompletionList(response) {
-        const model = models.get(response.id);
-        if (!model) return { suggestions: [] };
-        return { suggestions: (response.items || []).map(function (item) {
-            const start = model.getPositionAt(item.replaceStart);
-            const end = model.getPositionAt(item.replaceEnd);
-            return {
-                label: item.label,
-                kind: monacoCompletionKind(item.kind),
-                detail: item.detail || undefined,
-                documentation: item.documentation || undefined,
-                insertText: item.insertText,
-                sortText: String(item.sortKey).padStart(6, '0'),
-                range: { startLineNumber: start.lineNumber, startColumn: start.column,
-                    endLineNumber: end.lineNumber, endColumn: end.column }
-            };
-        }) };
+    function hideEyeCodeCompletion(reason) {
+        const node = document.getElementById('eyecode-completion-popup');
+        if (node) node.remove();
+        eyeCodeCompletionState = null;
     }
-    function requestCompletion(model, position, context) {
+    function completionIsCurrent() {
+        const state = eyeCodeCompletionState;
+        const model = editor && editor.getModel();
+        return !!state && !!model && state.items.length > 0 && state.selected >= 0
+            && state.selected < state.items.length && model === state.model
+            && model.uri.toString() === state.modelId
+            && model.getAlternativeVersionId() === state.version;
+    }
+    function completionSignature(item) {
+        const label = item.label || '';
+        const signature = item.signature || '';
+        const labelIndex = signature.indexOf(label);
+        if (labelIndex >= 0) {
+            return { name: label, suffix: signature.substring(labelIndex + label.length) };
+        }
+        return { name: label, suffix: signature && signature !== label ? ' ' + signature : '' };
+    }
+    function renderCompletionDetails(state) {
+        const item = state.items[state.selected];
+        const node = document.getElementById('eyecode-completion-details');
+        if (!node || !item) return;
+        const signature = completionSignature(item);
+        const documentation = item.documentation ? '<p class="eyecode-completion-documentation">' + escapeText(item.documentation) + '</p>' : '';
+        const example = item.example ? '<div class="eyecode-completion-example"><span>Example</span><pre><code>' + escapeText(item.example) + '</code></pre></div>' : '';
+        const footerTitle = (item.returnType ? '<span class="eyecode-completion-detail-return">' + escapeText(item.returnType) + '</span>' : '')
+            + '<span class="eyecode-completion-detail-name">' + escapeText(signature.name) + '</span>'
+            + '<span class="eyecode-completion-detail-suffix">' + escapeText(signature.suffix) + '</span>';
+        node.innerHTML = '<div class="eyecode-completion-detail-header"><div class="eyecode-completion-detail-title">'
+            + footerTitle + '</div>' + (item.owner ? '<span class="eyecode-completion-detail-owner">'
+            + escapeText(item.owner) + '</span>' : '') + '</div>'
+            + (item.category ? '<div class="eyecode-completion-category">' + escapeText(item.category) + '</div>' : '')
+            + documentation + example;
+    }
+    function renderCompletionPopup() {
+        const state = eyeCodeCompletionState;
+        const node = document.getElementById('eyecode-completion-popup');
+        if (!state || !node) return;
+        const list = node.querySelector('#eyecode-completion-list');
+        list.innerHTML = state.items.map(function (item, index) {
+            const selected = index === state.selected ? ' is-selected' : '';
+            const signature = completionSignature(item);
+            return '<div class="eyecode-completion-row' + selected + '" data-index="' + index + '" role="option" aria-selected="' + (index === state.selected) + '">'
+                + '<img class="eyecode-completion-icon" alt="" src="' + completionIconFor(item.kind) + '">'
+                + '<span class="eyecode-completion-name"><span class="eyecode-completion-label">' + escapeText(signature.name)
+                + '</span><span class="eyecode-completion-signature">' + escapeText(signature.suffix) + '</span></span>'
+                + '<span class="eyecode-completion-return">' + escapeText(item.returnType || '') + '</span>'
+                + '<span class="eyecode-completion-owner">' + escapeText(item.owner || '') + '</span></div>';
+        }).join('');
+        list.querySelectorAll('.eyecode-completion-row').forEach(function (row) {
+            row.addEventListener('mouseenter', function () {
+                if (!completionIsCurrent()) return;
+                state.selected = Number(row.getAttribute('data-index'));
+                renderCompletionPopup();
+            });
+            row.addEventListener('mousedown', function (event) { event.preventDefault(); });
+            row.addEventListener('click', function () { acceptEyeCodeCompletion(); });
+        });
+        renderCompletionDetails(state);
+        const selected = list.querySelector('.is-selected');
+        if (selected) selected.scrollIntoView({ block: 'nearest' });
+    }
+    function positionCompletionPopup(node) {
+        const state = eyeCodeCompletionState;
+        if (!editor || !state) return;
+        const position = editor.getPosition();
+        const anchor = position && editor.getScrolledVisiblePosition(position);
+        if (!anchor) return;
+        const editorBounds = editor.getDomNode().getBoundingClientRect();
+        const overlayBounds = overlayLayer.getBoundingClientRect();
+        const maxX = Math.max(8, overlayLayer.clientWidth - node.offsetWidth - 8);
+        const maxY = Math.max(8, overlayLayer.clientHeight - node.offsetHeight - 8);
+        let left = editorBounds.left - overlayBounds.left + anchor.left;
+        let top = editorBounds.top - overlayBounds.top + anchor.top + anchor.height;
+        if (left + node.offsetWidth > overlayLayer.clientWidth - 8) left -= node.offsetWidth;
+        if (top + node.offsetHeight > overlayLayer.clientHeight - 8) top -= node.offsetHeight;
+        node.style.left = Math.min(Math.max(8, left), maxX) + 'px';
+        node.style.top = Math.min(Math.max(8, top), maxY) + 'px';
+    }
+    function showEyeCodeCompletion(response, pending) {
+        if (!editor || !pending || !response.items || !response.items.length) {
+            hideEyeCodeCompletion('emptyResponse');
+            return;
+        }
+        const model = editor.getModel();
+        if (model !== pending.model || model.getAlternativeVersionId() !== pending.modelVersion) {
+            hideEyeCodeCompletion('stale');
+            return;
+        }
+        hideEyeCodeCompletion('replacePopup');
+        eyeCodeCompletionState = { requestId: pending.requestId, modelId: pending.modelId,
+            model: pending.model, version: pending.modelVersion, items: response.items, selected: 0 };
+        const node = document.createElement('section');
+        node.id = 'eyecode-completion-popup';
+        node.className = 'eyecode-completion-popup';
+        node.setAttribute('role', 'listbox');
+        node.innerHTML = '<div id="eyecode-completion-list"></div><div id="eyecode-completion-details"></div>';
+        overlayLayer.appendChild(node);
+        renderCompletionPopup();
+        positionCompletionPopup(node);
+    }
+    function acceptEyeCodeCompletion() {
+        if (!completionIsCurrent()) return;
+        const state = eyeCodeCompletionState;
+        const item = state.items[state.selected];
+        const model = state.model;
+        const start = model.getPositionAt(item.replaceStart);
+        const end = model.getPositionAt(item.replaceEnd);
+        const range = { startLineNumber: start.lineNumber, startColumn: start.column,
+            endLineNumber: end.lineNumber, endColumn: end.column };
+        hideEyeCodeCompletion('accepted');
+        if (item.snippet) {
+            editor.trigger('eyecode.completion', 'editor.action.insertSnippet', { snippet: item.insertText, range: range });
+        } else {
+            editor.executeEdits('eyecode.completion', [{ range: range, text: item.insertText, forceMoveMarkers: true }]);
+        }
+        editor.focus();
+    }
+    function handleEyeCodeCompletionKey(event) {
+        const key = event.keyCode;
+        if (!completionIsCurrent()) return;
+        const state = eyeCodeCompletionState;
+        function consumeCompletionKey() {
+            if (event.browserEvent) {
+                event.browserEvent.preventDefault();
+                event.browserEvent.stopPropagation();
+            }
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        if (key === monaco.KeyCode.UpArrow || key === monaco.KeyCode.DownArrow) {
+            state.selected = (state.selected + (key === monaco.KeyCode.DownArrow ? 1 : state.items.length - 1)) % state.items.length;
+            consumeCompletionKey();
+            renderCompletionPopup();
+        } else if (key === monaco.KeyCode.Enter || key === monaco.KeyCode.Tab) {
+            consumeCompletionKey(); acceptEyeCodeCompletion();
+        } else if (key === monaco.KeyCode.Escape) {
+            consumeCompletionKey(); hideEyeCodeCompletion('escape');
+        }
+    }
+    function completeWithEmpty(pending, reason) {
+        if (!pending || pending.settled) return;
+        if (eyeCodeCompletionState && eyeCodeCompletionState.requestId === pending.requestId) hideEyeCodeCompletion(reason || 'cancelled');
+        pending.settled = true;
+        if (pending.timeout) window.clearTimeout(pending.timeout);
+        if (completionResolvers.get(pending.requestId) === pending) {
+            completionResolvers.delete(pending.requestId);
+        }
+        if (latestCompletionRequestByModel.get(modelKey(pending.modelId)) === pending.requestId) {
+            latestCompletionRequestByModel.delete(modelKey(pending.modelId));
+        }
+        if (pending.cancellation) pending.cancellation.dispose();
+        pending.resolve({ suggestions: [] });
+    }
+    function cancelCompletionsForModel(modelId) {
+        Array.from(completionResolvers.values()).forEach(function (pending) {
+            if (pending.modelId === modelKey(modelId)) completeWithEmpty(pending, 'cancelled');
+        });
+        latestCompletionRequestByModel.delete(modelKey(modelId));
+    }
+    function cancelCompletionsExcept(modelId) {
+        Array.from(completionResolvers.values()).forEach(function (pending) {
+            if (pending.modelId !== modelKey(modelId)) completeWithEmpty(pending, 'cancelled');
+        });
+    }
+    function settleCompletion(response) {
+        const pending = completionResolvers.get(response.requestId);
+        const currentModelAtLookup = modelForId(response.id);
+        query({ kind: 'completionDebug', stage: 'settle', requestId: response.requestId,
+            pendingFound: !!pending, itemCount: (response.items || []).length,
+            modelId: response.id, pendingModelId: pending ? pending.modelId : null,
+            currentVersion: currentModelAtLookup ? currentModelAtLookup.getAlternativeVersionId() : -1,
+            pendingVersion: pending ? pending.modelVersion : -1, stale: false, suggestions: 0 });
+        if (!pending) return;
+        if (pending.settled) return;
+        pending.settled = true;
+        completionResolvers.delete(response.requestId);
+        if (pending.timeout) window.clearTimeout(pending.timeout);
+        if (pending.cancellation) pending.cancellation.dispose();
+        const currentModel = modelForId(response.id);
+        const currentVersion = currentModel ? currentModel.getAlternativeVersionId() : -1;
+        const stale = pending.modelId !== response.id || currentModel !== pending.model
+                || currentVersion !== pending.modelVersion;
+        console.log('EYECODE_JS_RECEIVE count=' + (response.items || []).length);
+        if (stale) {
+            hideEyeCodeCompletion('stale');
+            query({ kind: 'completionDebug', stage: 'resolve', requestId: response.requestId,
+                pendingFound: true, itemCount: (response.items || []).length, modelId: response.id,
+                pendingModelId: pending.modelId, currentVersion: currentVersion,
+                pendingVersion: pending.modelVersion, stale: true, suggestions: 0 });
+            pending.resolve({ suggestions: [] });
+            return;
+        }
+        try {
+            showEyeCodeCompletion(response, pending);
+            query({ kind: 'completionDebug', stage: 'resolve', requestId: response.requestId,
+                pendingFound: true, itemCount: (response.items || []).length, modelId: response.id,
+                pendingModelId: pending.modelId, currentVersion: currentVersion,
+                pendingVersion: pending.modelVersion, stale: false,
+                suggestions: response.items.length });
+            pending.resolve({ suggestions: [] });
+        } catch (error) {
+            console.error('[MONACO COMPLETION] response mapping failed', error);
+            query({ kind: 'completionDebug', stage: 'resolve', requestId: response.requestId,
+                pendingFound: true, itemCount: (response.items || []).length, modelId: response.id,
+                pendingModelId: pending.modelId, currentVersion: currentVersion,
+                pendingVersion: pending.modelVersion, stale: false, suggestions: 0 });
+            pending.resolve({ suggestions: [] });
+        }
+    }
+    function requestCompletion(model, position, context, token) {
+        hideEyeCodeCompletion('newRequest');
         const requestId = ++completionRequestId;
-        latestCompletionRequestId = requestId;
+        const modelId = model.uri.toString();
+        const word = model.getWordUntilPosition(position)
+            || { startColumn: position.column, endColumn: position.column };
+        const replaceStart = model.getOffsetAt({ lineNumber: position.lineNumber, column: word.startColumn });
+        const replaceEnd = model.getOffsetAt({ lineNumber: position.lineNumber, column: word.endColumn });
+        const modelVersion = model.getAlternativeVersionId();
+        latestCompletionRequestByModel.set(modelKey(modelId), requestId);
         const trigger = context && context.triggerKind === monaco.languages.CompletionTriggerKind.TriggerCharacter
             ? 'triggerCharacter' : 'invoked';
         return new Promise(function (resolve) {
-            completionResolvers.set(requestId, resolve);
-            query({ kind: 'completion', requestId: requestId, id: model.uri.toString(),
-                version: model.getAlternativeVersionId(), line: position.lineNumber,
-                column: position.column, triggerKind: trigger,
-                triggerCharacter: context && context.triggerCharacter || null,
-                explicit: explicitCompletionRequested });
-            explicitCompletionRequested = false;
+            const pending = { requestId: requestId, resolve: resolve, modelId: modelId,
+                model: model, modelVersion: modelVersion, cancellation: null, timeout: null, settled: false };
+            completionResolvers.set(requestId, pending);
+            if (token) pending.cancellation = token.onCancellationRequested(function () {
+                console.log('COMPLETE JS_CANCEL id=' + requestId);
+                completeWithEmpty(pending, 'cancelled');
+            });
+            pending.timeout = window.setTimeout(function () { completeWithEmpty(pending, 'timeout'); },
+                COMPLETION_REQUEST_TIMEOUT_MS);
+            try {
+                const sent = query({ kind: 'completion', requestId: requestId, id: modelId,
+                    version: modelVersion, line: position.lineNumber,
+                    column: position.column, triggerKind: trigger,
+                    triggerCharacter: context && context.triggerCharacter || null,
+                    explicit: explicitCompletionRequested, offset: model.getOffsetAt(position),
+                    replaceStart: replaceStart, replaceEnd: replaceEnd, content: model.getValue() });
+                if (!sent) completeWithEmpty(pending, 'cancelled');
+            } catch (error) {
+                console.error('[MONACO COMPLETION] bridge request failed', error);
+                completeWithEmpty(pending, 'cancelled');
+            } finally {
+                explicitCompletionRequested = false;
+            }
         });
     }
-    monaco.languages.registerCompletionItemProvider('java', {
-        triggerCharacters: ['.'],
-        provideCompletionItems: function (model, position, context) {
-            if (model.uri.toString().indexOf('jdk://') === 0) {
-                explicitCompletionRequested = false;
-                return Promise.resolve({ suggestions: [] });
-            }
-            return requestCompletion(model, position, context);
-        }
+    function eventContainsEyeCodeTrigger(event) {
+        return !!event && Array.isArray(event.changes)
+            && event.changes.some(function (change) { return isRelevantCompletionChange(change); });
+    }
+    function eventContainsMemberAccess(event) {
+        return !!event && Array.isArray(event.changes)
+            && event.changes.some(function (change) { return change.text === '.'; });
+    }
+    function isRelevantCompletionChange(change) {
+        const text = change && change.text || '';
+        return text === '' && change && change.rangeLength > 0
+            || /^[\p{L}\p{N}_$.]+$/u.test(text);
+    }
+    function requestEyeCodeCompletion(explicit, triggerCharacter) {
+        if (!editor) return;
+        const model = editor.getModel();
+        const position = editor.getPosition();
+        if (!model || !position || model.uri.toString().indexOf('jdk://') === 0) return;
+        explicitCompletionRequested = !!explicit;
+        const context = triggerCharacter
+            ? { triggerKind: monaco.languages.CompletionTriggerKind.TriggerCharacter,
+                triggerCharacter: triggerCharacter }
+            : { triggerKind: monaco.languages.CompletionTriggerKind.Invoked };
+        requestCompletion(model, position, context, null);
+    }
+    window.addEventListener('beforeunload', function () {
+        hideEyeCodeCompletion('beforeUnload');
+        Array.from(completionResolvers.values()).forEach(completeWithEmpty);
     });
     monaco.editor.defineTheme('eyecode-dark', {
         base: 'vs-dark',
@@ -344,11 +594,20 @@ require(['vs/editor/editor.main'], function () {
             { token: 'operator', foreground: 'bcbec4' }
         ]
     });
-    editor = monaco.editor.create(document.getElementById('editor'), { theme: 'eyecode-dark', fontFamily: 'JetBrains Mono', fontSize: 13, fontLigatures: false, minimap: { enabled: false }, automaticLayout: true, scrollBeyondLastLine: false, smoothScrolling: false, wordBasedSuggestions: false, suggestOnTriggerCharacters: true, bracketPairColorization: { enabled: true, independentColorPoolPerBracketType: true }, guides: { bracketPairs: true, bracketPairsHorizontal: false, highlightActiveBracketPair: true } });
+    editor = monaco.editor.create(document.getElementById('editor'), { theme: 'eyecode-dark', fontFamily: 'JetBrains Mono', fontSize: 13, fontLigatures: false, minimap: { enabled: false }, automaticLayout: true, scrollBeyondLastLine: false, smoothScrolling: false, quickSuggestions: false, wordBasedSuggestions: false, suggestOnTriggerCharacters: false, snippetSuggestions: 'inline', bracketPairColorization: { enabled: true, independentColorPoolPerBracketType: true }, guides: { bracketPairs: true, bracketPairsHorizontal: false, highlightActiveBracketPair: true } });
+    editor.onKeyDown(handleEyeCodeCompletionKey);
     function emitCaret() { const model = editor.getModel(); const position = editor.getPosition(); if (model && position) query({ kind: 'caret', id: model.uri.toString(), version: model.getAlternativeVersionId(), line: position.lineNumber, column: position.column }); }
-    editor.onDidChangeCursorPosition(emitCaret);
+    editor.onDidChangeCursorPosition(function () { hideEyeCodeCompletion('cursorChanged'); emitCaret(); });
     console.log('[MONACO JS] CARET_HANDLER_REGISTERED');
     editor.onDidChangeCursorSelection(function (event) { emitCaret(); });
+    editor.onDidScrollChange(function () {
+        const node = document.getElementById('eyecode-completion-popup');
+        if (node && completionIsCurrent()) positionCompletionPopup(node);
+    });
+    window.addEventListener('resize', function () {
+        const node = document.getElementById('eyecode-completion-popup');
+        if (node && completionIsCurrent()) positionCompletionPopup(node);
+    });
     editor.onMouseMove(function (event) {
         const model = editor.getModel();
         const position = event.target && event.target.position;
@@ -391,8 +650,7 @@ require(['vs/editor/editor.main'], function () {
         if (model) query({ kind: 'hoverExit', id: model.uri.toString(), version: model.getAlternativeVersionId() });
     });
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, function () {
-        explicitCompletionRequested = true;
-        editor.trigger('keyboard', 'editor.action.triggerSuggest', {});
+        requestEyeCodeCompletion(true, null);
     });
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB, function () { const model = editor.getModel(); const position = editor.getPosition(); if (model && position) { console.log('[MONACO JS] COMMAND_EMIT GO_TO_DEFINITION'); query({ kind: 'command', command: 'definition', id: model.uri.toString(), version: model.getAlternativeVersionId(), line: position.lineNumber, column: position.column }); } });
     console.log('[MONACO JS] CTRL_B_REGISTERED');

@@ -24,4 +24,12 @@ class MonacoPositionAdapterTest {
         assertEquals(0, MonacoPositionAdapter.toOffset(snapshot, 0, 0));
         assertEquals(snapshot.text().length(), MonacoPositionAdapter.toOffset(snapshot, 99, 99));
     }
+
+    @Test
+    void preservesMonacoUtf16OffsetsAroundSurrogatePairs() {
+        DocumentSnapshot snapshot = DocumentSnapshot.oneShot("😀\r\nStr");
+
+        assertEquals(5, MonacoPositionAdapter.toOffset(snapshot, 2, 2));
+        assertEquals(7, MonacoPositionAdapter.toOffset(snapshot, 7));
+    }
 }

@@ -1,5 +1,7 @@
 package com.eyecode.javafx.ui.editor;
 
+import com.eyecode.editor.v2.completion.*;
+import com.eyecode.editor.v2.completion.semantic.JavaSemanticMemberCompletionProvider;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorSession;
 import com.eyecode.workbench.editor.WorkspaceState;
@@ -24,13 +26,11 @@ import com.eyecode.editor.v2.syntax.SyntaxSnapshot;
 import com.eyecode.editor.v2.syntax.SyntaxToken;
 import com.eyecode.editor.v2.EditorPosition;
 import com.eyecode.editor.v2.EditorSelection;
-import com.eyecode.editor.v2.completion.CompletionEngine;
-import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
-import com.eyecode.editor.v2.completion.JavaSnippetProvider;
-import com.eyecode.editor.v2.completion.JavaStandardLibraryProvider;
-import com.eyecode.editor.v2.completion.ContextAwareCompletionProvider;
+import com.eyecode.editor.v2.completion.knowledge.JavaKnowledgeBaseProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticCompletionProvider;
+import com.eyecode.editor.v2.completion.project.ProjectCompletionProvider;
 import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
+import com.eyecode.editor.v2.project.ProjectSymbolIndex;
 import com.eyecode.editor.v2.language.LanguageContext;
 import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
 import com.eyecode.javafx.monaco.EyeCodeCompletionService;
@@ -64,6 +64,7 @@ public final class FxEditorWorkspacePane extends VBox {
     private final FxEditorContentPane contentPane;
     private final Set<String> dirtyObserved = new HashSet<>();
     private boolean syncing;
+    private String mountedTabId;
     private Path saveFailedFile;
     private Path externalProblemFile;
     private String cachedSyntaxSessionId;
@@ -84,11 +85,13 @@ public final class FxEditorWorkspacePane extends VBox {
     private final JavaSyntaxAnalyzer syntaxAnalyzer = new JavaSyntaxAnalyzer();
     private final EyeCodeCompletionService completionService = new EyeCodeCompletionService(
             new CompletionEngine(List.of(
-                    new SemanticCompletionProvider(new SemanticSymbolRegistry()),
-                    new ContextAwareCompletionProvider(),
                     new JavaKeywordCompletionProvider(),
+                    new JavaSemanticMemberCompletionProvider(),
+                    new JavaKnowledgeBaseProvider(),
                     new JavaStandardLibraryProvider(),
-                    new JavaSnippetProvider())));
+                    new JavaSnippetProvider(),
+                    new SemanticCompletionProvider(new SemanticSymbolRegistry())
+            )));
     private BiConsumer<Integer, Integer> caretPositionListener = (line, column) -> { };
 
     public FxEditorWorkspacePane(EditorManager manager, JavaFxDocumentationWorkspace documentationWorkspace) {
@@ -237,6 +240,7 @@ public final class FxEditorWorkspacePane extends VBox {
         tab.open(target);
         tabs.showDocumentation();
         contentPane.show(tab);
+        mountedTabId = JavaFxDocumentationWorkspace.TAB_ID;
     }
 
     private void addDocumentationTab() {
@@ -281,9 +285,13 @@ public final class FxEditorWorkspacePane extends VBox {
             showWelcomeSurface();
             return;
         }
+        if (id.equals(mountedTabId)) {
+            return;
+        }
         if (JavaFxDocumentationWorkspace.TAB_ID.equals(id)) {
             if (documentationWorkspace.hasTabForTest()) {
                 contentPane.show(documentationWorkspace.tab());
+                mountedTabId = id;
             }
             return;
         }
@@ -291,6 +299,7 @@ public final class FxEditorWorkspacePane extends VBox {
             JavaFxJdkSourceTab sourceTab = sourceWorkspace.tab(id);
             if (sourceTab != null) {
                 showJdkSource(sourceTab);
+                mountedTabId = id;
             }
             return;
         }
@@ -300,10 +309,12 @@ public final class FxEditorWorkspacePane extends VBox {
             monacoSurface.activateModel(MonacoModelId.forSession(session));
             notifyCaretPosition(session);
             contentPane.show(monacoSurface);
+            mountedTabId = id;
             return;
         }
         if (nativeView instanceof Node node) {
             contentPane.show(node);
+            mountedTabId = id;
         }
     }
 
@@ -330,11 +341,13 @@ public final class FxEditorWorkspacePane extends VBox {
 
     public void showWelcomeSurface() {
         cancelLearningHover();
+        mountedTabId = null;
         contentPane.show(welcomeSurface);
     }
 
     public void showNewProjectSurface() {
         cancelLearningHover();
+        mountedTabId = null;
         contentPane.show(newProjectSurface);
     }
 
@@ -462,12 +475,13 @@ public final class FxEditorWorkspacePane extends VBox {
             return;
         }
         manager.getBuffer(session.getSessionId()).ifPresentOrElse(buffer -> {
-            String content = monacoSurface.modelContent(request.modelId());
+            String content = request.hasSnapshot() ? request.content() : monacoSurface.modelContent(request.modelId());
             if (content == null) content = buffer.getDocument().getText();
             Path file = session.getFile();
             EditorDocument snapshotDocument = new EditorDocument(file, content);
-            int offset = MonacoPositionAdapter.toOffset(snapshotDocument.snapshot(),
-                    request.line(), request.column());
+            int offset = request.hasSnapshot()
+                    ? MonacoPositionAdapter.toOffset(snapshotDocument.snapshot(), request.caretOffset())
+                    : MonacoPositionAdapter.toOffset(snapshotDocument.snapshot(), request.line(), request.column());
             EditorPosition caret = snapshotDocument.positionOf(offset);
             LanguageContext context = new LanguageContext(
                     snapshotDocument,
@@ -475,10 +489,21 @@ public final class FxEditorWorkspacePane extends VBox {
                     new EditorSelection(caret, caret),
                     syntaxAnalyzer.analyze(snapshotDocument),
                     DiagnosticSnapshot.empty());
+            String prefix = com.eyecode.editor.v2.completion.insert.CompletionPrefixResolver.resolvePrefix(context);
+            System.out.println("EYECODE_ORIGINAL_REQUEST prefix=" + prefix + " offset=" + offset);
             CompletableFuture.supplyAsync(() -> completionService.complete(request, context))
                     .exceptionally(failure -> List.<MonacoCompletionItem>of())
+                    .thenApply(items -> {
+                        String labels = items.stream().limit(10)
+                                .map(MonacoCompletionItem::label)
+                                .collect(java.util.stream.Collectors.joining(","));
+                        System.out.println("EYECODE_ORIGINAL_RESULT"
+                                + " count=" + items.size() + " labels=" + labels);
+                        return items;
+                    })
                     .thenAccept(items -> Platform.runLater(() -> {
-                        if (monacoSurface != null && !monacoSurface.isReadOnly(request.modelId())) {
+                        if (monacoSurface != null) {
+                            System.out.println("EYECODE_BRIDGE_SEND count=" + items.size());
                             monacoSurface.sendCompletionResponse(request, items);
                         }
                     }));

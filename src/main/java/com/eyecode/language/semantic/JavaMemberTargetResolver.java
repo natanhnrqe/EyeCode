@@ -77,6 +77,24 @@ public final class JavaMemberTargetResolver {
                 List.of()));
     }
 
+    public Optional<JavaJdkType> resolveReceiverType(String source, int offset) {
+        if (source == null || source.isEmpty()) {
+            return Optional.empty();
+        }
+        List<Token> tokens = lexerService.lex(DocumentSnapshot.oneShot(source)).tokens();
+        int beforeCaret = lastSignificantAtOrBefore(tokens, offset);
+        if (beforeCaret < 0) {
+            return Optional.empty();
+        }
+        int dotIndex = ".".equals(tokens.get(beforeCaret).text())
+                ? beforeCaret : previousSignificant(tokens, beforeCaret - 1);
+        if (dotIndex < 0 || !".".equals(tokens.get(dotIndex).text())) {
+            return Optional.empty();
+        }
+        Receiver receiver = receiverBefore(tokens, dotIndex);
+        return receiver == null ? Optional.empty() : resolveReceiver(source, tokens, receiver, imports(source));
+    }
+
     private Optional<JavaJdkType> resolveReceiver(String source, List<Token> tokens,
                                                   Receiver receiver, Map<String, String> imports) {
         if (receiver.stringLiteral()) {
@@ -299,6 +317,21 @@ public final class JavaMemberTargetResolver {
     private static int previousSignificant(List<Token> tokens, int start) {
         for (int index = start; index >= 0; index--) {
             JavaTokenType type = (JavaTokenType) tokens.get(index).type();
+            if (type != JavaTokenType.WHITESPACE && type != JavaTokenType.COMMENT) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private static int lastSignificantAtOrBefore(List<Token> tokens, int offset) {
+        int safeOffset = Math.max(0, offset);
+        for (int index = tokens.size() - 1; index >= 0; index--) {
+            Token token = tokens.get(index);
+            if (token.endOffset() > safeOffset) {
+                continue;
+            }
+            JavaTokenType type = (JavaTokenType) token.type();
             if (type != JavaTokenType.WHITESPACE && type != JavaTokenType.COMMENT) {
                 return index;
             }

@@ -7,6 +7,11 @@ import java.util.List;
 
 public final class JavaSnippetProvider implements CompletionProvider {
 
+    @Override
+    public boolean supports(CompletionContextKind contextKind) {
+        return contextKind == CompletionContextKind.IDENTIFIER;
+    }
+
     private static final List<CompletionItem> SNIPPETS = List.of(
             // ── Main ──────────────────────────────────────────
             CompletionItem.builder("psvm", "public static void main(String[] args) {\n    ${0}\n}", CompletionItemKind.SNIPPET)
