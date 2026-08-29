@@ -54,3 +54,5 @@ AGENTS.md
 
 chromium
 debug.log
+
+src/main/web/node_modules.stale/

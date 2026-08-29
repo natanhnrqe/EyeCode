@@ -57,7 +57,6 @@ public final class JavaFxWebShellSurface extends Region {
     public void registerHandler(String channel, String name, WebShellMessageHandler handler) {
         if (disposed) return;
         dispatcher.register(channel, name, handler);
-        System.out.println("JAVA DISPATCH registered handler=" + channel + "/" + name);
     }
 
     public void send(WebShellEnvelope message) {
@@ -199,11 +198,7 @@ public final class JavaFxWebShellSurface extends Region {
         public boolean onQuery(CefBrowser browser, CefFrame frame, long queryId, String request,
                                boolean persistent, CefQueryCallback callback) {
             try {
-                System.out.println("JAVA ROUTER raw received bytes="
-                        + (request == null ? 0 : request.length()));
                 WebShellEnvelope message = codec.decode(request);
-                System.out.println("JAVA CODEC decoded channel=" + message.channel()
-                        + " name=" + message.name() + " requestId=" + message.requestId());
                 WebShellEnvelope response = dispatcher.dispatch(message);
                 callback.success(response == null ? "{}" : codec.encode(response));
             } catch (IllegalArgumentException exception) {

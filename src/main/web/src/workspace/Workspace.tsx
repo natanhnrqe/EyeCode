@@ -4,6 +4,8 @@ import type { ShellBootstrap, WebShellEnvelope } from '../bridge/protocol';
 import type { DocumentPayload, DocumentSnapshot } from '../document/protocol';
 import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
 import { MonacoHost } from './MonacoHost';
+import { CompletionPopup } from '../completion/CompletionPopup';
+import type { CompletionPopupState } from '../completion/protocol';
 
 type DocumentTab = Omit<DocumentSnapshot, 'content'>;
 
@@ -15,6 +17,7 @@ export function Workspace() {
   const [bootstrap, setBootstrap] = useState<ShellBootstrap | null>(null);
   const [path, setPath] = useState('');
   const [message, setMessage] = useState('');
+  const [completion, setCompletion] = useState<CompletionPopupState | null>(null);
 
   useEffect(() => {
     service.setDocumentChangeHandler(document => {
@@ -22,6 +25,8 @@ export function Workspace() {
       if (document.dirty) setMessage('');
     });
     service.setErrorHandler(setMessage);
+    service.setCompletionStateHandler(setCompletion);
+    return () => service.setCompletionStateHandler(null);
   }, [service]);
 
   useEffect(() => {
@@ -29,13 +34,11 @@ export function Workspace() {
       if (event.channel === 'shell' && event.name === 'bootstrap') {
         setBootstrap(event.payload as ShellBootstrap);
         setConnected(true);
-        console.info('WEB shell/bootstrap received');
       }
       if (event.channel !== 'document') return;
       const payload = event.payload as DocumentPayload;
       if (event.name === 'closed') {
         const uri = String(payload.uri ?? '');
-        console.info(`WEB document/closed uri=${uri}`);
         service.close(uri);
         setDocuments(items => items.filter(item => item.uri !== uri));
         setActiveUri(current => current === uri ? null : current);
@@ -43,7 +46,6 @@ export function Workspace() {
       }
       if (event.name === 'activeChanged') {
         const uri = String(payload.uri ?? '');
-        console.info(`WEB document/activeChanged uri=${uri}`);
         setActiveUri(uri);
         service.activate(uri);
         return;
@@ -64,9 +66,8 @@ export function Workspace() {
       const document = event.name === 'saved' || event.name === 'saveFailed'
         ? payload.document : payload as DocumentSnapshot;
       if (!document?.uri) return;
-      console.info(`WEB document/${event.name} uri=${document.uri} version=${document.version}`);
-      updateDocument(document);
-      service.apply(document);
+      const applyContent = event.name === 'opened' || event.name === 'externalChanged';
+      if (service.apply(document, applyContent)) updateDocument(document);
       if (event.name === 'saveFailed') setMessage('Could not save the document');
     });
     bridge.emit('shell', 'ready', {});
@@ -117,7 +118,6 @@ export function Workspace() {
   }
 
   function updateDocument(document: DocumentSnapshot) {
-    console.info(`WEB tabs update uri=${document.uri} displayName=${document.displayName}`);
     const tab: DocumentTab = { ...document };
     delete (tab as Partial<DocumentSnapshot>).content;
     setDocuments(items => {
@@ -127,7 +127,6 @@ export function Workspace() {
         next[index] = tab;
         return next;
       })();
-      console.info(`WEB state tabs=[${nextDocuments.map(item => item.uri).join(',')}] activeUri=${activeUri ?? ''}`);
       if (index < 0) return nextDocuments;
       return nextDocuments;
     });
@@ -173,6 +172,10 @@ export function Workspace() {
         {documents.length === 0 && <div className="workspace-empty">Open a Java file to begin.</div>}
         <MonacoHost service={service} />
       </section>
+      {completion && <div className="completion-overlay-root">
+        <CompletionPopup state={completion} onSelect={index => service.selectCompletion(index)}
+          onAccept={() => service.acceptSelectedCompletion()} />
+      </div>}
     </main>
   );
 }

@@ -24,8 +24,6 @@ public final class WebShellDispatcher {
                     "Unknown Web Shell command: " + message.channel() + "/" + message.name(), true))
                     : null;
         }
-        System.out.println("JAVA DISPATCH matched handler=" + message.channel() + "/"
-                + message.name());
         return handler.handle(message);
     }
 

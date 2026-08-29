@@ -4,7 +4,26 @@ export type MonacoModel = {
   uri: { toString: () => string };
   getValue: () => string;
   setValue: (value: string) => void;
+  getAlternativeVersionId: () => number;
+  getPositionAt: (offset: number) => { lineNumber: number; column: number };
+  getOffsetAt: (position: { lineNumber: number; column: number }) => number;
+  getWordUntilPosition: (position: { lineNumber: number; column: number }) => { startColumn: number; endColumn: number };
   dispose: () => void;
+};
+
+export type MonacoContentChangeEvent = {
+  changes?: Array<{ text?: string; rangeLength?: number }>;
+};
+
+export type MonacoKeyEvent = {
+  keyCode: number;
+  browserEvent?: KeyboardEvent;
+  preventDefault?: () => void;
+  stopPropagation?: () => void;
+};
+
+export type MonacoCursorPositionEvent = {
+  position?: { lineNumber: number; column: number } | null;
 };
 
 export type MonacoEditor = {
@@ -13,8 +32,17 @@ export type MonacoEditor = {
   saveViewState: () => unknown;
   restoreViewState: (state: unknown) => void;
   updateOptions: (options: { readOnly?: boolean }) => void;
-  onDidChangeModelContent: (listener: () => void) => Disposable;
+  onDidChangeModelContent: (listener: (event: MonacoContentChangeEvent) => void) => Disposable;
+  onDidChangeCursorPosition: (listener: (event: MonacoCursorPositionEvent) => void) => Disposable;
+  onKeyDown: (listener: (event: MonacoKeyEvent) => void) => Disposable;
   addCommand: (keybinding: number, handler: () => void) => string;
+  getPosition: () => { lineNumber: number; column: number } | null;
+  getScrolledVisiblePosition: (position: { lineNumber: number; column: number }) =>
+    { left: number; top: number; height: number } | null;
+  getDomNode: () => HTMLElement | null;
+  executeEdits: (source: string, edits: Array<{ range: Record<string, number>; text: string; forceMoveMarkers?: boolean }>) => void;
+  trigger: (source: string, action: string, payload: Record<string, unknown>) => void;
+  focus: () => void;
   dispose: () => void;
 };
 
@@ -26,7 +54,7 @@ export type MonacoApi = {
   };
   Uri: { parse: (value: string) => unknown };
   KeyMod: { CtrlCmd: number };
-  KeyCode: { KeyS: number };
+  KeyCode: { KeyS: number; Space: number; UpArrow: number; DownArrow: number; Enter: number; Tab: number; Escape: number };
 };
 
 declare global {

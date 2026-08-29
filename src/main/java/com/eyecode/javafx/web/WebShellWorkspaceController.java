@@ -21,6 +21,7 @@ import java.util.Map;
 public final class WebShellWorkspaceController {
     private final JavaFxWebShellSurface surface;
     private final EditorManager manager;
+    private final WebShellCompletionController completionController;
     private final Map<String, EditorDocument> observedDocuments = new LinkedHashMap<>();
     private final Map<String, String> untitledNames = new LinkedHashMap<>();
     private int nextUntitledNumber = 1;
@@ -30,6 +31,7 @@ public final class WebShellWorkspaceController {
         this.surface = surface;
         this.manager = new EditorManager(null, new DefaultFileSystemService(),
                 new WebShellEditorViewFactory());
+        this.completionController = new WebShellCompletionController(surface, manager);
         manager.addSaveListener(this::onSaved);
         manager.addExternalFileListener(this::onExternalChanged);
         surface.registerHandler("document", "open", this::open);
@@ -56,33 +58,20 @@ public final class WebShellWorkspaceController {
     private WebShellEnvelope open(WebShellEnvelope message) {
         String rawPath = text(message.payload(), "path");
         if (rawPath.isBlank()) rawPath = text(message.payload(), "uri");
-        System.out.println("JAVA CONTROLLER open path=" + rawPath);
         if (rawPath.isBlank()) return message.error(new WebShellError(
                 "INVALID_DOCUMENT", "A file path or file URI is required", true));
         try {
-            System.out.println("JAVA OPEN normalize start");
             Path path = rawPath.startsWith("file:")
                     ? MonacoModelId.pathForModel(rawPath).orElseThrow()
                     : Path.of(rawPath);
             path = path.toAbsolutePath().normalize();
-            System.out.println("JAVA OPEN normalize done path=" + path);
             if (!java.nio.file.Files.isRegularFile(path)) {
                 return message.error(new WebShellError("DOCUMENT_NOT_FOUND", path.toString(), true));
             }
-            System.out.println("JAVA OPEN openDocument start");
             EditorSession session = openPath(path);
-            System.out.println("JAVA OPEN openDocument done session=" + session.getSessionId());
-            System.out.println("JAVA OPEN response snapshot start");
             WebDocumentSnapshot responseSnapshot = snapshot(session);
-            System.out.println("JAVA OPEN response snapshot done uri=" + responseSnapshot.uri());
-            System.out.println("JAVA OPEN response serialization start");
-            WebShellEnvelope response = message.response(Map.of("document", responseSnapshot.payload()));
-            System.out.println("JAVA OPEN response serialization done");
-            return response;
+            return message.response(Map.of("document", responseSnapshot.payload()));
         } catch (RuntimeException exception) {
-            System.out.println("JAVA OPEN exception type=" + exception.getClass().getName()
-                    + " message=" + exception.getMessage());
-            exception.printStackTrace(System.out);
             return message.error(new WebShellError("INVALID_DOCUMENT",
                     exception.getMessage() == null ? "Unable to open document" : exception.getMessage(), true));
         }
@@ -92,7 +81,6 @@ public final class WebShellWorkspaceController {
         EditorSession session = sessionFor(message.payload());
         if (session == null) return message.error(new WebShellError(
                 "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
-        System.out.println("JAVA document/activate uri=" + MonacoModelId.forSession(session));
         manager.activateSession(session.getSessionId());
         sendActiveChanged(session);
         return message.response(Map.of("document", snapshot(session).payload()));
@@ -100,23 +88,16 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope newDocument(WebShellEnvelope message) {
         String content = text(message.payload(), "content");
-        System.out.println("JAVA CONTROLLER new document");
         try {
-            System.out.println("JAVA OPEN editorManager.openDocument start untitled");
             EditorSession session = manager.openDocument(null, content);
             String displayName = "Untitled " + nextUntitledNumber++ + ".java";
             untitledNames.put(session.getSessionId(), displayName);
             observe(session);
             WebDocumentSnapshot result = snapshot(session);
-            System.out.println("JAVA document/opened uri=" + result.uri()
-                    + " displayName=" + result.displayName() + " version=" + result.version());
             surface.send(WebShellEnvelope.event("document", "opened", result.payload()));
             sendActiveChanged(session);
             return message.response(Map.of("document", result.payload()));
         } catch (RuntimeException exception) {
-            System.out.println("JAVA OPEN exception type=" + exception.getClass().getName()
-                    + " message=" + exception.getMessage());
-            exception.printStackTrace(System.out);
             return message.error(new WebShellError("NEW_DOCUMENT_FAILED",
                     exception.getMessage() == null ? "Unable to create document" : exception.getMessage(), true));
         }
@@ -214,7 +195,6 @@ public final class WebShellWorkspaceController {
         EditorSession session = sessionFor(message.payload());
         if (session == null) return message.error(new WebShellError(
                 "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
-        System.out.println("JAVA document/close uri=" + MonacoModelId.forSession(session));
         boolean closed = manager.closeSession(session.getSessionId());
         if (!closed) return message.error(new WebShellError(
                 "CLOSE_FAILED", "The document could not be closed", true));
@@ -228,26 +208,11 @@ public final class WebShellWorkspaceController {
     }
 
     private EditorSession openPath(Path path) {
-        System.out.println("JAVA OPEN editorManager.openDocument start path=" + path);
         EditorSession session = manager.openDocument(path.toAbsolutePath().normalize());
-        System.out.println("JAVA OPEN editorManager.openDocument done session=" + session.getSessionId());
-        System.out.println("JAVA OPEN observe start session=" + session.getSessionId());
         observe(session);
-        System.out.println("JAVA OPEN observe done session=" + session.getSessionId());
-        System.out.println("JAVA OPEN snapshot start");
         WebDocumentSnapshot result = snapshot(session);
-        System.out.println("JAVA OPEN snapshot done uri=" + result.uri()
-                + " displayName=" + result.displayName());
-        System.out.println("JAVA document/open resolved uri=" + result.uri()
-                + " session=" + session.getSessionId());
-        System.out.println("JAVA OPEN emit opened start");
         surface.send(WebShellEnvelope.event("document", "opened", result.payload()));
-        System.out.println("JAVA OPEN emit opened done");
-        System.out.println("JAVA document/opened uri=" + result.uri()
-                + " displayName=" + result.displayName() + " version=" + result.version());
-        System.out.println("JAVA OPEN activate start");
         sendActiveChanged(session);
-        System.out.println("JAVA OPEN activate done");
         return session;
     }
 
@@ -283,7 +248,6 @@ public final class WebShellWorkspaceController {
     }
 
     private void sendActiveChanged(EditorSession session) {
-        System.out.println("JAVA document/activeChanged uri=" + MonacoModelId.forSession(session));
         surface.send(WebShellEnvelope.event("document", "activeChanged", Map.of(
                 "uri", MonacoModelId.forSession(session),
                 "documentId", session.getDocumentId())));

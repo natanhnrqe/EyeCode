@@ -18,6 +18,7 @@ export class WebShellRequestError extends Error {
 
 export type WebShellRequestOptions = {
   timeoutMs?: number | null;
+  requestId?: string;
 };
 
 declare global {
@@ -31,17 +32,19 @@ export class WebShellBridge {
   private nextRequestId = 0;
   private listeners = new Set<(message: WebShellEnvelope) => void>();
 
+  reserveRequestId(): string {
+    return String(++this.nextRequestId);
+  }
+
   async request<T>(channel: string, name: string, payload: Record<string, unknown>,
                    options: WebShellRequestOptions = {}): Promise<T> {
-    const requestId = String(++this.nextRequestId);
-    console.info(`WEB BRIDGE send kind=request channel=${channel} name=${name} requestId=${requestId}`);
+    const requestId = options.requestId ?? this.reserveRequestId();
     const message: WebShellEnvelope = {
       protocol: 'eyecode.web/1', kind: 'request', channel, name, requestId,
       workspaceId: null, documentId: null, documentVersion: null, payload
     };
     return new Promise<T>((resolve, reject) => {
       if (!window.cefQuery) {
-        console.info(`WEB BRIDGE unavailable channel=${channel} name=${name} requestId=${requestId}`);
         reject(new Error('CEFFX bridge is unavailable'));
         return;
       }
@@ -78,7 +81,6 @@ export class WebShellBridge {
       protocol: 'eyecode.web/1', kind: 'event', channel, name, requestId: '',
       workspaceId: null, documentId: null, documentVersion: null, payload
     };
-    console.info(`WEB BRIDGE send kind=event channel=${channel} name=${name}`);
     if (!window.cefQuery) return;
     window.cefQuery({ request: JSON.stringify(message) });
   }
