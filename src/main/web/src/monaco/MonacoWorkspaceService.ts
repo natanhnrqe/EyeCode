@@ -2,7 +2,8 @@ import { bridge } from '../bridge/EyeCodeBridge';
 import type { WebShellEnvelope } from '../bridge/protocol';
 import type { DocumentSnapshot } from '../document/protocol';
 import type { CompletionPopupState, CompletionResponse } from '../completion/protocol';
-import type { Disposable, MonacoApi, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoKeyEvent, MonacoModel } from './api';
+import type { LearningPopupState, LearningResponse } from '../learning/protocol';
+import type { Disposable, MonacoApi, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoKeyEvent, MonacoModel, MonacoMouseEvent } from './api';
 
 type DocumentChangeHandler = (document: DocumentSnapshot) => void;
 type PendingCompletion = {
@@ -12,6 +13,11 @@ type PendingCompletion = {
   model: MonacoModel;
   position: { lineNumber: number; column: number };
   caretOffset: number;
+};
+
+type PendingLearning = PendingCompletion & {
+  key: string;
+  anchor?: { left: number; top: number };
 };
 
 export class MonacoWorkspaceService {
@@ -26,6 +32,8 @@ export class MonacoWorkspaceService {
   private contentListener: Disposable | null = null;
   private keyListener: Disposable | null = null;
   private cursorListener: Disposable | null = null;
+  private mouseMoveListener: Disposable | null = null;
+  private mouseLeaveListener: Disposable | null = null;
   private completionMessageUnsubscribe: (() => void) | null = null;
   private suppressContentChange = false;
   private disposed = false;
@@ -36,6 +44,14 @@ export class MonacoWorkspaceService {
   private readonly pendingCompletions = new Map<string, PendingCompletion>();
   private latestCompletionRequestId: string | null = null;
   private suppressCompletionTrigger = false;
+  private onLearningState: ((state: LearningPopupState | null) => void) | null = null;
+  private learningState: LearningPopupState | null = null;
+  private readonly pendingLearning = new Map<string, PendingLearning>();
+  private latestLearningRequestId: string | null = null;
+  private hoverKey: string | null = null;
+  private editorHovered = false;
+  private learningHovered = false;
+  private learningHideTimer: number | null = null;
 
   setDocumentChangeHandler(handler: DocumentChangeHandler): void {
     this.onDocumentChange = handler;
@@ -47,6 +63,46 @@ export class MonacoWorkspaceService {
 
   setCompletionStateHandler(handler: ((state: CompletionPopupState | null) => void) | null): void {
     this.onCompletionState = handler;
+  }
+
+  setLearningStateHandler(handler: ((state: LearningPopupState | null) => void) | null): void {
+    this.onLearningState = handler;
+  }
+
+  setLearningHovered(hovered: boolean): void {
+    this.learningHovered = hovered;
+    if (hovered) this.cancelLearningHide();
+    else this.scheduleLearningHide();
+  }
+
+  navigateLearning(identifier: string): void {
+    const state = this.learningState;
+    const editor = this.editor;
+    const model = editor?.getModel();
+    const position = editor?.getPosition();
+    if (!state || !editor || !model || !position || !identifier) return;
+    this.hoverKey = null;
+    this.requestLearning(identifier, {
+      uri: state.uri,
+      model,
+      editor,
+      position,
+      caretOffset: model.getOffsetAt(position),
+      key: `navigation:${identifier}:${state.uri}:${model.getAlternativeVersionId()}`,
+      anchor: state.anchor
+    });
+  }
+
+  hideLearning(): void {
+    this.cancelLearningHide();
+    this.pendingLearning.clear();
+    this.latestLearningRequestId = null;
+    this.hoverKey = null;
+    if (this.learningState === null) return;
+    this.learningState = null;
+    this.onLearningState?.(null);
+    const model = this.editor?.getModel();
+    if (model) bridge.emit('learning', 'close', { uri: model.uri.toString() });
   }
 
   selectCompletion(index: number): void {
@@ -98,13 +154,22 @@ export class MonacoWorkspaceService {
       readOnly: false,
       model: null
     });
-    this.completionMessageUnsubscribe = bridge.subscribe(message => this.receiveCompletionMessage(message));
+    this.completionMessageUnsubscribe = bridge.subscribe(message => {
+      this.receiveCompletionMessage(message);
+      this.receiveLearningMessage(message);
+    });
     this.contentListener = this.editor.onDidChangeModelContent(event => {
       this.forwardContentChange();
       if (!this.suppressCompletionTrigger) this.handleContentChange(event);
     });
     this.keyListener = this.editor.onKeyDown(event => this.handleCompletionKey(event));
     this.cursorListener = this.editor.onDidChangeCursorPosition(event => this.handleCursorChange(event));
+    this.mouseMoveListener = this.editor.onMouseMove(event => this.handleLearningMouseMove(event));
+    this.mouseLeaveListener = this.editor.onMouseLeave(() => {
+      this.editorHovered = false;
+      this.hoverKey = null;
+      this.scheduleLearningHide();
+    });
     this.editor.addCommand(this.api.KeyMod.CtrlCmd | this.api.KeyCode.KeyS, () => this.saveActive());
     this.editor.addCommand(this.api.KeyMod.CtrlCmd | this.api.KeyCode.Space, () => this.requestCompletion(true, null));
     this.pending.forEach(document => this.open(document));
@@ -140,6 +205,7 @@ export class MonacoWorkspaceService {
     const next = this.models.get(uri);
     if (!next) return;
     this.hideCompletion();
+    this.hideLearning();
     const current = this.editor.getModel();
     if (current && current.uri.toString() !== uri) {
       this.viewStates.set(current.uri.toString(), this.editor.saveViewState());
@@ -152,6 +218,7 @@ export class MonacoWorkspaceService {
 
   close(uri: string): void {
     if (this.completionState?.uri === uri) this.hideCompletion();
+    if (this.learningState?.uri === uri) this.hideLearning();
     this.pending.delete(uri);
     const model = this.models.get(uri);
     if (!model) return;
@@ -166,6 +233,7 @@ export class MonacoWorkspaceService {
 
   reidentify(previousUri: string, document: DocumentSnapshot): void {
     if (this.completionState?.uri === previousUri) this.hideCompletion();
+    if (this.learningState?.uri === previousUri) this.hideLearning();
     const model = this.models.get(previousUri);
     const active = this.editor?.getModel()?.uri.toString() === previousUri;
     const viewState = active ? this.editor?.saveViewState() : this.viewStates.get(previousUri);
@@ -189,6 +257,10 @@ export class MonacoWorkspaceService {
     this.keyListener = null;
     this.cursorListener?.dispose();
     this.cursorListener = null;
+    this.mouseMoveListener?.dispose();
+    this.mouseMoveListener = null;
+    this.mouseLeaveListener?.dispose();
+    this.mouseLeaveListener = null;
     this.completionMessageUnsubscribe?.();
     this.completionMessageUnsubscribe = null;
     this.editor?.dispose();
@@ -201,6 +273,7 @@ export class MonacoWorkspaceService {
     this.readOnly.clear();
     this.changeQueues.clear();
     this.hideCompletion();
+    this.hideLearning();
   }
 
   private updateModel(model: MonacoModel, content: string): void {
@@ -244,6 +317,7 @@ export class MonacoWorkspaceService {
   }
 
   private handleContentChange(event: MonacoContentChangeEvent): void {
+    this.hideLearning();
     const changes = event.changes ?? [];
     if (!changes.some(change => {
       const text = change.text ?? '';
@@ -334,6 +408,124 @@ export class MonacoWorkspaceService {
       selectedIndex: 0,
       anchor: anchor.anchor
     });
+  }
+
+  private handleLearningMouseMove(event: MonacoMouseEvent): void {
+    const editor = this.editor;
+    const model = editor?.getModel();
+    const position = event.target?.position ?? null;
+    if (!editor || !model || !position) {
+      this.editorHovered = false;
+      this.hoverKey = null;
+      this.scheduleLearningHide();
+      return;
+    }
+    const word = model.getWordAtPosition(position);
+    if (!word || position.column < word.startColumn || position.column >= word.endColumn) {
+      this.editorHovered = false;
+      this.hoverKey = null;
+      this.scheduleLearningHide();
+      return;
+    }
+    this.editorHovered = true;
+    this.cancelLearningHide();
+    const startColumn = word.startColumn;
+    const endColumn = word.endColumn;
+    const start = model.getOffsetAt({ lineNumber: position.lineNumber, column: startColumn });
+    const end = model.getOffsetAt({ lineNumber: position.lineNumber, column: endColumn });
+    const key = `${model.uri.toString()}:${model.getAlternativeVersionId()}:${position.lineNumber}:${startColumn}:${endColumn}`;
+    if (key === this.hoverKey) return;
+    this.hoverKey = key;
+    this.requestLearning('', { uri: model.uri.toString(), model, editor, position,
+      caretOffset: start, key, startOffset: start, endOffset: end });
+  }
+
+  private requestLearning(identifier: string, target: {
+    uri: string;
+    model: MonacoModel;
+    editor: MonacoEditor;
+    position: { lineNumber: number; column: number };
+    caretOffset: number;
+    key: string;
+    startOffset?: number;
+    endOffset?: number;
+    anchor?: { left: number; top: number };
+  }): void {
+    const requestId = bridge.reserveRequestId();
+    const version = target.model.getAlternativeVersionId();
+    this.pendingLearning.clear();
+    this.latestLearningRequestId = requestId;
+    this.pendingLearning.set(requestId, { ...target, modelVersion: version });
+    const payload = {
+      uri: target.uri,
+      version,
+      offset: target.caretOffset,
+      line: target.position.lineNumber,
+      column: target.position.column,
+      ...(target.startOffset === undefined ? {} : { startOffset: target.startOffset }),
+      ...(target.endOffset === undefined ? {} : { endOffset: target.endOffset }),
+      ...(identifier ? { identifier } : {}),
+      content: target.model.getValue()
+    };
+    void bridge.request<{ accepted: boolean }>('learning', 'request', payload, { requestId })
+      .catch(error => {
+        if (!this.pendingLearning.delete(requestId)) return;
+        if (this.latestLearningRequestId === requestId) this.latestLearningRequestId = null;
+        this.onError?.(error instanceof Error ? error.message : String(error));
+      });
+  }
+
+  private receiveLearningMessage(message: WebShellEnvelope): void {
+    if (message.kind !== 'response' || message.channel !== 'learning' || message.name !== 'request') return;
+    const pending = this.pendingLearning.get(message.requestId) ?? null;
+    this.pendingLearning.delete(message.requestId);
+    if (message.error) {
+      if (this.latestLearningRequestId === message.requestId) this.latestLearningRequestId = null;
+      this.onError?.(message.error.message);
+      return;
+    }
+    const response = message.payload as unknown as LearningResponse;
+    if (!pending || !response || response.requestId !== message.requestId
+        || this.latestLearningRequestId !== message.requestId
+        || response.uri !== pending.uri || response.version !== pending.modelVersion
+        || pending.editor.getModel() !== pending.model
+        || pending.model.uri.toString() !== pending.uri
+        || pending.model.getAlternativeVersionId() !== pending.modelVersion
+        || (!pending.key.startsWith('navigation:') && pending.key !== this.hoverKey)) {
+      if (this.latestLearningRequestId === message.requestId) this.latestLearningRequestId = null;
+      return;
+    }
+    this.latestLearningRequestId = null;
+    if (!response.found) {
+      if (!this.learningHovered) this.learningState = null;
+      this.onLearningState?.(this.learningState);
+      return;
+    }
+    const anchor = pending.anchor ?? this.currentCompletionAnchor(pending.editor, pending.model, pending.position)?.anchor;
+    if (!anchor) return;
+    this.learningState = {
+      requestId: response.requestId,
+      uri: response.uri,
+      version: response.version,
+      card: response.card,
+      anchor
+    };
+    this.onLearningState?.(this.learningState);
+  }
+
+  private scheduleLearningHide(): void {
+    this.cancelLearningHide();
+    if (this.editorHovered || this.learningHovered) return;
+    this.learningHideTimer = window.setTimeout(() => {
+      this.learningHideTimer = null;
+      if (!this.editorHovered && !this.learningHovered) this.hideLearning();
+    }, 140);
+  }
+
+  private cancelLearningHide(): void {
+    if (this.learningHideTimer === null) return;
+    window.clearTimeout(this.learningHideTimer);
+    this.learningHideTimer = null;
   }
 
   private handleCursorChange(event: MonacoCursorPositionEvent): void {

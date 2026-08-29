@@ -6,6 +6,8 @@ import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
 import { MonacoHost } from './MonacoHost';
 import { CompletionPopup } from '../completion/CompletionPopup';
 import type { CompletionPopupState } from '../completion/protocol';
+import { LearningCard } from '../learning/LearningCard';
+import type { LearningPopupState } from '../learning/protocol';
 
 type DocumentTab = Omit<DocumentSnapshot, 'content'>;
 
@@ -18,6 +20,7 @@ export function Workspace() {
   const [path, setPath] = useState('');
   const [message, setMessage] = useState('');
   const [completion, setCompletion] = useState<CompletionPopupState | null>(null);
+  const [learning, setLearning] = useState<LearningPopupState | null>(null);
 
   useEffect(() => {
     service.setDocumentChangeHandler(document => {
@@ -26,7 +29,11 @@ export function Workspace() {
     });
     service.setErrorHandler(setMessage);
     service.setCompletionStateHandler(setCompletion);
-    return () => service.setCompletionStateHandler(null);
+    service.setLearningStateHandler(setLearning);
+    return () => {
+      service.setCompletionStateHandler(null);
+      service.setLearningStateHandler(null);
+    };
   }, [service]);
 
   useEffect(() => {
@@ -172,9 +179,11 @@ export function Workspace() {
         {documents.length === 0 && <div className="workspace-empty">Open a Java file to begin.</div>}
         <MonacoHost service={service} />
       </section>
-      {completion && <div className="completion-overlay-root">
-        <CompletionPopup state={completion} onSelect={index => service.selectCompletion(index)}
-          onAccept={() => service.acceptSelectedCompletion()} />
+      {(completion || learning) && <div className="completion-overlay-root">
+        {completion && <CompletionPopup state={completion} onSelect={index => service.selectCompletion(index)}
+          onAccept={() => service.acceptSelectedCompletion()} />}
+        {learning && <LearningCard state={learning} onNavigate={identifier => service.navigateLearning(identifier)}
+          onHover={hovered => service.setLearningHovered(hovered)} />}
       </div>}
     </main>
   );

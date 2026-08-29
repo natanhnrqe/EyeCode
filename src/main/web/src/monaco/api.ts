@@ -8,6 +8,8 @@ export type MonacoModel = {
   getPositionAt: (offset: number) => { lineNumber: number; column: number };
   getOffsetAt: (position: { lineNumber: number; column: number }) => number;
   getWordUntilPosition: (position: { lineNumber: number; column: number }) => { startColumn: number; endColumn: number };
+  getWordAtPosition: (position: { lineNumber: number; column: number }) =>
+    { word: string; startColumn: number; endColumn: number } | null;
   dispose: () => void;
 };
 
@@ -26,6 +28,18 @@ export type MonacoCursorPositionEvent = {
   position?: { lineNumber: number; column: number } | null;
 };
 
+export type MonacoMouseEvent = {
+  target?: {
+    position?: { lineNumber: number; column: number } | null;
+    range?: {
+      startLineNumber: number;
+      startColumn: number;
+      endLineNumber: number;
+      endColumn: number;
+    } | null;
+  } | null;
+};
+
 export type MonacoEditor = {
   getModel: () => MonacoModel | null;
   setModel: (model: MonacoModel | null) => void;
@@ -35,6 +49,8 @@ export type MonacoEditor = {
   onDidChangeModelContent: (listener: (event: MonacoContentChangeEvent) => void) => Disposable;
   onDidChangeCursorPosition: (listener: (event: MonacoCursorPositionEvent) => void) => Disposable;
   onKeyDown: (listener: (event: MonacoKeyEvent) => void) => Disposable;
+  onMouseMove: (listener: (event: MonacoMouseEvent) => void) => Disposable;
+  onMouseLeave: (listener: () => void) => Disposable;
   addCommand: (keybinding: number, handler: () => void) => string;
   getPosition: () => { lineNumber: number; column: number } | null;
   getScrolledVisiblePosition: (position: { lineNumber: number; column: number }) =>

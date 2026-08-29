@@ -208,6 +208,55 @@ output { display: block; min-height: 40px; padding: 11px; border: 1px solid rgba
 .completion-example > span { display: block; margin-bottom: 5px; color: #8cafff; font-size: 11px; }
 .completion-example pre { max-width: 100%; margin: 0; overflow-x: auto; padding: 8px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 5px; color: #b9c3d0; background: #1f2023; font: 11px/1.4 "JetBrains Mono", monospace; white-space: pre-wrap; }
 
+.learning-popup {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  width: min(600px, calc(100vw - 16px));
+  max-height: min(500px, calc(100vh - 16px));
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 9px;
+  color: #dcdcdc;
+  background: #25262a;
+  box-shadow: 0 16px 40px rgba(0,0,0,.42);
+  pointer-events: auto;
+  font: 13px/1.5 "Segoe UI", sans-serif;
+}
+
+.learning-popup.learning-size-quick { width: min(390px, calc(100vw - 16px)); max-height: min(360px, calc(100vh - 16px)); }
+.learning-popup.learning-size-medium { width: min(520px, calc(100vw - 16px)); max-height: min(450px, calc(100vh - 16px)); }
+.learning-header, .learning-footer, .learning-common-methods { flex: 0 0 auto; padding: 10px 14px; background: transparent; }
+.learning-header { border-bottom: 1px solid rgba(255,255,255,.1); }
+.learning-title-row { display: flex; align-items: center; gap: 8px; }
+.learning-icon { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; border: 1px solid currentColor; border-radius: 50%; color: #84b7ff; font: 600 10px/1 "JetBrains Mono", monospace; }
+img.learning-icon { border: 0; border-radius: 0; object-fit: contain; }
+.learning-title { flex: 1; color: #f0f1f4; font-size: 14px; font-weight: 600; }
+.learning-subtitle, .learning-breadcrumb, .learning-footer, .learning-common-methods { color: #8d929d; font-size: 11px; }
+.learning-subtitle { margin: 3px 0 0 26px; letter-spacing: .04em; }
+.learning-breadcrumb { display: flex; gap: 4px; margin: 7px 0 0 26px; }
+.learning-breadcrumb button, .learning-common-methods button, .learning-related button { padding: 1px 3px; border: 0; border-radius: 3px; color: #84b7ff; background: transparent; font: inherit; cursor: pointer; }
+.learning-breadcrumb button::after { content: '›'; margin-left: 4px; color: #6f7480; }
+.learning-breadcrumb button:hover, .learning-common-methods button:hover, .learning-related button:hover { color: #fff; background: rgba(132,183,255,.14); }
+.learning-body { min-height: 0; overflow: auto; padding: 8px 14px; color: #c7cad1; background: transparent; }
+.learning-body .learning-content { padding: 0; background: transparent; }
+.learning-body p { margin: 0 0 8px; }
+.learning-body h1, .learning-body h2, .learning-body h3, .learning-body h4 { color: #f0f1f4; line-height: 1.25; }
+.learning-body h1 { margin: 4px 0 8px; font-size: 18px; }
+.learning-body h2 { margin: 12px 0 6px; padding-bottom: 3px; border-bottom: 1px solid rgba(255,255,255,.1); font-size: 15px; }
+.learning-body h3, .learning-body h4 { margin: 10px 0 5px; font-size: 14px; }
+.learning-body ul, .learning-body ol { margin: 0 0 8px; padding-left: 20px; }
+.learning-body code { padding: 1px 4px; border: 1px solid rgba(255,255,255,.1); border-radius: 4px; background: #1f2023; color: #f0f1f4; font: .9em/1.35 "JetBrains Mono", monospace; }
+.learning-body pre { margin: 8px 0 10px; overflow-x: auto; padding: 8px 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; background: #1f2023; }
+.learning-body pre code { padding: 0; border: 0; background: transparent; white-space: pre; }
+.learning-body blockquote { margin: 8px 0 10px; padding: 5px 10px; border-left: 3px solid #3574f0; background: rgba(53,116,240,.1); color: #b6bbc5; }
+.learning-body a, .learning-body a:visited { color: #84b7ff; text-decoration: none; }
+.learning-body a:hover { color: #fff; text-decoration: underline; }
+.learning-common-methods { padding-top: 7px; padding-bottom: 7px; border-top: 1px solid rgba(255,255,255,.1); }
+.learning-common-methods > span, .learning-related > span { display: block; margin-bottom: 3px; color: #8d929d; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+.learning-common-methods > div, .learning-related > div { display: flex; flex-wrap: wrap; gap: 3px 5px; }
+.learning-footer { border-top: 1px solid rgba(255,255,255,.1); }
+
 @media (max-width: 700px) {
   .workspace-header, .document-open-row { padding-left: 16px; padding-right: 16px; }
   .document-tabs { padding-left: 8px; padding-right: 8px; }

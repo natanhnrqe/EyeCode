@@ -9,7 +9,7 @@ import java.io.InputStream;
 import java.util.Base64;
 import java.util.List;
 
-record MonacoLearningOverlayPayload(
+public record MonacoLearningOverlayPayload(
         String title,
         String subtitle,
         String sizeClass,
@@ -22,9 +22,9 @@ record MonacoLearningOverlayPayload(
         boolean sourceAvailable,
         boolean docsAvailable
 ) {
-    record Item(String id, String title) { }
+    public record Item(String id, String title) { }
 
-    static MonacoLearningOverlayPayload from(LearningMetadata metadata,
+    public static MonacoLearningOverlayPayload from(LearningMetadata metadata,
                                               List<LearningMetadata> ancestors,
                                               String bodyHtml,
                                               List<LearningMetadata> related,
@@ -33,7 +33,7 @@ record MonacoLearningOverlayPayload(
         return from(metadata, ancestors, bodyHtml, List.of(), related, docs, sourceAvailable);
     }
 
-    static MonacoLearningOverlayPayload from(LearningMetadata metadata,
+    public static MonacoLearningOverlayPayload from(LearningMetadata metadata,
                                               List<LearningMetadata> ancestors,
                                               String bodyHtml,
                                               List<LearningMember> commonMethods,
@@ -92,7 +92,7 @@ record MonacoLearningOverlayPayload(
         };
     }
 
-    String json() {
+    public String json() {
         StringBuilder result = new StringBuilder("{");
         field(result, "title", title).append(',');
         field(result, "subtitle", subtitle).append(',');

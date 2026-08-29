@@ -22,6 +22,7 @@ public final class WebShellWorkspaceController {
     private final JavaFxWebShellSurface surface;
     private final EditorManager manager;
     private final WebShellCompletionController completionController;
+    private final WebShellLearningController learningController;
     private final Map<String, EditorDocument> observedDocuments = new LinkedHashMap<>();
     private final Map<String, String> untitledNames = new LinkedHashMap<>();
     private int nextUntitledNumber = 1;
@@ -32,6 +33,7 @@ public final class WebShellWorkspaceController {
         this.manager = new EditorManager(null, new DefaultFileSystemService(),
                 new WebShellEditorViewFactory());
         this.completionController = new WebShellCompletionController(surface, manager);
+        this.learningController = new WebShellLearningController(surface, manager);
         manager.addSaveListener(this::onSaved);
         manager.addExternalFileListener(this::onExternalChanged);
         surface.registerHandler("document", "open", this::open);
