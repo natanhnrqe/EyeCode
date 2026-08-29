@@ -13,6 +13,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.Region;
 
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 public final class JavaFxWebShellSurface extends Region {
     private final WebShellAssetResolver assetResolver;
@@ -51,6 +52,12 @@ public final class JavaFxWebShellSurface extends Region {
 
     public String entryUrl() {
         return assetResolver.entryUrl();
+    }
+
+    public void registerHandler(String channel, String name, WebShellMessageHandler handler) {
+        if (disposed) return;
+        dispatcher.register(channel, name, handler);
+        System.out.println("JAVA DISPATCH registered handler=" + channel + "/" + name);
     }
 
     public void send(WebShellEnvelope message) {
@@ -103,10 +110,15 @@ public final class JavaFxWebShellSurface extends Region {
     private void registerHandlers() {
         dispatcher.register("shell", "ping", message -> message.response(Map.of("message", "pong")));
         dispatcher.register("shell", "ready", message -> {
-            send(WebShellEnvelope.event("shell", "bootstrap", Map.of(
-                    "protocolVersion", WebShellEnvelope.PROTOCOL,
-                    "platform", System.getProperty("os.name", "unknown"),
-                    "webShellMode", WebShellMode.WEB_SHELL.name())));
+            Map<String, Object> bootstrap = new LinkedHashMap<>();
+            bootstrap.put("protocolVersion", WebShellEnvelope.PROTOCOL);
+            bootstrap.put("platform", System.getProperty("os.name", "unknown"));
+            bootstrap.put("webShellMode", WebShellMode.WEB_SHELL.name());
+            String initialFile = System.getProperty("eyecode.webshell.initialFile");
+            if (initialFile != null && !initialFile.isBlank()) {
+                bootstrap.put("initialFile", initialFile.trim());
+            }
+            send(WebShellEnvelope.event("shell", "bootstrap", bootstrap));
             return message.response(Map.of("accepted", true));
         });
     }
@@ -187,7 +199,11 @@ public final class JavaFxWebShellSurface extends Region {
         public boolean onQuery(CefBrowser browser, CefFrame frame, long queryId, String request,
                                boolean persistent, CefQueryCallback callback) {
             try {
+                System.out.println("JAVA ROUTER raw received bytes="
+                        + (request == null ? 0 : request.length()));
                 WebShellEnvelope message = codec.decode(request);
+                System.out.println("JAVA CODEC decoded channel=" + message.channel()
+                        + " name=" + message.name() + " requestId=" + message.requestId());
                 WebShellEnvelope response = dispatcher.dispatch(message);
                 callback.success(response == null ? "{}" : codec.encode(response));
             } catch (IllegalArgumentException exception) {
@@ -197,5 +213,6 @@ public final class JavaFxWebShellSurface extends Region {
             }
             return true;
         }
+
     }
 }

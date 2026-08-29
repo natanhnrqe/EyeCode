@@ -3,7 +3,7 @@ package com.eyecode.javafx.monaco;
 public sealed interface MonacoCommand permits MonacoCommand.OpenModel,
         MonacoCommand.ActivateModel, MonacoCommand.UpdateModel, MonacoCommand.CloseModel,
         MonacoCommand.SetReadOnly, MonacoCommand.RevealPosition, MonacoCommand.Focus,
-        MonacoCommand.ApplyEdit, MonacoCommand.CompletionResponse,
+        MonacoCommand.ApplyEdit, MonacoCommand.InsertSnippet, MonacoCommand.CompletionResponse,
         MonacoCommand.ShowOverlay, MonacoCommand.UpdateOverlay, MonacoCommand.HideOverlay,
         MonacoCommand.Layout {
 
@@ -17,6 +17,7 @@ public sealed interface MonacoCommand permits MonacoCommand.OpenModel,
     record RevealPosition(String id, int line, int column) implements MonacoCommand { }
     record Focus() implements MonacoCommand { }
     record ApplyEdit(String id, int start, int end, String text) implements MonacoCommand { }
+    record InsertSnippet(String id, int start, int end, String snippet) implements MonacoCommand { }
     record CompletionResponse(String id, long requestId, java.util.List<MonacoCompletionItem> items)
             implements MonacoCommand { }
     record ShowOverlay(String overlayId, MonacoOverlayType type, int line, int column,

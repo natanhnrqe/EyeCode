@@ -6,6 +6,20 @@ type CefQuery = {
   onFailure?: (code: number, message: string) => void;
 };
 
+export class WebShellRequestError extends Error {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = 'WebShellRequestError';
+    this.code = code;
+  }
+}
+
+export type WebShellRequestOptions = {
+  timeoutMs?: number | null;
+};
+
 declare global {
   interface Window {
     cefQuery?: (query: CefQuery) => void;
@@ -17,36 +31,42 @@ export class WebShellBridge {
   private nextRequestId = 0;
   private listeners = new Set<(message: WebShellEnvelope) => void>();
 
-  async request<T>(channel: string, name: string, payload: Record<string, unknown>): Promise<T> {
+  async request<T>(channel: string, name: string, payload: Record<string, unknown>,
+                   options: WebShellRequestOptions = {}): Promise<T> {
     const requestId = String(++this.nextRequestId);
+    console.info(`WEB BRIDGE send kind=request channel=${channel} name=${name} requestId=${requestId}`);
     const message: WebShellEnvelope = {
       protocol: 'eyecode.web/1', kind: 'request', channel, name, requestId,
       workspaceId: null, documentId: null, documentVersion: null, payload
     };
     return new Promise<T>((resolve, reject) => {
       if (!window.cefQuery) {
+        console.info(`WEB BRIDGE unavailable channel=${channel} name=${name} requestId=${requestId}`);
         reject(new Error('CEFFX bridge is unavailable'));
         return;
       }
-      const timeout = window.setTimeout(() => reject(new Error('Web Shell request timed out')), 3000);
+      const timeout = options.timeoutMs === null ? null : window.setTimeout(
+        () => reject(new Error('Web Shell request timed out')),
+        options.timeoutMs ?? 3000);
       window.cefQuery({
         request: JSON.stringify(message),
         onSuccess: response => {
-          window.clearTimeout(timeout);
+          if (timeout !== null) window.clearTimeout(timeout);
           try {
             const envelope = JSON.parse(response) as WebShellEnvelope<T>;
             if (envelope.requestId !== requestId) {
               reject(new Error(`Mismatched Web Shell response: ${envelope.requestId}`));
               return;
             }
-            if (envelope.error) reject(new Error(envelope.error.message));
+            if (envelope.error) reject(new WebShellRequestError(
+              envelope.error.code, envelope.error.message));
             else resolve(envelope.payload);
           } catch (error) {
             reject(error);
           }
         },
         onFailure: (_code, message) => {
-          window.clearTimeout(timeout);
+          if (timeout !== null) window.clearTimeout(timeout);
           reject(new Error(message));
         }
       });
@@ -58,6 +78,7 @@ export class WebShellBridge {
       protocol: 'eyecode.web/1', kind: 'event', channel, name, requestId: '',
       workspaceId: null, documentId: null, documentVersion: null, payload
     };
+    console.info(`WEB BRIDGE send kind=event channel=${channel} name=${name}`);
     if (!window.cefQuery) return;
     window.cefQuery({ request: JSON.stringify(message) });
   }

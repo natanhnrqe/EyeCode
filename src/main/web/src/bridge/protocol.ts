@@ -23,4 +23,5 @@ export type ShellBootstrap = {
   protocolVersion: string;
   platform: string;
   webShellMode: string;
+  initialFile?: string;
 };

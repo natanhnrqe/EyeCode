@@ -3,6 +3,7 @@ package com.eyecode.javafx.ui;
 import com.eyecode.javafx.ceffx.CeffxRuntime;
 import com.eyecode.javafx.web.JavaFxWebShellSurface;
 import com.eyecode.javafx.web.WebShellMode;
+import com.eyecode.javafx.web.WebShellWorkspaceController;
 import javafx.application.Platform;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
@@ -21,12 +22,18 @@ public final class FxMainWindow {
 
     private final Stage stage;
     private final Region root;
+    private final WebShellWorkspaceController webShellWorkspace;
 
     public FxMainWindow(Stage stage) {
         this.stage = stage;
-        this.root = WebShellMode.configured() == WebShellMode.WEB_SHELL
-                ? new JavaFxWebShellSurface()
-                : new FxRootLayout(this::shutdown);
+        if (WebShellMode.configured() == WebShellMode.WEB_SHELL) {
+            JavaFxWebShellSurface surface = new JavaFxWebShellSurface();
+            webShellWorkspace = new WebShellWorkspaceController(surface);
+            root = surface;
+        } else {
+            webShellWorkspace = null;
+            root = new FxRootLayout(this::shutdown);
+        }
 
         stage.initStyle(StageStyle.UNDECORATED);
         stage.setOnCloseRequest(e -> {
@@ -59,6 +66,7 @@ public final class FxMainWindow {
         if (root instanceof FxRootLayout legacyRoot) {
             legacyRoot.dispose();
         } else if (root instanceof JavaFxWebShellSurface webShell) {
+            if (webShellWorkspace != null) webShellWorkspace.dispose();
             webShell.dispose();
         }
         CeffxRuntime.dispose();

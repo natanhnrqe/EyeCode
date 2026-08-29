@@ -229,6 +229,11 @@ public final class EditorManager {
         return document == null || autoSaveManager.saveNow(document);
     }
 
+    public boolean saveAs(String sessionId, Path target) {
+        EditorDocument document = documentsBySession.get(sessionId);
+        return document != null && target != null && autoSaveManager.saveAs(document, target);
+    }
+
     public boolean hasSaveFailure(String sessionId) {
         EditorDocument document = documentsBySession.get(sessionId);
         return document != null && autoSaveManager.hasSaveFailure(document);

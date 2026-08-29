@@ -184,7 +184,7 @@ public final class JavaFxMonacoEditorSurface extends Region {
         }
     }
 
-    private void send(MonacoCommand command) {
+    public void send(MonacoCommand command) {
         MonacoBridge current = bridge;
         if (current != null) current.send(command);
     }
@@ -340,9 +340,11 @@ public final class JavaFxMonacoEditorSurface extends Region {
             if ("ready".equals(kind)) return MonacoEvent.ready();
             if ("change".equals(kind)) return MonacoEvent.contentChanged(id, string(values, "content"), numberLong(values, "version"));
             if ("caret".equals(kind)) return MonacoEvent.caretChanged(id, number(values, "line"), number(values, "column"),
-                    number(values, "line"), number(values, "column"), numberLong(values, "version"));
+                    number(values, "line"), number(values, "column"), numberLong(values, "version"),
+                    decimal(values, "x"), decimal(values, "y"));
             if ("selection".equals(kind)) return MonacoEvent.caretChanged(id, number(values, "line"), number(values, "column"),
-                    number(values, "endLine"), number(values, "endColumn"), numberLong(values, "version"));
+                    number(values, "endLine"), number(values, "endColumn"), numberLong(values, "version"),
+                    decimal(values, "x"), decimal(values, "y"));
             if ("hover".equals(kind)) return MonacoEvent.hover(id, numberLong(values, "version"), number(values, "line"),
                     number(values, "column"), decimal(values, "x"), decimal(values, "y"),
                     number(values, "start"), number(values, "end"), string(values, "word"));
@@ -485,6 +487,7 @@ public final class JavaFxMonacoEditorSurface extends Region {
         else if (command instanceof MonacoCommand.RevealPosition c) { values.put("type", "revealPosition"); values.put("id", c.id()); values.put("line", c.line()); values.put("column", c.column()); }
         else if (command instanceof MonacoCommand.Focus) values.put("type", "focus");
         else if (command instanceof MonacoCommand.ApplyEdit c) { values.put("type", "applyEdit"); values.put("id", c.id()); values.put("start", c.start()); values.put("end", c.end()); values.put("text", c.text()); }
+        else if (command instanceof MonacoCommand.InsertSnippet c) { values.put("type", "insertSnippet"); values.put("id", c.id()); values.put("start", c.start()); values.put("end", c.end()); values.put("snippet", c.snippet()); }
         else if (command instanceof MonacoCommand.Layout) values.put("type", "layout");
         else if (command instanceof MonacoCommand.CompletionResponse c) return completionResponseJson(c);
         else if (command instanceof MonacoCommand.ShowOverlay c) return overlayJson("showOverlay", c.overlayId(), c.type(), c.line(), c.column(), c.content(), c.generation());

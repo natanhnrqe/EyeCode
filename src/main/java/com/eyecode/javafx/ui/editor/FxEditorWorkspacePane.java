@@ -18,6 +18,7 @@ import com.eyecode.javafx.monaco.MonacoPositionAdapter;
 import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
 import com.eyecode.javafx.learning.MonacoLearningHoverPipeline;
 import com.eyecode.javafx.learning.MonacoLearningTarget;
+import com.eyecode.javafx.ui.EyeCodeCompletionOverlay;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.language.documentation.DocumentationAtCaretResolver;
 import com.eyecode.language.documentation.JdkSourceResolver;
@@ -93,6 +94,13 @@ public final class FxEditorWorkspacePane extends VBox {
                     new SemanticCompletionProvider(new SemanticSymbolRegistry())
             )));
     private BiConsumer<Integer, Integer> caretPositionListener = (line, column) -> { };
+    private EyeCodeCompletionOverlay caretOverlay;
+    private double caretX;
+    private double caretY;
+    private long latestCompletionRequestId;
+    private String latestCompletionModelId;
+    private String currentMonacoModelId;
+    private long currentMonacoVersion = Long.MIN_VALUE;
 
     public FxEditorWorkspacePane(EditorManager manager, JavaFxDocumentationWorkspace documentationWorkspace) {
         this(manager, documentationWorkspace, new JavaFxJdkSourceWorkspace(),
@@ -365,6 +373,11 @@ public final class FxEditorWorkspacePane extends VBox {
         if (active != null) notifyCaretPosition(active);
     }
 
+    public void setCaretOverlay(EyeCodeCompletionOverlay overlay) {
+        caretOverlay = overlay;
+        if (caretOverlay != null) caretOverlay.hideCompletion();
+    }
+
     public void setProjectName(String projectName) {
         welcomeSurface.setProjectName(projectName);
     }
@@ -408,8 +421,15 @@ public final class FxEditorWorkspacePane extends VBox {
     private void onMonacoEvent(MonacoEvent event) {
         if (event == null || event.modelId() == null) return;
         EditorSession session = sessionForModel(event.modelId());
+        if (event.type() == MonacoEvent.Type.CARET_CHANGED) {
+            caretX = event.x();
+            caretY = event.y();
+            currentMonacoModelId = event.modelId();
+            currentMonacoVersion = event.version();
+        }
         if (session == null) return;
         if (event.type() == MonacoEvent.Type.CARET_CHANGED) {
+            if (caretOverlay != null) caretOverlay.hideCompletion();
             manager.getBuffer(session.getSessionId()).ifPresent(buffer -> {
                 var snapshot = buffer.getDocument().snapshot();
                 int offset = MonacoPositionAdapter.toOffset(snapshot, event.line(), event.column());
@@ -451,6 +471,9 @@ public final class FxEditorWorkspacePane extends VBox {
             return;
         }
         if (event.type() != MonacoEvent.Type.CONTENT_CHANGED) return;
+        if (caretOverlay != null) caretOverlay.hideCompletion();
+        currentMonacoModelId = event.modelId();
+        currentMonacoVersion = event.version();
         manager.getSessions().stream()
                 .filter(candidate -> MonacoModelId.matches(event.modelId(), candidate.getFile()))
                 .findFirst()
@@ -463,6 +486,7 @@ public final class FxEditorWorkspacePane extends VBox {
     }
 
     private void onCompletionRequest(MonacoCompletionRequest request) {
+        if (caretOverlay != null) caretOverlay.hideCompletion();
         if (monacoSurface == null || request == null
                 || request.modelId().startsWith("jdk://")
                 || monacoSurface.isReadOnly(request.modelId())) {
@@ -474,6 +498,8 @@ public final class FxEditorWorkspacePane extends VBox {
             monacoSurface.sendCompletionResponse(request, List.of());
             return;
         }
+        latestCompletionRequestId = request.requestId();
+        latestCompletionModelId = request.modelId();
         manager.getBuffer(session.getSessionId()).ifPresentOrElse(buffer -> {
             String content = request.hasSnapshot() ? request.content() : monacoSurface.modelContent(request.modelId());
             if (content == null) content = buffer.getDocument().getText();
@@ -503,7 +529,13 @@ public final class FxEditorWorkspacePane extends VBox {
                     })
                     .thenAccept(items -> Platform.runLater(() -> {
                         if (monacoSurface != null) {
-                            System.out.println("EYECODE_BRIDGE_SEND count=" + items.size());
+                            if (request.requestId() == latestCompletionRequestId
+                                    && request.modelId().equals(latestCompletionModelId)
+                                    && request.modelId().equals(currentMonacoModelId)
+                                    && request.modelVersion() == currentMonacoVersion
+                                    && caretOverlay != null && !items.isEmpty()) {
+                                caretOverlay.showCompletion(monacoSurface, caretX, caretY, request, items);
+                            }
                             monacoSurface.sendCompletionResponse(request, items);
                         }
                     }));

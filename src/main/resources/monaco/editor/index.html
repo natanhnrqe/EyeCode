@@ -73,6 +73,32 @@ require(['vs/editor/editor.main'], function () {
         else if (command.type === 'revealPosition') { const model = modelForId(command.id); if (model && editor) { hideEyeCodeCompletion('revealPosition'); editor.setModel(model); editor.setPosition({ lineNumber: command.line, column: command.column }); editor.revealPositionInCenter({ lineNumber: command.line, column: command.column }); } }
         else if (command.type === 'focus' && editor) editor.focus();
         else if (command.type === 'layout' && editor) editor.layout();
+        else if (command.type === 'applyEdit') {
+            const model = modelForId(command.id);
+            if (model && editor && editor.getModel() === model) {
+                const start = model.getPositionAt(command.start);
+                const end = model.getPositionAt(command.end);
+                editor.executeEdits('eyecode.completion', [{
+                    range: { startLineNumber: start.lineNumber, startColumn: start.column,
+                        endLineNumber: end.lineNumber, endColumn: end.column },
+                    text: command.text, forceMoveMarkers: true
+                }]);
+                editor.focus();
+            }
+        }
+        else if (command.type === 'insertSnippet') {
+            const model = modelForId(command.id);
+            if (model && editor && editor.getModel() === model) {
+                const start = model.getPositionAt(command.start);
+                const end = model.getPositionAt(command.end);
+                editor.trigger('eyecode.completion', 'editor.action.insertSnippet', {
+                    snippet: command.snippet,
+                    range: { startLineNumber: start.lineNumber, startColumn: start.column,
+                        endLineNumber: end.lineNumber, endColumn: end.column }
+                });
+                editor.focus();
+            }
+        }
         else if (command.type === 'completionResponse') {
             query({ kind: 'completionDebug', stage: 'command', requestId: command.requestId,
                 itemCount: (command.items || []).length, modelId: command.id });
@@ -320,6 +346,8 @@ require(['vs/editor/editor.main'], function () {
                 + '<span class="eyecode-completion-return">' + escapeText(item.returnType || '') + '</span>'
                 + '<span class="eyecode-completion-owner">' + escapeText(item.owner || '') + '</span></div>';
         }).join('');
+        const selectedRow = list.querySelector('.eyecode-completion-row.is-selected');
+        if (selectedRow) selectedRow.scrollIntoView({ block: 'nearest' });
         list.querySelectorAll('.eyecode-completion-row').forEach(function (row) {
             row.addEventListener('mouseenter', function () {
                 if (!completionIsCurrent()) return;
@@ -465,7 +493,6 @@ require(['vs/editor/editor.main'], function () {
             return;
         }
         try {
-            showEyeCodeCompletion(response, pending);
             query({ kind: 'completionDebug', stage: 'resolve', requestId: response.requestId,
                 pendingFound: true, itemCount: (response.items || []).length, modelId: response.id,
                 pendingModelId: pending.modelId, currentVersion: currentVersion,
@@ -596,7 +623,7 @@ require(['vs/editor/editor.main'], function () {
     });
     editor = monaco.editor.create(document.getElementById('editor'), { theme: 'eyecode-dark', fontFamily: 'JetBrains Mono', fontSize: 13, fontLigatures: false, minimap: { enabled: false }, automaticLayout: true, scrollBeyondLastLine: false, smoothScrolling: false, quickSuggestions: false, wordBasedSuggestions: false, suggestOnTriggerCharacters: false, snippetSuggestions: 'inline', bracketPairColorization: { enabled: true, independentColorPoolPerBracketType: true }, guides: { bracketPairs: true, bracketPairsHorizontal: false, highlightActiveBracketPair: true } });
     editor.onKeyDown(handleEyeCodeCompletionKey);
-    function emitCaret() { const model = editor.getModel(); const position = editor.getPosition(); if (model && position) query({ kind: 'caret', id: model.uri.toString(), version: model.getAlternativeVersionId(), line: position.lineNumber, column: position.column }); }
+    function emitCaret() { const model = editor.getModel(); const position = editor.getPosition(); const visible = position && editor.getScrolledVisiblePosition(position); if (model && position) { const x = visible ? visible.left : 0; const y = visible ? visible.top + visible.height : 0; query({ kind: 'caret', id: model.uri.toString(), version: model.getAlternativeVersionId(), line: position.lineNumber, column: position.column, x: x, y: y }); } }
     editor.onDidChangeCursorPosition(function () { hideEyeCodeCompletion('cursorChanged'); emitCaret(); });
     console.log('[MONACO JS] CARET_HANDLER_REGISTERED');
     editor.onDidChangeCursorSelection(function (event) { emitCaret(); });

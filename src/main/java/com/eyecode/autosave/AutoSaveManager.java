@@ -158,6 +158,20 @@ public final class AutoSaveManager {
         return performSave(document);
     }
 
+    public boolean saveAs(EditorDocument document, Path target) {
+        if (document == null || target == null) return false;
+        Path normalized = target.toAbsolutePath().normalize();
+        try {
+            fileSystemService.writeFile(normalized, document.snapshot().getText());
+            rebind(document, normalized);
+            document.markClean();
+            return true;
+        } catch (IOException exception) {
+            failures.put(document, exception);
+            return false;
+        }
+    }
+
     /**
      * Immediately persists every registered dirty document.
      */

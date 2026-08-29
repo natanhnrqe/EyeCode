@@ -165,6 +165,9 @@ public final class FxRootLayout extends BorderPane {
         workspace.setLeft(navigator);
 
         FxCanvas canvas = new FxCanvas(workspace);
+        EyeCodeCompletionOverlay completionOverlay = new EyeCodeCompletionOverlay();
+        canvas.setOverlay(completionOverlay);
+        editorContainer.setCaretOverlay(completionOverlay);
         canvas.setPadding(new Insets(
                 FxSpacing.CANVAS_PADDING,
                 FxSpacing.CANVAS_PADDING,

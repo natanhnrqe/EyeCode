@@ -38,7 +38,7 @@ body {
 
 .eyecode-completion-popup {
     position: absolute;
-    z-index: 2;
+    z-index: 10;
     display: flex;
     flex-direction: column;
     width: min(600px, calc(100% - 16px));
@@ -55,7 +55,7 @@ body {
 
 #eyecode-completion-list {
     min-height: 0;
-    max-height: 336px;
+    max-height: 272px;
     overflow-y: auto;
     padding: 4px;
 }

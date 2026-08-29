@@ -22,8 +22,14 @@ public record MonacoEvent(Type type, String modelId, String content, long versio
 
     public static MonacoEvent caretChanged(String id, int line, int column,
                                            int endLine, int endColumn, long version) {
+        return caretChanged(id, line, column, endLine, endColumn, version, 0, 0);
+    }
+
+    public static MonacoEvent caretChanged(String id, int line, int column,
+                                           int endLine, int endColumn, long version,
+                                           double x, double y) {
         return new MonacoEvent(Type.CARET_CHANGED, id, null, version, line, column,
-                endLine, endColumn, 0, 0, null, 0, 0, null);
+                endLine, endColumn, x, y, null, 0, 0, null);
     }
 
     public static MonacoEvent hover(String id, long version, int line, int column,

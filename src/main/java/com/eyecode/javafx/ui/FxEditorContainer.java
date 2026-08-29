@@ -16,6 +16,7 @@ import com.eyecode.project.model.ProjectModel;
 import com.eyecode.project.ProjectInfo;
 import com.eyecode.javafx.ui.editor.FxEditorWorkspacePane;
 import com.eyecode.javafx.monaco.JavaFxMonacoEditorSurface;
+import com.eyecode.javafx.ui.EyeCodeCompletionOverlay;
 import com.eyecode.runtime.ProjectStartupFileResolver;
 
 import java.nio.file.Path;
@@ -142,6 +143,10 @@ public final class FxEditorContainer extends com.eyecode.javafx.designsystem.FxC
 
     public void setCaretPositionListener(BiConsumer<Integer, Integer> listener) {
         workspacePane.setCaretPositionListener(listener);
+    }
+
+    public void setCaretOverlay(EyeCodeCompletionOverlay overlay) {
+        workspacePane.setCaretOverlay(overlay);
     }
 
 }
