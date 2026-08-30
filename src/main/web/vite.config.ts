@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const webRoot = path.dirname(fileURLToPath(import.meta.url));
 const monacoRoot = path.resolve(webRoot, '../../main/resources/monaco/editor');
 const completionIconsRoot = path.resolve(webRoot, '../../main/resources/icons/completion');
+const iconsRoot = path.resolve(webRoot, '../../main/resources/icons');
 
 function existingMonacoAssets() {
   return {
@@ -71,9 +72,35 @@ function existingCompletionIcons() {
   };
 }
 
+function existingEyeCodeIcons() {
+  return {
+    name: 'eyecode-existing-icons',
+    configureServer(server: { middlewares: { use: (path: string, handler: (request: any, response: any, next: () => void) => void) => void } }) {
+      server.middlewares.use('/icons', (request, response, next) => {
+        const relative = decodeURIComponent((request.url ?? '/').split('?')[0]).replace(/^[/\\]+/, '');
+        const file = path.resolve(iconsRoot, relative);
+        if (!file.startsWith(iconsRoot + path.sep)) { next(); return; }
+        try {
+          if (!statSync(file).isFile()) { next(); return; }
+          response.setHeader('Content-Type', path.extname(file) === '.png' ? 'image/png' : 'image/svg+xml');
+          response.end(readFileSync(file));
+        } catch { next(); }
+      });
+    },
+    generateBundle() {
+      for (const name of readdirSync(iconsRoot)) {
+        const source = path.join(iconsRoot, name);
+        if (statSync(source).isFile() && (name.endsWith('.svg') || name.endsWith('.png'))) {
+          this.emitFile({ type: 'asset', fileName: `icons/${name}`, source: readFileSync(source) });
+        }
+      }
+    }
+  };
+}
+
 export default defineConfig({
   base: './',
-  plugins: [react(), existingMonacoAssets(), existingCompletionIcons()],
+  plugins: [react(), existingMonacoAssets(), existingCompletionIcons(), existingEyeCodeIcons()],
   build: {
     outDir: '../../main/resources/webshell',
     emptyOutDir: true

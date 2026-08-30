@@ -5,24 +5,36 @@ import com.eyecode.autosave.SavedEvent;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.filesystem.DefaultFileSystemService;
 import com.eyecode.javafx.monaco.MonacoModelId;
+import com.eyecode.project.ProjectLifecycleService;
+import com.eyecode.project.model.ProjectModel;
+import com.eyecode.runtime.RunConfiguration;
+import com.eyecode.runtime.RunService;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorSession;
+import javafx.stage.DirectoryChooser;
 import javafx.application.Platform;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Files;
+import java.util.Comparator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class WebShellWorkspaceController {
     private final JavaFxWebShellSurface surface;
     private final EditorManager manager;
     private final WebShellCompletionController completionController;
     private final WebShellLearningController learningController;
+    private final ProjectLifecycleService projectLifecycleService;
+    private final RunService runService;
     private final Map<String, EditorDocument> observedDocuments = new LinkedHashMap<>();
     private final Map<String, String> untitledNames = new LinkedHashMap<>();
     private int nextUntitledNumber = 1;
@@ -34,6 +46,19 @@ public final class WebShellWorkspaceController {
                 new WebShellEditorViewFactory());
         this.completionController = new WebShellCompletionController(surface, manager);
         this.learningController = new WebShellLearningController(surface, manager);
+        this.projectLifecycleService = new ProjectLifecycleService();
+        this.runService = new RunService(projectLifecycleService);
+        this.runService.setBeforeRunFlush(manager::flushAutosave);
+        this.runService.addListener(new RunService.Listener() {
+            @Override public void onStarted(com.eyecode.runtime.RunRequest request) { sendRunState(); }
+            @Override public void onOutput(String line, boolean error) {
+                if (line != null && !line.isBlank()) {
+                    surface.send(WebShellEnvelope.event("run", "output", Map.of(
+                            "line", line, "error", error)));
+                }
+            }
+            @Override public void onFinished(int exitCode, boolean stopped) { sendRunState(); }
+        });
         manager.addSaveListener(this::onSaved);
         manager.addExternalFileListener(this::onExternalChanged);
         surface.registerHandler("document", "open", this::open);
@@ -42,6 +67,15 @@ public final class WebShellWorkspaceController {
         surface.registerHandler("document", "change", this::change);
         surface.registerHandler("document", "save", this::save);
         surface.registerHandler("document", "close", this::close);
+        surface.registerHandler("workspace", "snapshot", this::workspaceSnapshot);
+        surface.registerHandler("workspace", "openProject", this::openProject);
+        surface.registerHandler("workspace", "children", this::workspaceChildren);
+        surface.registerHandler("workspace", "openFile", this::openWorkspaceFile);
+        surface.registerHandler("run", "state", this::runState);
+        surface.registerHandler("run", "run", this::run);
+        surface.registerHandler("run", "rerun", this::rerun);
+        surface.registerHandler("run", "stop", this::stop);
+        surface.registerHandler("run", "selectConfiguration", this::selectRunConfiguration);
     }
 
     public EditorManager editorManager() {
@@ -53,6 +87,8 @@ public final class WebShellWorkspaceController {
         disposed = true;
         manager.closeAllSessions();
         manager.shutdownAutosave();
+        runService.dispose();
+        projectLifecycleService.close();
         observedDocuments.clear();
         untitledNames.clear();
     }
@@ -77,6 +113,87 @@ public final class WebShellWorkspaceController {
             return message.error(new WebShellError("INVALID_DOCUMENT",
                     exception.getMessage() == null ? "Unable to open document" : exception.getMessage(), true));
         }
+    }
+
+    private WebShellEnvelope workspaceSnapshot(WebShellEnvelope message) {
+        return message.response(workspacePayload());
+    }
+
+    private WebShellEnvelope openProject(WebShellEnvelope message) {
+        String rawPath = text(message.payload(), "path");
+        Path root = rawPath.isBlank() ? chooseProjectDirectory() : Path.of(rawPath);
+        if (root == null) return message.response(Map.of("cancelled", true));
+        try {
+            ProjectModel project = projectLifecycleService.open(root);
+            projectLifecycleService.recordRecent(project);
+            manager.closeAllSessions();
+            manager.watchProject(project.getRootDir());
+            runService.refreshConfigurations();
+            Map<String, Object> payload = workspacePayload();
+            surface.send(WebShellEnvelope.event("workspace", "changed", payload));
+            sendRunState();
+            return message.response(payload);
+        } catch (IllegalArgumentException exception) {
+            return message.error(new WebShellError("INVALID_PROJECT", exception.getMessage(), true));
+        }
+    }
+
+    private WebShellEnvelope workspaceChildren(WebShellEnvelope message) {
+        ProjectModel project = projectLifecycleService.currentProject();
+        if (project == null) return message.response(Map.of("children", List.of()));
+        String rawPath = text(message.payload(), "path");
+        Path directory = rawPath.isBlank() ? project.getRootDir() : Path.of(rawPath);
+        Path root = project.getRootDir().toAbsolutePath().normalize();
+        directory = directory.toAbsolutePath().normalize();
+        if (!directory.startsWith(root) || !Files.isDirectory(directory)) {
+            return message.error(new WebShellError("INVALID_TREE_PATH", "The requested folder is not in the project", true));
+        }
+        return message.response(Map.of("parent", directory.toString(), "children", treeChildren(directory)));
+    }
+
+    private WebShellEnvelope openWorkspaceFile(WebShellEnvelope message) {
+        String rawPath = text(message.payload(), "path");
+        if (rawPath.isBlank()) return message.error(new WebShellError(
+                "INVALID_DOCUMENT", "A project file path is required", true));
+        try {
+            Path path = Path.of(rawPath).toAbsolutePath().normalize();
+            ProjectModel project = projectLifecycleService.currentProject();
+            if (project == null || !path.startsWith(project.getRootDir()) || !Files.isRegularFile(path)) {
+                return message.error(new WebShellError("DOCUMENT_NOT_FOUND", path.toString(), true));
+            }
+            EditorSession session = openPath(path);
+            return message.response(Map.of("document", snapshot(session).payload()));
+        } catch (RuntimeException exception) {
+            return message.error(new WebShellError("INVALID_DOCUMENT", exception.getMessage(), true));
+        }
+    }
+
+    private WebShellEnvelope runState(WebShellEnvelope message) {
+        return message.response(runPayload());
+    }
+
+    private WebShellEnvelope run(WebShellEnvelope message) {
+        boolean started = runService.runCurrent();
+        sendRunState();
+        return message.response(Map.of("started", started));
+    }
+
+    private WebShellEnvelope rerun(WebShellEnvelope message) {
+        boolean started = runService.rerun();
+        sendRunState();
+        return message.response(Map.of("started", started));
+    }
+
+    private WebShellEnvelope stop(WebShellEnvelope message) {
+        runService.stop();
+        sendRunState();
+        return message.response(Map.of("stopped", true));
+    }
+
+    private WebShellEnvelope selectRunConfiguration(WebShellEnvelope message) {
+        boolean selected = runService.selectConfiguration(text(message.payload(), "id"));
+        sendRunState();
+        return message.response(Map.of("selected", selected));
     }
 
     private WebShellEnvelope activate(WebShellEnvelope message) {
@@ -283,6 +400,111 @@ public final class WebShellWorkspaceController {
         return displayName == null
                 ? WebDocumentSnapshot.file(session, documentFor(session))
                 : WebDocumentSnapshot.untitled(session, documentFor(session), displayName);
+    }
+
+    private Map<String, Object> workspacePayload() {
+        ProjectModel project = projectLifecycleService.currentProject();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        if (project != null) payload.put("project", projectPayload(project));
+        payload.put("recentProjects", projectLifecycleService.recentProjects().stream()
+                .map(info -> Map.<String, Object>of("name", info.getName(), "path", info.getPath()))
+                .toList());
+        return payload;
+    }
+
+    private Map<String, Object> projectPayload(ProjectModel project) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("name", project.getName());
+        payload.put("path", project.getRootDir().toString());
+        payload.put("type", project.getType().name());
+        payload.put("root", treeNode(project.getRootDir(), true));
+        return payload;
+    }
+
+    private Map<String, Object> treeNode(Path path, boolean root) {
+        Path normalized = path.toAbsolutePath().normalize();
+        boolean directory = Files.isDirectory(normalized);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("name", normalized.getFileName().toString());
+        payload.put("path", normalized.toString());
+        payload.put("kind", directory ? (root ? "project" : "directory") : "file");
+        payload.put("hasChildren", directory && hasVisibleChildren(normalized));
+        return payload;
+    }
+
+    private List<Map<String, Object>> treeChildren(Path directory) {
+        try (var stream = Files.list(directory)) {
+            return stream.filter(this::isVisibleProjectPath)
+                    .sorted(Comparator
+                            .comparing((Path path) -> !Files.isDirectory(path))
+                            .thenComparing(path -> path.getFileName().toString(), String.CASE_INSENSITIVE_ORDER))
+                    .map(path -> treeNode(path, false))
+                    .toList();
+        } catch (IOException ignored) {
+            return List.of();
+        }
+    }
+
+    private boolean hasVisibleChildren(Path directory) {
+        try (var stream = Files.list(directory)) {
+            return stream.anyMatch(this::isVisibleProjectPath);
+        } catch (IOException ignored) {
+            return false;
+        }
+    }
+
+    private boolean isVisibleProjectPath(Path path) {
+        if (!Files.isDirectory(path)) return true;
+        String name = path.getFileName().toString();
+        return !Set.of(".git", ".idea", ".gradle", ".eyecode", "target", "build", "out").contains(name);
+    }
+
+    private Path chooseProjectDirectory() {
+        if (Platform.isFxApplicationThread()) return showProjectDialog();
+        CompletableFuture<Path> result = new CompletableFuture<>();
+        try {
+            Platform.runLater(() -> {
+                try {
+                    result.complete(showProjectDialog());
+                } catch (RuntimeException exception) {
+                    result.completeExceptionally(exception);
+                }
+            });
+            return result.get();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return null;
+        } catch (ExecutionException | IllegalStateException exception) {
+            return null;
+        }
+    }
+
+    private Path showProjectDialog() {
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Open Project");
+        Window owner = surface.getScene() == null ? null : surface.getScene().getWindow();
+        File selected = chooser.showDialog(owner);
+        return selected == null ? null : selected.toPath().toAbsolutePath().normalize();
+    }
+
+    private Map<String, Object> runPayload() {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("running", runService.isRunning());
+        payload.put("rerunAvailable", runService.hasLastRequest());
+        payload.put("configurations", runService.configurations().stream()
+                .map(this::runConfigurationPayload).toList());
+        RunConfiguration selected = runService.selectedConfiguration();
+        payload.put("selectedConfigurationId", selected == null ? "" : selected.id());
+        return payload;
+    }
+
+    private Map<String, Object> runConfigurationPayload(RunConfiguration configuration) {
+        return Map.of("id", configuration.id(), "name", configuration.displayName(),
+                "mainClass", configuration.mainClass(), "kind", configuration.kind().name());
+    }
+
+    private void sendRunState() {
+        if (!disposed) surface.send(WebShellEnvelope.event("run", "state", runPayload()));
     }
 
     private static String text(Map<String, Object> payload, String key) {

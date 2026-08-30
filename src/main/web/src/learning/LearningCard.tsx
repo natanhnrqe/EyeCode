@@ -22,7 +22,7 @@ export function LearningCard({ state, onNavigate, onHover }: Props) {
       ? below
       : Math.max(8, state.anchor.top - bounds.height);
     setPosition({ left, top });
-  }, [state.anchor, card.sizeClass, card.renderedBodyHtml]);
+  }, [state.anchor]);
 
   function navigate(event: MouseEvent<HTMLElement>, identifier: string) {
     event.preventDefault();
