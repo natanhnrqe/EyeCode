@@ -11,9 +11,12 @@ type Props = {
   onRerun(): void;
   onStop(): void;
   onSelectConfiguration(id: string): void;
+  onOpenSearch(): void;
+  onOpenSettings(): void;
+  onWindowAction(action: 'windowMinimize' | 'windowToggleMaximize' | 'windowClose'): void;
 };
 
-export function TopToolbar({ projectName, runState, onOpenProject, onNewFile, onRun, onRerun, onStop, onSelectConfiguration }: Props) {
+export function TopToolbar({ projectName, runState, onOpenProject, onNewFile, onRun, onRerun, onStop, onSelectConfiguration, onOpenSearch, onOpenSettings, onWindowAction }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   return <header className="app-toolbar">
     <div className="toolbar-brand">
@@ -46,8 +49,14 @@ export function TopToolbar({ projectName, runState, onOpenProject, onNewFile, on
       <button type="button" className="toolbar-icon stop" onClick={onStop} disabled={!runState.running} aria-label="Stop"><EyeCodeIcon name="stop" /></button>
     </div>
     <div className="toolbar-actions">
-      <button type="button" className="toolbar-icon" onClick={onNewFile} aria-label="New file"><EyeCodeIcon name="newFile" /></button>
-      <button type="button" className="toolbar-icon" onClick={onOpenProject} aria-label="Open project"><EyeCodeIcon name="search" /></button>
+      <button type="button" className="toolbar-icon" onClick={onOpenSearch} aria-label="Search"><EyeCodeIcon name="search" /></button>
+      <button type="button" className="toolbar-icon" onClick={onOpenSettings} aria-label="Settings"><EyeCodeIcon name="settings" /></button>
+      <span className="toolbar-separator" />
+      <div className="toolbar-window-controls">
+        <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowMinimize')} aria-label="Minimize"><EyeCodeIcon name="minimize" /></button>
+        <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowToggleMaximize')} aria-label="Maximize or restore"><EyeCodeIcon name="maximize" /></button>
+        <button type="button" className="toolbar-icon window-close" onClick={() => onWindowAction('windowClose')} aria-label="Close"><EyeCodeIcon name="close" /></button>
+      </div>
     </div>
   </header>;
 }

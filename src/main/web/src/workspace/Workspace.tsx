@@ -37,6 +37,7 @@ export function Workspace() {
   const [runOutput, setRunOutput] = useState<string[]>([]);
   const [bottomPanel, setBottomPanel] = useState<BottomPanelId>('terminal');
   const [sidePanel, setSidePanel] = useState<SidePanelId>('project');
+  const [caret, setCaret] = useState({ line: 1, column: 1 });
 
   const updateDocument = useCallback((document: DocumentSnapshot) => {
     const tab: DocumentTab = { ...document };
@@ -67,10 +68,15 @@ export function Workspace() {
 
   useEffect(() => {
     service.setDocumentChangeHandler(document => { updateDocument(document); if (document.dirty) setMessage(''); });
+    service.setCaretPositionHandler(setCaret);
     service.setErrorHandler(setMessage);
     service.setCompletionStateHandler(setCompletion);
     service.setLearningStateHandler(setLearning);
-    return () => { service.setCompletionStateHandler(null); service.setLearningStateHandler(null); };
+    return () => {
+      service.setCaretPositionHandler(null);
+      service.setCompletionStateHandler(null);
+      service.setLearningStateHandler(null);
+    };
   }, [service, updateDocument]);
 
   useEffect(() => {
@@ -182,11 +188,18 @@ export function Workspace() {
     catch (error) { setMessage(formatError(error)); }
   }
 
+  async function windowAction(action: 'windowMinimize' | 'windowToggleMaximize' | 'windowClose') {
+    try { await bridge.request('native', action, {}); }
+    catch (error) { setMessage(formatError(error)); }
+  }
+
   const activeDocument = documents.find(document => document.uri === activeUri);
   return <main className="app-shell">
     <TopToolbar projectName={workspace.project?.name} runState={runState} onOpenProject={() => void openProject()}
       onNewFile={() => void newDocument()} onRun={() => void run('run')} onRerun={() => void run('rerun')}
-      onStop={() => void run('stop')} onSelectConfiguration={id => void selectConfiguration(id)} />
+      onStop={() => void run('stop')} onSelectConfiguration={id => void selectConfiguration(id)}
+      onOpenSearch={() => setSidePanel('search')} onOpenSettings={() => setSidePanel('settings')}
+      onWindowAction={action => void windowAction(action)} />
     <div className="shell-workspace">
       <nav className="activity-bar" aria-label="Workspace views">
         {(['project', 'search', 'learn', 'documentation', 'settings'] as SidePanelId[]).map(id => <button key={id}
@@ -214,7 +227,8 @@ export function Workspace() {
       </section>
       <BottomPanel active={bottomPanel} output={runOutput} onSelect={setBottomPanel} />
     </div>
-    <StatusBar connected={connected} activeDocument={activeDocument?.displayName} message={message} />
+    <StatusBar activeUri={activeDocument?.uri} displayName={activeDocument?.displayName}
+      projectRoot={workspace.project?.root.path} projectName={workspace.project?.name} caret={caret} message={message} />
     <div className="overlay-root">
       {completion && <CompletionPopup state={completion} onSelect={index => service.selectCompletion(index)} onAccept={() => service.acceptSelectedCompletion()} />}
       {learning && <LearningCard state={learning} onNavigate={identifier => service.navigateLearning(identifier)} onHover={hovered => service.setLearningHovered(hovered)} />}

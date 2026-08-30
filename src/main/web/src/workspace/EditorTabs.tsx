@@ -11,16 +11,53 @@ type Props = {
 };
 
 export function EditorTabs({ documents, activeUri, onActivate, onClose }: Props) {
-  return <nav className="editor-tabs" aria-label="Open documents">
-    {documents.map(document => <div key={document.uri}
-      className={`editor-tab ${activeUri === document.uri ? 'is-active' : ''}`}>
-      <button type="button" className="editor-tab-label" onClick={() => onActivate(document.uri)}>
-        <EyeCodeIcon name={document.readOnly ? 'file' : 'java'} className="tab-file-mark" />
-        <span>{document.displayName}</span>
-        {document.dirty && <span className="tab-dirty" aria-label="Unsaved changes" />}
-      </button>
-      <button type="button" className="editor-tab-close" onClick={() => onClose(document.uri)}
-        aria-label={`Close ${document.displayName}`}>×</button>
-    </div>)}
-  </nav>;
+  return (
+    <nav className="editor-tabs" aria-label="Open documents">
+      {documents.map(document => (
+        <button
+          key={document.uri}
+          type="button"
+          className={`editor-tab ${activeUri === document.uri ? 'is-active' : ''}`}
+          onClick={() => onActivate(document.uri)}
+          title={document.displayName}
+        >
+          <EyeCodeIcon
+            name={document.readOnly ? 'file' : 'java'}
+            className="tab-file-mark"
+          />
+
+          <span className="editor-tab-name">
+            {document.displayName}
+          </span>
+
+          {document.dirty && (
+            <span
+              className="tab-dirty"
+              aria-label="Unsaved changes"
+            />
+          )}
+
+          <span
+            className="editor-tab-close"
+            role="button"
+            tabIndex={0}
+            aria-label={`Close ${document.displayName}`}
+            onClick={event => {
+              event.stopPropagation();
+              onClose(document.uri);
+            }}
+            onKeyDown={event => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                event.stopPropagation();
+                onClose(document.uri);
+              }
+            }}
+          >
+            ×
+          </span>
+        </button>
+      ))}
+    </nav>
+  );
 }

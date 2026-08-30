@@ -2,6 +2,7 @@ package com.eyecode.javafx.ui;
 
 import com.eyecode.javafx.ceffx.CeffxRuntime;
 import com.eyecode.javafx.web.JavaFxWebShellSurface;
+import com.eyecode.javafx.web.WebShellNativeController;
 import com.eyecode.javafx.web.WebShellMode;
 import com.eyecode.javafx.web.WebShellWorkspaceController;
 import javafx.application.Platform;
@@ -29,6 +30,7 @@ public final class FxMainWindow {
         if (WebShellMode.configured() == WebShellMode.WEB_SHELL) {
             JavaFxWebShellSurface surface = new JavaFxWebShellSurface();
             webShellWorkspace = new WebShellWorkspaceController(surface);
+            new WebShellNativeController(surface, stage);
             root = surface;
         } else {
             webShellWorkspace = null;

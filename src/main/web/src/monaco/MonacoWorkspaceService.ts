@@ -6,6 +6,7 @@ import type { LearningPopupState, LearningResponse } from '../learning/protocol'
 import type { Disposable, MonacoApi, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoKeyEvent, MonacoModel, MonacoMouseEvent } from './api';
 
 type DocumentChangeHandler = (document: DocumentSnapshot) => void;
+type CaretPositionHandler = (position: { line: number; column: number }) => void;
 type PendingCompletion = {
   uri: string;
   modelVersion: number;
@@ -38,6 +39,7 @@ export class MonacoWorkspaceService {
   private suppressContentChange = false;
   private disposed = false;
   private onDocumentChange: DocumentChangeHandler | null = null;
+  private onCaretPosition: CaretPositionHandler | null = null;
   private onError: ((message: string) => void) | null = null;
   private onCompletionState: ((state: CompletionPopupState | null) => void) | null = null;
   private completionState: CompletionPopupState | null = null;
@@ -55,6 +57,10 @@ export class MonacoWorkspaceService {
 
   setDocumentChangeHandler(handler: DocumentChangeHandler): void {
     this.onDocumentChange = handler;
+  }
+
+  setCaretPositionHandler(handler: CaretPositionHandler | null): void {
+    this.onCaretPosition = handler;
   }
 
   setErrorHandler(handler: ((message: string) => void) | null): void {
@@ -540,6 +546,7 @@ export class MonacoWorkspaceService {
     const editor = this.editor;
     const model = editor?.getModel() ?? null;
     const position = event.position ?? editor?.getPosition() ?? null;
+    if (position) this.onCaretPosition?.({ line: position.lineNumber, column: position.column });
     if (pending && model === pending.model && model.uri.toString() === pending.uri && position
         && model.getOffsetAt(position) === pending.caretOffset) {
       return;
