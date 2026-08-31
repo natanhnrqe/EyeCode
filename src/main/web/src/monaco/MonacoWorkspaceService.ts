@@ -105,10 +105,10 @@ export class MonacoWorkspaceService {
     this.latestLearningRequestId = null;
     this.hoverKey = null;
     if (this.learningState === null) return;
+    const uri = this.learningState.uri;
     this.learningState = null;
     this.onLearningState?.(null);
-    const model = this.editor?.getModel();
-    if (model) bridge.emit('learning', 'close', { uri: model.uri.toString() });
+    if (uri) bridge.emit('learning', 'close', { uri });
   }
 
   selectCompletion(index: number): void {
@@ -219,8 +219,9 @@ export class MonacoWorkspaceService {
     this.hideCompletion();
     this.hideLearning();
     const current = this.editor.getModel();
-    if (current && current.uri.toString() !== uri) {
-      this.viewStates.set(current.uri.toString(), this.editor.saveViewState());
+    const currentUri = this.documentUri(current);
+    if (current && currentUri !== uri && currentUri) {
+      this.viewStates.set(currentUri, this.editor.saveViewState());
     }
     this.editor.setModel(next);
     this.editor.updateOptions({ readOnly: this.readOnly.get(uri) ?? false });
@@ -234,7 +235,7 @@ export class MonacoWorkspaceService {
     this.pending.delete(uri);
     const model = this.models.get(uri);
     if (!model) return;
-    if (this.editor?.getModel()?.uri.toString() === uri) this.editor.setModel(null);
+    if (this.editor?.getModel() === model) this.editor.setModel(null);
     model.dispose();
     this.models.delete(uri);
     this.viewStates.delete(uri);
@@ -247,7 +248,7 @@ export class MonacoWorkspaceService {
     if (this.completionState?.uri === previousUri) this.hideCompletion();
     if (this.learningState?.uri === previousUri) this.hideLearning();
     const model = this.models.get(previousUri);
-    const active = this.editor?.getModel()?.uri.toString() === previousUri;
+    const active = this.editor?.getModel() === model;
     const viewState = active ? this.editor?.saveViewState() : this.viewStates.get(previousUri);
     if (active) this.editor?.setModel(null);
     model?.dispose();
@@ -302,7 +303,8 @@ export class MonacoWorkspaceService {
     if (this.suppressContentChange || !this.editor) return;
     const model = this.editor.getModel();
     if (!model) return;
-    const uri = model.uri.toString();
+    const uri = this.documentUri(model);
+    if (!uri) return;
     const content = model.getValue();
     const previous = this.changeQueues.get(uri) ?? Promise.resolve();
     const next = previous.catch(() => undefined).then(async () => {
@@ -346,12 +348,12 @@ export class MonacoWorkspaceService {
     const editor = this.editor;
     const model = editor?.getModel();
     const position = editor?.getPosition();
-    if (!editor || !model || !position || model.uri.toString().startsWith('jdk://')) return;
+    const uri = this.documentUri(model ?? null);
+    if (!editor || !model || !position || !uri || uri.startsWith('jdk://')) return;
     const word = model.getWordUntilPosition(position);
     const requestId = bridge.reserveRequestId();
     const modelVersion = model.getAlternativeVersionId();
     const caretOffset = model.getOffsetAt(position);
-    const uri = model.uri.toString();
     this.hideCompletion(false);
     this.pendingCompletions.set(requestId, { uri, modelVersion, editor, model, position, caretOffset });
     this.latestCompletionRequestId = requestId;
@@ -397,7 +399,7 @@ export class MonacoWorkspaceService {
     if (!pending || this.latestCompletionRequestId !== response.requestId
         || pending.uri !== response.uri || pending.modelVersion !== response.version
         || pending.editor.getModel() !== pending.model
-        || pending.model.uri.toString() !== pending.uri
+        || this.documentUri(pending.model) !== pending.uri
         || pending.model.getAlternativeVersionId() !== pending.modelVersion
         || pending.model.getOffsetAt(pending.editor.getPosition() ?? pending.position) !== pending.caretOffset) {
       if (this.latestCompletionRequestId === response.requestId) this.latestCompletionRequestId = null;
@@ -445,10 +447,12 @@ export class MonacoWorkspaceService {
     const endColumn = word.endColumn;
     const start = model.getOffsetAt({ lineNumber: position.lineNumber, column: startColumn });
     const end = model.getOffsetAt({ lineNumber: position.lineNumber, column: endColumn });
-    const key = `${model.uri.toString()}:${model.getAlternativeVersionId()}:${position.lineNumber}:${startColumn}:${endColumn}`;
+    const uri = this.documentUri(model);
+    if (!uri) return;
+    const key = `${uri}:${model.getAlternativeVersionId()}:${position.lineNumber}:${startColumn}:${endColumn}`;
     if (key === this.hoverKey) return;
     this.hoverKey = key;
-    this.requestLearning('', { uri: model.uri.toString(), model, editor, position,
+    this.requestLearning('', { uri, model, editor, position,
       caretOffset: start, key, startOffset: start, endOffset: end });
   }
 
@@ -501,7 +505,7 @@ export class MonacoWorkspaceService {
         || this.latestLearningRequestId !== message.requestId
         || response.uri !== pending.uri || response.version !== pending.modelVersion
         || pending.editor.getModel() !== pending.model
-        || pending.model.uri.toString() !== pending.uri
+        || this.documentUri(pending.model) !== pending.uri
         || pending.model.getAlternativeVersionId() !== pending.modelVersion
         || (!pending.key.startsWith('navigation:') && pending.key !== this.hoverKey)) {
       if (this.latestLearningRequestId === message.requestId) this.latestLearningRequestId = null;
@@ -547,7 +551,7 @@ export class MonacoWorkspaceService {
     const model = editor?.getModel() ?? null;
     const position = event.position ?? editor?.getPosition() ?? null;
     if (position) this.onCaretPosition?.({ line: position.lineNumber, column: position.column });
-    if (pending && model === pending.model && model.uri.toString() === pending.uri && position
+    if (pending && model === pending.model && this.documentUri(model) === pending.uri && position
         && model.getOffsetAt(position) === pending.caretOffset) {
       return;
     }
@@ -631,7 +635,7 @@ export class MonacoWorkspaceService {
     const model = this.editor?.getModel();
     return !!state && state.items.length > 0 && state.selectedIndex >= 0
       && state.selectedIndex < state.items.length && !!model
-      && model.uri.toString() === state.uri
+      && this.documentUri(model) === state.uri
       && model.getAlternativeVersionId() === state.version;
   }
 
@@ -653,7 +657,8 @@ export class MonacoWorkspaceService {
   private saveActive(): void {
     const model = this.editor?.getModel();
     if (!model) return;
-    const uri = model.uri.toString();
+    const uri = this.documentUri(model);
+    if (!uri) return;
     const options = uri.startsWith('eyecode://workspace/') ? { timeoutMs: null } : undefined;
     void bridge.request('document', 'save', { uri }, options)
       .catch(error => this.onError?.(error instanceof Error ? error.message : String(error)));
@@ -665,6 +670,14 @@ export class MonacoWorkspaceService {
     this.confirmedVersions.set(document.uri, document.version);
     this.readOnly.set(document.uri, document.readOnly);
     return true;
+  }
+
+  private documentUri(model: MonacoModel | null): string | null {
+    if (!model) return null;
+    for (const [uri, candidate] of this.models) {
+      if (candidate === model) return uri;
+    }
+    return null;
   }
 }
 

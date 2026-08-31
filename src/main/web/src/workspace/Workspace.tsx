@@ -33,6 +33,10 @@ export function Workspace() {
   const [learning, setLearning] = useState<LearningPopupState | null>(null);
   const [workspace, setWorkspace] = useState<WorkspaceSnapshot>({ recentProjects: [] });
   const [childrenByPath, setChildrenByPath] = useState<Record<string, ProjectNode[]>>({});
+  const childrenCache = useRef<Record<string, ProjectNode[]>>({});
+  const pendingChildren = useRef(new Map<string, Promise<void>>());
+  const [treeChangedPath, setTreeChangedPath] = useState<string | undefined>(undefined);
+  const [treeRefreshRevision, setTreeRefreshRevision] = useState(0);
   const [runState, setRunState] = useState<RunState>(emptyRunState);
   const [runOutput, setRunOutput] = useState<string[]>([]);
   const [bottomPanel, setBottomPanel] = useState<BottomPanelId>('terminal');
@@ -43,6 +47,11 @@ export function Workspace() {
     const tab: DocumentTab = { ...document };
     delete (tab as Partial<DocumentSnapshot>).content;
     setDocuments(items => {
+      console.info('WEB_DOCUMENT updateDocument', {
+        incomingUri: tab.uri,
+        displayName: tab.displayName,
+        documents: items.map(item => item.uri),
+      });
       const index = items.findIndex(item => item.uri === tab.uri);
       if (index < 0) return [...items, tab];
       const next = [...items];
@@ -51,12 +60,23 @@ export function Workspace() {
     });
   }, []);
 
-  const loadChildren = useCallback(async (path: string) => {
-    try {
-      const response = await bridge.request<{ parent: string; children: ProjectNode[] }>('workspace', 'children', { path });
-      setChildrenByPath(current => ({ ...current, [response.parent]: response.children }));
-    } catch (error) { setMessage(formatError(error)); }
+  const replaceChildren = useCallback((update: (current: Record<string, ProjectNode[]>) => Record<string, ProjectNode[]>) => {
+    const next = update(childrenCache.current);
+    childrenCache.current = next;
+    setChildrenByPath(next);
   }, []);
+
+  const loadChildren = useCallback((path: string, force = false): Promise<void> => {
+    if (!force && childrenCache.current[path] !== undefined) return Promise.resolve();
+    const pending = pendingChildren.current.get(path);
+    if (pending) return pending;
+    const request = bridge.request<{ parent: string; children: ProjectNode[] }>('workspace', 'children', { path })
+      .then(response => replaceChildren(current => ({ ...current, [response.parent]: response.children })))
+      .catch(error => { setMessage(formatError(error)); throw error; })
+      .finally(() => pendingChildren.current.delete(path));
+    pendingChildren.current.set(path, request);
+    return request;
+  }, [replaceChildren]);
 
   const refreshWorkspace = useCallback(async () => {
     try {
@@ -90,8 +110,18 @@ export function Workspace() {
       if (event.channel === 'workspace' && event.name === 'changed') {
         const next = event.payload as WorkspaceSnapshot;
         setWorkspace(next);
+        childrenCache.current = {};
+        pendingChildren.current.clear();
         setChildrenByPath({});
-        if (next.project) void loadChildren(next.project.root.path);
+        setTreeChangedPath(undefined);
+        setTreeRefreshRevision(0);
+      }
+      if (event.channel === 'workspace' && event.name === 'treeChanged') {
+        const parent = String((event.payload as { parent?: string }).parent ?? '');
+        if (parent) {
+          setTreeChangedPath(parent);
+          setTreeRefreshRevision(current => current + 1);
+        }
       }
       if (event.channel === 'run' && event.name === 'state') setRunState(event.payload as RunState);
       if (event.channel === 'run' && event.name === 'output') {
@@ -104,6 +134,15 @@ export function Workspace() {
       }
       if (event.channel !== 'document') return;
       const payload = event.payload as DocumentPayload;
+      const eventDocument = event.name === 'saved' || event.name === 'saveFailed'
+        ? payload.document
+        : payload as DocumentSnapshot;
+      console.info('WEB_DOCUMENT event', {
+        name: event.name,
+        uri: eventDocument?.uri ?? payload.uri,
+        documentId: payload.documentId,
+        displayName: eventDocument?.displayName,
+      });
       if (event.name === 'closed') {
         const uri = String(payload.uri ?? '');
         service.close(uri);
@@ -151,8 +190,11 @@ export function Workspace() {
       const snapshot = await bridge.request<WorkspaceSnapshot>('workspace', 'openProject', {}, { timeoutMs: null });
       if (snapshot.project) {
         setWorkspace(snapshot);
+        childrenCache.current = {};
+        pendingChildren.current.clear();
         setChildrenByPath({});
-        await loadChildren(snapshot.project.root.path);
+        setTreeChangedPath(undefined);
+        setTreeRefreshRevision(0);
       }
       setMessage('');
     } catch (error) { setMessage(formatError(error)); }
@@ -166,6 +208,20 @@ export function Workspace() {
   async function openFile(path: string) {
     try { await bridge.request('workspace', 'openFile', { path }); setMessage(''); }
     catch (error) { setMessage(formatError(error)); }
+  }
+
+  async function refreshProject(paths: string[]): Promise<string[]> {
+    try {
+      const snapshot = await bridge.request<WorkspaceSnapshot>('workspace', 'refresh', { paths });
+      setWorkspace(snapshot);
+      const validPaths = snapshot.validPaths ?? [];
+      setTreeChangedPath(validPaths[0]);
+      setTreeRefreshRevision(current => current + 1);
+      return validPaths;
+    } catch (error) {
+      setMessage(formatError(error));
+      return [];
+    }
   }
 
   async function activate(uri: string) {
@@ -207,8 +263,8 @@ export function Workspace() {
       </nav>
       <aside className="side-panel">
         {sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
-          onLoadChildren={path => void loadChildren(path)} onOpenFile={path => void openFile(path)}
-          onOpenProject={() => void openProject()} onNewFile={() => void newDocument()} /> : <section className="auxiliary-panel">
+          reveal={workspace.reveal} treeChangedPath={treeChangedPath} treeRefreshRevision={treeRefreshRevision} onLoadChildren={loadChildren} onOpenFile={openFile}
+          onRefresh={refreshProject} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()} /> : <section className="auxiliary-panel">
           <header className="panel-heading"><span>{sideTitle(sidePanel)}</span></header>
           <div className="toolwindow-placeholder"><strong>{sideTitle(sidePanel)}</strong>
             <span>This shell view is composed and ready for its dedicated service integration.</span></div>

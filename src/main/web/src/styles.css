@@ -646,6 +646,10 @@ html, body, #root {
   background: rgba(133, 109, 237, .12);
 }
 
+.tree-row.is-selected {
+  background: rgba(133, 109, 237, .18);
+}
+
 .tree-chevron {
   width: 9px;
   color: #c0b9e8;

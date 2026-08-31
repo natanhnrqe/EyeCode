@@ -22,6 +22,13 @@ export type RecentProject = {
 export type WorkspaceSnapshot = {
   project?: ProjectSnapshot;
   recentProjects: RecentProject[];
+  reveal?: TreeReveal;
+  validPaths?: string[];
+};
+
+export type TreeReveal = {
+  targetPath: string;
+  ancestors: string[];
 };
 
 export type RunConfiguration = {

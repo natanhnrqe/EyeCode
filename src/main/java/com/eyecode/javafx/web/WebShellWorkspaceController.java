@@ -1,6 +1,7 @@
 package com.eyecode.javafx.web;
 
 import com.eyecode.autosave.ExternalFileEvent;
+import com.eyecode.autosave.ExternalFileState;
 import com.eyecode.autosave.SavedEvent;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.filesystem.DefaultFileSystemService;
@@ -26,6 +27,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.Optional;
 import java.util.Set;
 
 public final class WebShellWorkspaceController {
@@ -69,6 +72,7 @@ public final class WebShellWorkspaceController {
         surface.registerHandler("document", "close", this::close);
         surface.registerHandler("workspace", "snapshot", this::workspaceSnapshot);
         surface.registerHandler("workspace", "openProject", this::openProject);
+        surface.registerHandler("workspace", "refresh", this::refreshWorkspace);
         surface.registerHandler("workspace", "children", this::workspaceChildren);
         surface.registerHandler("workspace", "openFile", this::openWorkspaceFile);
         surface.registerHandler("run", "state", this::runState);
@@ -96,6 +100,7 @@ public final class WebShellWorkspaceController {
     private WebShellEnvelope open(WebShellEnvelope message) {
         String rawPath = text(message.payload(), "path");
         if (rawPath.isBlank()) rawPath = text(message.payload(), "uri");
+        traceRequest("document/open", message.payload());
         if (rawPath.isBlank()) return message.error(new WebShellError(
                 "INVALID_DOCUMENT", "A file path or file URI is required", true));
         try {
@@ -103,6 +108,7 @@ public final class WebShellWorkspaceController {
                     ? MonacoModelId.pathForModel(rawPath).orElseThrow()
                     : Path.of(rawPath);
             path = path.toAbsolutePath().normalize();
+            tracePath("document/open", rawPath, path, isAlreadyOpen(path));
             if (!java.nio.file.Files.isRegularFile(path)) {
                 return message.error(new WebShellError("DOCUMENT_NOT_FOUND", path.toString(), true));
             }
@@ -130,6 +136,7 @@ public final class WebShellWorkspaceController {
             manager.watchProject(project.getRootDir());
             runService.refreshConfigurations();
             Map<String, Object> payload = workspacePayload();
+            preferredEntryPoint(project).ifPresent(path -> payload.put("reveal", revealPayload(project, path)));
             surface.send(WebShellEnvelope.event("workspace", "changed", payload));
             sendRunState();
             return message.response(payload);
@@ -151,12 +158,29 @@ public final class WebShellWorkspaceController {
         return message.response(Map.of("parent", directory.toString(), "children", treeChildren(directory)));
     }
 
+    private WebShellEnvelope refreshWorkspace(WebShellEnvelope message) {
+        ProjectModel project = projectLifecycleService.currentProject();
+        if (project == null) return message.response(workspacePayload());
+        Path root = project.getRootDir().toAbsolutePath().normalize();
+        List<String> validPaths = paths(message.payload(), "paths").stream()
+                .map(Path::of)
+                .map(path -> path.toAbsolutePath().normalize())
+                .filter(path -> path.startsWith(root) && Files.isDirectory(path))
+                .map(Path::toString)
+                .toList();
+        Map<String, Object> payload = workspacePayload();
+        payload.put("validPaths", validPaths.isEmpty() ? List.of(root.toString()) : validPaths);
+        return message.response(payload);
+    }
+
     private WebShellEnvelope openWorkspaceFile(WebShellEnvelope message) {
         String rawPath = text(message.payload(), "path");
+        traceRequest("workspace/openFile", message.payload());
         if (rawPath.isBlank()) return message.error(new WebShellError(
                 "INVALID_DOCUMENT", "A project file path is required", true));
         try {
             Path path = Path.of(rawPath).toAbsolutePath().normalize();
+            tracePath("workspace/openFile", rawPath, path, isAlreadyOpen(path));
             ProjectModel project = projectLifecycleService.currentProject();
             if (project == null || !path.startsWith(project.getRootDir()) || !Files.isRegularFile(path)) {
                 return message.error(new WebShellError("DOCUMENT_NOT_FOUND", path.toString(), true));
@@ -198,8 +222,8 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope activate(WebShellEnvelope message) {
         EditorSession session = sessionFor(message.payload());
-        if (session == null) return message.error(new WebShellError(
-                "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
+        if (session == null) return documentNotOpen(message, "document/activate");
+        traceSession("document/activate", session, false);
         manager.activateSession(session.getSessionId());
         sendActiveChanged(session);
         return message.response(Map.of("document", snapshot(session).payload()));
@@ -224,8 +248,8 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope change(WebShellEnvelope message) {
         EditorSession session = sessionFor(message.payload());
-        if (session == null) return message.error(new WebShellError(
-                "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
+        if (session == null) return documentNotOpen(message, "document/change");
+        traceSession("document/change", session, false);
         EditorDocument document = documentFor(session);
         if (document == null) return message.error(new WebShellError(
                 "DOCUMENT_UNAVAILABLE", "The document is unavailable", true));
@@ -238,6 +262,8 @@ public final class WebShellWorkspaceController {
         if (!content.equals(document.snapshot().getText())) document.setText(content);
         WebDocumentSnapshot result = snapshot(session);
         surface.send(WebShellEnvelope.event("document", "changed", result.payload()));
+        traceSession("document/changed", session, false);
+        traceRegistry("document/change");
         return message.response(Map.of("document", result.payload()));
     }
 
@@ -312,8 +338,8 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope close(WebShellEnvelope message) {
         EditorSession session = sessionFor(message.payload());
-        if (session == null) return message.error(new WebShellError(
-                "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
+        if (session == null) return documentNotOpen(message, "document/close");
+        traceSession("document/close", session, false);
         boolean closed = manager.closeSession(session.getSessionId());
         if (!closed) return message.error(new WebShellError(
                 "CLOSE_FAILED", "The document could not be closed", true));
@@ -321,17 +347,22 @@ public final class WebShellWorkspaceController {
         untitledNames.remove(session.getSessionId());
         surface.send(WebShellEnvelope.event("document", "closed", Map.of(
                 "uri", MonacoModelId.forSession(session))));
+        traceSession("document/closed", session, false);
+        traceRegistry("document/close");
         EditorSession active = manager.getCurrentSession();
         if (active != null) sendActiveChanged(active);
         return message.response(Map.of("closed", true));
     }
 
     private EditorSession openPath(Path path) {
+        boolean alreadyOpen = isAlreadyOpen(path);
         EditorSession session = manager.openDocument(path.toAbsolutePath().normalize());
+        traceSession("document/opened", session, alreadyOpen);
         observe(session);
         WebDocumentSnapshot result = snapshot(session);
         surface.send(WebShellEnvelope.event("document", "opened", result.payload()));
         sendActiveChanged(session);
+        traceRegistry("document/open");
         return session;
     }
 
@@ -362,14 +393,28 @@ public final class WebShellWorkspaceController {
     private void onExternalChanged(ExternalFileEvent event) {
         if (disposed || event == null) return;
         EditorSession session = sessionForPath(event.path());
-        if (session != null) surface.send(WebShellEnvelope.event("document", "externalChanged",
+        if (session != null && event.state() != ExternalFileState.SYNCED
+                && event.state() != ExternalFileState.IGNORED) surface.send(WebShellEnvelope.event("document", "externalChanged",
                 snapshot(session).payload()));
+        sendTreeChanged(event.path());
+    }
+
+    private void sendTreeChanged(Path changedPath) {
+        ProjectModel project = projectLifecycleService.currentProject();
+        if (project == null || changedPath == null) return;
+        Path root = project.getRootDir().toAbsolutePath().normalize();
+        Path changed = changedPath.toAbsolutePath().normalize();
+        if (!changed.startsWith(root)) return;
+        Path parent = changed.getParent();
+        if (parent == null || !parent.startsWith(root)) return;
+        surface.send(WebShellEnvelope.event("workspace", "treeChanged", Map.of("parent", parent.toString())));
     }
 
     private void sendActiveChanged(EditorSession session) {
         surface.send(WebShellEnvelope.event("document", "activeChanged", Map.of(
                 "uri", MonacoModelId.forSession(session),
                 "documentId", session.getDocumentId())));
+        traceSession("document/activeChanged", session, false);
     }
 
     private EditorSession sessionFor(Map<String, Object> payload) {
@@ -388,6 +433,13 @@ public final class WebShellWorkspaceController {
         return manager.getSessions().stream()
                 .filter(session -> identity.equals(MonacoModelId.identity(session.getFile())))
                 .findFirst().orElse(null);
+    }
+
+    private WebShellEnvelope documentNotOpen(WebShellEnvelope message, String operation) {
+        traceRequest(operation + " DOCUMENT_NOT_OPEN", message.payload());
+        traceRegistry(operation + " miss");
+        return message.error(new WebShellError(
+                "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
     }
 
     private EditorDocument documentFor(EditorSession session) {
@@ -419,6 +471,60 @@ public final class WebShellWorkspaceController {
         payload.put("type", project.getType().name());
         payload.put("root", treeNode(project.getRootDir(), true));
         return payload;
+    }
+
+    private Optional<Path> preferredEntryPoint(ProjectModel project) {
+        RunConfiguration selected = runService.selectedConfiguration();
+        if (selected != null && selected.projectRoot().equals(project.getRootDir().toAbsolutePath().normalize())) {
+            Optional<Path> source = sourceFor(project, selected.mainClass());
+            if (source.isPresent()) return source;
+        }
+        for (Path sourceRoot : sourceRoots(project)) {
+            if (!Files.isDirectory(sourceRoot)) continue;
+            try (var paths = Files.walk(sourceRoot, 12)) {
+                Optional<Path> main = paths.filter(Files::isRegularFile)
+                        .filter(path -> path.getFileName().toString().equals("Main.java"))
+                        .filter(this::isSensibleSource)
+                        .sorted(Comparator.comparing(path -> path.toAbsolutePath().normalize().toString()))
+                        .findFirst();
+                if (main.isPresent()) return main.map(path -> path.toAbsolutePath().normalize());
+            } catch (IOException ignored) {
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<Path> sourceFor(ProjectModel project, String qualifiedName) {
+        if (qualifiedName == null || qualifiedName.isBlank()) return Optional.empty();
+        String relative = qualifiedName.replace('.', File.separatorChar) + ".java";
+        return sourceRoots(project).stream().map(root -> root.resolve(relative).normalize())
+                .filter(Files::isRegularFile).findFirst();
+    }
+
+    private List<Path> sourceRoots(ProjectModel project) {
+        Path root = project.getRootDir().toAbsolutePath().normalize();
+        Path standard = root.resolve("src/main/java");
+        return Files.isDirectory(standard) ? List.of(standard) : List.of(root.resolve("src"));
+    }
+
+    private boolean isSensibleSource(Path path) {
+        for (Path part : path) {
+            if (Set.of("target", "build", "out", ".gradle", ".idea", "node_modules", ".git").contains(part.toString())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private Map<String, Object> revealPayload(ProjectModel project, Path target) {
+        Path root = project.getRootDir().toAbsolutePath().normalize();
+        List<Path> reverseAncestors = new ArrayList<>();
+        for (Path current = target.getParent(); current != null && !current.equals(root); current = current.getParent()) {
+            reverseAncestors.add(current);
+        }
+        java.util.Collections.reverse(reverseAncestors);
+        return Map.of("targetPath", target.toAbsolutePath().normalize().toString(),
+                "ancestors", reverseAncestors.stream().map(Path::toString).toList());
     }
 
     private Map<String, Object> treeNode(Path path, boolean root) {
@@ -507,6 +613,47 @@ public final class WebShellWorkspaceController {
         if (!disposed) surface.send(WebShellEnvelope.event("run", "state", runPayload()));
     }
 
+    private boolean isAlreadyOpen(Path path) {
+        String identity = MonacoModelId.identity(path);
+        return manager.getSessions().stream()
+                .anyMatch(session -> identity.equals(MonacoModelId.identity(session.getFile())));
+    }
+
+    private void traceRequest(String operation, Map<String, Object> payload) {
+        System.out.printf("WEB_DOCUMENT operation=%s rawPath=%s uri=%s documentId=%s%n",
+                operation, text(payload, "path"), text(payload, "uri"), text(payload, "documentId"));
+    }
+
+    private void tracePath(String operation, String rawPath, Path normalizedPath, boolean alreadyOpen) {
+        System.out.printf("WEB_DOCUMENT operation=%s rawPath=%s normalizedPath=%s canonicalPath=%s alreadyOpen=%s%n",
+                operation, rawPath, normalizedPath, MonacoModelId.identity(normalizedPath), alreadyOpen);
+    }
+
+    private void traceSession(String operation, EditorSession session, boolean alreadyOpen) {
+        System.out.printf("WEB_DOCUMENT operation=%s sessionId=%s documentId=%s uri=%s displayName=%s file=%s canonicalPath=%s alreadyOpen=%s%n",
+                operation,
+                session.getSessionId(),
+                session.getDocumentId(),
+                MonacoModelId.forSession(session),
+                session.getDisplayName(),
+                session.getFile(),
+                MonacoModelId.identity(session.getFile()),
+                alreadyOpen);
+    }
+
+    private void traceRegistry(String operation) {
+        StringBuilder sessions = new StringBuilder();
+        for (EditorSession session : manager.getSessions()) {
+            if (!sessions.isEmpty()) sessions.append(" | ");
+            sessions.append("sessionId=").append(session.getSessionId())
+                    .append(",documentId=").append(session.getDocumentId())
+                    .append(",uri=").append(MonacoModelId.forSession(session))
+                    .append(",file=").append(session.getFile())
+                    .append(",canonicalPath=").append(MonacoModelId.identity(session.getFile()));
+        }
+        System.out.printf("WEB_DOCUMENT_REGISTRY operation=%s sessions=[%s]%n", operation, sessions);
+    }
+
     private static String text(Map<String, Object> payload, String key) {
         Object value = payload == null ? null : payload.get(key);
         return value == null ? "" : String.valueOf(value);
@@ -515,5 +662,15 @@ public final class WebShellWorkspaceController {
     private static long number(Map<String, Object> payload, String key, long fallback) {
         Object value = payload == null ? null : payload.get(key);
         return value instanceof Number number ? number.longValue() : fallback;
+    }
+
+    private static List<String> paths(Map<String, Object> payload, String key) {
+        Object value = payload == null ? null : payload.get(key);
+        if (!(value instanceof Iterable<?> values)) return List.of();
+        List<String> result = new ArrayList<>();
+        for (Object item : values) {
+            if (item != null) result.add(String.valueOf(item));
+        }
+        return result;
     }
 }
