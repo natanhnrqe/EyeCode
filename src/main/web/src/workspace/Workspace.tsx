@@ -19,6 +19,8 @@ import type { ProjectNode, RunState, WorkspaceSnapshot } from './protocol';
 type DocumentTab = Omit<DocumentSnapshot, 'content'>;
 type BottomPanelId = 'run' | 'terminal' | 'output' | 'problems' | 'git';
 type SidePanelId = 'project' | 'search' | 'learn' | 'documentation' | 'settings';
+type ExplorerOperation = 'createFile' | 'createDirectory' | 'createJavaClass' | 'createPackage' | 'rename' | 'delete' | 'duplicate';
+type ExplorerOperationResult = { path?: string; parent?: string; openFile?: boolean; ancestors?: string[] };
 
 const emptyRunState: RunState = { running: false, rerunAvailable: false, configurations: [], selectedConfigurationId: '' };
 
@@ -47,11 +49,6 @@ export function Workspace() {
     const tab: DocumentTab = { ...document };
     delete (tab as Partial<DocumentSnapshot>).content;
     setDocuments(items => {
-      console.info('WEB_DOCUMENT updateDocument', {
-        incomingUri: tab.uri,
-        displayName: tab.displayName,
-        documents: items.map(item => item.uri),
-      });
       const index = items.findIndex(item => item.uri === tab.uri);
       if (index < 0) return [...items, tab];
       const next = [...items];
@@ -134,15 +131,6 @@ export function Workspace() {
       }
       if (event.channel !== 'document') return;
       const payload = event.payload as DocumentPayload;
-      const eventDocument = event.name === 'saved' || event.name === 'saveFailed'
-        ? payload.document
-        : payload as DocumentSnapshot;
-      console.info('WEB_DOCUMENT event', {
-        name: event.name,
-        uri: eventDocument?.uri ?? payload.uri,
-        documentId: payload.documentId,
-        displayName: eventDocument?.displayName,
-      });
       if (event.name === 'closed') {
         const uri = String(payload.uri ?? '');
         service.close(uri);
@@ -224,6 +212,21 @@ export function Workspace() {
     }
   }
 
+  async function operateProject(operation: ExplorerOperation, target: string, name?: string): Promise<ExplorerOperationResult> {
+    try {
+      const result = await bridge.request<ExplorerOperationResult>('workspace', operation, {
+        target,
+        ...(name ? { name } : {}),
+      });
+      if (result.parent) void loadChildren(result.parent, true);
+      setMessage('');
+      return result;
+    } catch (error) {
+      setMessage(formatError(error));
+      throw error;
+    }
+  }
+
   async function activate(uri: string) {
     try { await bridge.request('document', 'activate', { uri }); }
     catch (error) { setMessage(formatError(error)); }
@@ -264,7 +267,7 @@ export function Workspace() {
       <aside className="side-panel">
         {sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
           reveal={workspace.reveal} treeChangedPath={treeChangedPath} treeRefreshRevision={treeRefreshRevision} onLoadChildren={loadChildren} onOpenFile={openFile}
-          onRefresh={refreshProject} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()} /> : <section className="auxiliary-panel">
+          onRefresh={refreshProject} onOperation={operateProject} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()} /> : <section className="auxiliary-panel">
           <header className="panel-heading"><span>{sideTitle(sidePanel)}</span></header>
           <div className="toolwindow-placeholder"><strong>{sideTitle(sidePanel)}</strong>
             <span>This shell view is composed and ready for its dedicated service integration.</span></div>

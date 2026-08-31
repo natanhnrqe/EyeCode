@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type MutableRefObject } from 'react';
+import { createPortal } from 'react-dom';
 import type { ProjectNode, ProjectSnapshot, TreeReveal } from './protocol';
 import { EyeCodeIcon } from './EyeCodeIcon';
 
@@ -11,11 +12,17 @@ type Props = {
   onLoadChildren(path: string, force?: boolean): Promise<void>;
   onOpenFile(path: string): Promise<void>;
   onRefresh(paths: string[]): Promise<string[]>;
+  onOperation(operation: ExplorerOperation, target: string, name?: string): Promise<ExplorerOperationResult>;
   onOpenProject(): void;
   onNewFile(): void;
 };
 
-export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPath, treeRefreshRevision, onLoadChildren, onOpenFile, onRefresh, onOpenProject, onNewFile }: Props) {
+type ExplorerOperation = 'createFile' | 'createDirectory' | 'createJavaClass' | 'createPackage' | 'rename' | 'delete' | 'duplicate';
+type ExplorerOperationResult = { path?: string; parent?: string; openFile?: boolean; ancestors?: string[] };
+type ContextMenuState = { node: ProjectNode; x: number; y: number };
+type DialogState = { operation: ExplorerOperation; node: ProjectNode };
+
+export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPath, treeRefreshRevision, onLoadChildren, onOpenFile, onRefresh, onOperation, onOpenProject, onNewFile }: Props) {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set());
   const [loadingPaths, setLoadingPaths] = useState<Set<string>>(() => new Set());
   const [failedPaths, setFailedPaths] = useState<Set<string>>(() => new Set());
@@ -25,9 +32,21 @@ export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPa
   const handledReveal = useRef<string | undefined>(undefined);
   const children = useRef(childrenByPath);
   const openFile = useRef(onOpenFile);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>();
+  const [dialog, setDialog] = useState<DialogState>();
+  const [input, setInput] = useState('');
 
   useEffect(() => { children.current = childrenByPath; }, [childrenByPath]);
   useEffect(() => { openFile.current = onOpenFile; }, [onOpenFile]);
+
+  useEffect(() => {
+    if (!contextMenu && !dialog) return;
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') { setContextMenu(undefined); setDialog(undefined); } };
+    const outside = () => setContextMenu(undefined);
+    window.addEventListener('keydown', close);
+    window.addEventListener('pointerdown', outside);
+    return () => { window.removeEventListener('keydown', close); window.removeEventListener('pointerdown', outside); };
+  }, [contextMenu, dialog]);
 
   useEffect(() => {
     loading.current.clear();
@@ -120,8 +139,9 @@ export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPa
     </header>
     <div className="project-tree" role="tree">
       <TreeNode node={project.root} depth={0} childrenByPath={childrenByPath} expandedPaths={expandedPaths}
-        loadingPaths={loadingPaths} failedPaths={failedPaths} selectedPath={selectedPath} onToggle={toggle} nodeRefs={nodeRefs} />
+        loadingPaths={loadingPaths} failedPaths={failedPaths} selectedPath={selectedPath} onToggle={toggle} onContextMenu={showContextMenu} nodeRefs={nodeRefs} />
     </div>
+    {renderOverlay()}
   </section>;
 
   async function refreshExpandedPaths() {
@@ -132,6 +152,95 @@ export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPa
     for (const path of paths.filter(path => valid.has(path)).sort((left, right) => left.length - right.length)) {
       await ensureChildren(path, true);
     }
+  }
+
+  function showContextMenu(node: ProjectNode, event: ReactMouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    setSelectedPath(node.path);
+    setContextMenu({ node, x: Math.min(event.clientX, window.innerWidth - 224), y: Math.min(event.clientY, window.innerHeight - 290) });
+  }
+
+  function openDialog(operation: ExplorerOperation, node: ProjectNode) {
+    setContextMenu(undefined);
+    setInput(operation === 'rename' ? node.name : '');
+    setDialog({ operation, node });
+  }
+
+  async function submitDialog() {
+    if (!dialog) return;
+    const target = targetFor(dialog.operation, dialog.node);
+    try {
+      const result = await onOperation(dialog.operation, target, dialog.operation === 'delete' ? undefined : input);
+      setDialog(undefined);
+      await revealMutation(result);
+    } catch {
+    }
+  }
+
+  async function runOperation(operation: ExplorerOperation, node: ProjectNode) {
+    try {
+      const result = await onOperation(operation, node.path);
+      setContextMenu(undefined);
+      await revealMutation(result);
+    } catch {
+    }
+  }
+
+  async function revealMutation(result: ExplorerOperationResult) {
+    if (result.parent) await ensureChildren(result.parent, true);
+    for (const path of result.ancestors ?? []) {
+      await ensureChildren(path);
+      setExpandedPaths(paths => new Set(paths).add(path));
+    }
+    if (result.path) {
+      const path = result.path;
+      setSelectedPath(path);
+      if (result.openFile) await openFile.current(path);
+      else setExpandedPaths(paths => new Set(paths).add(path));
+    } else if (result.parent) {
+      setSelectedPath(result.parent);
+    }
+  }
+
+  function targetFor(operation: ExplorerOperation, node: ProjectNode): string {
+    if ((operation === 'createFile' || operation === 'createDirectory' || operation === 'createJavaClass' || operation === 'createPackage') && node.kind === 'file') {
+      return node.path.slice(0, Math.max(node.path.lastIndexOf('\\'), node.path.lastIndexOf('/')));
+    }
+    return node.path;
+  }
+
+  function renderOverlay() {
+    const root = document.querySelector('.overlay-root');
+    if (!root || (!contextMenu && !dialog)) return null;
+    return createPortal(<>
+      {contextMenu && <div className="explorer-context-menu" style={{ left: contextMenu.x, top: contextMenu.y }} onPointerDown={event => event.stopPropagation()}>
+        {contextMenu.node.kind === 'file' ? <>
+          <button type="button" onClick={() => { setContextMenu(undefined); setSelectedPath(contextMenu.node.path); void openFile.current(contextMenu.node.path); }}>Open</button>
+          <hr />
+          <button type="button" onClick={() => void runOperation('duplicate', contextMenu.node)}>Duplicate</button>
+          <button type="button" onClick={() => openDialog('rename', contextMenu.node)}>Rename</button>
+          <button type="button" className="is-danger" onClick={() => openDialog('delete', contextMenu.node)}>Delete</button>
+        </> : <>
+          <button type="button" onClick={() => openDialog('createJavaClass', contextMenu.node)}>New Java Class</button>
+          <button type="button" onClick={() => openDialog('createFile', contextMenu.node)}>New File</button>
+          <button type="button" onClick={() => openDialog('createPackage', contextMenu.node)}>New Package</button>
+          <button type="button" onClick={() => openDialog('createDirectory', contextMenu.node)}>New Directory</button>
+          <hr />
+          <button type="button" onClick={() => { setContextMenu(undefined); void ensureChildren(contextMenu.node.path, true); }}>Refresh</button>
+          {contextMenu.node.kind !== 'project' && <><hr />
+            <button type="button" onClick={() => openDialog('rename', contextMenu.node)}>Rename</button>
+            <button type="button" className="is-danger" onClick={() => openDialog('delete', contextMenu.node)}>Delete</button>
+          </>}
+        </>}
+      </div>}
+      {dialog && <div className="explorer-dialog-backdrop" onPointerDown={() => setDialog(undefined)}>
+        <form className="explorer-dialog" onPointerDown={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void submitDialog(); }}>
+          <strong>{dialogTitle(dialog.operation)}</strong>
+          {dialog.operation === 'delete' ? <p>Delete {dialog.node.name}{dialog.node.kind !== 'file' ? ' and its contents' : ''}?</p> : <input autoFocus value={input} onChange={event => setInput(event.target.value)} placeholder={dialogPlaceholder(dialog.operation)} />}
+          <div><button type="button" onClick={() => setDialog(undefined)}>Cancel</button><button type="submit">{dialog.operation === 'delete' ? 'Delete' : dialog.operation === 'rename' ? 'Rename' : 'Create'}</button></div>
+        </form>
+      </div>}
+    </>, root);
   }
 }
 
@@ -144,10 +253,11 @@ type TreeNodeProps = {
   failedPaths: Set<string>;
   selectedPath?: string;
   onToggle(node: ProjectNode): void;
+  onContextMenu(node: ProjectNode, event: ReactMouseEvent<HTMLButtonElement>): void;
   nodeRefs: MutableRefObject<Map<string, HTMLDivElement>>;
 };
 
-function TreeNode({ node, depth, childrenByPath, expandedPaths, loadingPaths, failedPaths, selectedPath, onToggle, nodeRefs }: TreeNodeProps) {
+function TreeNode({ node, depth, childrenByPath, expandedPaths, loadingPaths, failedPaths, selectedPath, onToggle, onContextMenu, nodeRefs }: TreeNodeProps) {
   const directory = node.kind !== 'file';
   const expanded = expandedPaths.has(node.path);
   const children = childrenByPath[node.path];
@@ -155,6 +265,7 @@ function TreeNode({ node, depth, childrenByPath, expandedPaths, loadingPaths, fa
     ref={element => { if (element) nodeRefs.current.set(node.path, element); else nodeRefs.current.delete(node.path); }}>
     <button type="button" className={`tree-row tree-${node.kind}${selectedPath === node.path ? ' is-selected' : ''}`}
       onClick={() => onToggle(node)} style={{ paddingLeft: `${8 + depth * 15}px` }}
+      onContextMenu={event => onContextMenu(node, event)}
       aria-busy={loadingPaths.has(node.path)} aria-invalid={failedPaths.has(node.path)}>
       <span className={`tree-chevron ${directory && expanded ? 'is-open' : ''}`}>{directory && node.hasChildren ? '›' : ''}</span>
       <EyeCodeIcon name={treeIcon(node, expanded)} className="tree-icon" />
@@ -162,8 +273,16 @@ function TreeNode({ node, depth, childrenByPath, expandedPaths, loadingPaths, fa
     </button>
     {directory && expanded && children?.map(child => <TreeNode key={child.path} node={child} depth={depth + 1}
       childrenByPath={childrenByPath} expandedPaths={expandedPaths} loadingPaths={loadingPaths} failedPaths={failedPaths}
-      selectedPath={selectedPath} onToggle={onToggle} nodeRefs={nodeRefs} />)}
+      selectedPath={selectedPath} onToggle={onToggle} onContextMenu={onContextMenu} nodeRefs={nodeRefs} />)}
   </div>;
+}
+
+function dialogTitle(operation: ExplorerOperation): string {
+  return ({ createJavaClass: 'New Java Class', createFile: 'New File', createPackage: 'New Package', createDirectory: 'New Directory', rename: 'Rename', delete: 'Delete', duplicate: 'Duplicate' })[operation];
+}
+
+function dialogPlaceholder(operation: ExplorerOperation): string {
+  return ({ createJavaClass: 'Class name', createFile: 'File name', createPackage: 'com.example.feature', createDirectory: 'Directory name', rename: 'New name', delete: '', duplicate: '' })[operation];
 }
 
 function treeIcon(node: ProjectNode, expanded: boolean): string {

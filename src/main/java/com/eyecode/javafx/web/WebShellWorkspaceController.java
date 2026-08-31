@@ -7,6 +7,7 @@ import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.filesystem.DefaultFileSystemService;
 import com.eyecode.javafx.monaco.MonacoModelId;
 import com.eyecode.project.ProjectLifecycleService;
+import com.eyecode.project.ProjectFileOperationService;
 import com.eyecode.project.model.ProjectModel;
 import com.eyecode.runtime.RunConfiguration;
 import com.eyecode.runtime.RunService;
@@ -38,8 +39,10 @@ public final class WebShellWorkspaceController {
     private final WebShellLearningController learningController;
     private final ProjectLifecycleService projectLifecycleService;
     private final RunService runService;
+    private final ProjectFileOperationService fileOperations = new ProjectFileOperationService();
     private final Map<String, EditorDocument> observedDocuments = new LinkedHashMap<>();
     private final Map<String, String> untitledNames = new LinkedHashMap<>();
+    private final Set<String> reidentifyingSessions = new java.util.HashSet<>();
     private int nextUntitledNumber = 1;
     private boolean disposed;
 
@@ -75,6 +78,13 @@ public final class WebShellWorkspaceController {
         surface.registerHandler("workspace", "refresh", this::refreshWorkspace);
         surface.registerHandler("workspace", "children", this::workspaceChildren);
         surface.registerHandler("workspace", "openFile", this::openWorkspaceFile);
+        surface.registerHandler("workspace", "createFile", this::createFile);
+        surface.registerHandler("workspace", "createDirectory", this::createDirectory);
+        surface.registerHandler("workspace", "createJavaClass", this::createJavaClass);
+        surface.registerHandler("workspace", "createPackage", this::createPackage);
+        surface.registerHandler("workspace", "rename", this::renamePath);
+        surface.registerHandler("workspace", "delete", this::deletePath);
+        surface.registerHandler("workspace", "duplicate", this::duplicatePath);
         surface.registerHandler("run", "state", this::runState);
         surface.registerHandler("run", "run", this::run);
         surface.registerHandler("run", "rerun", this::rerun);
@@ -100,7 +110,6 @@ public final class WebShellWorkspaceController {
     private WebShellEnvelope open(WebShellEnvelope message) {
         String rawPath = text(message.payload(), "path");
         if (rawPath.isBlank()) rawPath = text(message.payload(), "uri");
-        traceRequest("document/open", message.payload());
         if (rawPath.isBlank()) return message.error(new WebShellError(
                 "INVALID_DOCUMENT", "A file path or file URI is required", true));
         try {
@@ -108,7 +117,6 @@ public final class WebShellWorkspaceController {
                     ? MonacoModelId.pathForModel(rawPath).orElseThrow()
                     : Path.of(rawPath);
             path = path.toAbsolutePath().normalize();
-            tracePath("document/open", rawPath, path, isAlreadyOpen(path));
             if (!java.nio.file.Files.isRegularFile(path)) {
                 return message.error(new WebShellError("DOCUMENT_NOT_FOUND", path.toString(), true));
             }
@@ -175,12 +183,10 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope openWorkspaceFile(WebShellEnvelope message) {
         String rawPath = text(message.payload(), "path");
-        traceRequest("workspace/openFile", message.payload());
         if (rawPath.isBlank()) return message.error(new WebShellError(
                 "INVALID_DOCUMENT", "A project file path is required", true));
         try {
             Path path = Path.of(rawPath).toAbsolutePath().normalize();
-            tracePath("workspace/openFile", rawPath, path, isAlreadyOpen(path));
             ProjectModel project = projectLifecycleService.currentProject();
             if (project == null || !path.startsWith(project.getRootDir()) || !Files.isRegularFile(path)) {
                 return message.error(new WebShellError("DOCUMENT_NOT_FOUND", path.toString(), true));
@@ -189,6 +195,112 @@ public final class WebShellWorkspaceController {
             return message.response(Map.of("document", snapshot(session).payload()));
         } catch (RuntimeException exception) {
             return message.error(new WebShellError("INVALID_DOCUMENT", exception.getMessage(), true));
+        }
+    }
+
+    private WebShellEnvelope createFile(WebShellEnvelope message) {
+        return createInDirectory(message, "CREATE_FILE", fileOperations::createFile, true);
+    }
+
+    private WebShellEnvelope createDirectory(WebShellEnvelope message) {
+        return createInDirectory(message, "CREATE_DIRECTORY", fileOperations::createDirectory, false);
+    }
+
+    private WebShellEnvelope createJavaClass(WebShellEnvelope message) {
+        return createInDirectory(message, "CREATE_JAVA_CLASS", fileOperations::createJavaClass, true);
+    }
+
+    private WebShellEnvelope createPackage(WebShellEnvelope message) {
+        return createInDirectory(message, "CREATE_PACKAGE", fileOperations::createPackage, false);
+    }
+
+    private WebShellEnvelope createInDirectory(WebShellEnvelope message, String errorCode,
+                                                DirectoryMutation mutation, boolean openFile) {
+        try {
+            ProjectModel project = requireProject();
+            Path directory = Path.of(text(message.payload(), "target")).toAbsolutePath().normalize();
+            Path created = mutation.apply(project, directory, text(message.payload(), "name"));
+            Path parent = created.getParent();
+            sendTreeChanged(created);
+            Map<String, Object> payload = mutationPayload(created, parent, openFile);
+            return message.response(payload);
+        } catch (IOException | IllegalArgumentException exception) {
+            return message.error(new WebShellError(errorCode, safeMessage(exception), true));
+        }
+    }
+
+    private WebShellEnvelope duplicatePath(WebShellEnvelope message) {
+        try {
+            ProjectModel project = requireProject();
+            Path duplicate = fileOperations.duplicate(project, Path.of(text(message.payload(), "target")));
+            sendTreeChanged(duplicate);
+            return message.response(mutationPayload(duplicate, duplicate.getParent(), false));
+        } catch (IOException | IllegalArgumentException exception) {
+            return message.error(new WebShellError("DUPLICATE_FAILED", safeMessage(exception), true));
+        }
+    }
+
+    private WebShellEnvelope renamePath(WebShellEnvelope message) {
+        try {
+            ProjectModel project = requireProject();
+            Path target = fileOperations.requireTarget(project, Path.of(text(message.payload(), "target")));
+            List<EditorSession> affected = sessionsUnder(target);
+            for (EditorSession session : affected) {
+                EditorDocument document = documentFor(session);
+                if (document != null && document.isDirty() && !manager.flushSession(session.getSessionId())) {
+                    return message.error(new WebShellError("RENAME_SAVE_FAILED", "Unable to save an open document before rename", true));
+                }
+            }
+            Map<String, String> previousUris = new LinkedHashMap<>();
+            for (EditorSession session : affected) previousUris.put(session.getSessionId(), MonacoModelId.forSession(session));
+            for (EditorSession session : affected) reidentifyingSessions.add(session.getSessionId());
+            try {
+                if (!manager.renamePath(project, target, text(message.payload(), "name"))) {
+                    return message.error(new WebShellError("RENAME_FAILED", "Unable to rename the selected path", true));
+                }
+            } finally {
+                for (EditorSession session : affected) reidentifyingSessions.remove(session.getSessionId());
+            }
+            for (EditorSession session : affected) {
+                String previousUri = previousUris.get(session.getSessionId());
+                WebDocumentSnapshot document = snapshot(session);
+                surface.send(WebShellEnvelope.event("document", "reidentified", Map.of(
+                        "previousUri", previousUri, "document", document.payload())));
+            }
+            Path parent = target.getParent();
+            if (parent != null) sendTreeChanged(target);
+            Path renamed = target.resolveSibling(text(message.payload(), "name")).normalize();
+            return message.response(mutationPayload(renamed, renamed.getParent(), false));
+        } catch (IllegalArgumentException exception) {
+            return message.error(new WebShellError("RENAME_FAILED", safeMessage(exception), true));
+        }
+    }
+
+    private WebShellEnvelope deletePath(WebShellEnvelope message) {
+        try {
+            ProjectModel project = requireProject();
+            Path target = fileOperations.requireTarget(project, Path.of(text(message.payload(), "target")));
+            List<EditorSession> affected = sessionsUnder(target);
+            if (affected.stream().map(this::documentFor).filter(java.util.Objects::nonNull).anyMatch(EditorDocument::isDirty)) {
+                return message.error(new WebShellError("DIRTY_DOCUMENTS", "Save or discard changes before deleting an open document", true));
+            }
+            Map<String, String> closedUris = new LinkedHashMap<>();
+            for (EditorSession session : affected) closedUris.put(session.getSessionId(), MonacoModelId.forSession(session));
+            if (!manager.deletePath(project, target)) {
+                return message.error(new WebShellError("DELETE_FAILED", "Unable to delete the selected path", true));
+            }
+            for (EditorSession session : affected) {
+                observedDocuments.remove(session.getSessionId());
+                untitledNames.remove(session.getSessionId());
+                surface.send(WebShellEnvelope.event("document", "closed", Map.of("uri", closedUris.get(session.getSessionId()))));
+            }
+            Path parent = target.getParent();
+            if (parent != null) sendTreeChanged(target);
+            EditorSession active = manager.getCurrentSession();
+            if (active != null) sendActiveChanged(active);
+            return message.response(Map.of("parent", parent == null ? "" : parent.toString()));
+        } catch (IllegalArgumentException exception) {
+            return message.error(new WebShellError("DELETE_FAILED", safeMessage(exception), true));
         }
     }
 
@@ -222,8 +334,8 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope activate(WebShellEnvelope message) {
         EditorSession session = sessionFor(message.payload());
-        if (session == null) return documentNotOpen(message, "document/activate");
-        traceSession("document/activate", session, false);
+        if (session == null) return message.error(new WebShellError(
+                "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
         manager.activateSession(session.getSessionId());
         sendActiveChanged(session);
         return message.response(Map.of("document", snapshot(session).payload()));
@@ -248,8 +360,8 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope change(WebShellEnvelope message) {
         EditorSession session = sessionFor(message.payload());
-        if (session == null) return documentNotOpen(message, "document/change");
-        traceSession("document/change", session, false);
+        if (session == null) return message.error(new WebShellError(
+                "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
         EditorDocument document = documentFor(session);
         if (document == null) return message.error(new WebShellError(
                 "DOCUMENT_UNAVAILABLE", "The document is unavailable", true));
@@ -262,8 +374,6 @@ public final class WebShellWorkspaceController {
         if (!content.equals(document.snapshot().getText())) document.setText(content);
         WebDocumentSnapshot result = snapshot(session);
         surface.send(WebShellEnvelope.event("document", "changed", result.payload()));
-        traceSession("document/changed", session, false);
-        traceRegistry("document/change");
         return message.response(Map.of("document", result.payload()));
     }
 
@@ -338,8 +448,8 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope close(WebShellEnvelope message) {
         EditorSession session = sessionFor(message.payload());
-        if (session == null) return documentNotOpen(message, "document/close");
-        traceSession("document/close", session, false);
+        if (session == null) return message.error(new WebShellError(
+                "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
         boolean closed = manager.closeSession(session.getSessionId());
         if (!closed) return message.error(new WebShellError(
                 "CLOSE_FAILED", "The document could not be closed", true));
@@ -347,22 +457,17 @@ public final class WebShellWorkspaceController {
         untitledNames.remove(session.getSessionId());
         surface.send(WebShellEnvelope.event("document", "closed", Map.of(
                 "uri", MonacoModelId.forSession(session))));
-        traceSession("document/closed", session, false);
-        traceRegistry("document/close");
         EditorSession active = manager.getCurrentSession();
         if (active != null) sendActiveChanged(active);
         return message.response(Map.of("closed", true));
     }
 
     private EditorSession openPath(Path path) {
-        boolean alreadyOpen = isAlreadyOpen(path);
         EditorSession session = manager.openDocument(path.toAbsolutePath().normalize());
-        traceSession("document/opened", session, alreadyOpen);
         observe(session);
         WebDocumentSnapshot result = snapshot(session);
         surface.send(WebShellEnvelope.event("document", "opened", result.payload()));
         sendActiveChanged(session);
-        traceRegistry("document/open");
         return session;
     }
 
@@ -372,11 +477,11 @@ public final class WebShellWorkspaceController {
         if (document == null) return;
         observedDocuments.put(session.getSessionId(), document);
         document.addDocumentChangeListener(event -> {
-            if (!disposed) surface.send(WebShellEnvelope.event("document", "changed",
+            if (!disposed && !reidentifyingSessions.contains(session.getSessionId())) surface.send(WebShellEnvelope.event("document", "changed",
                     snapshot(session).payload()));
         });
         document.addDirtyChangeListener(dirty -> {
-            if (!disposed) surface.send(WebShellEnvelope.event("document", "changed",
+            if (!disposed && !reidentifyingSessions.contains(session.getSessionId())) surface.send(WebShellEnvelope.event("document", "changed",
                     snapshot(session).payload()));
         });
     }
@@ -414,7 +519,6 @@ public final class WebShellWorkspaceController {
         surface.send(WebShellEnvelope.event("document", "activeChanged", Map.of(
                 "uri", MonacoModelId.forSession(session),
                 "documentId", session.getDocumentId())));
-        traceSession("document/activeChanged", session, false);
     }
 
     private EditorSession sessionFor(Map<String, Object> payload) {
@@ -435,11 +539,46 @@ public final class WebShellWorkspaceController {
                 .findFirst().orElse(null);
     }
 
-    private WebShellEnvelope documentNotOpen(WebShellEnvelope message, String operation) {
-        traceRequest(operation + " DOCUMENT_NOT_OPEN", message.payload());
-        traceRegistry(operation + " miss");
-        return message.error(new WebShellError(
-                "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
+    private ProjectModel requireProject() {
+        ProjectModel project = projectLifecycleService.currentProject();
+        if (project == null) throw new IllegalArgumentException("No project is open");
+        return project;
+    }
+
+    private List<EditorSession> sessionsUnder(Path target) {
+        Path safe = target.toAbsolutePath().normalize();
+        return manager.getSessions().stream()
+                .filter(session -> session.getFile() != null
+                        && session.getFile().toAbsolutePath().normalize().startsWith(safe))
+                .toList();
+    }
+
+    private Map<String, Object> mutationPayload(Path path, Path parent, boolean openFile) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        Path target = path.toAbsolutePath().normalize();
+        payload.put("path", target.toString());
+        payload.put("parent", parent == null ? "" : parent.toAbsolutePath().normalize().toString());
+        payload.put("openFile", openFile);
+        ProjectModel project = projectLifecycleService.currentProject();
+        if (project != null) {
+            Path root = project.getRootDir().toAbsolutePath().normalize();
+            List<Path> reverse = new ArrayList<>();
+            for (Path current = target.getParent(); current != null && !current.equals(root); current = current.getParent()) {
+                reverse.add(current);
+            }
+            java.util.Collections.reverse(reverse);
+            payload.put("ancestors", reverse.stream().map(Path::toString).toList());
+        }
+        return payload;
+    }
+
+    private String safeMessage(Exception exception) {
+        return exception.getMessage() == null ? "The filesystem operation failed" : exception.getMessage();
+    }
+
+    @FunctionalInterface
+    private interface DirectoryMutation {
+        Path apply(ProjectModel project, Path directory, String name) throws IOException;
     }
 
     private EditorDocument documentFor(EditorSession session) {
@@ -611,47 +750,6 @@ public final class WebShellWorkspaceController {
 
     private void sendRunState() {
         if (!disposed) surface.send(WebShellEnvelope.event("run", "state", runPayload()));
-    }
-
-    private boolean isAlreadyOpen(Path path) {
-        String identity = MonacoModelId.identity(path);
-        return manager.getSessions().stream()
-                .anyMatch(session -> identity.equals(MonacoModelId.identity(session.getFile())));
-    }
-
-    private void traceRequest(String operation, Map<String, Object> payload) {
-        System.out.printf("WEB_DOCUMENT operation=%s rawPath=%s uri=%s documentId=%s%n",
-                operation, text(payload, "path"), text(payload, "uri"), text(payload, "documentId"));
-    }
-
-    private void tracePath(String operation, String rawPath, Path normalizedPath, boolean alreadyOpen) {
-        System.out.printf("WEB_DOCUMENT operation=%s rawPath=%s normalizedPath=%s canonicalPath=%s alreadyOpen=%s%n",
-                operation, rawPath, normalizedPath, MonacoModelId.identity(normalizedPath), alreadyOpen);
-    }
-
-    private void traceSession(String operation, EditorSession session, boolean alreadyOpen) {
-        System.out.printf("WEB_DOCUMENT operation=%s sessionId=%s documentId=%s uri=%s displayName=%s file=%s canonicalPath=%s alreadyOpen=%s%n",
-                operation,
-                session.getSessionId(),
-                session.getDocumentId(),
-                MonacoModelId.forSession(session),
-                session.getDisplayName(),
-                session.getFile(),
-                MonacoModelId.identity(session.getFile()),
-                alreadyOpen);
-    }
-
-    private void traceRegistry(String operation) {
-        StringBuilder sessions = new StringBuilder();
-        for (EditorSession session : manager.getSessions()) {
-            if (!sessions.isEmpty()) sessions.append(" | ");
-            sessions.append("sessionId=").append(session.getSessionId())
-                    .append(",documentId=").append(session.getDocumentId())
-                    .append(",uri=").append(MonacoModelId.forSession(session))
-                    .append(",file=").append(session.getFile())
-                    .append(",canonicalPath=").append(MonacoModelId.identity(session.getFile()));
-        }
-        System.out.printf("WEB_DOCUMENT_REGISTRY operation=%s sessions=[%s]%n", operation, sessions);
     }
 
     private static String text(Map<String, Object> payload, String key) {

@@ -1360,6 +1360,65 @@ html, body, #root {
   pointer-events: auto;
 }
 
+.explorer-context-menu {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 210px;
+  padding: 5px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 7px;
+  background: #25262a;
+  box-shadow: 0 12px 28px rgba(0,0,0,.4);
+  pointer-events: auto;
+}
+
+.explorer-context-menu button {
+  height: 27px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 4px;
+  color: #d5d8df;
+  background: transparent;
+  text-align: left;
+  font: 12px var(--font-ui);
+}
+
+.explorer-context-menu button:hover { background: rgba(92, 106, 164, .38); }
+.explorer-context-menu button.is-danger { color: #e8a3a3; }
+.explorer-context-menu hr { width: 100%; height: 1px; margin: 4px 0; border: 0; background: rgba(255,255,255,.1); }
+
+.explorer-dialog-backdrop {
+  position: fixed;
+  z-index: 51;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.28);
+  pointer-events: auto;
+}
+
+.explorer-dialog {
+  display: grid;
+  gap: 12px;
+  width: min(360px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  color: #dedfe4;
+  background: #25262a;
+  box-shadow: 0 18px 40px rgba(0,0,0,.46);
+  font: 12px var(--font-ui);
+}
+
+.explorer-dialog p { margin: 0; color: #b8bdc8; line-height: 1.45; }
+.explorer-dialog input { height: 30px; padding: 0 9px; border: 1px solid rgba(255,255,255,.16); border-radius: 5px; color: #e6e8ed; background: #1f2023; outline: none; font: 12px var(--font-ui); }
+.explorer-dialog input:focus { border-color: #7387cb; }
+.explorer-dialog > div { display: flex; justify-content: flex-end; gap: 7px; }
+.explorer-dialog button { height: 27px; padding: 0 11px; border: 1px solid rgba(255,255,255,.13); border-radius: 5px; color: #d9dce4; background: #2d2f35; font: 12px var(--font-ui); }
+.explorer-dialog button[type='submit'] { border-color: #7189d7; background: #4d64a9; color: #fff; }
+
 /* ========================================================================== */
 /* Learning */
 /* ========================================================================== */

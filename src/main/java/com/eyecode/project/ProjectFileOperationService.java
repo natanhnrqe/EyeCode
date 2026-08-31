@@ -11,6 +11,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import javax.lang.model.SourceVersion;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -20,6 +21,65 @@ import java.util.Set;
 public final class ProjectFileOperationService {
 
     public record RenameResult(Path oldPath, Path newPath, String source) {}
+
+    public Path createFile(ProjectModel project, Path directory, String requestedName) throws IOException {
+        Path parent = requireDirectory(project, directory);
+        Path target = parent.resolve(validateName(requestedName)).normalize();
+        requireInside(project, target);
+        if (Files.exists(target)) throw new IllegalArgumentException("A sibling with that name already exists");
+        return Files.createFile(target);
+    }
+
+    public Path createDirectory(ProjectModel project, Path directory, String requestedName) throws IOException {
+        Path parent = requireDirectory(project, directory);
+        Path target = parent.resolve(validateName(requestedName)).normalize();
+        requireInside(project, target);
+        if (Files.exists(target)) throw new IllegalArgumentException("A sibling with that name already exists");
+        return Files.createDirectory(target);
+    }
+
+    public Path createPackage(ProjectModel project, Path directory, String packageName) throws IOException {
+        Path parent = requireDirectory(project, directory);
+        Path sourceRoot = root(project).resolve("src/main/java");
+        if (!parent.startsWith(sourceRoot)) throw new IllegalArgumentException("Packages must be created under src/main/java");
+        String value = packageName == null ? "" : packageName.trim();
+        if (value.isBlank()) throw new IllegalArgumentException("Package name is required");
+        Path target = parent;
+        for (String segment : value.split("\\.")) {
+            if (!isJavaIdentifier(segment)) throw new IllegalArgumentException("Invalid Java package name");
+            target = target.resolve(segment);
+        }
+        requireInside(project, target);
+        return Files.createDirectories(target);
+    }
+
+    public Path createJavaClass(ProjectModel project, Path directory, String requestedName) throws IOException {
+        Path parent = requireDirectory(project, directory);
+        String typeName = requestedName == null ? "" : requestedName.trim();
+        if (typeName.endsWith(".java")) typeName = typeName.substring(0, typeName.length() - 5);
+        if (!isJavaIdentifier(typeName)) throw new IllegalArgumentException("Invalid Java type name");
+        Path target = parent.resolve(typeName + ".java").normalize();
+        requireInside(project, target);
+        if (Files.exists(target)) throw new IllegalArgumentException("A sibling with that name already exists");
+        String packageName = packageName(project, parent);
+        String source = packageName.isBlank() ? "public class " + typeName + " {\n\n}\n"
+                : "package " + packageName + ";\n\npublic class " + typeName + " {\n\n}\n";
+        return Files.writeString(target, source, StandardCharsets.UTF_8);
+    }
+
+    public Path duplicate(ProjectModel project, Path source) throws IOException {
+        Path safe = requireTarget(project, source);
+        if (!Files.isRegularFile(safe)) throw new IllegalArgumentException("Only files can be duplicated");
+        String fileName = safe.getFileName().toString();
+        int extension = fileName.lastIndexOf('.');
+        String base = extension > 0 ? fileName.substring(0, extension) : fileName;
+        String suffix = extension > 0 ? fileName.substring(extension) : "";
+        Path target = safe.resolveSibling(base + " copy" + suffix);
+        for (int index = 2; Files.exists(target); index++) {
+            target = safe.resolveSibling(base + " copy " + index + suffix);
+        }
+        return Files.copy(safe, target);
+    }
 
     public void delete(ProjectModel project, Path target) throws IOException {
         Path safe = requireTarget(project, target);
@@ -91,6 +151,12 @@ public final class ProjectFileOperationService {
         return safe;
     }
 
+    private Path requireDirectory(ProjectModel project, Path target) {
+        Path safe = requireTarget(project, target);
+        if (!Files.isDirectory(safe)) throw new IllegalArgumentException("Target must be a directory");
+        return safe;
+    }
+
     private Path root(ProjectModel project) {
         return project.getRootDir().toAbsolutePath().normalize();
     }
@@ -110,7 +176,7 @@ public final class ProjectFileOperationService {
     private String validateName(String value) {
         String name = value == null ? "" : value.trim();
         if (name.isBlank() || name.equals(".") || name.equals("..")
-                || name.contains("/") || name.contains("\\") || Path.of(name).isAbsolute()) {
+                || hasForbiddenNameCharacter(name) || Path.of(name).isAbsolute()) {
             throw new IllegalArgumentException("Invalid name");
         }
         return name;
@@ -162,9 +228,23 @@ public final class ProjectFileOperationService {
     }
 
     private boolean isJavaIdentifier(String value) {
-        if (value.isBlank() || !Character.isJavaIdentifierStart(value.charAt(0))) return false;
-        for (int i = 1; i < value.length(); i++) if (!Character.isJavaIdentifierPart(value.charAt(i))) return false;
-        return true;
+        return value != null && SourceVersion.isIdentifier(value) && !SourceVersion.isKeyword(value);
+    }
+
+    private boolean hasForbiddenNameCharacter(String name) {
+        for (int index = 0; index < name.length(); index++) {
+            char value = name.charAt(index);
+            if (value < 32 || "<>:\"/\\|?*".indexOf(value) >= 0) return true;
+        }
+        return false;
+    }
+
+    private String packageName(ProjectModel project, Path directory) {
+        Path root = root(project);
+        Path sourceRoot = root.resolve("src/main/java");
+        if (!directory.startsWith(sourceRoot)) return "";
+        Path relative = sourceRoot.relativize(directory);
+        return relative.toString().replace('\\', '.').replace('/', '.');
     }
 
     private static final class OperationException extends RuntimeException {
