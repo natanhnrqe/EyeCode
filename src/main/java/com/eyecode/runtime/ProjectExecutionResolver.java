@@ -1,7 +1,6 @@
 package com.eyecode.runtime;
 
 import com.eyecode.project.model.ProjectModel;
-import com.eyecode.run.MainClassFinder;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -13,6 +12,16 @@ import java.util.List;
 
 public final class ProjectExecutionResolver {
 
+    private final BuildToolExecutableResolver buildToolResolver;
+
+    public ProjectExecutionResolver() {
+        this(new BuildToolExecutableResolver());
+    }
+
+    ProjectExecutionResolver(BuildToolExecutableResolver buildToolResolver) {
+        this.buildToolResolver = buildToolResolver == null ? new BuildToolExecutableResolver() : buildToolResolver;
+    }
+
     public ResolvedExecution resolve(ProjectModel project) {
         if (project == null) {
             throw new IllegalArgumentException("No project is open");
@@ -22,11 +31,11 @@ public final class ProjectExecutionResolver {
         Path gradle = existing(root, "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts");
         if (pom.toFile().isFile() && isSpringMaven(pom)) {
             return new ResolvedExecution(ResolvedExecution.Kind.SPRING_MAVEN,
-                    List.of(toolCommand(root, mavenWrapper(root), "mvn", "spring-boot:run")), null);
+                    List.of(buildToolResolver.mavenCommand(root, "spring-boot:run")), null);
         }
         if (gradle != null && isSpringGradle(root)) {
             return new ResolvedExecution(ResolvedExecution.Kind.SPRING_GRADLE,
-                    List.of(toolCommand(root, wrapper(root, true), "gradle", "bootRun")), null);
+                    List.of(buildToolResolver.gradleCommand(root, "bootRun")), null);
         }
         RunConfigurationDiscoveryService discovery = new RunConfigurationDiscoveryService();
         List<RunConfiguration> configurations = discovery.discover(project);
@@ -49,22 +58,22 @@ public final class ProjectExecutionResolver {
         Path gradle = existing(root, "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts");
         if (pom.toFile().isFile() && isSpringMaven(pom)) {
             return new ResolvedExecution(ResolvedExecution.Kind.SPRING_MAVEN,
-                    List.of(toolCommand(root, mavenWrapper(root), "mvn", "spring-boot:run",
+                    List.of(buildToolResolver.mavenCommand(root, "spring-boot:run",
                             "-Dspring-boot.run.main-class=" + configuration.mainClass())), configuration.mainClass());
         }
         if (gradle != null && isSpringGradle(root)) {
             return new ResolvedExecution(ResolvedExecution.Kind.SPRING_GRADLE,
-                    List.of(toolCommand(root, wrapper(root, true), "gradle", "bootRun",
+                    List.of(buildToolResolver.gradleCommand(root, "bootRun",
                             "-Dspring-boot.run.main-class=" + configuration.mainClass())), configuration.mainClass());
         }
         if (pom.toFile().isFile()) {
             return new ResolvedExecution(ResolvedExecution.Kind.MAVEN,
-                    List.of(toolCommand(root, mavenWrapper(root), "mvn", "compile", "exec:java",
+                    List.of(buildToolResolver.mavenCommand(root, "compile", "exec:java",
                             "-Dexec.mainClass=" + configuration.mainClass())), configuration.mainClass());
         }
         if (gradle != null) {
             return new ResolvedExecution(ResolvedExecution.Kind.GRADLE,
-                    List.of(toolCommand(root, wrapper(root, true), "gradle", "run",
+                    List.of(buildToolResolver.gradleCommand(root, "run",
                             "-PmainClass=" + configuration.mainClass())), configuration.mainClass());
         }
         return standardJava(root, configuration.mainClass());
@@ -88,7 +97,6 @@ public final class ProjectExecutionResolver {
         return new ResolvedExecution(ResolvedExecution.Kind.STANDARD_JAVA,
                 List.of(compile, launch), mainClass);
     }
-
 
     private List<String> javaFiles(Path sourceRoot) {
         try (var stream = Files.walk(sourceRoot)) {
@@ -151,32 +159,5 @@ public final class ProjectExecutionResolver {
             }
         }
         return null;
-    }
-
-    private String wrapper(Path root, boolean gradle) {
-        if (gradle) {
-            if (Files.isRegularFile(root.resolve("gradlew.bat"))) return "gradlew.bat";
-            if (Files.isRegularFile(root.resolve("gradlew"))) return "./gradlew";
-        }
-        return "gradle";
-    }
-
-    private String mavenWrapper(Path root) {
-        if (Files.isRegularFile(root.resolve("mvnw.cmd"))) return "mvnw.cmd";
-        if (Files.isRegularFile(root.resolve("mvnw"))) return "mvnw";
-        return "mvn";
-    }
-
-    private List<String> toolCommand(Path root, String wrapper, String global, String... args) {
-        List<String> command = new ArrayList<>();
-        if (wrapper.endsWith(".cmd") || wrapper.endsWith(".bat")) {
-            command.add("cmd");
-            command.add("/c");
-            command.add(root.resolve(wrapper).toString());
-        } else {
-            command.add(Files.exists(root.resolve(wrapper)) ? root.resolve(wrapper).toString() : global);
-        }
-        command.addAll(List.of(args));
-        return command;
     }
 }

@@ -82,4 +82,37 @@ class RunServiceTest {
         assertFalse(service.isRunning());
         service.dispose();
     }
+    @Test
+    void projectChangeInvalidatesThePreviousRerunRequest() throws Exception {
+        Path firstRoot = Files.createTempDirectory("eyecode-run-first");
+        Path firstSource = firstRoot.resolve("src/main/java");
+        Files.createDirectories(firstSource);
+        Files.writeString(firstSource.resolve("Main.java"),
+                "public class Main { public static void main(String[] a) { } }");
+        Path secondRoot = Files.createTempDirectory("eyecode-run-second");
+        Path secondSource = secondRoot.resolve("src/main/java");
+        Files.createDirectories(secondSource);
+        Files.writeString(secondSource.resolve("Other.java"),
+                "public class Other { public static void main(String[] a) { } }");
+
+        ProjectLifecycleService lifecycle = new ProjectLifecycleService();
+        lifecycle.open(firstRoot);
+        RunService service = new RunService(lifecycle);
+        CountDownLatch finished = new CountDownLatch(1);
+        service.addListener(new RunService.Listener() {
+            @Override public void onStarted(RunRequest request) { }
+            @Override public void onOutput(String line, boolean error) { }
+            @Override public void onFinished(int exitCode, boolean stopped) { finished.countDown(); }
+        });
+
+        assertTrue(service.runCurrent());
+        assertTrue(finished.await(20, TimeUnit.SECONDS));
+        assertTrue(service.hasLastRequest());
+
+        lifecycle.open(secondRoot);
+
+        assertFalse(service.hasLastRequest());
+        assertFalse(service.rerun());
+        service.dispose();
+    }
 }

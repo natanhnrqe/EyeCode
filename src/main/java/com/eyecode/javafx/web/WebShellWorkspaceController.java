@@ -39,6 +39,7 @@ public final class WebShellWorkspaceController {
     private final WebShellCompletionController completionController;
     private final WebShellLearningController learningController;
     private final ProjectLifecycleService projectLifecycleService;
+    private final ProjectLifecycleService.Listener terminalWorkspaceListener;
     private final RunService runService;
     private final JavaFxPtyTerminalSurface ptyTerminalSurface;
     private final ProjectFileOperationService fileOperations = new ProjectFileOperationService();
@@ -58,6 +59,9 @@ public final class WebShellWorkspaceController {
         this.runService = new RunService(projectLifecycleService);
         this.runService.setBeforeRunFlush(manager::flushAutosave);
         this.ptyTerminalSurface = ptyTerminalSurface;
+        this.terminalWorkspaceListener = project -> ptyTerminalSurface.setWorkspaceDirectory(
+                project == null ? null : project.getRootDir());
+        this.projectLifecycleService.addListener(terminalWorkspaceListener);
         this.runService.addListener(new RunService.Listener() {
             @Override public void onStarted(com.eyecode.runtime.RunRequest request) { sendRunState(); }
             @Override public void onOutput(String line, boolean error) {
@@ -113,6 +117,7 @@ public final class WebShellWorkspaceController {
         manager.shutdownAutosave();
         runService.dispose();
         projectLifecycleService.close();
+        projectLifecycleService.removeListener(terminalWorkspaceListener);
         observedDocuments.clear();
         untitledNames.clear();
     }
@@ -342,7 +347,7 @@ public final class WebShellWorkspaceController {
         sendRunState();
         return message.response(Map.of("selected", selected));
     }    private WebShellEnvelope showTerminal(WebShellEnvelope message) {
-        ptyTerminalSurface.showTerminal(requireProject().getRootDir());
+        ptyTerminalSurface.showTerminal();
         return message.response(Map.of("shown", true));
     }
 
@@ -361,7 +366,7 @@ public final class WebShellWorkspaceController {
     }
 
     private WebShellEnvelope restartTerminal(WebShellEnvelope message) {
-        ptyTerminalSurface.restartTerminal(requireProject().getRootDir());
+        ptyTerminalSurface.restartTerminal();
         return message.response(Map.of("restarted", true));
     }
 

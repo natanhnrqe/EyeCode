@@ -1034,7 +1034,7 @@ html, body, #root {
   border: 1px solid var(--border);
   border-top: 1px solid rgba(255,255,255,.11);
   border-radius: var(--radius-lg);
-  background: linear-gradient(145deg, rgba(26,27,40,.98), rgba(18,21,33,.98));
+  background: var(--surface-editor);
   grid-column: 2 / 4;
   grid-row: 2;
   box-shadow: 0 8px 22px rgba(0,0,0,.18);
@@ -1085,6 +1085,7 @@ html, body, #root {
 .bottom-panel-content {
   min-height: 0;
   overflow: auto;
+  background: var(--surface-editor);
 }
 
 .run-output {
@@ -1888,4 +1889,4 @@ img.learning-icon {
   }
 }
 
-.terminal-native-host { min-height: 100%; width: 100%; }
+.terminal-native-host { min-height: 100%; width: 100%; background: var(--surface-editor); }

@@ -3,6 +3,7 @@ package com.eyecode.runtime;
 import com.eyecode.project.ProjectLifecycleService;
 import com.eyecode.project.model.ProjectModel;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BooleanSupplier;
@@ -16,6 +17,7 @@ public final class RunService {
     }
 
     private final ProjectLifecycleService lifecycleService;
+    private final ProjectLifecycleService.Listener lifecycleListener;
     private final ProjectExecutionResolver resolver;
     private final RunConfigurationDiscoveryService discoveryService;
     private final RunConfigurationSelectionStore selectionStore;
@@ -47,8 +49,9 @@ public final class RunService {
         this.resolver = resolver == null ? new ProjectExecutionResolver() : resolver;
         this.discoveryService = discoveryService == null ? new RunConfigurationDiscoveryService() : discoveryService;
         this.selectionStore = selectionStore == null ? new RunConfigurationSelectionStore() : selectionStore;
+        this.lifecycleListener = this::onProjectChanged;
         if (lifecycleService != null) {
-            lifecycleService.addListener(project -> refreshConfigurations());
+            lifecycleService.addListener(lifecycleListener);
             refreshConfigurations();
         }
     }
@@ -69,6 +72,10 @@ public final class RunService {
 
     public synchronized boolean run(RunRequest request) {
         if (disposed || request == null || isRunning()) {
+            return false;
+        }
+        if (!isCurrentProject(request.project())) {
+            publishOutput("The selected run configuration belongs to a different project.", true);
             return false;
         }
         if (!beforeRunFlush.getAsBoolean()) {
@@ -125,6 +132,9 @@ public final class RunService {
         }
         disposed = true;
         rerunAfterStop = false;
+        if (lifecycleService != null) {
+            lifecycleService.removeListener(lifecycleListener);
+        }
         RunSession session = activeSession;
         if (session != null) {
             session.dispose();
@@ -220,6 +230,26 @@ public final class RunService {
         }
     }
 
+    private synchronized void onProjectChanged(ProjectModel project) {
+        rerunAfterStop = false;
+        if (lastRequest != null && !sameProject(lastRequest.project(), project)) {
+            lastRequest = null;
+        }
+        refreshConfigurations();
+    }
+
+    private boolean isCurrentProject(ProjectModel project) {
+        return lifecycleService == null || sameProject(project, lifecycleService.currentProject());
+    }
+
+    private boolean sameProject(ProjectModel first, ProjectModel second) {
+        if (first == null || second == null) {
+            return first == second;
+        }
+        Path firstRoot = first.getRootDir().toAbsolutePath().normalize();
+        Path secondRoot = second.getRootDir().toAbsolutePath().normalize();
+        return firstRoot.equals(secondRoot);
+    }
     private final class SessionListener implements RunSession.Listener {
         @Override
         public void onOutput(String line, boolean error) {
