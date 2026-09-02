@@ -1,131 +1,70 @@
 package com.eyecode.terminal;
 
 import com.eyecode.ui.EyeCodeTerminalSettings;
-import com.eyecode.ui.scroll.ModernScrollBarUI;
-import com.jediterm.pty.PtyProcessTtyConnector;
 import com.jediterm.terminal.TtyConnector;
 import com.jediterm.terminal.ui.JediTermWidget;
-import com.jediterm.terminal.ui.settings.DefaultSettingsProvider;
 import com.pty4j.PtyProcess;
 import com.pty4j.PtyProcessBuilder;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JPanel;
+import java.awt.BorderLayout;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 
-public class TerminalPanel extends JPanel {
-
+public final class TerminalPanel extends JPanel {
     private JediTermWidget terminal;
+    private PtyProcess process;
+    private Path workingDirectory;
 
     public TerminalPanel() {
+        this(Path.of(System.getProperty("user.dir")));
+    }
 
+    public TerminalPanel(Path workingDirectory) {
         setLayout(new BorderLayout());
-
-        JScrollPane scrollPane = new JScrollPane(terminal);
-
-        scrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
-
-        scrollPane.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
-
-        startTerminal();
+        restart(workingDirectory);
     }
 
-    private void startTerminal(){
-
+    public void restart(Path directory) {
+        stopTerminal();
+        workingDirectory = directory.toAbsolutePath().normalize();
         try {
-
-            /**
-             * Executando o shell.
-             */
-            String[] command = {"powershell.exe"};
-
-            /**
-             * Cria PTY(pseudoterminal).
-             */
-            PtyProcess process =
-                    new PtyProcessBuilder(command).
-                            setEnvironment(System.getenv())
-                            .setDirectory(
-                                    System.getProperty("user.dir")
-                            )
-                            .start();
-
-            /**
-             * Cria o terminal.
-             */
+            process = new PtyProcessBuilder(shellCommand())
+                    .setEnvironment(System.getenv())
+                    .setDirectory(workingDirectory.toString())
+                    .start();
             terminal = new JediTermWidget(80, 20, new EyeCodeTerminalSettings());
-
-            TtyConnector connector = new PtyProcessTtyConnector(
-                    process, StandardCharsets.UTF_8
-            );
-
+            TtyConnector connector = new PtyProcessTerminalConnector(process, StandardCharsets.UTF_8);
             terminal.setTtyConnector(connector);
-
-            terminal.start();
-
-            applyScrollBar(terminal);
-
             add(terminal, BorderLayout.CENTER);
+            terminal.start();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Unable to start terminal", exception);
+        }
+        revalidate();
+        repaint();
+    }
 
-
-            setBackground(new java.awt.Color(
-                    25,
-                    26,
-                    28
-            ));
-
-            terminal.getComponent().setBorder(
-                    BorderFactory.createEmptyBorder(
-                            5,
-                            5,
-                            5,
-                            5
-                    )
-            );
-
-
-
-
-        } catch (Exception e) {
-            e.printStackTrace();
+    public void stopTerminal() {
+        if (terminal != null) {
+            terminal.stop();
+            terminal.close();
+            remove(terminal);
+            terminal = null;
+        }
+        if (process != null) {
+            process.destroyForcibly();
+            process = null;
         }
     }
 
-    private void printComponents(Component component) {
-
-        System.out.println(
-                component.getClass().getName()
-        );
-
-        if (component instanceof Container container) {
-
-            for (Component child :
-                    container.getComponents()) {
-
-                printComponents(child);
-            }
-        }
+    public Path workingDirectory() {
+        return workingDirectory;
     }
 
-    private void applyScrollBar(Component component) {
-
-        if (component instanceof JScrollBar bar) {
-
-            bar.setUI(
-                    new ModernScrollBarUI()
-            );
-        }
-
-        if (component instanceof Container container) {
-
-            for (Component child :
-                    container.getComponents()) {
-
-                applyScrollBar(child);
-            }
-        }
+    private static String[] shellCommand() {
+        return System.getProperty("os.name", "").toLowerCase().contains("win")
+                ? new String[] {"powershell.exe", "-NoLogo"}
+                : new String[] {"sh", "-l"};
     }
-
-
-
 }

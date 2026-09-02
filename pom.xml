@@ -125,15 +125,6 @@
             <artifactId>jediterm-core</artifactId>
             <version>3.63</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.jetbrains.jediterm</groupId>
-            <artifactId>jediterm-pty</artifactId>
-            <version>2.69</version>
-        </dependency>
-
-
-
         <dependency>
             <groupId>org.fxmisc.richtext</groupId>
             <artifactId>richtextfx</artifactId>

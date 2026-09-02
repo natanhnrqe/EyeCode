@@ -14,7 +14,7 @@ import { MonacoHost } from './MonacoHost';
 import { ProjectExplorer } from './ProjectExplorer';
 import { StatusBar } from './StatusBar';
 import { TopToolbar } from './TopToolbar';
-import type { ProjectNode, RunState, WorkspaceSnapshot } from './protocol';
+import type { ProjectNode, RunState, TerminalOutput, TerminalState, WorkspaceSnapshot } from './protocol';
 
 type DocumentTab = Omit<DocumentSnapshot, 'content'>;
 type BottomPanelId = 'run' | 'terminal' | 'output' | 'problems' | 'git';
@@ -23,6 +23,7 @@ type ExplorerOperation = 'createFile' | 'createDirectory' | 'createJavaClass' | 
 type ExplorerOperationResult = { path?: string; parent?: string; openFile?: boolean; ancestors?: string[] };
 
 const emptyRunState: RunState = { running: false, rerunAvailable: false, configurations: [], selectedConfigurationId: '' };
+const emptyTerminalState: TerminalState = { running: false, workingDirectory: '' };
 
 export function Workspace() {
   const service = useRef(new MonacoWorkspaceService()).current;
@@ -41,6 +42,8 @@ export function Workspace() {
   const [treeRefreshRevision, setTreeRefreshRevision] = useState(0);
   const [runState, setRunState] = useState<RunState>(emptyRunState);
   const [runOutput, setRunOutput] = useState<string[]>([]);
+  const [terminalState, setTerminalState] = useState<TerminalState>(emptyTerminalState);
+  const [terminalOutput, setTerminalOutput] = useState<TerminalOutput[]>([]);
   const [bottomPanel, setBottomPanel] = useState<BottomPanelId>('terminal');
   const [sidePanel, setSidePanel] = useState<SidePanelId>('project');
   const [caret, setCaret] = useState({ line: 1, column: 1 });
@@ -103,6 +106,7 @@ export function Workspace() {
         setConnected(true);
         void refreshWorkspace();
         void refreshRunState();
+        void refreshTerminalState();
       }
       if (event.channel === 'workspace' && event.name === 'changed') {
         const next = event.payload as WorkspaceSnapshot;
@@ -122,12 +126,26 @@ export function Workspace() {
       }
       if (event.channel === 'run' && event.name === 'state') setRunState(event.payload as RunState);
       if (event.channel === 'run' && event.name === 'output') {
-        const payload = event.payload as { line?: string; error?: boolean };
+        const payload = event.payload as { line?: string; error?: boolean; clear?: boolean };
+        if (payload.clear) {
+          setRunOutput([]);
+          setBottomPanel('run');
+          return;
+        }
         const line = payload.line;
         if (line) {
           setRunOutput(lines => [...lines, payload.error ? `[stderr] ${line}` : line]);
           setBottomPanel('run');
         }
+      }
+      if (event.channel === 'terminal' && event.name === 'state') setTerminalState(event.payload as TerminalState);
+      if (event.channel === 'terminal' && event.name === 'output') {
+        const payload = event.payload as { data?: string; error?: boolean; clear?: boolean };
+        if (payload.clear) {
+          setTerminalOutput([]);
+          return;
+        }
+        if (payload.data) setTerminalOutput(lines => [...lines, { data: payload.data ?? '', error: Boolean(payload.error) }]);
       }
       if (event.channel !== 'document') return;
       const payload = event.payload as DocumentPayload;
@@ -170,6 +188,11 @@ export function Workspace() {
 
   async function refreshRunState() {
     try { setRunState(await bridge.request<RunState>('run', 'state', {})); }
+    catch (error) { setMessage(formatError(error)); }
+  }
+
+  async function refreshTerminalState() {
+    try { setTerminalState(await bridge.request<TerminalState>('terminal', 'state', {})); }
     catch (error) { setMessage(formatError(error)); }
   }
 
@@ -242,6 +265,18 @@ export function Workspace() {
     catch (error) { setMessage(formatError(error)); }
   }
 
+  async function terminal(name: 'show' | 'restart' | 'stop' | 'input', data?: string) {
+    try {
+      await bridge.request('terminal', name, data === undefined ? {} : { data });
+      setMessage('');
+    } catch (error) { setMessage(formatError(error)); }
+  }
+
+  function selectBottomPanel(id: BottomPanelId) {
+    setBottomPanel(id);
+    if (id === 'terminal' && !terminalState.running) void terminal('show');
+  }
+
   async function selectConfiguration(id: string) {
     try { await bridge.request('run', 'selectConfiguration', { id }); }
     catch (error) { setMessage(formatError(error)); }
@@ -284,7 +319,9 @@ export function Workspace() {
           </section>
         </div>
       </section>
-      <BottomPanel active={bottomPanel} output={runOutput} onSelect={setBottomPanel} />
+      <BottomPanel active={bottomPanel} output={runOutput} terminalOutput={terminalOutput} terminalState={terminalState}
+        onSelect={selectBottomPanel} onTerminalStart={() => void terminal('show')} onTerminalRestart={() => void terminal('restart')}
+        onTerminalStop={() => void terminal('stop')} onTerminalInput={data => void terminal('input', data)} />
     </div>
     <StatusBar activeUri={activeDocument?.uri} displayName={activeDocument?.displayName}
       projectRoot={workspace.project?.root.path} projectName={workspace.project?.name} caret={caret} message={message} />
@@ -310,3 +347,4 @@ function formatError(error: unknown): string {
   }
   return error instanceof Error ? error.message : String(error);
 }
+

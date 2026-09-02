@@ -1098,6 +1098,57 @@ html, body, #root {
   font-family: var(--font-editor);
 }
 
+.terminal-shell {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 100%;
+}
+
+.terminal-output {
+  min-height: 0;
+  overflow: auto;
+}
+
+.terminal-error {
+  color: #e0848e;
+}
+
+.terminal-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+  color: #aeb4c1;
+  font: 12px var(--font-editor);
+}
+
+.terminal-prompt {
+  overflow: hidden;
+  max-width: 42%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-input input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+}
+
+.terminal-input button {
+  border: 0;
+  border-radius: 4px;
+  padding: 3px 7px;
+  color: #cfd4df;
+  background: var(--eyecode-hover);
+  font: 11px var(--font-ui);
+}
+
 /* ========================================================================== */
 /* Status Bar */
 /* ========================================================================== */
@@ -1836,3 +1887,5 @@ img.learning-icon {
     gap: 8px;
   }
 }
+
+.terminal-native-host { min-height: 100%; width: 100%; }

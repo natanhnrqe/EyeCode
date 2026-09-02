@@ -11,6 +11,7 @@ import com.eyecode.project.ProjectFileOperationService;
 import com.eyecode.project.model.ProjectModel;
 import com.eyecode.runtime.RunConfiguration;
 import com.eyecode.runtime.RunService;
+import com.eyecode.terminal.TerminalService;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorSession;
 import javafx.stage.DirectoryChooser;
@@ -39,6 +40,7 @@ public final class WebShellWorkspaceController {
     private final WebShellLearningController learningController;
     private final ProjectLifecycleService projectLifecycleService;
     private final RunService runService;
+    private final JavaFxPtyTerminalSurface ptyTerminalSurface;
     private final ProjectFileOperationService fileOperations = new ProjectFileOperationService();
     private final Map<String, EditorDocument> observedDocuments = new LinkedHashMap<>();
     private final Map<String, String> untitledNames = new LinkedHashMap<>();
@@ -46,7 +48,7 @@ public final class WebShellWorkspaceController {
     private int nextUntitledNumber = 1;
     private boolean disposed;
 
-    public WebShellWorkspaceController(JavaFxWebShellSurface surface) {
+    public WebShellWorkspaceController(JavaFxWebShellSurface surface, JavaFxPtyTerminalSurface ptyTerminalSurface) {
         this.surface = surface;
         this.manager = new EditorManager(null, new DefaultFileSystemService(),
                 new WebShellEditorViewFactory());
@@ -55,10 +57,13 @@ public final class WebShellWorkspaceController {
         this.projectLifecycleService = new ProjectLifecycleService();
         this.runService = new RunService(projectLifecycleService);
         this.runService.setBeforeRunFlush(manager::flushAutosave);
+        this.ptyTerminalSurface = ptyTerminalSurface;
         this.runService.addListener(new RunService.Listener() {
             @Override public void onStarted(com.eyecode.runtime.RunRequest request) { sendRunState(); }
             @Override public void onOutput(String line, boolean error) {
-                if (line != null && !line.isBlank()) {
+                if (line == null) {
+                    surface.send(WebShellEnvelope.event("run", "output", Map.of("clear", true)));
+                } else if (!line.isBlank()) {
                     surface.send(WebShellEnvelope.event("run", "output", Map.of(
                             "line", line, "error", error)));
                 }
@@ -90,6 +95,11 @@ public final class WebShellWorkspaceController {
         surface.registerHandler("run", "rerun", this::rerun);
         surface.registerHandler("run", "stop", this::stop);
         surface.registerHandler("run", "selectConfiguration", this::selectRunConfiguration);
+        surface.registerHandler("terminal", "show", this::showTerminal);
+        surface.registerHandler("terminal", "hide", this::hideTerminal);
+        surface.registerHandler("terminal", "restart", this::restartTerminal);
+        surface.registerHandler("terminal", "layout", this::layoutTerminal);
+        surface.registerHandler("terminal", "stop", this::stopTerminal);
     }
 
     public EditorManager editorManager() {
@@ -138,6 +148,7 @@ public final class WebShellWorkspaceController {
         Path root = rawPath.isBlank() ? chooseProjectDirectory() : Path.of(rawPath);
         if (root == null) return message.response(Map.of("cancelled", true));
         try {
+            runService.stop();
             ProjectModel project = projectLifecycleService.open(root);
             projectLifecycleService.recordRecent(project);
             manager.closeAllSessions();
@@ -330,6 +341,33 @@ public final class WebShellWorkspaceController {
         boolean selected = runService.selectConfiguration(text(message.payload(), "id"));
         sendRunState();
         return message.response(Map.of("selected", selected));
+    }    private WebShellEnvelope showTerminal(WebShellEnvelope message) {
+        ptyTerminalSurface.showTerminal(requireProject().getRootDir());
+        return message.response(Map.of("shown", true));
+    }
+
+    private WebShellEnvelope hideTerminal(WebShellEnvelope message) {
+        ptyTerminalSurface.hideTerminal();
+        return message.response(Map.of("hidden", true));
+    }
+
+    private WebShellEnvelope layoutTerminal(WebShellEnvelope message) {
+        double scale = surface.getWidth() / Math.max(1d, number(message.payload(), "viewportWidth", 1));
+        ptyTerminalSurface.updateBounds(number(message.payload(), "x", 0) * scale,
+                number(message.payload(), "y", 0) * scale,
+                number(message.payload(), "width", 0) * scale,
+                number(message.payload(), "height", 0) * scale);
+        return message.response(Map.of("updated", true));
+    }
+
+    private WebShellEnvelope restartTerminal(WebShellEnvelope message) {
+        ptyTerminalSurface.restartTerminal(requireProject().getRootDir());
+        return message.response(Map.of("restarted", true));
+    }
+
+    private WebShellEnvelope stopTerminal(WebShellEnvelope message) {
+        ptyTerminalSurface.stopTerminal();
+        return message.response(Map.of("stopped", true));
     }
 
     private WebShellEnvelope activate(WebShellEnvelope message) {
@@ -772,3 +810,7 @@ public final class WebShellWorkspaceController {
         return result;
     }
 }
+
+
+
+

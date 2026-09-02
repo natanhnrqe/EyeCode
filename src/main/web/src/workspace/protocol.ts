@@ -44,3 +44,13 @@ export type RunState = {
   configurations: RunConfiguration[];
   selectedConfigurationId: string;
 };
+
+export type TerminalState = {
+  running: boolean;
+  workingDirectory: string;
+};
+
+export type TerminalOutput = {
+  data: string;
+  error: boolean;
+};

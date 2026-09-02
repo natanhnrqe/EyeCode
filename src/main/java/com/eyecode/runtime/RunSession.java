@@ -52,10 +52,10 @@ public final class RunSession {
         }
         Process current = process;
         if (current != null && current.isAlive()) {
-            destroyTree(current, false);
+            ProcessTree.destroy(current, false);
             scheduler.schedule(() -> {
                 if (current.isAlive()) {
-                    destroyTree(current, true);
+                    ProcessTree.destroy(current, true);
                 }
             }, 500, TimeUnit.MILLISECONDS);
         }
@@ -120,20 +120,6 @@ public final class RunSession {
             task.get(2, TimeUnit.SECONDS);
         } catch (ExecutionException | TimeoutException exception) {
             task.cancel(true);
-        }
-    }
-
-    private void destroyTree(Process current, boolean forcibly) {
-        ProcessHandle handle = current.toHandle();
-        handle.descendants().forEach(child -> destroy(child, forcibly));
-        destroy(handle, forcibly);
-    }
-
-    private void destroy(ProcessHandle handle, boolean forcibly) {
-        if (forcibly) {
-            handle.destroyForcibly();
-        } else {
-            handle.destroy();
         }
     }
 
