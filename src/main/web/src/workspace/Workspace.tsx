@@ -16,7 +16,7 @@ import { MonacoHost } from './MonacoHost';
 import { ProjectExplorer } from './ProjectExplorer';
 import { StatusBar } from './StatusBar';
 import { TopToolbar } from './TopToolbar';
-import type { ProjectNode, RunState, TerminalOutput, TerminalState, WorkspaceSnapshot } from './protocol';
+import type { ProjectNode, RunState, TerminalState, WorkspaceSnapshot } from './protocol';
 
 type DocumentTab = Omit<DocumentSnapshot, 'content'>;
 type BottomPanelId = 'run' | 'terminal' | 'output' | 'problems' | 'git';
@@ -25,7 +25,7 @@ type ExplorerOperation = 'createFile' | 'createDirectory' | 'createJavaClass' | 
 type ExplorerOperationResult = { path?: string; parent?: string; openFile?: boolean; ancestors?: string[] };
 
 const emptyRunState: RunState = { running: false, rerunAvailable: false, configurations: [], selectedConfigurationId: '' };
-const emptyTerminalState: TerminalState = { running: false, workingDirectory: '' };
+const emptyTerminalState: TerminalState = { requested: false, running: false, workingDirectory: '' };
 
 export function Workspace() {
   const service = useRef(new MonacoWorkspaceService()).current;
@@ -46,7 +46,6 @@ export function Workspace() {
   const [runState, setRunState] = useState<RunState>(emptyRunState);
   const [runOutput, setRunOutput] = useState<string[]>([]);
   const [terminalState, setTerminalState] = useState<TerminalState>(emptyTerminalState);
-  const [terminalOutput, setTerminalOutput] = useState<TerminalOutput[]>([]);
   const [bottomPanel, setBottomPanel] = useState<BottomPanelId>('terminal');
   const [sidePanel, setSidePanel] = useState<SidePanelId>('project');
   const [caret, setCaret] = useState({ line: 1, column: 1 });
@@ -145,14 +144,6 @@ export function Workspace() {
         }
       }
       if (event.channel === 'terminal' && event.name === 'state') setTerminalState(event.payload as TerminalState);
-      if (event.channel === 'terminal' && event.name === 'output') {
-        const payload = event.payload as { data?: string; error?: boolean; clear?: boolean };
-        if (payload.clear) {
-          setTerminalOutput([]);
-          return;
-        }
-        if (payload.data) setTerminalOutput(lines => [...lines, { data: payload.data ?? '', error: Boolean(payload.error) }]);
-      }
       if (event.channel !== 'document') return;
       const payload = event.payload as DocumentPayload;
       if (event.name === 'closed') {
@@ -275,9 +266,9 @@ export function Workspace() {
     catch (error) { setMessage(formatError(error)); }
   }
 
-  async function terminal(name: 'show' | 'restart' | 'stop' | 'input', data?: string) {
+  async function terminal(name: 'show' | 'restart' | 'stop') {
     try {
-      await bridge.request('terminal', name, data === undefined ? {} : { data });
+      await bridge.request('terminal', name, {});
       setMessage('');
     } catch (error) { setMessage(formatError(error)); }
   }
@@ -330,11 +321,9 @@ export function Workspace() {
           </section>
         </div>
       </section>
-      <BottomPanel active={bottomPanel} output={runOutput} terminalOutput={terminalOutput} terminalState={terminalState}
+      <BottomPanel active={bottomPanel} output={runOutput} terminalState={terminalState}
         diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
-        onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)}
-        onTerminalStart={() => void terminal('show')} onTerminalRestart={() => void terminal('restart')}
-        onTerminalStop={() => void terminal('stop')} onTerminalInput={data => void terminal('input', data)} />
+        onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />
     </div>
     <StatusBar activeUri={activeDocument?.uri} displayName={activeDocument?.displayName}
       projectRoot={workspace.project?.root.path} projectName={workspace.project?.name} caret={caret} message={message} />

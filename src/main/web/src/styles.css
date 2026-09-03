@@ -1476,43 +1476,68 @@ html, body, #root {
 /* ========================================================================== */
 
 .learning-popup {
-  position: absolute;
+  position: fixed;
   display: flex;
   flex-direction: column;
-  width: min(600px, calc(100vw - 16px));
-  max-width: min(600px, calc(100vw - 16px));
-  max-height: min(500px, calc(100vh - 16px));
+
+   width: min(720px, calc(100vw - 16px));
+   max-width: min(720px, calc(100vw - 16px));
+
+  max-height: min(600px, calc(100vh - 16px));
+
   overflow: hidden;
+
   border: 1px solid var(--eyecode-border);
   border-radius: var(--eyecode-radius-md);
+
   color: var(--eyecode-text);
   background: var(--eyecode-surface);
+
   box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+
   pointer-events: auto;
-  font: 13px/1.5 var(--eyecode-font-ui);
+
+  font-family: var(--eyecode-font-ui);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
+
+/* ========================================================================== */
+/* Sizes */
+/* ========================================================================== */
+
+
+
 .learning-popup.learning-size-quick {
-  width: min(390px, calc(100vw - 16px));
-  max-height: min(360px, calc(100vh - 16px));
+  width: min(430px, calc(100vw - 16px));
+  max-height: 360px;
 }
 
 .learning-popup.learning-size-medium {
-  width: min(520px, calc(100vw - 16px));
-  max-height: min(450px, calc(100vh - 16px));
+  width: min(640px, calc(100vw - 16px));
+  max-height: 500px;
 }
 
 .learning-popup.learning-size-full {
-  width: min(600px, calc(100vw - 16px));
+  width: min(720px, calc(100vw - 16px));
+  max-height: 580px;
 }
 
-.learning-header, .learning-footer {
+
+/* ========================================================================== */
+/* Header */
+/* ========================================================================== */
+
+.learning-header,
+.learning-footer {
   flex: 0 0 auto;
-  padding: 10px 14px;
-  background: transparent;
+  background: var(--eyecode-surface);
 }
 
 .learning-header {
+  padding: 13px 16px 11px;
+
   border-bottom: 1px solid var(--eyecode-border);
 }
 
@@ -1524,14 +1549,24 @@ html, body, #root {
 
 .learning-icon {
   display: inline-flex;
+
   width: 18px;
   height: 18px;
+
+  flex: 0 0 18px;
+
   align-items: center;
   justify-content: center;
+
   border: 1px solid currentColor;
   border-radius: 50%;
+
   color: var(--eyecode-accent-bright);
-  font: 600 10px/1 var(--eyecode-font-code);
+
+  font-family: var(--eyecode-font-code);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 img.learning-icon {
@@ -1542,103 +1577,204 @@ img.learning-icon {
 
 .learning-title {
   color: var(--eyecode-text);
-  font-size: 14px;
+
+  font-family: var(--eyecode-font-code);
+  font-size: 15px;
   font-weight: 600;
+  line-height: 1.3;
 }
 
-.learning-subtitle, .learning-breadcrumb, .learning-footer {
+.learning-subtitle,
+.learning-breadcrumb,
+.learning-footer {
   color: var(--eyecode-muted);
   font-size: 11px;
 }
 
 .learning-subtitle {
   margin: 3px 0 0 26px;
+
+  font-family: var(--eyecode-font-code);
+  font-size: 10px;
+
   letter-spacing: .04em;
 }
 
 .learning-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+
+  gap: 2px;
+
   margin: 7px 0 0 26px;
+
+  font-family: var(--eyecode-font-code);
+  font-size: 10px;
 }
 
-.learning-breadcrumb button, .learning-common-methods button, .learning-related button {
+.learning-breadcrumb button,
+.learning-common-methods button,
+.learning-related button {
   padding: 2px 4px;
+
   border: 0;
   border-radius: var(--eyecode-radius-sm);
+
   color: var(--eyecode-accent-bright);
   background: transparent;
+
   font: inherit;
+
   cursor: pointer;
-  transition: background-color 100ms ease, color 100ms ease, border-color 100ms ease;
+
+  transition:
+    background-color 100ms ease,
+    color 100ms ease,
+    border-color 100ms ease;
 }
 
 .learning-breadcrumb button::after {
   content: '›';
+
   margin-left: 4px;
+
   color: var(--eyecode-muted);
 }
 
-.learning-breadcrumb button:hover, .learning-related button:hover {
+.learning-breadcrumb button:hover,
+.learning-related button:hover {
   color: var(--eyecode-text);
   background: var(--eyecode-hover);
 }
 
+
+/* ========================================================================== */
+/* Body */
+/* ========================================================================== */
+
 .learning-body {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 0 14px;
-  background: transparent;
+
+  padding: 0 16px;
+
+  background: var(--eyecode-surface);
   color: var(--eyecode-text-secondary);
-  font: 13px/1.5 "Emoji", var(--eyecode-font-ui);
+
+  font-family: var(--eyecode-font-ui);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.learning-body .learning-content, .learning-body .learning-content .learning-content {
+/* ========================================================================== */
+/* Emoji */
+/* ========================================================================== */
+
+.learning-body .emoji {
+  font-family:
+    "Segoe UI Emoji",
+    "Noto Color Emoji",
+    "Apple Color Emoji",
+    "Segoe UI Symbol",
+    sans-serif;
+
+  font-style: normal;
+  font-weight: normal;
+}
+
+.learning-body img.emoji {
+  display: inline-block;
+
+  width: 1em;
+  height: 1em;
+
+  margin: 0 .05em;
+
+  vertical-align: -.12em;
+
+  border: 0;
+  background: transparent;
+}
+
+
+/* ========================================================================== */
+/* Content */
+/* ========================================================================== */
+
+.learning-body .learning-content,
+.learning-body .learning-content .learning-content {
   max-width: none;
-  padding: 8px 0;
+
+  padding: 10px 0 12px;
+
   background: transparent;
 }
 
 .learning-body p {
-  margin: 0 0 8px;
+  margin: 0 0 9px;
 }
 
-.learning-body h1, .learning-body h2, .learning-body h3, .learning-body h4, .learning-body h5, .learning-body h6 {
+.learning-body h1,
+.learning-body h2,
+.learning-body h3,
+.learning-body h4,
+.learning-body h5,
+.learning-body h6 {
   color: var(--eyecode-text);
+
   font-weight: 600;
   line-height: 1.25;
 }
 
 .learning-body h1 {
-  margin: 4px 0 8px;
-  padding-bottom: 4px;
+  margin: 4px 0 9px;
+  padding-bottom: 5px;
+
   border-bottom: 1px solid var(--eyecode-border);
+
   font-size: 18px;
 }
 
 .learning-body h2 {
-  margin: 12px 0 6px;
-  padding-bottom: 3px;
+  margin: 14px 0 7px;
+  padding-bottom: 4px;
+
   border-bottom: 1px solid var(--eyecode-border);
+
   font-size: 15px;
 }
 
 .learning-body h3 {
-  margin: 10px 0 5px;
+  margin: 12px 0 6px;
+
   font-size: 14px;
 }
 
-.learning-body h4, .learning-body h5, .learning-body h6 {
-  margin: 8px 0 4px;
+.learning-body h4,
+.learning-body h5,
+.learning-body h6 {
+  margin: 10px 0 5px;
+
   font-size: 13px;
 }
 
-.learning-body ul, .learning-body ol {
-  margin: 0 0 8px;
+
+/* ========================================================================== */
+/* Lists */
+/* ========================================================================== */
+
+.learning-body ul,
+.learning-body ol {
+  margin: 0 0 9px;
   padding-left: 20px;
 }
 
 .learning-body li {
-  margin: 2px 0;
+  margin: 3px 0;
 }
 
 .learning-body strong {
@@ -1649,41 +1785,74 @@ img.learning-icon {
   color: var(--eyecode-text-secondary);
 }
 
+
+/* ========================================================================== */
+/* Inline Code */
+/* ========================================================================== */
+
 .learning-body code {
   padding: 1px 4px;
+
   border: 1px solid var(--eyecode-border);
   border-radius: var(--eyecode-radius-sm);
+
   background: var(--eyecode-code-bg);
   color: var(--eyecode-text);
-  font: .9em/1.35 var(--eyecode-font-code);
+
+  font-family: var(--eyecode-font-code);
+  font-size: .9em;
+  line-height: 1.35;
 }
 
+
+/* ========================================================================== */
+/* Code Blocks */
+/* ========================================================================== */
+
 .learning-body pre {
-  margin: 8px 0 10px;
-  padding: 8px 10px;
+  margin: 9px 0 11px;
+  padding: 9px 10px;
+
   overflow-x: auto;
+
   border: 1px solid var(--eyecode-border-strong);
   border-radius: var(--eyecode-radius-md);
+
   background: var(--eyecode-code-bg);
 }
 
 .learning-body pre code {
   display: block;
+
   margin: 0;
   padding: 0;
+
   overflow: visible;
+
   border: 0;
   border-radius: 0;
+
   background: transparent;
   color: var(--eyecode-text);
-  font: 11px/1.45 var(--eyecode-font-code);
+
+  font-family: var(--eyecode-font-code);
+  font-size: 11px;
+  line-height: 1.45;
+
   white-space: pre;
 }
 
+
+/* ========================================================================== */
+/* Blockquote */
+/* ========================================================================== */
+
 .learning-body blockquote {
-  margin: 8px 0 10px;
-  padding: 5px 10px;
+  margin: 9px 0 11px;
+  padding: 6px 10px;
+
   border-left: 3px solid var(--eyecode-accent);
+
   background: var(--eyecode-accent-soft);
   color: var(--eyecode-muted);
 }
@@ -1692,16 +1861,27 @@ img.learning-icon {
   margin-bottom: 0;
 }
 
+
+/* ========================================================================== */
+/* Tables */
+/* ========================================================================== */
+
 .learning-body table {
   width: 100%;
-  margin: 8px 0 10px;
+
+  margin: 9px 0 11px;
+
   border-collapse: collapse;
+
   border: 1px solid var(--eyecode-border);
 }
 
-.learning-body th, .learning-body td {
-  padding: 4px 7px;
+.learning-body th,
+.learning-body td {
+  padding: 5px 7px;
+
   border: 1px solid var(--eyecode-border);
+
   text-align: left;
   vertical-align: top;
 }
@@ -1711,68 +1891,150 @@ img.learning-icon {
   color: var(--eyecode-text);
 }
 
+
+/* ========================================================================== */
+/* Images */
+/* ========================================================================== */
+
 .learning-body img {
   display: block;
+
   max-width: 100%;
   height: auto;
 }
 
-.learning-body a, .learning-body a:visited {
+
+/* ========================================================================== */
+/* Links */
+/* ========================================================================== */
+
+.learning-body a,
+.learning-body a:visited {
   color: var(--eyecode-accent-bright);
+
   text-decoration: none;
 }
 
 .learning-body a:hover {
   color: var(--eyecode-text);
   background: var(--eyecode-hover);
+
   text-decoration: none;
 }
 
+
+/* ========================================================================== */
+/* Common Methods */
+/* ========================================================================== */
+
 .learning-common-methods {
   flex: 0 0 auto;
-  padding: 7px 14px;
+
+  padding: 8px 16px;
+
   border-top: 1px solid var(--eyecode-border);
-  background: transparent;
+
+  background: var(--eyecode-surface);
   color: var(--eyecode-muted);
+
   font-size: 11px;
 }
 
-.learning-common-methods > span, .learning-related > span {
+.learning-common-methods > span,
+.learning-related > span {
   display: block;
-  margin-bottom: 3px;
+
+  margin-bottom: 4px;
+
   color: var(--eyecode-muted);
+
   font-size: 10px;
+
   letter-spacing: .04em;
   text-transform: uppercase;
 }
 
-.learning-common-methods > div, .learning-related > div {
+.learning-common-methods > div,
+.learning-related > div {
   display: flex;
   flex-wrap: wrap;
+
   gap: 3px 5px;
 }
 
 .learning-common-methods button {
   padding: 1px 3px;
+
   color: var(--eyecode-muted);
-  font: 11px/1.35 var(--eyecode-font-code);
+
+  font-family: var(--eyecode-font-code);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .learning-common-methods button:hover {
   color: var(--eyecode-text);
 }
 
+
+/* ========================================================================== */
+/* Footer */
+/* ========================================================================== */
+
 .learning-footer {
   display: flex;
   flex-wrap: wrap;
+
   align-items: flex-start;
+
   gap: 8px 12px;
+
+  padding: 8px 16px 9px;
+
   border-top: 1px solid var(--eyecode-border);
+
+  background: var(--eyecode-surface);
 }
 
 .learning-related {
   min-width: 0;
 }
+
+
+/* ========================================================================== */
+/* Scrollbar */
+/* ========================================================================== */
+
+.learning-body::-webkit-scrollbar,
+.learning-body pre::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.learning-body::-webkit-scrollbar-track,
+.learning-body pre::-webkit-scrollbar-track {
+  background: var(--eyecode-surface);
+}
+
+.learning-body::-webkit-scrollbar-thumb,
+.learning-body pre::-webkit-scrollbar-thumb {
+  background: var(--eyecode-border-strong);
+
+  border: 2px solid var(--eyecode-surface);
+  border-radius: 999px;
+}
+
+.learning-body::-webkit-scrollbar-thumb:hover,
+.learning-body pre::-webkit-scrollbar-thumb:hover {
+  background: var(--eyecode-muted);
+}
+
+.learning-body::-webkit-scrollbar-corner,
+.learning-body pre::-webkit-scrollbar-corner {
+  background: var(--eyecode-surface);
+}
+
+
 
 /* ========================================================================== */
 /* Responsive */
@@ -1895,6 +2157,8 @@ img.learning-icon {
 .editor-diagnostic-indicator { display:inline-flex; align-items:center; gap:5px; min-height:24px; padding:3px 6px; border:1px solid rgba(255,255,255,.10); border-radius:5px; background:rgba(30,31,35,.88); box-shadow:0 4px 12px rgba(0,0,0,.22); color:var(--text-secondary); cursor:pointer; }
 .editor-diagnostic-indicator:hover, .editor-diagnostic-indicator[aria-expanded="true"] { border-color:rgba(196,201,255,.26); background:rgba(42,43,49,.96); }
 .editor-diagnostic-count { display:inline-flex; align-items:center; gap:4px; font:600 11px var(--font-ui); }
+.editor-diagnostic-state-icon { display:inline-flex; align-items:center; }
+.editor-diagnostic-state-icon .eyecode-icon, .editor-diagnostic-count.editor-diagnostic-state-icon .eyecode-icon { width:16px; height:16px; }
 .editor-diagnostic-count .eyecode-icon, .problem-entry .eyecode-icon, .editor-diagnostic-entry .eyecode-icon { width:13px; height:13px; }
 .editor-diagnostic-count.severity-error, .problem-entry.severity-error, .editor-diagnostic-entry.severity-error { color:#e0848e; }
 .editor-diagnostic-count.severity-warning, .problem-entry.severity-warning, .editor-diagnostic-entry.severity-warning { color:#d9af67; }

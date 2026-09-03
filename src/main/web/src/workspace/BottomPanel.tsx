@@ -1,7 +1,7 @@
 import { ProblemsPanel } from '../diagnostics/ProblemsPanel';
 import type { DiagnosticsViewState, WebDiagnostic } from '../diagnostics/protocol';
 import { TerminalPanel } from './TerminalPanel';
-import type { TerminalOutput, TerminalState } from './protocol';
+import type { TerminalState } from './protocol';
 
 type BottomPanelId = 'run' | 'terminal' | 'output' | 'problems' | 'git';
 type DocumentLabel = { uri: string; displayName: string };
@@ -9,16 +9,11 @@ type DocumentLabel = { uri: string; displayName: string };
 type Props = {
   active: BottomPanelId;
   output: string[];
-  terminalOutput: TerminalOutput[];
   terminalState: TerminalState;
   diagnostics: DiagnosticsViewState | null;
   documents: DocumentLabel[];
   onSelect(id: BottomPanelId): void;
   onNavigateProblem(uri: string, diagnostic: WebDiagnostic): void;
-  onTerminalStart(): void;
-  onTerminalRestart(): void;
-  onTerminalStop(): void;
-  onTerminalInput(data: string): void;
 };
 
 const panels: Array<{ id: BottomPanelId; label: string }> = [
@@ -26,8 +21,7 @@ const panels: Array<{ id: BottomPanelId; label: string }> = [
   { id: 'output', label: 'Output' }, { id: 'git', label: 'Git' }
 ];
 
-export function BottomPanel({ active, output, terminalOutput, terminalState, diagnostics, documents, onSelect, onNavigateProblem,
-  onTerminalStart, onTerminalRestart, onTerminalStop, onTerminalInput }: Props) {
+export function BottomPanel({ active, output, terminalState, diagnostics, documents, onSelect, onNavigateProblem }: Props) {
   const problemCount = diagnostics?.results.reduce((total, result) => total + result.diagnostics.length, 0) ?? 0;
   return <section className="bottom-panel">
     <nav className="bottom-tabs" aria-label="Tool windows">
@@ -40,8 +34,7 @@ export function BottomPanel({ active, output, terminalOutput, terminalState, dia
       {active === 'problems' ? <ProblemsPanel state={diagnostics} documents={documents} onNavigate={onNavigateProblem} />
       : active === 'run' || active === 'output' ? <pre className="run-output">
         {output.length ? output.join('\n') : 'Run output will appear here.'}
-      </pre> : active === 'terminal' ? <TerminalPanel output={terminalOutput} state={terminalState}
-        onStart={onTerminalStart} onRestart={onTerminalRestart} onStop={onTerminalStop} onInput={onTerminalInput} />
+      </pre> : active === 'terminal' ? <TerminalPanel state={terminalState} />
       : <div className="toolwindow-placeholder">
         <strong>{panels.find(panel => panel.id === active)?.label}</strong>
         <span>This Web Shell panel is ready for its existing service integration.</span>

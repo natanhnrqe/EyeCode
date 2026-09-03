@@ -1,11 +1,13 @@
 package com.eyecode.terminal;
 
 import com.eyecode.runtime.ProcessTree;
+import com.pty4j.PtyProcess;
+import com.pty4j.PtyProcessBuilder;
+import com.pty4j.WinSize;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -18,19 +20,19 @@ final class TerminalSession {
 
     interface Listener {
         void onStarted(Path workingDirectory);
-        void onOutput(String text, boolean error);
+        void onOutput(byte[] bytes);
         void onFinished(int exitCode, boolean stopped);
     }
 
     private final Path workingDirectory;
     private final List<String> command;
     private final Listener listener;
-    private final ExecutorService executor = Executors.newCachedThreadPool(r -> daemon("eyecode-terminal-stream", r));
+    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> daemon("eyecode-terminal-session", r));
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> daemon("eyecode-terminal-stop", r));
     private final AtomicBoolean stopped = new AtomicBoolean();
     private final AtomicBoolean finished = new AtomicBoolean();
     private final Object inputLock = new Object();
-    private volatile Process process;
+    private volatile PtyProcess process;
     private volatile OutputStream input;
 
     TerminalSession(Path workingDirectory, List<String> command, Listener listener) {
@@ -44,24 +46,32 @@ final class TerminalSession {
     }
 
     boolean isRunning() {
-        return !finished.get();
+        PtyProcess current = process;
+        return !finished.get() && (current == null || current.isRunning());
     }
 
-    boolean send(String text) {
+    boolean send(byte[] bytes) {
         OutputStream current = input;
-        if (text == null || current == null || finished.get()) {
+        if (bytes == null || bytes.length == 0 || current == null || finished.get()) {
             return false;
         }
         synchronized (inputLock) {
             try {
-                current.write(text.getBytes(StandardCharsets.UTF_8));
+                current.write(bytes);
                 current.flush();
                 return true;
-            } catch (IOException exception) {
-                listener.onOutput(exception.getMessage() == null ? exception.toString() : exception.getMessage(), true);
+            } catch (IOException ignored) {
                 return false;
             }
         }
+    }
+
+    void resize(int columns, int rows) {
+        PtyProcess current = process;
+        if (current == null || !current.isRunning() || columns <= 0 || rows <= 0) {
+            return;
+        }
+        current.setWinSize(new WinSize(columns, rows));
     }
 
     void stop() {
@@ -88,19 +98,18 @@ final class TerminalSession {
     private void execute() {
         int exitCode = -1;
         try {
-            ProcessBuilder builder = new ProcessBuilder(command);
-            builder.directory(workingDirectory.toFile());
-            Process started = builder.start();
+            PtyProcess started = new PtyProcessBuilder(command.toArray(String[]::new))
+                    .setEnvironment(System.getenv())
+                    .setDirectory(workingDirectory.toString())
+                    .start();
             process = started;
             input = started.getOutputStream();
             listener.onStarted(workingDirectory);
-            executor.submit(() -> stream(started.getInputStream(), false));
-            executor.submit(() -> stream(started.getErrorStream(), true));
+            stream(started.getInputStream());
             exitCode = started.waitFor();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-        } catch (IOException exception) {
-            listener.onOutput(exception.getMessage() == null ? exception.toString() : exception.getMessage(), true);
+        } catch (IOException ignored) {
         } finally {
             input = null;
             process = null;
@@ -111,19 +120,17 @@ final class TerminalSession {
         }
     }
 
-    private void stream(InputStream source, boolean error) {
+    private void stream(InputStream source) {
         try (InputStream inputStream = source) {
             byte[] buffer = new byte[4096];
             int read;
             while ((read = inputStream.read(buffer)) >= 0) {
                 if (read > 0) {
-                    listener.onOutput(new String(buffer, 0, read, StandardCharsets.UTF_8), error);
+                    byte[] output = java.util.Arrays.copyOf(buffer, read);
+                    listener.onOutput(output);
                 }
             }
-        } catch (IOException exception) {
-            if (!finished.get()) {
-                listener.onOutput(exception.getMessage() == null ? exception.toString() : exception.getMessage(), true);
-            }
+        } catch (IOException ignored) {
         }
     }
 

@@ -46,11 +46,8 @@ export type RunState = {
 };
 
 export type TerminalState = {
+  requested: boolean;
   running: boolean;
   workingDirectory: string;
-};
-
-export type TerminalOutput = {
-  data: string;
-  error: boolean;
+  endpoint?: string;
 };

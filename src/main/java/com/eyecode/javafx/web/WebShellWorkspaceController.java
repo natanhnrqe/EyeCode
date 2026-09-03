@@ -42,7 +42,7 @@ public final class WebShellWorkspaceController {
     private final ProjectLifecycleService projectLifecycleService;
     private final ProjectLifecycleService.Listener terminalWorkspaceListener;
     private final RunService runService;
-    private final JavaFxPtyTerminalSurface ptyTerminalSurface;
+    private final TerminalService terminalService;
     private final ProjectFileOperationService fileOperations = new ProjectFileOperationService();
     private final Map<String, EditorDocument> observedDocuments = new LinkedHashMap<>();
     private final Map<String, String> untitledNames = new LinkedHashMap<>();
@@ -50,7 +50,7 @@ public final class WebShellWorkspaceController {
     private int nextUntitledNumber = 1;
     private boolean disposed;
 
-    public WebShellWorkspaceController(JavaFxWebShellSurface surface, JavaFxPtyTerminalSurface ptyTerminalSurface) {
+    public WebShellWorkspaceController(JavaFxWebShellSurface surface) {
         this.surface = surface;
         this.manager = new EditorManager(null, new DefaultFileSystemService(),
                 new WebShellEditorViewFactory());
@@ -60,10 +60,17 @@ public final class WebShellWorkspaceController {
         this.projectLifecycleService = new ProjectLifecycleService();
         this.runService = new RunService(projectLifecycleService);
         this.runService.setBeforeRunFlush(manager::flushAutosave);
-        this.ptyTerminalSurface = ptyTerminalSurface;
-        this.terminalWorkspaceListener = project -> ptyTerminalSurface.setWorkspaceDirectory(
-                project == null ? null : project.getRootDir());
+        this.terminalService = new TerminalService();
+        this.terminalWorkspaceListener = project -> {
+            terminalService.setWorkspaceDirectory(project == null ? null : project.getRootDir());
+            sendTerminalState();
+        };
         this.projectLifecycleService.addListener(terminalWorkspaceListener);
+        this.terminalService.addListener(new TerminalService.Listener() {
+            @Override public void onStarted(Path workingDirectory) { sendTerminalState(); }
+            @Override public void onOutput(String text, boolean error) { }
+            @Override public void onFinished(int exitCode, boolean stopped) { sendTerminalState(); }
+        });
         this.runService.addListener(new RunService.Listener() {
             @Override public void onStarted(com.eyecode.runtime.RunRequest request) { sendRunState(); }
             @Override public void onOutput(String line, boolean error) {
@@ -104,7 +111,9 @@ public final class WebShellWorkspaceController {
         surface.registerHandler("terminal", "show", this::showTerminal);
         surface.registerHandler("terminal", "hide", this::hideTerminal);
         surface.registerHandler("terminal", "restart", this::restartTerminal);
-        surface.registerHandler("terminal", "layout", this::layoutTerminal);
+        surface.registerHandler("terminal", "resize", this::resizeTerminal);
+        surface.registerHandler("terminal", "state", this::terminalState);
+        surface.registerHandler("terminal", "status", this::terminalState);
         surface.registerHandler("terminal", "stop", this::stopTerminal);
     }
 
@@ -119,6 +128,7 @@ public final class WebShellWorkspaceController {
         manager.closeAllSessions();
         manager.shutdownAutosave();
         runService.dispose();
+        terminalService.dispose();
         projectLifecycleService.close();
         projectLifecycleService.removeListener(terminalWorkspaceListener);
         observedDocuments.clear();
@@ -350,35 +360,53 @@ public final class WebShellWorkspaceController {
         boolean selected = runService.selectConfiguration(text(message.payload(), "id"));
         sendRunState();
         return message.response(Map.of("selected", selected));
-    }    private WebShellEnvelope showTerminal(WebShellEnvelope message) {
-        ptyTerminalSurface.showTerminal();
-        return message.response(Map.of("shown", true));
+    }
+
+    private WebShellEnvelope showTerminal(WebShellEnvelope message) {
+        TerminalService.Status status = terminalService.show();
+        sendTerminalState();
+        return message.response(terminalStatusPayload(status));
     }
 
     private WebShellEnvelope hideTerminal(WebShellEnvelope message) {
-        ptyTerminalSurface.hideTerminal();
-        return message.response(Map.of("hidden", true));
+        terminalService.hide();
+        sendTerminalState();
+        return message.response(terminalStatusPayload(terminalService.status()));
     }
 
-    private WebShellEnvelope layoutTerminal(WebShellEnvelope message) {
-        double scale = surface.getWidth() / Math.max(1d, number(message.payload(), "viewportWidth", 1));
-        ptyTerminalSurface.updateBounds(number(message.payload(), "x", 0) * scale,
-                number(message.payload(), "y", 0) * scale,
-                number(message.payload(), "width", 0) * scale,
-                number(message.payload(), "height", 0) * scale);
+    private WebShellEnvelope resizeTerminal(WebShellEnvelope message) {
+        terminalService.resize((int) number(message.payload(), "cols", 0),
+                (int) number(message.payload(), "rows", 0));
         return message.response(Map.of("updated", true));
     }
 
+    private WebShellEnvelope terminalState(WebShellEnvelope message) {
+        return message.response(terminalStatusPayload(terminalService.status()));
+    }
+
     private WebShellEnvelope restartTerminal(WebShellEnvelope message) {
-        ptyTerminalSurface.restartTerminal();
-        return message.response(Map.of("restarted", true));
+        boolean restarted = terminalService.restart();
+        sendTerminalState();
+        return message.response(Map.of("restarted", restarted));
     }
 
     private WebShellEnvelope stopTerminal(WebShellEnvelope message) {
-        ptyTerminalSurface.stopTerminal();
-        return message.response(Map.of("stopped", true));
+        boolean stopped = terminalService.stop();
+        sendTerminalState();
+        return message.response(Map.of("stopped", stopped));
     }
 
+    private void sendTerminalState() {
+        surface.send(WebShellEnvelope.event("terminal", "state", terminalStatusPayload(terminalService.status())));
+    }
+
+    private Map<String, Object> terminalStatusPayload(TerminalService.Status status) {
+        return Map.of(
+                "requested", status.requested(),
+                "running", status.running(),
+                "workingDirectory", status.workingDirectory(),
+                "endpoint", status.endpoint());
+    }
     private WebShellEnvelope activate(WebShellEnvelope message) {
         EditorSession session = sessionFor(message.payload());
         if (session == null) return message.error(new WebShellError(

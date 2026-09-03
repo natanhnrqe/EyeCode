@@ -58,7 +58,15 @@ export function EditorDiagnosticStrip({ state, onNavigate }: Props) {
     setOpen(false);
     onNavigate(uri, diagnostic);
   };
-  const label = diagnostics.length ? `${errors} errors and ${warnings} warnings` : 'No problems';
+  const label = errors > 0 ? `Errors present${warnings ? `; ${warnings} warnings` : ''}`
+    : warnings > 0 ? 'Warnings present' : 'No current diagnostics';
+  const stateIcons = errors > 0 ? <>
+    <span className="editor-diagnostic-count editor-diagnostic-state-icon"><EyeCodeIcon name="errorDialog" />{errors}</span>
+    <span className="editor-diagnostic-count editor-diagnostic-state-icon"><EyeCodeIcon name="warningDialog" />{warnings > 0 ? warnings : null}</span>
+  </> : warnings > 0 ? <>
+    <span className="editor-diagnostic-count editor-diagnostic-state-icon"><EyeCodeIcon name="warningDialog" />{warnings}</span>
+    <span className="editor-diagnostic-state-icon"><EyeCodeIcon name="successDialog" /></span>
+  </> : <span className="editor-diagnostic-state-icon"><EyeCodeIcon name="successDialog" /></span>;
 
   return <div ref={root} className="editor-diagnostics" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
     <button type="button" className={`editor-diagnostic-indicator${diagnostics.length ? '' : ' is-clean'}`}
@@ -66,10 +74,7 @@ export function EditorDiagnosticStrip({ state, onNavigate }: Props) {
       onMouseEnter={() => { cancelClose(); setOpen(true); }}
       onFocus={() => { cancelClose(); setOpen(true); }}
       onClick={() => { cancelClose(); setPinned(value => !value); setOpen(true); }}>
-      {diagnostics.length ? <>
-        {errors > 0 && <span className="editor-diagnostic-count severity-error"><EyeCodeIcon name="problem" />{errors}</span>}
-        {warnings > 0 && <span className="editor-diagnostic-count severity-warning"><EyeCodeIcon name="problem" />{warnings}</span>}
-      </> : <span className="editor-diagnostic-clean-mark" aria-hidden="true" />}
+      {stateIcons}
     </button>
     {open && diagnostics.length > 0 && <div className="editor-diagnostic-popover" role="dialog" aria-label="Current file diagnostics"
       onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>

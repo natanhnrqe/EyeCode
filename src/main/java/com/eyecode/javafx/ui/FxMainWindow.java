@@ -1,7 +1,6 @@
 package com.eyecode.javafx.ui;
 
 import com.eyecode.javafx.ceffx.CeffxRuntime;
-import com.eyecode.javafx.web.JavaFxPtyTerminalSurface;
 import com.eyecode.javafx.web.JavaFxWebShellSurface;
 import com.eyecode.javafx.web.WebShellNativeController;
 import com.eyecode.javafx.web.WebShellMode;
@@ -23,19 +22,16 @@ public final class FxMainWindow {
     private final Region root;
     private final WebShellWorkspaceController webShellWorkspace;
     private final JavaFxWebShellSurface webShellSurface;
-    private final JavaFxPtyTerminalSurface ptyTerminalSurface;
 
     public FxMainWindow(Stage stage) {
         this.stage = stage;
         if (WebShellMode.configured() == WebShellMode.WEB_SHELL) {
             webShellSurface = new JavaFxWebShellSurface();
-            ptyTerminalSurface = new JavaFxPtyTerminalSurface();
-            webShellWorkspace = new WebShellWorkspaceController(webShellSurface, ptyTerminalSurface);
+            webShellWorkspace = new WebShellWorkspaceController(webShellSurface);
             new WebShellNativeController(webShellSurface, stage);
-            root = new StackPane(webShellSurface, ptyTerminalSurface);
+            root = new StackPane(webShellSurface);
         } else {
             webShellSurface = null;
-            ptyTerminalSurface = null;
             webShellWorkspace = null;
             root = new FxRootLayout(this::shutdown);
         }
@@ -59,7 +55,6 @@ public final class FxMainWindow {
     private void shutdown() {
         if (root instanceof FxRootLayout legacyRoot) legacyRoot.dispose();
         if (webShellWorkspace != null) webShellWorkspace.dispose();
-        if (ptyTerminalSurface != null) ptyTerminalSurface.dispose();
         if (webShellSurface != null) webShellSurface.dispose();
         CeffxRuntime.dispose();
         Platform.exit();

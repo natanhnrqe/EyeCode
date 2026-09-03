@@ -221,8 +221,9 @@ export class MonacoWorkspaceService {
       return this.open(document);
     }
     if (!this.confirmSnapshot(document)) return false;
-    if (applyContent) this.updateModel(current, document.content);
-    this.scheduleDiagnostics(document.uri, current);
+    if (applyContent && this.updateModel(current, document.content)) {
+      this.scheduleDiagnostics(document.uri, current);
+    }
     return true;
   }
 
@@ -319,11 +320,12 @@ export class MonacoWorkspaceService {
     this.hideLearning();
   }
 
-  private updateModel(model: MonacoModel, content: string): void {
-    if (model.getValue() === content) return;
+  private updateModel(model: MonacoModel, content: string): boolean {
+    if (model.getValue() === content) return false;
     this.suppressContentChange = true;
     try {
       model.setValue(content);
+      return true;
     } finally {
       this.suppressContentChange = false;
     }
