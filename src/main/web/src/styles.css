@@ -1891,12 +1891,26 @@ img.learning-icon {
 
 .terminal-native-host { min-height: 100%; width: 100%; background: var(--surface-editor); }
 
-.editor-stack.has-diagnostics { grid-template-rows: 48px minmax(0, 1fr) auto; }
-.editor-diagnostic-strip { display:flex; align-items:center; min-height:31px; gap:9px; padding:0 12px; border-top:1px solid var(--border); color:var(--text-secondary); background:var(--surface-editor); font:11px var(--font-ui); }
-.editor-diagnostic-strip.severity-error { border-top-color:rgba(220, 104, 110, .46); }
-.editor-diagnostic-strip.severity-warning { border-top-color:rgba(211, 164, 80, .46); }
-.editor-diagnostic-severity { flex:0 0 auto; color:#e0848e; font-weight:600; }
-.severity-warning .editor-diagnostic-severity { color:#d9af67; }
-.severity-info .editor-diagnostic-severity, .severity-hint .editor-diagnostic-severity { color:#8cafff; }
-.editor-diagnostic-message { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.editor-diagnostic-location { margin-left:auto; flex:0 0 auto; color:var(--text-muted); }
+.editor-diagnostics { position:absolute; z-index:12; top:10px; right:24px; pointer-events:auto; }
+.editor-diagnostic-indicator { display:inline-flex; align-items:center; gap:5px; min-height:24px; padding:3px 6px; border:1px solid rgba(255,255,255,.10); border-radius:5px; background:rgba(30,31,35,.88); box-shadow:0 4px 12px rgba(0,0,0,.22); color:var(--text-secondary); cursor:pointer; }
+.editor-diagnostic-indicator:hover, .editor-diagnostic-indicator[aria-expanded="true"] { border-color:rgba(196,201,255,.26); background:rgba(42,43,49,.96); }
+.editor-diagnostic-count { display:inline-flex; align-items:center; gap:4px; font:600 11px var(--font-ui); }
+.editor-diagnostic-count .eyecode-icon, .problem-entry .eyecode-icon, .editor-diagnostic-entry .eyecode-icon { width:13px; height:13px; }
+.editor-diagnostic-count.severity-error, .problem-entry.severity-error, .editor-diagnostic-entry.severity-error { color:#e0848e; }
+.editor-diagnostic-count.severity-warning, .problem-entry.severity-warning, .editor-diagnostic-entry.severity-warning { color:#d9af67; }
+.editor-diagnostic-count.severity-error .eyecode-icon, .problem-entry.severity-error .eyecode-icon, .editor-diagnostic-entry.severity-error .eyecode-icon { filter:invert(66%) sepia(24%) saturate(905%) hue-rotate(306deg) brightness(96%) contrast(89%); }
+.editor-diagnostic-count.severity-warning .eyecode-icon, .problem-entry.severity-warning .eyecode-icon, .editor-diagnostic-entry.severity-warning .eyecode-icon { filter:invert(77%) sepia(42%) saturate(561%) hue-rotate(358deg) brightness(92%) contrast(86%); }
+.editor-diagnostic-indicator.is-clean { padding:5px; border-color:rgba(117,175,124,.28); }
+.editor-diagnostic-clean-mark { width:7px; height:7px; border-radius:50%; background:#75af7c; box-shadow:0 0 0 2px rgba(117,175,124,.12); }
+.editor-diagnostic-popover { position:absolute; top:calc(100% + 5px); right:0; display:flex; flex-direction:column; width:min(360px, calc(100vw - 70px)); max-height:220px; overflow:auto; padding:5px; border:1px solid rgba(255,255,255,.12); border-radius:6px; background:#25262a; box-shadow:0 12px 28px rgba(0,0,0,.42); }
+.editor-diagnostic-entry { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:start; gap:7px; width:100%; padding:6px 7px; border:0; border-radius:4px; background:transparent; color:var(--text-secondary); text-align:left; font:11px var(--font-ui); cursor:pointer; }
+.editor-diagnostic-entry:hover { background:var(--eyecode-hover); }
+.editor-diagnostic-entry > span { overflow-wrap:anywhere; }
+.editor-diagnostic-entry small { padding-top:1px; color:var(--text-muted); font:10px var(--font-editor); white-space:nowrap; }
+.problems-list { display:flex; flex-direction:column; min-height:100%; padding:5px 0; }
+.problem-entry { display:grid; grid-template-columns:auto minmax(0, 1fr) minmax(90px, auto) auto; align-items:center; gap:9px; width:100%; min-height:29px; padding:4px 12px; border:0; background:transparent; color:var(--text-secondary); text-align:left; font:11px var(--font-ui); cursor:pointer; }
+.problem-entry:hover { background:var(--eyecode-hover); }
+.problem-message { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.problem-file, .problem-location { color:var(--text-muted); white-space:nowrap; }
+.problem-location { font-family:var(--font-editor); }
+.problems-empty { display:grid; min-height:100%; place-items:center; color:var(--text-muted); font:11px var(--font-ui); }

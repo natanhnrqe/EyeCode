@@ -3,7 +3,7 @@ import type { WebShellEnvelope } from '../bridge/protocol';
 import type { DocumentSnapshot } from '../document/protocol';
 import type { CompletionPopupState, CompletionResponse } from '../completion/protocol';
 import type { LearningPopupState, LearningResponse } from '../learning/protocol';
-import type { DiagnosticStripState, DiagnosticsPublish, WebDiagnostic } from '../diagnostics/protocol';
+import type { DiagnosticsViewState, DiagnosticsPublish, WebDiagnostic } from '../diagnostics/protocol';
 import type { Disposable, MonacoApi, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoKeyEvent, MonacoModel, MonacoMouseEvent } from './api';
 
 type DocumentChangeHandler = (document: DocumentSnapshot) => void;
@@ -43,7 +43,7 @@ export class MonacoWorkspaceService {
   private onDocumentChange: DocumentChangeHandler | null = null;
   private onCaretPosition: CaretPositionHandler | null = null;
   private onError: ((message: string) => void) | null = null;
-  private onDiagnosticsState: ((state: DiagnosticStripState | null) => void) | null = null;
+  private onDiagnosticsState: ((state: DiagnosticsViewState | null) => void) | null = null;
   private readonly diagnosticsByUri = new Map<string, DiagnosticsPublish>();
   private readonly pendingDiagnostics = new Map<string, PendingDiagnostics>();
   private readonly latestDiagnosticsRequestIds = new Map<string, string>();
@@ -82,7 +82,7 @@ export class MonacoWorkspaceService {
     this.onLearningState = handler;
   }
 
-  setDiagnosticsStateHandler(handler: ((state: DiagnosticStripState | null) => void) | null): void {
+  setDiagnosticsStateHandler(handler: ((state: DiagnosticsViewState | null) => void) | null): void {
     this.onDiagnosticsState = handler;
   }
 
@@ -244,6 +244,17 @@ export class MonacoWorkspaceService {
     this.publishDiagnosticsForActiveModel();
   }
 
+  revealDiagnostic(uri: string, diagnostic: WebDiagnostic): void {
+    const editor = this.editor;
+    const model = this.models.get(uri);
+    if (!editor || !model) return;
+    if (editor.getModel() !== model) this.activate(uri);
+    const position = { lineNumber: diagnostic.startLine, column: diagnostic.startColumn };
+    editor.setPosition(position);
+    editor.revealPositionInCenterIfOutsideViewport(position);
+    editor.focus();
+    this.publishDiagnosticsForActiveModel(position);
+  }
   close(uri: string): void {
     if (this.completionState?.uri === uri) this.hideCompletion();
     if (this.learningState?.uri === uri) this.hideLearning();
@@ -258,12 +269,14 @@ export class MonacoWorkspaceService {
     this.confirmedVersions.delete(uri);
     this.readOnly.delete(uri);
     this.changeQueues.delete(uri);
+    this.publishDiagnosticsForActiveModel();
   }
 
   reidentify(previousUri: string, document: DocumentSnapshot): void {
     if (this.completionState?.uri === previousUri) this.hideCompletion();
     if (this.learningState?.uri === previousUri) this.hideLearning();
     const model = this.models.get(previousUri);
+    this.invalidateDiagnostics(previousUri, model ?? null);
     const active = this.editor?.getModel() === model;
     const viewState = active ? this.editor?.saveViewState() : this.viewStates.get(previousUri);
     if (active) this.editor?.setModel(null);
@@ -367,7 +380,7 @@ export class MonacoWorkspaceService {
   private scheduleDiagnostics(uri: string, model: MonacoModel): void {
     this.api?.editor.setModelMarkers(model, 'eyecode.diagnostics', []);
     this.diagnosticsByUri.delete(uri);
-    if (this.editor?.getModel() === model) this.onDiagnosticsState?.(null);
+    this.publishDiagnosticsForActiveModel();
     const timer = this.diagnosticsTimers.get(uri);
     if (timer !== undefined) window.clearTimeout(timer);
     const scheduled = window.setTimeout(() => {
@@ -429,12 +442,10 @@ export class MonacoWorkspaceService {
     const model = this.editor?.getModel() ?? null;
     const uri = this.documentUri(model);
     const result = uri ? this.diagnosticsByUri.get(uri) : undefined;
-    if (!result || !result.diagnostics.length || !model) {
-      this.onDiagnosticsState?.(null);
-      return;
-    }
-    const selected = this.selectDiagnostic(result.diagnostics, position);
-    this.onDiagnosticsState?.({ ...result, selected });
+    const active = result && result.diagnostics.length && model
+      ? { ...result, selected: this.selectDiagnostic(result.diagnostics, position) }
+      : null;
+    this.onDiagnosticsState?.({ activeUri: uri, active, results: [...this.diagnosticsByUri.values()] });
   }
 
   private selectDiagnostic(diagnostics: WebDiagnostic[], position: { lineNumber: number; column: number } | null): WebDiagnostic {

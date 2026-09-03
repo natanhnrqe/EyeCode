@@ -1,13 +1,84 @@
-import type { DiagnosticStripState } from './protocol';
+import { useEffect, useRef, useState } from 'react';
+import { EyeCodeIcon } from '../workspace/EyeCodeIcon';
+import type { DiagnosticsViewState, WebDiagnostic } from './protocol';
 
-type Props = { state: DiagnosticStripState | null };
+type Props = {
+  state: DiagnosticsViewState | null;
+  onNavigate(uri: string, diagnostic: WebDiagnostic): void;
+};
 
-export function EditorDiagnosticStrip({ state }: Props) {
-  if (!state) return null;
-  const diagnostic = state.selected;
-  return <section className={`editor-diagnostic-strip severity-${diagnostic.severity.toLowerCase()}`} role="status">
-    <span className="editor-diagnostic-severity">{diagnostic.severity === 'ERROR' ? 'Error' : diagnostic.severity}</span>
-    <span className="editor-diagnostic-message">{diagnostic.message}</span>
-    <span className="editor-diagnostic-location">Ln {diagnostic.startLine}, Col {diagnostic.startColumn}</span>
-  </section>;
+const rank = (diagnostic: WebDiagnostic): number => diagnostic.severity === 'ERROR' ? 0
+  : diagnostic.severity === 'WARNING' ? 1 : diagnostic.severity === 'INFO' ? 2 : 3;
+
+export function EditorDiagnosticStrip({ state, onNavigate }: Props) {
+  const root = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<number | null>(null);
+  const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const uri = state?.activeUri ?? null;
+  const diagnostics = state?.active?.diagnostics ?? [];
+  const errors = diagnostics.filter(diagnostic => diagnostic.severity === 'ERROR').length;
+  const warnings = diagnostics.filter(diagnostic => diagnostic.severity !== 'ERROR').length;
+  const entries = [...diagnostics].sort((first, second) => rank(first) - rank(second)
+    || first.startLine - second.startLine || first.startColumn - second.startColumn);
+
+  useEffect(() => {
+    setOpen(false);
+    setPinned(false);
+  }, [uri]);
+
+  useEffect(() => {
+    if (!pinned) return;
+    const outside = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) {
+        setPinned(false);
+        setOpen(false);
+      }
+    };
+    window.addEventListener('pointerdown', outside);
+    return () => window.removeEventListener('pointerdown', outside);
+  }, [pinned]);
+
+  useEffect(() => () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+  }, []);
+
+  if (!uri) return null;
+  const cancelClose = () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  };
+  const scheduleClose = () => {
+    if (pinned) return;
+    cancelClose();
+    closeTimer.current = window.setTimeout(() => setOpen(false), 120);
+  };
+  const navigate = (diagnostic: WebDiagnostic) => {
+    setPinned(false);
+    setOpen(false);
+    onNavigate(uri, diagnostic);
+  };
+  const label = diagnostics.length ? `${errors} errors and ${warnings} warnings` : 'No problems';
+
+  return <div ref={root} className="editor-diagnostics" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
+    <button type="button" className={`editor-diagnostic-indicator${diagnostics.length ? '' : ' is-clean'}`}
+      aria-label={label} aria-expanded={open} title={label}
+      onMouseEnter={() => { cancelClose(); setOpen(true); }}
+      onFocus={() => { cancelClose(); setOpen(true); }}
+      onClick={() => { cancelClose(); setPinned(value => !value); setOpen(true); }}>
+      {diagnostics.length ? <>
+        {errors > 0 && <span className="editor-diagnostic-count severity-error"><EyeCodeIcon name="problem" />{errors}</span>}
+        {warnings > 0 && <span className="editor-diagnostic-count severity-warning"><EyeCodeIcon name="problem" />{warnings}</span>}
+      </> : <span className="editor-diagnostic-clean-mark" aria-hidden="true" />}
+    </button>
+    {open && diagnostics.length > 0 && <div className="editor-diagnostic-popover" role="dialog" aria-label="Current file diagnostics"
+      onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
+      {entries.map(diagnostic => <button type="button" key={`${diagnostic.startLine}:${diagnostic.startColumn}:${diagnostic.code}:${diagnostic.message}`}
+        className={`editor-diagnostic-entry severity-${diagnostic.severity.toLowerCase()}`} onClick={() => navigate(diagnostic)}>
+        <EyeCodeIcon name="problem" />
+        <span>{diagnostic.message}</span>
+        <small>{diagnostic.startLine}:{diagnostic.startColumn}</small>
+      </button>)}
+    </div>}
+  </div>;
 }

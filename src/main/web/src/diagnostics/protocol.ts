@@ -16,3 +16,9 @@ export type DiagnosticsPublish = {
 };
 
 export type DiagnosticStripState = DiagnosticsPublish & { selected: WebDiagnostic };
+
+export type DiagnosticsViewState = {
+  activeUri: string | null;
+  active: DiagnosticStripState | null;
+  results: DiagnosticsPublish[];
+};

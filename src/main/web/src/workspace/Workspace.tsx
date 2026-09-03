@@ -4,7 +4,7 @@ import type { ShellBootstrap, WebShellEnvelope } from '../bridge/protocol';
 import type { CompletionPopupState } from '../completion/protocol';
 import { CompletionPopup } from '../completion/CompletionPopup';
 import { EditorDiagnosticStrip } from '../diagnostics/EditorDiagnosticStrip';
-import type { DiagnosticStripState } from '../diagnostics/protocol';
+import type { DiagnosticsViewState, WebDiagnostic } from '../diagnostics/protocol';
 import type { DocumentPayload, DocumentSnapshot } from '../document/protocol';
 import { LearningCard } from '../learning/LearningCard';
 import type { LearningPopupState } from '../learning/protocol';
@@ -35,7 +35,7 @@ export function Workspace() {
   const [bootstrap, setBootstrap] = useState<ShellBootstrap | null>(null);
   const [message, setMessage] = useState('');
   const [completion, setCompletion] = useState<CompletionPopupState | null>(null);
-  const [diagnostics, setDiagnostics] = useState<DiagnosticStripState | null>(null);
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsViewState | null>(null);
   const [learning, setLearning] = useState<LearningPopupState | null>(null);
   const [workspace, setWorkspace] = useState<WorkspaceSnapshot>({ recentProjects: [] });
   const [childrenByPath, setChildrenByPath] = useState<Record<string, ProjectNode[]>>({});
@@ -257,11 +257,14 @@ export function Workspace() {
     }
   }
 
-  async function activate(uri: string) {
-    try { await bridge.request('document', 'activate', { uri }); }
-    catch (error) { setMessage(formatError(error)); }
+  async function activate(uri: string): Promise<boolean> {
+    try { await bridge.request('document', 'activate', { uri }); return true; }
+    catch (error) { setMessage(formatError(error)); return false; }
   }
 
+  async function navigateProblem(uri: string, diagnostic: WebDiagnostic) {
+    if (await activate(uri)) service.revealDiagnostic(uri, diagnostic);
+  }
   async function close(uri: string) {
     try { await bridge.request('document', 'close', { uri }); }
     catch (error) { setMessage(formatError(error)); }
@@ -316,19 +319,21 @@ export function Workspace() {
         </section>}
       </aside>
       <section className="main-workspace">
-        <div className={`editor-stack${diagnostics ? ' has-diagnostics' : ''}`}>
+        <div className="editor-stack">
           <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)} />
           <section className="editor-region">
             {!documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
               <span>Open a project or create a new Java file.</span><div><button type="button" className="primary-action" onClick={() => void openProject()}>Open Project</button>
               <button type="button" className="quiet-action" onClick={() => void newDocument()}>New File</button></div></div>}
             <MonacoHost service={service} />
+            <EditorDiagnosticStrip state={diagnostics} onNavigate={navigateProblem} />
           </section>
-          <EditorDiagnosticStrip state={diagnostics} />
         </div>
       </section>
       <BottomPanel active={bottomPanel} output={runOutput} terminalOutput={terminalOutput} terminalState={terminalState}
-        onSelect={selectBottomPanel} onTerminalStart={() => void terminal('show')} onTerminalRestart={() => void terminal('restart')}
+        diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
+        onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)}
+        onTerminalStart={() => void terminal('show')} onTerminalRestart={() => void terminal('restart')}
         onTerminalStop={() => void terminal('stop')} onTerminalInput={data => void terminal('input', data)} />
     </div>
     <StatusBar activeUri={activeDocument?.uri} displayName={activeDocument?.displayName}

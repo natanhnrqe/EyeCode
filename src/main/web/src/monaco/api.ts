@@ -40,6 +40,8 @@ export type MonacoEditor = {
   onMouseLeave: (listener: () => void) => Disposable;
   addCommand: (keybinding: number, handler: () => void) => string;
   getPosition: () => { lineNumber: number; column: number } | null;
+  setPosition: (position: { lineNumber: number; column: number }) => void;
+  revealPositionInCenterIfOutsideViewport: (position: { lineNumber: number; column: number }) => void;
   getScrolledVisiblePosition: (position: { lineNumber: number; column: number }) => { left: number; top: number; height: number } | null;
   getDomNode: () => HTMLElement | null;
   executeEdits: (source: string, edits: Array<{ range: Record<string, number>; text: string; forceMoveMarkers?: boolean }>) => void;
