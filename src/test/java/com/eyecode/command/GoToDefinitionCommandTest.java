@@ -18,7 +18,7 @@ class GoToDefinitionCommandTest {
         GoToDefinitionCommand cmd = new GoToDefinitionCommand(null);
         assertEquals("Go to Definition", cmd.getName());
     }
-
+fdsfdsf
     @Test
     void isEnabled_isFalse_whenViewIsNull() {
         GoToDefinitionCommand cmd = new GoToDefinitionCommand(null);

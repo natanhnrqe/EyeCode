@@ -12,6 +12,7 @@ export function LearningCard({ state, onNavigate, onHover }: Props) {
   const [position, setPosition] = useState(state.anchor);
   const card = state.card;
 
+
   useLayoutEffect(() => {
     const element = cardRef.current;
     if (!element) return;

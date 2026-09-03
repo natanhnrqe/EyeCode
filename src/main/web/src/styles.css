@@ -1890,3 +1890,13 @@ img.learning-icon {
 }
 
 .terminal-native-host { min-height: 100%; width: 100%; background: var(--surface-editor); }
+
+.editor-stack.has-diagnostics { grid-template-rows: 48px minmax(0, 1fr) auto; }
+.editor-diagnostic-strip { display:flex; align-items:center; min-height:31px; gap:9px; padding:0 12px; border-top:1px solid var(--border); color:var(--text-secondary); background:var(--surface-editor); font:11px var(--font-ui); }
+.editor-diagnostic-strip.severity-error { border-top-color:rgba(220, 104, 110, .46); }
+.editor-diagnostic-strip.severity-warning { border-top-color:rgba(211, 164, 80, .46); }
+.editor-diagnostic-severity { flex:0 0 auto; color:#e0848e; font-weight:600; }
+.severity-warning .editor-diagnostic-severity { color:#d9af67; }
+.severity-info .editor-diagnostic-severity, .severity-hint .editor-diagnostic-severity { color:#8cafff; }
+.editor-diagnostic-message { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.editor-diagnostic-location { margin-left:auto; flex:0 0 auto; color:var(--text-muted); }

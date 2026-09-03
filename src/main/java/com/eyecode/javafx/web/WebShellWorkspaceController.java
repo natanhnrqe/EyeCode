@@ -38,6 +38,7 @@ public final class WebShellWorkspaceController {
     private final EditorManager manager;
     private final WebShellCompletionController completionController;
     private final WebShellLearningController learningController;
+    private final WebShellDiagnosticsController diagnosticsController;
     private final ProjectLifecycleService projectLifecycleService;
     private final ProjectLifecycleService.Listener terminalWorkspaceListener;
     private final RunService runService;
@@ -55,6 +56,7 @@ public final class WebShellWorkspaceController {
                 new WebShellEditorViewFactory());
         this.completionController = new WebShellCompletionController(surface, manager);
         this.learningController = new WebShellLearningController(surface, manager);
+        this.diagnosticsController = new WebShellDiagnosticsController(surface);
         this.projectLifecycleService = new ProjectLifecycleService();
         this.runService = new RunService(projectLifecycleService);
         this.runService.setBeforeRunFlush(manager::flushAutosave);
@@ -113,6 +115,7 @@ public final class WebShellWorkspaceController {
     public void dispose() {
         if (disposed) return;
         disposed = true;
+        diagnosticsController.dispose();
         manager.closeAllSessions();
         manager.shutdownAutosave();
         runService.dispose();
@@ -154,6 +157,7 @@ public final class WebShellWorkspaceController {
         if (root == null) return message.response(Map.of("cancelled", true));
         try {
             runService.stop();
+            diagnosticsController.clear();
             ProjectModel project = projectLifecycleService.open(root);
             projectLifecycleService.recordRecent(project);
             manager.closeAllSessions();
@@ -493,6 +497,7 @@ public final class WebShellWorkspaceController {
         EditorSession session = sessionFor(message.payload());
         if (session == null) return message.error(new WebShellError(
                 "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
+        diagnosticsController.invalidate(MonacoModelId.forSession(session));
         boolean closed = manager.closeSession(session.getSessionId());
         if (!closed) return message.error(new WebShellError(
                 "CLOSE_FAILED", "The document could not be closed", true));

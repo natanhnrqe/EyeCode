@@ -3,6 +3,8 @@ import { bridge } from '../bridge/EyeCodeBridge';
 import type { ShellBootstrap, WebShellEnvelope } from '../bridge/protocol';
 import type { CompletionPopupState } from '../completion/protocol';
 import { CompletionPopup } from '../completion/CompletionPopup';
+import { EditorDiagnosticStrip } from '../diagnostics/EditorDiagnosticStrip';
+import type { DiagnosticStripState } from '../diagnostics/protocol';
 import type { DocumentPayload, DocumentSnapshot } from '../document/protocol';
 import { LearningCard } from '../learning/LearningCard';
 import type { LearningPopupState } from '../learning/protocol';
@@ -33,6 +35,7 @@ export function Workspace() {
   const [bootstrap, setBootstrap] = useState<ShellBootstrap | null>(null);
   const [message, setMessage] = useState('');
   const [completion, setCompletion] = useState<CompletionPopupState | null>(null);
+  const [diagnostics, setDiagnostics] = useState<DiagnosticStripState | null>(null);
   const [learning, setLearning] = useState<LearningPopupState | null>(null);
   const [workspace, setWorkspace] = useState<WorkspaceSnapshot>({ recentProjects: [] });
   const [childrenByPath, setChildrenByPath] = useState<Record<string, ProjectNode[]>>({});
@@ -91,10 +94,12 @@ export function Workspace() {
     service.setCaretPositionHandler(setCaret);
     service.setErrorHandler(setMessage);
     service.setCompletionStateHandler(setCompletion);
+    service.setDiagnosticsStateHandler(setDiagnostics);
     service.setLearningStateHandler(setLearning);
     return () => {
       service.setCaretPositionHandler(null);
       service.setCompletionStateHandler(null);
+      service.setDiagnosticsStateHandler(null);
       service.setLearningStateHandler(null);
     };
   }, [service, updateDocument]);
@@ -116,6 +121,7 @@ export function Workspace() {
         setChildrenByPath({});
         setTreeChangedPath(undefined);
         setTreeRefreshRevision(0);
+        service.clearDiagnostics();
       }
       if (event.channel === 'workspace' && event.name === 'treeChanged') {
         const parent = String((event.payload as { parent?: string }).parent ?? '');
@@ -206,6 +212,7 @@ export function Workspace() {
         setChildrenByPath({});
         setTreeChangedPath(undefined);
         setTreeRefreshRevision(0);
+        service.clearDiagnostics();
       }
       setMessage('');
     } catch (error) { setMessage(formatError(error)); }
@@ -309,7 +316,7 @@ export function Workspace() {
         </section>}
       </aside>
       <section className="main-workspace">
-        <div className="editor-stack">
+        <div className={`editor-stack${diagnostics ? ' has-diagnostics' : ''}`}>
           <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)} />
           <section className="editor-region">
             {!documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
@@ -317,6 +324,7 @@ export function Workspace() {
               <button type="button" className="quiet-action" onClick={() => void newDocument()}>New File</button></div></div>}
             <MonacoHost service={service} />
           </section>
+          <EditorDiagnosticStrip state={diagnostics} />
         </div>
       </section>
       <BottomPanel active={bottomPanel} output={runOutput} terminalOutput={terminalOutput} terminalState={terminalState}

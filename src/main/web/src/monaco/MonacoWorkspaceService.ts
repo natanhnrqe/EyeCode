@@ -3,6 +3,7 @@ import type { WebShellEnvelope } from '../bridge/protocol';
 import type { DocumentSnapshot } from '../document/protocol';
 import type { CompletionPopupState, CompletionResponse } from '../completion/protocol';
 import type { LearningPopupState, LearningResponse } from '../learning/protocol';
+import type { DiagnosticStripState, DiagnosticsPublish, WebDiagnostic } from '../diagnostics/protocol';
 import type { Disposable, MonacoApi, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoKeyEvent, MonacoModel, MonacoMouseEvent } from './api';
 
 type DocumentChangeHandler = (document: DocumentSnapshot) => void;
@@ -20,6 +21,7 @@ type PendingLearning = PendingCompletion & {
   key: string;
   anchor?: { left: number; top: number };
 };
+type PendingDiagnostics = { uri: string; model: MonacoModel; modelVersion: number };
 
 export class MonacoWorkspaceService {
   private readonly models = new Map<string, MonacoModel>();
@@ -41,6 +43,11 @@ export class MonacoWorkspaceService {
   private onDocumentChange: DocumentChangeHandler | null = null;
   private onCaretPosition: CaretPositionHandler | null = null;
   private onError: ((message: string) => void) | null = null;
+  private onDiagnosticsState: ((state: DiagnosticStripState | null) => void) | null = null;
+  private readonly diagnosticsByUri = new Map<string, DiagnosticsPublish>();
+  private readonly pendingDiagnostics = new Map<string, PendingDiagnostics>();
+  private readonly latestDiagnosticsRequestIds = new Map<string, string>();
+  private readonly diagnosticsTimers = new Map<string, number>();
   private onCompletionState: ((state: CompletionPopupState | null) => void) | null = null;
   private completionState: CompletionPopupState | null = null;
   private readonly pendingCompletions = new Map<string, PendingCompletion>();
@@ -73,6 +80,10 @@ export class MonacoWorkspaceService {
 
   setLearningStateHandler(handler: ((state: LearningPopupState | null) => void) | null): void {
     this.onLearningState = handler;
+  }
+
+  setDiagnosticsStateHandler(handler: ((state: DiagnosticStripState | null) => void) | null): void {
+    this.onDiagnosticsState = handler;
   }
 
   setLearningHovered(hovered: boolean): void {
@@ -169,6 +180,7 @@ export class MonacoWorkspaceService {
     this.completionMessageUnsubscribe = bridge.subscribe(message => {
       this.receiveCompletionMessage(message);
       this.receiveLearningMessage(message);
+      this.receiveDiagnosticsMessage(message);
     });
     this.contentListener = this.editor.onDidChangeModelContent(event => {
       this.forwardContentChange();
@@ -198,6 +210,7 @@ export class MonacoWorkspaceService {
       document.content, document.language || 'java', this.api.Uri.parse(document.uri));
     this.models.set(document.uri, model);
     this.updateModel(model, document.content);
+    this.scheduleDiagnostics(document.uri, model);
     if (!this.editor.getModel()) this.activate(document.uri);
     return true;
   }
@@ -209,6 +222,7 @@ export class MonacoWorkspaceService {
     }
     if (!this.confirmSnapshot(document)) return false;
     if (applyContent) this.updateModel(current, document.content);
+    this.scheduleDiagnostics(document.uri, current);
     return true;
   }
 
@@ -227,6 +241,7 @@ export class MonacoWorkspaceService {
     this.editor.updateOptions({ readOnly: this.readOnly.get(uri) ?? false });
     const viewState = this.viewStates.get(uri);
     if (viewState) this.editor.restoreViewState(viewState);
+    this.publishDiagnosticsForActiveModel();
   }
 
   close(uri: string): void {
@@ -234,6 +249,7 @@ export class MonacoWorkspaceService {
     if (this.learningState?.uri === uri) this.hideLearning();
     this.pending.delete(uri);
     const model = this.models.get(uri);
+    this.invalidateDiagnostics(uri, model ?? null);
     if (!model) return;
     if (this.editor?.getModel() === model) this.editor.setModel(null);
     model.dispose();
@@ -285,6 +301,7 @@ export class MonacoWorkspaceService {
     this.confirmedVersions.clear();
     this.readOnly.clear();
     this.changeQueues.clear();
+    this.clearDiagnostics();
     this.hideCompletion();
     this.hideLearning();
   }
@@ -331,6 +348,9 @@ export class MonacoWorkspaceService {
   }
 
   private handleContentChange(event: MonacoContentChangeEvent): void {
+    const model = this.editor?.getModel() ?? null;
+    const uri = this.documentUri(model);
+    if (model && uri) this.scheduleDiagnostics(uri, model);
     this.hideLearning();
     const changes = event.changes ?? [];
     if (!changes.some(change => {
@@ -344,6 +364,115 @@ export class MonacoWorkspaceService {
     this.requestCompletion(false, trigger);
   }
 
+  private scheduleDiagnostics(uri: string, model: MonacoModel): void {
+    this.api?.editor.setModelMarkers(model, 'eyecode.diagnostics', []);
+    this.diagnosticsByUri.delete(uri);
+    if (this.editor?.getModel() === model) this.onDiagnosticsState?.(null);
+    const timer = this.diagnosticsTimers.get(uri);
+    if (timer !== undefined) window.clearTimeout(timer);
+    const scheduled = window.setTimeout(() => {
+      this.diagnosticsTimers.delete(uri);
+      if (this.disposed || this.models.get(uri) !== model) return;
+      const requestId = bridge.reserveRequestId();
+      const modelVersion = model.getAlternativeVersionId();
+      this.pendingDiagnostics.set(requestId, { uri, model, modelVersion });
+      this.latestDiagnosticsRequestIds.set(uri, requestId);
+      void bridge.request('diagnostics', 'request', { uri, modelVersion, content: model.getValue() }, { requestId })
+        .catch(error => {
+          if (this.latestDiagnosticsRequestIds.get(uri) === requestId) {
+            this.pendingDiagnostics.delete(requestId);
+            this.latestDiagnosticsRequestIds.delete(uri);
+            this.onError?.(error instanceof Error ? error.message : String(error));
+          }
+        });
+    }, 300);
+    this.diagnosticsTimers.set(uri, scheduled);
+  }
+
+  private receiveDiagnosticsMessage(message: WebShellEnvelope): void {
+    if (message.channel !== 'diagnostics') return;
+    if (message.name === 'failure') {
+      const payload = message.payload as { uri?: string; requestId?: string; message?: string };
+      if (payload.uri && payload.requestId && this.latestDiagnosticsRequestIds.get(payload.uri) === payload.requestId) {
+        this.pendingDiagnostics.delete(payload.requestId);
+        this.onError?.(payload.message || 'Java diagnostics failed');
+      }
+      return;
+    }
+    if (message.kind !== 'event' || message.name !== 'publish') return;
+    const response = message.payload as DiagnosticsPublish;
+    const pending = this.pendingDiagnostics.get(response.requestId);
+    this.pendingDiagnostics.delete(response.requestId);
+    if (!pending || this.latestDiagnosticsRequestIds.get(response.uri) !== response.requestId
+        || pending.uri !== response.uri || pending.modelVersion !== response.modelVersion
+        || this.models.get(response.uri) !== pending.model
+        || pending.model.getAlternativeVersionId() !== response.modelVersion) return;
+    const api = this.api;
+    if (!api) return;
+    api.editor.setModelMarkers(pending.model, 'eyecode.diagnostics', response.diagnostics.map(diagnostic => ({
+      severity: this.markerSeverity(diagnostic), code: diagnostic.code, message: diagnostic.message,
+      startLineNumber: diagnostic.startLine, startColumn: diagnostic.startColumn,
+      endLineNumber: diagnostic.endLine, endColumn: diagnostic.endColumn
+    })));
+    this.diagnosticsByUri.set(response.uri, response);
+    this.publishDiagnosticsForActiveModel();
+  }
+
+  private markerSeverity(diagnostic: WebDiagnostic): number {
+    const severity = this.api?.MarkerSeverity;
+    if (!severity) return 1;
+    return diagnostic.severity === 'ERROR' ? severity.Error : diagnostic.severity === 'WARNING' ? severity.Warning
+      : diagnostic.severity === 'INFO' ? severity.Info : severity.Hint;
+  }
+
+  private publishDiagnosticsForActiveModel(position = this.editor?.getPosition() ?? null): void {
+    const model = this.editor?.getModel() ?? null;
+    const uri = this.documentUri(model);
+    const result = uri ? this.diagnosticsByUri.get(uri) : undefined;
+    if (!result || !result.diagnostics.length || !model) {
+      this.onDiagnosticsState?.(null);
+      return;
+    }
+    const selected = this.selectDiagnostic(result.diagnostics, position);
+    this.onDiagnosticsState?.({ ...result, selected });
+  }
+
+  private selectDiagnostic(diagnostics: WebDiagnostic[], position: { lineNumber: number; column: number } | null): WebDiagnostic {
+    const ordered = [...diagnostics].sort((first, second) => this.diagnosticRank(first) - this.diagnosticRank(second)
+      || first.startLine - second.startLine || first.startColumn - second.startColumn);
+    if (position) {
+      const nearby = ordered.find(diagnostic => diagnostic.startLine === position.lineNumber
+        && position.column >= diagnostic.startColumn - 1 && position.column <= diagnostic.endColumn + 1);
+      if (nearby) return nearby;
+    }
+    return ordered[0];
+  }
+
+  private diagnosticRank(diagnostic: WebDiagnostic): number {
+    return diagnostic.severity === 'ERROR' ? 0 : diagnostic.severity === 'WARNING' ? 1 : diagnostic.severity === 'INFO' ? 2 : 3;
+  }
+
+  clearDiagnostics(): void {
+    this.diagnosticsTimers.forEach(timer => window.clearTimeout(timer));
+    this.diagnosticsTimers.clear();
+    this.models.forEach(model => this.api?.editor.setModelMarkers(model, 'eyecode.diagnostics', []));
+    this.pendingDiagnostics.clear();
+    this.latestDiagnosticsRequestIds.clear();
+    this.diagnosticsByUri.clear();
+    this.onDiagnosticsState?.(null);
+  }
+
+  private invalidateDiagnostics(uri: string, model: MonacoModel | null): void {
+    const timer = this.diagnosticsTimers.get(uri);
+    if (timer !== undefined) window.clearTimeout(timer);
+    this.diagnosticsTimers.delete(uri);
+    const latest = this.latestDiagnosticsRequestIds.get(uri);
+    if (latest) this.pendingDiagnostics.delete(latest);
+    this.latestDiagnosticsRequestIds.delete(uri);
+    this.diagnosticsByUri.delete(uri);
+    if (model) this.api?.editor.setModelMarkers(model, 'eyecode.diagnostics', []);
+    this.publishDiagnosticsForActiveModel();
+  }
   private requestCompletion(explicit: boolean, triggerCharacter: string | null): void {
     const editor = this.editor;
     const model = editor?.getModel();
@@ -550,7 +679,10 @@ export class MonacoWorkspaceService {
     const editor = this.editor;
     const model = editor?.getModel() ?? null;
     const position = event.position ?? editor?.getPosition() ?? null;
-    if (position) this.onCaretPosition?.({ line: position.lineNumber, column: position.column });
+    if (position) {
+      this.onCaretPosition?.({ line: position.lineNumber, column: position.column });
+      this.publishDiagnosticsForActiveModel(position);
+    }
     if (pending && model === pending.model && this.documentUri(model) === pending.uri && position
         && model.getOffsetAt(position) === pending.caretOffset) {
       return;
