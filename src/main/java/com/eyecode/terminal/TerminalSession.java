@@ -1,6 +1,5 @@
 package com.eyecode.terminal;
 
-import com.eyecode.runtime.ProcessTree;
 import com.pty4j.PtyProcess;
 import com.pty4j.PtyProcessBuilder;
 import com.pty4j.WinSize;
@@ -25,6 +24,7 @@ final class TerminalSession {
     }
 
     private final Path workingDirectory;
+    private final String sessionId;
     private final List<String> command;
     private final Listener listener;
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> daemon("eyecode-terminal-session", r));
@@ -35,7 +35,8 @@ final class TerminalSession {
     private volatile PtyProcess process;
     private volatile OutputStream input;
 
-    TerminalSession(Path workingDirectory, List<String> command, Listener listener) {
+    TerminalSession(String sessionId, Path workingDirectory, List<String> command, Listener listener) {
+        this.sessionId = sessionId;
         this.workingDirectory = workingDirectory;
         this.command = List.copyOf(command);
         this.listener = listener;
@@ -43,6 +44,10 @@ final class TerminalSession {
 
     void start() {
         executor.submit(this::execute);
+    }
+
+    String sessionId() {
+        return sessionId;
     }
 
     boolean isRunning() {
@@ -78,12 +83,12 @@ final class TerminalSession {
         if (!stopped.compareAndSet(false, true)) {
             return;
         }
-        Process current = process;
-        if (current != null && current.isAlive()) {
-            ProcessTree.destroy(current, false);
+        PtyProcess current = process;
+        if (current != null && current.isRunning()) {
+            current.destroy();
             scheduler.schedule(() -> {
-                if (current.isAlive()) {
-                    ProcessTree.destroy(current, true);
+                if (current.isRunning()) {
+                    current.destroyForcibly();
                 }
             }, 500, TimeUnit.MILLISECONDS);
         }
@@ -103,9 +108,14 @@ final class TerminalSession {
                     .setDirectory(workingDirectory.toString())
                     .start();
             process = started;
+            if (stopped.get()) {
+                started.destroy();
+            }
             input = started.getOutputStream();
-            listener.onStarted(workingDirectory);
-            stream(started.getInputStream());
+            if (!stopped.get()) {
+                listener.onStarted(workingDirectory);
+                stream(started.getInputStream());
+            }
             exitCode = started.waitFor();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
@@ -116,6 +126,7 @@ final class TerminalSession {
             if (finished.compareAndSet(false, true)) {
                 listener.onFinished(stopped.get() ? -1 : exitCode, stopped.get());
             }
+            scheduler.shutdownNow();
             executor.shutdown();
         }
     }

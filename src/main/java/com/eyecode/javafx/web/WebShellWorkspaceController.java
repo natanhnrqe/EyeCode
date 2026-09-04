@@ -333,7 +333,6 @@ public final class WebShellWorkspaceController {
             return message.error(new WebShellError("DELETE_FAILED", safeMessage(exception), true));
         }
     }
-
     private WebShellEnvelope runState(WebShellEnvelope message) {
         return message.response(runPayload());
     }

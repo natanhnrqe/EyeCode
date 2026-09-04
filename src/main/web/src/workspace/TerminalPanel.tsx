@@ -31,13 +31,14 @@ export function TerminalPanel({ state }: Props) {
     const container = host.current;
     if (!container) return;
 
+    const terminalSurface = window.getComputedStyle(container).getPropertyValue('--surface-editor').trim() || '#1a1b1d';
     const terminal = new Terminal({
       cursorBlink: true,
       convertEol: true,
       fontFamily: 'JetBrains Mono, monospace',
       fontSize: 13,
       theme: {
-        background: '#1a1b1d',
+        background: terminalSurface,
         foreground: '#bbbfc8',
         cursor: '#e8e9ee',
         selectionBackground: '#6352b855',

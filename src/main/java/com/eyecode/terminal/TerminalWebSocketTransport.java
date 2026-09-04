@@ -19,19 +19,21 @@ final class TerminalWebSocketTransport implements AutoCloseable {
 
     private final String token;
     private final Predicate<byte[]> input;
+    private final Runnable onConnected;
     private final Server server;
     private final CountDownLatch started = new CountDownLatch(1);
     private final ByteArrayOutputStream initialOutput = new ByteArrayOutputStream();
     private volatile WebSocket connection;
 
-    private TerminalWebSocketTransport(String token, Predicate<byte[]> input) {
+    private TerminalWebSocketTransport(String token, Predicate<byte[]> input, Runnable onConnected) {
         this.token = token;
         this.input = input;
+        this.onConnected = onConnected;
         this.server = new Server(new InetSocketAddress("127.0.0.1", 0));
     }
 
-    static TerminalWebSocketTransport start(String token, Predicate<byte[]> input) {
-        TerminalWebSocketTransport transport = new TerminalWebSocketTransport(token, input);
+    static TerminalWebSocketTransport start(String token, Predicate<byte[]> input, Runnable onConnected) {
+        TerminalWebSocketTransport transport = new TerminalWebSocketTransport(token, input, onConnected);
         transport.server.start();
         try {
             if (!transport.started.await(2, TimeUnit.SECONDS)) {
@@ -94,6 +96,7 @@ final class TerminalWebSocketTransport implements AutoCloseable {
 
     private synchronized void attach(WebSocket candidate) {
         connection = candidate;
+        onConnected.run();
         if (initialOutput.size() > 0) {
             candidate.send(initialOutput.toByteArray());
             initialOutput.reset();

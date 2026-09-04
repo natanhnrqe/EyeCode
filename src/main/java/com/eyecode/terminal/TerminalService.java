@@ -16,7 +16,8 @@ public final class TerminalService {
         void onFinished(int exitCode, boolean stopped);
     }
 
-    public record Status(boolean requested, boolean running, String workingDirectory, String endpoint) {
+    public record Status(boolean requested, boolean running, String workingDirectory, String endpoint,
+                         String sessionId) {
     }
 
     private final List<Listener> listeners = new CopyOnWriteArrayList<>();
@@ -28,6 +29,7 @@ public final class TerminalService {
     private Path workingDirectory;
     private boolean terminalRequested;
     private boolean disposed;
+    private long nextSessionId;
 
     public TerminalService() {
         this(directory -> defaultShellCommand());
@@ -54,11 +56,13 @@ public final class TerminalService {
         if (java.util.Objects.equals(workspaceDirectory, normalized)) {
             return;
         }
+        lifecycle("workspace-switch", "", workspaceDirectory, normalized);
         workspaceDirectory = normalized;
         pendingWorkingDirectory = normalized;
+        workingDirectory = null;
         closeTransport();
         if (activeSession != null && activeSession.isRunning()) {
-            activeSession.stop();
+            stopActiveSession();
         } else if (terminalRequested && normalized != null) {
             pendingWorkingDirectory = null;
             launch(normalized);
@@ -80,7 +84,7 @@ public final class TerminalService {
             }
             pendingWorkingDirectory = normalized;
             closeTransport();
-            activeSession.stop();
+            stopActiveSession();
             return true;
         }
         pendingWorkingDirectory = null;
@@ -102,7 +106,7 @@ public final class TerminalService {
         if (activeSession != null && activeSession.isRunning()) {
             pendingWorkingDirectory = normalized;
             closeTransport();
-            activeSession.stop();
+            stopActiveSession();
             return true;
         }
         pendingWorkingDirectory = null;
@@ -127,7 +131,7 @@ public final class TerminalService {
         if (activeSession == null || !activeSession.isRunning()) {
             return false;
         }
-        activeSession.stop();
+        stopActiveSession();
         return true;
     }
 
@@ -140,9 +144,12 @@ public final class TerminalService {
     }
 
     public synchronized Status status() {
-        return new Status(terminalRequested, isRunning(),
+        String sessionId = activeSession == null ? "" : activeSession.sessionId();
+        Status status = new Status(terminalRequested, isRunning(),
                 workingDirectory == null ? "" : workingDirectory.toString(),
-                transport == null ? "" : transport.endpoint());
+                transport == null ? "" : transport.endpoint(), sessionId);
+        lifecycle("status", sessionId, workingDirectory, null, status.endpoint());
+        return status;
     }
 
     public void addListener(Listener listener) {
@@ -176,14 +183,15 @@ public final class TerminalService {
         if (disposed) {
             return;
         }
+        String sessionId = Long.toString(++nextSessionId);
         try {
-            ensureTransport();
+            ensureTransport(sessionId);
         } catch (IllegalStateException exception) {
             return;
         }
         workingDirectory = directory;
         TerminalSession[] holder = new TerminalSession[1];
-        TerminalSession session = new TerminalSession(directory, commandFactory.apply(directory), new TerminalSession.Listener() {
+        TerminalSession session = new TerminalSession(sessionId, directory, commandFactory.apply(directory), new TerminalSession.Listener() {
             @Override
             public void onStarted(Path startedDirectory) {
                 for (Listener listener : listeners) {
@@ -209,6 +217,7 @@ public final class TerminalService {
         });
         holder[0] = session;
         activeSession = session;
+        lifecycle("create", sessionId, directory, null);
         session.start();
     }
 
@@ -217,26 +226,59 @@ public final class TerminalService {
             return;
         }
         activeSession = null;
-        for (Listener listener : listeners) {
-            listener.onFinished(exitCode, stopped);
-        }
+        lifecycle("process-exit", session.sessionId(), workingDirectory, null);
         Path next = pendingWorkingDirectory;
         pendingWorkingDirectory = null;
         if (!disposed && terminalRequested && next != null) {
             launch(next);
         } else if (!isRunning()) {
+            workingDirectory = null;
             closeTransport();
+        }
+        for (Listener listener : listeners) {
+            listener.onFinished(exitCode, stopped);
         }
     }
 
-    private void ensureTransport() {
+    private void ensureTransport(String sessionId) {
         if (transport != null) {
             return;
         }
         byte[] tokenBytes = new byte[32];
         new SecureRandom().nextBytes(tokenBytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
-        transport = TerminalWebSocketTransport.start(token, this::send);
+        transport = TerminalWebSocketTransport.start(token, this::send,
+                () -> lifecycle("connect", sessionId, workingDirectory, null));
+    }
+
+    private void stopActiveSession() {
+        TerminalSession session = activeSession;
+        if (session == null) {
+            return;
+        }
+        lifecycle("stop", session.sessionId(), workingDirectory, null);
+        session.stop();
+    }
+
+    private void lifecycle(String event, String sessionId, Path workspace, Path nextWorkspace) {
+        lifecycle(event, sessionId, workspace, nextWorkspace, "");
+    }
+
+    private void lifecycle(String event, String sessionId, Path workspace, Path nextWorkspace, String endpoint) {
+        StringBuilder message = new StringBuilder("TERMINAL_LIFECYCLE ").append(event);
+        if ("workspace-switch".equals(event)) {
+            message.append(" old=").append(workspace == null ? "" : workspace);
+            message.append(" new=").append(nextWorkspace == null ? "" : nextWorkspace);
+        } else if (workspace != null) {
+            message.append(" workspace=").append(workspace);
+        }
+        if (sessionId != null && !sessionId.isBlank()) {
+            message.append(" session=").append(sessionId);
+        }
+        if (endpoint != null && !endpoint.isBlank()) {
+            message.append(" endpoint=").append(endpoint);
+        }
+        System.out.println(message);
     }
 
     private void closeTransport() {
