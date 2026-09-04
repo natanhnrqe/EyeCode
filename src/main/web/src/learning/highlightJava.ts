@@ -17,18 +17,10 @@ function tokenClass(token: string): string | null {
   return null;
 }
 
-export type LearningHighlightCounts = {
-  codeBlocks: number;
-  javaBlocks: number;
-  highlighted: number;
-};
-
-export function highlightLearningJavaCode(root: HTMLElement | null): LearningHighlightCounts {
-  if (!root) return { codeBlocks: 0, javaBlocks: 0, highlighted: 0 };
-  const codeBlocks = root.querySelectorAll('pre code').length;
-  const javaBlocks = root.querySelectorAll('pre > code.language-java').length;
-  let highlighted = 0;
-  for (const block of root.querySelectorAll<HTMLElement>('pre > code.language-java:not([data-learning-highlighted])')) {
+export function highlightLearningJavaHtml(html: string): string {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  for (const block of template.content.querySelectorAll<HTMLElement>('pre > code.language-java')) {
     const source = block.textContent ?? '';
     const fragment = document.createDocumentFragment();
     let cursor = 0;
@@ -49,8 +41,6 @@ export function highlightLearningJavaCode(root: HTMLElement | null): LearningHig
     }
     if (cursor < source.length) fragment.append(document.createTextNode(source.slice(cursor)));
     block.replaceChildren(fragment);
-    block.dataset.learningHighlighted = 'true';
-    highlighted++;
   }
-  return { codeBlocks, javaBlocks, highlighted };
+  return template.innerHTML;
 }

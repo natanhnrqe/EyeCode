@@ -1,12 +1,13 @@
 import {
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
   type MouseEvent,
 } from 'react';
 
-import { highlightLearningJavaCode } from './highlightJava';
+import { highlightLearningJavaHtml } from './highlightJava';
 import type { LearningPopupState } from './protocol';
 
 type Props = {
@@ -30,7 +31,6 @@ export function LearningCard({
   onHover,
 }: Props) {
   const cardRef = useRef<HTMLElement>(null);
-  const bodyRef = useRef<HTMLElement>(null);
 
   const [position, setPosition] = useState<PopupPosition>({
     left: 0,
@@ -68,9 +68,7 @@ export function LearningCard({
       window.removeEventListener('resize', updatePosition);
     };
   }, [state.anchor.left, state.anchor.top, card]);
-  useLayoutEffect(() => {
-    highlightLearningJavaCode(bodyRef.current);
-  }, [card.renderedBodyHtml]);
+  const highlightedBodyHtml = useMemo(() => highlightLearningJavaHtml(card.renderedBodyHtml), [card.renderedBodyHtml]);
 
   function navigate(
     event: MouseEvent<HTMLElement>,
@@ -181,11 +179,10 @@ export function LearningCard({
       </header>
 
       <section
-        ref={bodyRef}
         className="learning-body"
         onClick={handleBodyClick}
         dangerouslySetInnerHTML={{
-          __html: card.renderedBodyHtml,
+          __html: highlightedBodyHtml,
         }}
       />
 
