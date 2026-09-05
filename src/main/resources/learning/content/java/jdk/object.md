@@ -4,16 +4,15 @@ title: Object
 concept: object
 level: beginner
 duration: 4
-category: JAVA API
+category: API JAVA
 officialDocs:
   label: Object
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html
 related:
   - java/types/class
 ---
+## O que é isso?
 
-## What it is
+`Object` é a raiz da hierarquia de classes Java. Toda classe herda métodos como `toString`, `equals` e `hashCode`.
 
-`Object` is the root class of the Java class hierarchy. Every class inherits methods such as `toString`, `equals`, and `hashCode`.
-
-Override these methods when your type needs meaningful value behavior.
+Sobrescreva esses métodos quando o tipo precisar representar corretamente seu valor ou identidade.

@@ -4,13 +4,12 @@ title: finally
 concept: finally
 level: beginner
 duration: 1
-category: EXCEPTIONS
+category: EXCEÇÕES
 depth: quick
 related:
   - java/syntax/exceptions/try
   - java/syntax/exceptions/catch
 ---
+`finally` é executado depois da sequência `try`/`catch` para realizar a limpeza em fluxos normais e excepcionais.
 
-`finally` runs after a `try`/`catch` sequence for cleanup in normal and exceptional control flow.
-
-Prefer try-with-resources for closeable resources.
+Prefira `try-with-resources` para recursos que precisam ser fechados.

@@ -22,7 +22,7 @@ export function EditorTabs({ documents, activeUri, onActivate, onClose }: Props)
           title={document.displayName}
         >
           <EyeCodeIcon
-            name={document.readOnly ? 'file' : 'java'}
+            name={document.kind === 'documentation' ? 'markdown' : document.readOnly ? 'file' : 'java'}
             className="tab-file-mark"
           />
 

@@ -4,22 +4,22 @@ title: LinkedList.getLast()
 concept: linked-list-get-last
 kind: method
 sourceMember: getLast
+sourceSignature: ()
 level: beginner
 duration: 1
-category: COLLECTIONS
+category: COLEÇÕES
 depth: quick
 related:
   - java/jdk/linked-list
 parent: java/jdk/linked-list
 ---
+## O que ele faz?
 
-## What it does
-
-Returns the last element.
+Retorna o último elemento.
 
 ```java
 LinkedList<String> list = new LinkedList<>();
 String last = list.getLast();
 ```
 
-It throws when the list is empty.
+O método lança uma exceção quando a lista está vazia.

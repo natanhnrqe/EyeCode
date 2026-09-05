@@ -4,13 +4,12 @@ title: case
 concept: case
 level: beginner
 duration: 1
-category: CONTROL FLOW
+category: FLUXO DE CONTROLE
 depth: quick
 related:
   - java/syntax/control-flow/switch
   - java/syntax/control-flow/default
 ---
+`case` identifica um dos valores possíveis de um `switch`.
 
-`case` labels one possible value in a `switch`.
-
-Use `yield` in a switch expression when a block must produce a value.
+Use `yield` em uma expressão `switch` quando um bloco precisar produzir um valor.

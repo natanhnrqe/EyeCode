@@ -4,13 +4,12 @@ title: private
 concept: private
 level: beginner
 duration: 1
-category: VISIBILITY
+category: VISIBILIDADE
 depth: quick
 related:
   - java/syntax/visibility/public
   - java/syntax/visibility/protected
 ---
+`private` mantém um membro acessível somente dentro da classe que o declara e de contextos aninhados.
 
-`private` keeps a member accessible only inside its declaring class and nested context.
-
-Use it as the default boundary for implementation details.
+Use-o como limite padrão para detalhes de implementação.

@@ -4,10 +4,9 @@ title: return
 concept: return
 level: beginner
 duration: 1
-category: CONTROL FLOW
+category: FLUXO DE CONTROLE
 depth: quick
 related:
   - java/syntax/types/void
 ---
-
-`return` exits the current method. A non-void method returns an expression; a `void` method may return without a value.
+`return` encerra o método atual. Um método que não é `void` retorna uma expressão; um método `void` pode retornar sem valor.

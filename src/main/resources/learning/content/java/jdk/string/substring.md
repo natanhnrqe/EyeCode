@@ -4,30 +4,27 @@ title: String.substring()
 concept: string-substring
 kind: method
 sourceMember: substring
+sourceSignature: (int, int)
 level: beginner
 duration: 2
-category: JAVA API
+category: API JAVA
 depth: quick
 related:
   - java/jdk/string
 parent: java/jdk/string
 ---
+## O que ele faz?
 
-## What it does
-
-`substring(begin, end)` returns the characters from `begin`, inclusive, to `end`, exclusive.
+`substring(begin, end)` retorna os caracteres de `begin`, inclusivo, até `end`, exclusivo.
 
 ```java
 String code = "EyeCode".substring(0, 3);
-// Eye
 ```
 
-Indexes must be within the string and in ascending order.
+Os índices devem estar dentro da string e em ordem crescente.
 
-## Common signatures
+## Assinaturas comuns
 
-Use `substring(beginIndex)` to take everything from an index to the end, or
-`substring(beginIndex, endIndex)` for an exclusive upper bound.
+Use `substring(beginIndex)` para obter tudo de um índice até o final, ou `substring(beginIndex, endIndex)` para definir um limite superior exclusivo.
 
-The returned value is a new String view of the selected text. The original
-String remains unchanged.
+O valor retornado é uma nova `String`. O texto original permanece inalterado.

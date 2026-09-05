@@ -2,6 +2,7 @@ package com.eyecode.javafx.ui;
 
 import com.eyecode.javafx.ceffx.CeffxRuntime;
 import com.eyecode.javafx.web.JavaFxWebShellSurface;
+import com.eyecode.javafx.web.JavaFxWebDocumentationHost;
 import com.eyecode.javafx.web.WebShellNativeController;
 import com.eyecode.javafx.web.WebShellMode;
 import com.eyecode.javafx.web.WebShellWorkspaceController;
@@ -22,16 +23,19 @@ public final class FxMainWindow {
     private final Region root;
     private final WebShellWorkspaceController webShellWorkspace;
     private final JavaFxWebShellSurface webShellSurface;
+    private final JavaFxWebDocumentationHost webDocumentationHost;
 
     public FxMainWindow(Stage stage) {
         this.stage = stage;
         if (WebShellMode.configured() == WebShellMode.WEB_SHELL) {
             webShellSurface = new JavaFxWebShellSurface();
-            webShellWorkspace = new WebShellWorkspaceController(webShellSurface);
+            webDocumentationHost = new JavaFxWebDocumentationHost(webShellSurface);
+            webShellWorkspace = new WebShellWorkspaceController(webShellSurface, webDocumentationHost);
             new WebShellNativeController(webShellSurface, stage);
-            root = new StackPane(webShellSurface);
+            root = new StackPane(webShellSurface, webDocumentationHost);
         } else {
             webShellSurface = null;
+            webDocumentationHost = null;
             webShellWorkspace = null;
             root = new FxRootLayout(this::shutdown);
         }
@@ -55,6 +59,7 @@ public final class FxMainWindow {
     private void shutdown() {
         if (root instanceof FxRootLayout legacyRoot) legacyRoot.dispose();
         if (webShellWorkspace != null) webShellWorkspace.dispose();
+        if (webDocumentationHost != null) webDocumentationHost.dispose();
         if (webShellSurface != null) webShellSurface.dispose();
         CeffxRuntime.dispose();
         Platform.exit();

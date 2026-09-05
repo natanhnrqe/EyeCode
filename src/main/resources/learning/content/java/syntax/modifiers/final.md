@@ -4,17 +4,16 @@ title: final
 concept: final
 level: beginner
 duration: 1
-category: MODIFIERS
+category: MODIFICADORES
 depth: quick
 related:
   - java/syntax/modifiers/static
   - java/types/class
 ---
-
-`final` prevents reassignment of a variable, overriding of a method, or extension of a class.
+`final` impede a reatribuição de uma variável, a sobrescrita de um método ou a extensão de uma classe.
 
 ```java
 final int limit = 10;
 ```
 
-A final reference can still point to a mutable object.
+Uma referência `final` ainda pode apontar para um objeto mutável.

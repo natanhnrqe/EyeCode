@@ -4,24 +4,23 @@ title: String.replace()
 concept: string-replace
 kind: method
 sourceMember: replace
+sourceSignature: (CharSequence, CharSequence)
 level: beginner
 duration: 1
-category: JAVA API
+category: API JAVA
 depth: quick
 related:
   - java/jdk/string
 parent: java/jdk/string
 ---
+## O que ele faz?
 
-## What it does
-
-`replace()` returns a new string with matching characters or sequences replaced.
+`replace()` retorna uma nova string com caracteres ou sequências correspondentes substituídos.
 
 ```java
 String normalized = "Eye Code".replace(" ", "");
 ```
 
-The original String is unchanged.
+A `String` original não é alterada.
 
-For regular-expression replacement, use `replaceAll()` instead. For a single
-literal first match, compare the behavior with `replaceFirst()`.
+Para substituições com expressão regular, use `replaceAll()`. Para a primeira correspondência literal, compare o comportamento de `replaceFirst()`.

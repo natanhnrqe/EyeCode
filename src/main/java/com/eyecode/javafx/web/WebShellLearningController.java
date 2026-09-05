@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public final class WebShellLearningController {
     private final JavaFxWebShellSurface surface;
@@ -40,12 +41,24 @@ public final class WebShellLearningController {
     private final JdkLearningConceptCatalog jdkCatalog = new JdkLearningConceptCatalog();
     private final JavaSyntaxLearningCatalog syntaxCatalog = new JavaSyntaxLearningCatalog();
     private final JdkSourceResolver sourceResolver = new JdkSourceResolver();
+    private final Consumer<DocumentationTarget> documentationOpener;
+    private final Consumer<JdkSourceTarget> sourceOpener;
 
     public WebShellLearningController(JavaFxWebShellSurface surface, EditorManager manager) {
+        this(surface, manager, target -> { }, target -> { });
+    }
+
+    public WebShellLearningController(JavaFxWebShellSurface surface, EditorManager manager,
+                                      Consumer<DocumentationTarget> documentationOpener,
+                                      Consumer<JdkSourceTarget> sourceOpener) {
         this.surface = surface;
         this.manager = manager;
+        this.documentationOpener = documentationOpener == null ? target -> { } : documentationOpener;
+        this.sourceOpener = sourceOpener == null ? target -> { } : sourceOpener;
         surface.registerHandler("learning", "request", this::request);
         surface.registerHandler("learning", "close", message -> message.response(Map.of("accepted", true)));
+        surface.registerHandler("learning", "openDocumentation", this::openDocumentation);
+        surface.registerHandler("learning", "openJdkSource", this::openJdkSource);
     }
 
     private WebShellEnvelope request(WebShellEnvelope message) {
@@ -67,6 +80,49 @@ public final class WebShellLearningController {
             surface.send(message.error(new WebShellError("LEARNING_FAILED",
                     exception.getMessage() == null ? "Learning request failed" : exception.getMessage(), true)));
             return acknowledgment(message, false);
+        }
+    }
+
+    private WebShellEnvelope openDocumentation(WebShellEnvelope message) {
+        try {
+            LearningMetadata metadata = metadataFor(text(message.payload(), "identifier"));
+            DocumentationTarget target = documentationTarget(metadata);
+            if (target == null) {
+                return message.error(new WebShellError("LEARNING_DOCUMENTATION_UNAVAILABLE",
+                        "Documentation is not available for this lesson", true));
+            }
+            documentationOpener.accept(target);
+            return message.response(Map.of("opened", true));
+        } catch (RuntimeException exception) {
+            return message.error(new WebShellError("LEARNING_DOCUMENTATION_FAILED",
+                    safeMessage(exception, "Unable to open documentation"), true));
+        }
+    }
+
+    private WebShellEnvelope openJdkSource(WebShellEnvelope message) {
+        try {
+            LearningMetadata metadata = metadataFor(text(message.payload(), "identifier"));
+            JdkSourceTarget target = sourceTarget(metadata);
+            if (target == null) {
+                return message.error(new WebShellError("LEARNING_SOURCE_UNAVAILABLE",
+                        "JDK source is not available for this lesson", true));
+            }
+            sourceOpener.accept(target);
+            return message.response(Map.of("opened", true));
+        } catch (RuntimeException exception) {
+            return message.error(new WebShellError("LEARNING_SOURCE_FAILED",
+                    safeMessage(exception, "Unable to open JDK source"), true));
+        }
+    }
+
+    private LearningMetadata metadataFor(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            throw new IllegalArgumentException("A Learning identifier is required");
+        }
+        try {
+            return contentEngine.loadDocument(identifier).metadata();
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Learning content is unavailable", exception);
         }
     }
 
@@ -113,18 +169,19 @@ public final class WebShellLearningController {
         } catch (RuntimeException ignored) {
             return Optional.empty();
         }
-        JdkSourceTarget sourceTarget = concept.getQualifiedName() == null ? null
+        LearningMetadata metadata = document.metadata();
+        JdkSourceTarget sourceTarget = concept.getQualifiedName() == null ? sourceTarget(metadata)
                 : JavaJdkTypeCatalog.findQualified(concept.getQualifiedName())
                         .flatMap(sourceResolver::resolve).orElse(null);
         if (document.metadata().sourceMember() != null && sourceTarget != null && sourceTarget.memberName() == null) {
-            sourceTarget = sourceTarget.withMember(document.metadata().sourceMember());
+            sourceTarget = sourceTarget.withMember(document.metadata().sourceMember())
+                    .withMemberSignature(document.metadata().sourceSignature());
         }
-        LearningMetadata metadata = document.metadata();
         DocumentationTarget docs = documentationTarget(metadata);
         MonacoLearningOverlayPayload overlay = MonacoLearningOverlayPayload.from(metadata, ancestorsFor(metadata),
                 bodyHtml(document.renderedHtml()), commonMethodsFor(metadata), relatedFor(metadata), docs,
                 sourceTarget != null || sourceTarget(metadata) != null);
-        return Optional.of(toMap(overlay));
+        return Optional.of(toMap(overlay, metadata.id(), sourceTarget));
     }
 
     private WebShellEnvelope publish(WebShellEnvelope message, Map<String, Object> response) {
@@ -147,8 +204,9 @@ public final class WebShellLearningController {
         return response;
     }
 
-    private static Map<String, Object> toMap(MonacoLearningOverlayPayload payload) {
+    private static Map<String, Object> toMap(MonacoLearningOverlayPayload payload, String identifier, JdkSourceTarget sourceTarget) {
         Map<String, Object> value = new LinkedHashMap<>();
+        value.put("identifier", identifier);
         value.put("title", payload.title());
         value.put("subtitle", payload.subtitle());
         value.put("sizeClass", payload.sizeClass());
@@ -160,6 +218,12 @@ public final class WebShellLearningController {
         value.put("relatedItems", items(payload.relatedItems()));
         value.put("sourceAvailable", payload.sourceAvailable());
         value.put("docsAvailable", payload.docsAvailable());
+        if (sourceTarget != null) {
+            value.put("targetKind", sourceTarget.memberName() == null ? "TYPE" : "METHOD");
+            value.put("qualifiedTypeName", sourceTarget.qualifiedName());
+            value.put("memberName", sourceTarget.memberName());
+            value.put("memberSignature", sourceTarget.memberSignature());
+        }
         return value;
     }
 
@@ -202,7 +266,8 @@ public final class WebShellLearningController {
         if (reference == null || reference.officialDocs() == null) return null;
         return JavaJdkTypeCatalog.findSimple(reference.officialDocs().label())
                 .flatMap(sourceResolver::resolve)
-                .map(target -> target.withMember(metadata.sourceMember())).orElse(null);
+                .map(target -> target.withMember(metadata.sourceMember())
+                        .withMemberSignature(metadata.sourceSignature())).orElse(null);
     }
 
     private LearningMetadata referenceMetadata(LearningMetadata metadata) {
@@ -260,5 +325,10 @@ public final class WebShellLearningController {
     private static long numberLong(Map<String, Object> payload, String key, long fallback) {
         Object value = payload == null ? null : payload.get(key);
         return value instanceof Number number ? number.longValue() : fallback;
+    }
+
+    private static String safeMessage(RuntimeException exception, String fallback) {
+        return exception.getMessage() == null || exception.getMessage().isBlank()
+                ? fallback : exception.getMessage();
     }
 }

@@ -4,13 +4,12 @@ title: protected
 concept: protected
 level: beginner
 duration: 1
-category: VISIBILITY
+category: VISIBILIDADE
 depth: quick
 related:
   - java/syntax/visibility/public
   - java/syntax/visibility/private
 ---
+`protected` permite acesso no mesmo pacote e por subclasses, inclusive subclasses de outro pacote por meio da herança.
 
-`protected` allows access from the same package and from subclasses, including subclasses in another package through inheritance.
-
-Prefer a narrower visibility when inheritance is not part of the design.
+Prefira uma visibilidade mais restrita quando a herança não fizer parte do projeto.

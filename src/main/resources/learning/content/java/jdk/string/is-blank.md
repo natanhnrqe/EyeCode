@@ -4,23 +4,21 @@ title: String.isBlank()
 concept: string-is-blank
 kind: method
 sourceMember: isBlank
+sourceSignature: ()
 level: beginner
 duration: 1
-category: JAVA API
+category: API JAVA
 depth: quick
 related:
   - java/jdk/string
 parent: java/jdk/string
 ---
+## O que ele faz?
 
-## What it does
-
-`isBlank()` is true when a string is empty or contains only whitespace.
+`isBlank()` é verdadeiro quando a string está vazia ou contém somente espaços em branco.
 
 ```java
-boolean missing = input.isBlank();
+boolean empty = "   ".isBlank();
 ```
 
-Use it when whitespace-only input should count as missing.
-
-Unlike `isEmpty()`, this method treats whitespace-only text as blank.
+Diferente de `isEmpty()`, este método considera texto formado apenas por espaços como vazio.

@@ -4,13 +4,12 @@ title: var
 concept: var
 level: beginner
 duration: 1
-category: TYPE SYSTEM
+category: SISTEMA DE TIPOS
 depth: quick
 related:
   - java/syntax/modifiers/final
   - java/types/class
 ---
+`var` pede ao compilador que infira o tipo estático de uma variável local a partir do inicializador.
 
-`var` asks the compiler to infer a local variable's static type from its initializer.
-
-It is not dynamic typing and cannot replace a method return type or field type.
+Ele não representa tipagem dinâmica e não substitui o tipo de retorno de um método nem o tipo de um campo.

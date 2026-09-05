@@ -4,7 +4,7 @@ title: Classes em Java
 concept: class
 level: beginner
 duration: 16
-category: JAVA CONCEPT
+category: CONCEITO JAVA
 officialDocs:
   label: Java Classes and Objects
   url: https://docs.oracle.com/javase/tutorial/java/javaOO/classes.html
@@ -15,7 +15,7 @@ related:
 next: java/types/object
 ---
 
-## 💡 O que é isso?
+## O que é isso?
 
 Uma classe é como um molde ou uma receita.
 
@@ -27,9 +27,9 @@ No Java, tudo começa com uma classe. Até o seu primeiro programa usa uma class
 
 ---
 
-## 🏠 Analogia
+## Analogia
 
-## 📘 Informação
+## Informação
 Imagine que você quer fazer bolos de chocolate.
 
 Antes de colocar a mão na massa, você precisa de uma receita. A receita diz quais ingredientes usar e em qual ordem misturá-los.
@@ -43,7 +43,7 @@ Você pode fazer vários bolos diferentes usando a mesma receita. Cada bolo pode
 
 ---
 
-## 🌎 Onde isso aparece?
+## Onde isso aparece?
 
 Pense em uma caderneta de clientes de um pequeno comércio.
 
@@ -61,7 +61,7 @@ Em todos esses casos, a classe define o modelo. Os objetos são os dados reais.
 
 ---
 
-## 💻 Exemplo
+## Exemplo
 
 ```java
 class Pessoa {
@@ -84,7 +84,7 @@ Repare que apenas declaramos a classe. Nenhum dado foi preenchido ainda. Isso ac
 
 ---
 
-## 🧠 Como funciona?
+## Como funciona?
 
 Quando você compila um arquivo .java, o Java transforma sua classe em um arquivo .class.
 
@@ -108,21 +108,21 @@ Você não precisa entender bytecode agora. O importante é saber que:
 
 ---
 
-## ⚠️ Erros comuns
+## Erros comuns
 
-## ⚠️ Atenção
+## Atenção
 Achar que classe e objeto são a mesma coisa.
 
 
 A classe é o molde. O objeto é o resultado. Confundir os dois é como confundir a receita de bolo com o bolo pronto.
 
-## ⚠️ Atenção
+## Atenção
 Colocar tudo dentro do método `main`.
 
 
 Muitos iniciantes escrevem o programa inteiro dentro do `main`. O `main` é só o ponto de entrada. A lógica deve ficar organizada dentro de métodos e classes.
 
-## ⚠️ Atenção
+## Atenção
 Usar nomes confusos para as classes.
 
 
@@ -130,7 +130,7 @@ O nome da classe deve ser claro: `Cliente`, `Produto`, `Pedido`. Evite nomes com
 
 ---
 
-## ➡️ Próximo passo
+## Próximo passo
 
 Agora que você sabe o que é uma classe, o próximo passo é descobrir como criar objetos a partir dela.
 
@@ -140,6 +140,6 @@ Na próxima aula você vai aprender a instanciar objetos, acessar seus campos e 
 
 ---
 
-## 📚 Ver documentação oficial
+## Documentação oficial
 
 A documentação oficial da Oracle será integrada futuramente.

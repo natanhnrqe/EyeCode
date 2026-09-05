@@ -4,6 +4,7 @@ export type LearningItem = {
 };
 
 export type LearningCardPayload = {
+  identifier: string;
   title: string;
   subtitle: string;
   sizeClass: 'quick' | 'medium' | 'full';

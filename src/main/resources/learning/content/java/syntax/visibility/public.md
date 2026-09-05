@@ -4,14 +4,13 @@ title: public
 concept: public
 level: beginner
 duration: 1
-category: VISIBILITY
+category: VISIBILIDADE
 depth: quick
 related:
   - java/syntax/visibility/private
   - java/syntax/visibility/protected
 ---
-
-`public` makes a type or member accessible wherever its containing type is accessible.
+`public` torna um tipo ou membro acessível onde quer que o tipo que o contém esteja acessível.
 
 ```java
 public void run() {}

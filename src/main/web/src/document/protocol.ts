@@ -9,6 +9,9 @@ export type DocumentSnapshot = {
   dirty: boolean;
   readOnly: boolean;
   kind: DocumentKind;
+  documentationUrl?: string;
+  revealLine?: number;
+  revealColumn?: number;
 };
 
 export type DocumentPayload = {

@@ -171,12 +171,38 @@ export function Workspace() {
       }
       const document = event.name === 'saved' || event.name === 'saveFailed' ? payload.document : payload as DocumentSnapshot;
       if (!document?.uri) return;
+      if (event.name === 'opened' && document.kind === 'documentation') {
+        updateDocument(document);
+        return;
+      }
       if (service.apply(document, event.name === 'opened' || event.name === 'externalChanged')) updateDocument(document);
       if (event.name === 'saveFailed') setMessage('Could not save the document');
     });
     bridge.emit('shell', 'ready', {});
     return unsubscribe;
   }, [loadChildren, refreshWorkspace, service, updateDocument]);
+
+  useEffect(() => {
+    const region = document.querySelector<HTMLElement>('.editor-region');
+    if (!region) return;
+    const reportLayout = () => {
+      const rect = region.getBoundingClientRect();
+      bridge.emit('document', 'layout', {
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height,
+      });
+    };
+    const observer = new ResizeObserver(reportLayout);
+    observer.observe(region);
+    reportLayout();
+    window.addEventListener('resize', reportLayout);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', reportLayout);
+    };
+  }, [activeUri, bottomPanel, sidePanel, documents.length]);
 
   useEffect(() => {
     const initialFile = bootstrap?.initialFile;
@@ -289,6 +315,7 @@ export function Workspace() {
   }
 
   const activeDocument = documents.find(document => document.uri === activeUri);
+  const activeEditorDocument = activeDocument?.kind === 'documentation' ? undefined : activeDocument;
   return <main className="app-shell">
     <TopToolbar projectName={workspace.project?.name} runState={runState} onOpenProject={() => void openProject()}
       onNewFile={() => void newDocument()} onRun={() => void run('run')} onRerun={() => void run('rerun')}
@@ -325,11 +352,12 @@ export function Workspace() {
         diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
         onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />
     </div>
-    <StatusBar activeUri={activeDocument?.uri} displayName={activeDocument?.displayName}
+    <StatusBar activeUri={activeEditorDocument?.uri} displayName={activeEditorDocument?.displayName}
       projectRoot={workspace.project?.root.path} projectName={workspace.project?.name} caret={caret} message={message} />
     <div className="overlay-root">
       {completion && <CompletionPopup state={completion} onSelect={index => service.selectCompletion(index)} onAccept={() => service.acceptSelectedCompletion()} />}
-      {learning && <LearningCard state={learning} onNavigate={identifier => service.navigateLearning(identifier)} onHover={hovered => service.setLearningHovered(hovered)} />}
+      {learning && <LearningCard state={learning} onNavigate={identifier => service.navigateLearning(identifier)}
+        onAction={action => service.openLearningAction(action)} onHover={hovered => service.setLearningHovered(hovered)} />}
     </div>
   </main>;
 }

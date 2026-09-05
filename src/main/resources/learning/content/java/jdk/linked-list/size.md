@@ -4,22 +4,22 @@ title: LinkedList.size()
 concept: linked-list-size
 kind: method
 sourceMember: size
+sourceSignature: ()
 level: beginner
 duration: 1
-category: COLLECTIONS
+category: COLEÇÕES
 depth: quick
 related:
   - java/jdk/linked-list
 parent: java/jdk/linked-list
 ---
+## O que ele faz?
 
-## What it does
-
-Returns the number of elements.
+Retorna a quantidade de elementos.
 
 ```java
 LinkedList<String> list = new LinkedList<>();
 int count = list.size();
 ```
 
-The result is an int and changes after additions or removals.
+O resultado é um `int` e muda depois de adições ou remoções.

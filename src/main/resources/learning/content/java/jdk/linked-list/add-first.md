@@ -4,22 +4,22 @@ title: LinkedList.addFirst()
 concept: linked-list-add-first
 kind: method
 sourceMember: addFirst
+sourceSignature: (E)
 level: beginner
 duration: 1
-category: COLLECTIONS
+category: COLEÇÕES
 depth: quick
 related:
   - java/jdk/linked-list
 parent: java/jdk/linked-list
 ---
+## O que ele faz?
 
-## What it does
-
-Inserts an element at the beginning of the list.
+Insere um elemento no início da lista.
 
 ```java
 LinkedList<String> list = new LinkedList<>();
-list.addFirst("first");
+list.addFirst("Ada");
 ```
 
-Use this when the front of the deque is the intended insertion point.
+Use-o quando o início da deque for o ponto de inserção desejado.

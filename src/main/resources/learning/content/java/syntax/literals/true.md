@@ -4,11 +4,10 @@ title: true
 concept: true
 level: beginner
 duration: 1
-category: LITERALS
+category: LITERAIS
 depth: quick
 related:
   - java/syntax/literals/false
   - java/syntax/control-flow/if
 ---
-
-`true` is the boolean literal representing an enabled or satisfied condition.
+`true` é o literal booleano que representa uma condição ativada ou satisfeita.

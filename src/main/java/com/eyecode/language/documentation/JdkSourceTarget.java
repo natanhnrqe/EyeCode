@@ -5,11 +5,17 @@ public record JdkSourceTarget(
         String module,
         String sourceEntryPath,
         String displayName,
-        String memberName
+        String memberName,
+        String memberSignature
 ) {
     public JdkSourceTarget(String qualifiedName, String module, String sourceEntryPath,
                            String displayName) {
-        this(qualifiedName, module, sourceEntryPath, displayName, null);
+        this(qualifiedName, module, sourceEntryPath, displayName, null, null);
+    }
+
+    public JdkSourceTarget(String qualifiedName, String module, String sourceEntryPath,
+                           String displayName, String memberName) {
+        this(qualifiedName, module, sourceEntryPath, displayName, memberName, null);
     }
 
     public JdkSourceTarget {
@@ -20,6 +26,8 @@ public record JdkSourceTarget(
             throw new IllegalArgumentException("JDK source target fields must not be blank");
         }
         memberName = memberName == null || memberName.isBlank() ? null : memberName.trim();
+        memberSignature = memberSignature == null || memberSignature.isBlank()
+                ? null : memberSignature.trim();
     }
 
     public String tabId() {
@@ -31,6 +39,12 @@ public record JdkSourceTarget(
     }
 
     public JdkSourceTarget withMember(String memberName) {
-        return new JdkSourceTarget(qualifiedName, module, sourceEntryPath, displayName, memberName);
+        return new JdkSourceTarget(qualifiedName, module, sourceEntryPath, displayName,
+                memberName, memberSignature);
+    }
+
+    public JdkSourceTarget withMemberSignature(String memberSignature) {
+        return new JdkSourceTarget(qualifiedName, module, sourceEntryPath, displayName,
+                memberName, memberSignature);
     }
 }

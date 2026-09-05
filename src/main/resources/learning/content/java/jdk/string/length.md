@@ -4,24 +4,21 @@ title: String.length()
 concept: string-length
 kind: method
 sourceMember: length
+sourceSignature: ()
 level: beginner
 duration: 1
-category: JAVA API
+category: API JAVA
 depth: quick
 related:
   - java/jdk/string
 parent: java/jdk/string
 ---
+## O que ele faz?
 
-## What it does
-
-`length()` returns the number of UTF-16 code units in a string.
+`length()` retorna a quantidade de unidades de código UTF-16 de uma string.
 
 ```java
-int count = "EyeCode".length();
+int size = "EyeCode".length();
 ```
 
-The result is zero for an empty string.
-
-`length()` returns an `int`. For Unicode supplementary characters, remember
-that the count is UTF-16 code units rather than user-perceived grapheme count.
+O retorno é um `int`. Para caracteres Unicode suplementares, lembre que a contagem é de unidades UTF-16, não de grafemas percebidos pelo usuário.

@@ -26,6 +26,7 @@ type PendingDiagnostics = { uri: string; model: MonacoModel; modelVersion: numbe
 export class MonacoWorkspaceService {
   private readonly models = new Map<string, MonacoModel>();
   private readonly viewStates = new Map<string, unknown>();
+  private readonly pendingReveals = new Map<string, { line: number; column: number }>();
   private readonly pending = new Map<string, DocumentSnapshot>();
   private readonly confirmedVersions = new Map<string, number>();
   private readonly readOnly = new Map<string, boolean>();
@@ -108,6 +109,13 @@ export class MonacoWorkspaceService {
       key: `navigation:${identifier}:${state.uri}:${model.getAlternativeVersionId()}`,
       anchor: state.anchor
     });
+  }
+
+  openLearningAction(action: 'openDocumentation' | 'openJdkSource'): void {
+    const identifier = this.learningState?.card.identifier;
+    if (!identifier) return;
+    void bridge.request('learning', action, { identifier })
+      .catch(error => this.onError?.(error instanceof Error ? error.message : String(error)));
   }
 
   hideLearning(): void {
@@ -209,6 +217,9 @@ export class MonacoWorkspaceService {
     const model = this.models.get(document.uri) ?? this.api.editor.createModel(
       document.content, document.language || 'java', this.api.Uri.parse(document.uri));
     this.models.set(document.uri, model);
+    if (document.revealLine && document.revealColumn) {
+      this.pendingReveals.set(document.uri, { line: document.revealLine, column: document.revealColumn });
+    }
     this.updateModel(model, document.content);
     this.scheduleDiagnostics(document.uri, model);
     if (!this.editor.getModel()) this.activate(document.uri);
@@ -221,6 +232,9 @@ export class MonacoWorkspaceService {
       return this.open(document);
     }
     if (!this.confirmSnapshot(document)) return false;
+    if (document.revealLine && document.revealColumn) {
+      this.pendingReveals.set(document.uri, { line: document.revealLine, column: document.revealColumn });
+    }
     if (applyContent && this.updateModel(current, document.content)) {
       this.scheduleDiagnostics(document.uri, current);
     }
@@ -242,6 +256,13 @@ export class MonacoWorkspaceService {
     this.editor.updateOptions({ readOnly: this.readOnly.get(uri) ?? false });
     const viewState = this.viewStates.get(uri);
     if (viewState) this.editor.restoreViewState(viewState);
+    const reveal = this.pendingReveals.get(uri);
+    if (reveal) {
+      const position = { lineNumber: reveal.line, column: reveal.column };
+      this.editor.setPosition(position);
+      this.editor.revealPositionInCenterIfOutsideViewport(position);
+      this.pendingReveals.delete(uri);
+    }
     this.publishDiagnosticsForActiveModel();
   }
 
@@ -284,10 +305,13 @@ export class MonacoWorkspaceService {
     model?.dispose();
     this.models.delete(previousUri);
     this.viewStates.delete(previousUri);
+    const reveal = this.pendingReveals.get(previousUri);
+    this.pendingReveals.delete(previousUri);
     this.confirmedVersions.delete(previousUri);
     this.readOnly.delete(previousUri);
     this.changeQueues.delete(previousUri);
     if (viewState) this.viewStates.set(document.uri, viewState);
+    if (reveal) this.pendingReveals.set(document.uri, reveal);
     this.open(document);
   }
 
@@ -312,6 +336,7 @@ export class MonacoWorkspaceService {
     this.models.clear();
     this.pending.clear();
     this.viewStates.clear();
+    this.pendingReveals.clear();
     this.confirmedVersions.clear();
     this.readOnly.clear();
     this.changeQueues.clear();

@@ -4,7 +4,7 @@ title: ArrayList
 concept: array-list
 level: beginner
 duration: 4
-category: COLLECTIONS
+category: COLEÇÕES
 officialDocs:
   label: ArrayList
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ArrayList.html
@@ -12,21 +12,20 @@ related:
   - java/jdk/list
 parent: java/jdk/list
 ---
+## O que é isso?
 
-## What it is
+`ArrayList` é uma implementação redimensionável de `List`. É uma boa escolha padrão quando o acesso por índice é frequente.
 
-`ArrayList` is a resizable array implementation of `List`. It is a good default when indexed access is common.
+## Como funciona?
 
-## How it behaves
+A lista mantém um `size` lógico separado da capacidade de armazenamento. Adicionar ao final costuma ser barato, enquanto inserir ou remover no início desloca os elementos seguintes. Leituras por índice são rápidas porque a posição corresponde diretamente ao array interno.
 
-The list tracks a logical `size` separately from its backing storage
-`capacity`. Appending is usually cheap, while inserting or removing near the
-front shifts later elements. Indexed reads are fast because the position maps
-directly to an array slot.
+```java
+ArrayList<String> names = new ArrayList<>();
+names.add("Ada");
+String first = names.get(0);
+```
 
-That contiguous storage also tends to have good cache locality. `ArrayList`
-is often a sensible default, but it is not a promise that every operation is
-constant time or that capacity is part of the public API contract.
+O armazenamento contíguo também costuma ter boa localidade de cache. Não presuma que toda operação é tempo constante nem que a capacidade faz parte do contrato público.
 
-Compared with `LinkedList`, it usually uses less per-element overhead and is
-better for indexed access. Choose based on the operations your code performs.
+Em comparação com `LinkedList`, `ArrayList` normalmente usa menos memória por elemento e é melhor para acesso indexado. Escolha de acordo com as operações reais do código.

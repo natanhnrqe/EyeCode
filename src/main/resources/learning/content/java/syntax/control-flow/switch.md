@@ -4,13 +4,12 @@ title: switch
 concept: switch
 level: beginner
 duration: 2
-category: CONTROL FLOW
+category: FLUXO DE CONTROLE
 depth: quick
 related:
   - java/syntax/control-flow/case
   - java/syntax/control-flow/default
 ---
+`switch` escolhe entre ramos com base em um valor seletor.
 
-`switch` chooses among branches based on one selector value.
-
-Modern switch expressions can return a value; statement switches commonly use `case` and `break`.
+Expressões `switch` modernas podem retornar um valor; `switch` como comando costuma usar `case` e `break`.

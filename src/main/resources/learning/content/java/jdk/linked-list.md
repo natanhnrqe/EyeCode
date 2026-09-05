@@ -4,7 +4,7 @@ title: LinkedList
 concept: linked-list
 level: beginner
 duration: 8
-category: COLLECTIONS
+category: COLEÇÕES
 officialDocs:
   label: LinkedList
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/LinkedList.html
@@ -22,39 +22,24 @@ members:
   - get(): java/jdk/linked-list/get
   - size(): java/jdk/linked-list/size
 ---
+## O que é isso?
 
-## The mental model
-
-A linked list stores a chain of elements rather than one contiguous array. Java
-`LinkedList` is doubly linked: each conceptual node keeps an item, a reference
-to the previous node, and a reference to the next node.
+Uma lista encadeada armazena uma cadeia de elementos em vez de um único array contíguo. A `LinkedList` do Java é duplamente encadeada: cada nó conceitual mantém um item, uma referência ao nó anterior e outra ao próximo.
 
 ```text
-first                         last
-  |                             |
-  v                             v
-[A] <-> [B] <-> [C] <-> [D]
+anterior <-> [item] <-> próximo
 ```
 
-The list keeps references to its first and last nodes. Traversal follows links
-until it reaches the requested position.
+## Como funciona?
 
-## Operations and trade-offs
+Para acessar um índice, a implementação percorre a lista a partir de uma das extremidades até chegar à posição solicitada.
 
-Adding or removing at an already-known end is natural with `addFirst()`,
-`addLast()`, `removeFirst()`, and `removeLast()`. Finding an arbitrary index
-still requires traversal, so `get(index)` is not an array-style constant-time
-operation. The implementation may choose the nearer end, but it still walks
-links.
+## Operações e escolhas
 
-Each element carries link overhead, and separately allocated nodes usually have
-less favorable cache locality than an `ArrayList`'s contiguous storage. That
-means `LinkedList` is not automatically better for insertion or removal: if
-your code must first search for the position, traversal may dominate. Prefer
-the structure whose access pattern matches the real workload.
+Adicionar ou remover em uma extremidade conhecida é natural com `addFirst()`, `addLast()`, `removeFirst()` e `removeLast()`. Encontrar um índice arbitrário ainda exige percurso; `get(index)` não é uma operação de tempo constante como em um array. A implementação pode começar pela extremidade mais próxima, mas ainda precisa caminhar.
 
-## Useful members
+Cada elemento carrega o custo de seus links, e nós separados costumam ter pior localidade de cache que o armazenamento contíguo de `ArrayList`. Por isso, `LinkedList` não é automaticamente melhor para inserções ou remoções: se o código precisa procurar a posição antes, o percurso pode dominar o custo. Prefira a estrutura compatível com o padrão de acesso real.
 
-`add()`, `addFirst()`, `addLast()`, `getFirst()`, `getLast()`, `removeFirst()`,
-`removeLast()`, `get()`, and `size()` cover common list usage. The type also
-implements the `List` and `Deque` abstractions.
+## Membros úteis
+
+`add()`, `addFirst()`, `addLast()`, `getFirst()`, `getLast()`, `removeFirst()`, `removeLast()`, `get()` e `size()` cobrem usos comuns. O tipo também implementa as abstrações `List` e `Deque`.

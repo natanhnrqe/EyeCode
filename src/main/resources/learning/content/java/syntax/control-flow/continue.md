@@ -4,11 +4,10 @@ title: continue
 concept: continue
 level: beginner
 duration: 1
-category: CONTROL FLOW
+category: FLUXO DE CONTROLE
 depth: quick
 related:
   - java/syntax/control-flow/for
   - java/syntax/control-flow/break
 ---
-
-`continue` skips the rest of the current loop iteration and proceeds to the next iteration.
+`continue` ignora o restante da iteração atual do laço e segue para a próxima iteração.

@@ -4,11 +4,10 @@ title: this
 concept: this
 level: beginner
 duration: 1
-category: OBJECTS
+category: OBJETOS
 depth: quick
 related:
   - java/syntax/objects/super
   - java/types/class
 ---
-
-`this` refers to the current object. It can also delegate from one constructor to another with `this(...)`.
+`this` refere-se ao objeto atual. Ele também pode delegar de um construtor para outro com `this(...)`.

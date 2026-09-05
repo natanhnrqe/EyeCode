@@ -16,7 +16,8 @@ public record LearningMetadata(
         List<LearningMember> members,
         LearningDepth depth,
         LearningKind kind,
-        String sourceMember
+        String sourceMember,
+        String sourceSignature
 ) {
 
     public LearningMetadata(String id, String title, String concept, String level,
@@ -55,7 +56,7 @@ public record LearningMetadata(
                             List<LearningMember> members, LearningDepth depth,
                             LearningKind kind) {
         this(id, title, concept, level, duration, category, officialDocs, related, next,
-                parent, members, depth, kind, null);
+                parent, members, depth, kind, null, null);
     }
 
     public LearningMetadata {
@@ -83,5 +84,7 @@ public record LearningMetadata(
         members = members == null ? List.of() : List.copyOf(members);
         kind = kind == null ? LearningKind.CONCEPT : kind;
         sourceMember = sourceMember == null || sourceMember.isBlank() ? null : sourceMember.trim();
+        sourceSignature = sourceSignature == null || sourceSignature.isBlank()
+                ? null : sourceSignature.trim();
     }
 }

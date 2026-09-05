@@ -1987,6 +1987,35 @@ img.learning-icon {
 }
 
 
+.learning-actions {
+  display: flex;
+  flex: 0 1 190px;
+  min-width: 150px;
+  flex-direction: column;
+  align-items: stretch;
+
+  gap: 6px;
+}
+
+.learning-actions button {
+  min-height: 28px;
+  padding: 5px 10px;
+
+  border: 1px solid var(--eyecode-border);
+  border-radius: var(--eyecode-radius-sm);
+
+  background: var(--eyecode-surface-elevated);
+  color: var(--eyecode-text-secondary);
+
+  font: 11px var(--eyecode-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.learning-actions button:hover {
+  border-color: var(--eyecode-accent);
+  color: var(--eyecode-text);
+}
 /* ========================================================================== */
 /* Footer */
 /* ========================================================================== */
@@ -1997,7 +2026,7 @@ img.learning-icon {
 
   align-items: flex-start;
 
-  gap: 8px 12px;
+  gap: 12px 20px;
 
   padding: 8px 16px 9px;
 
@@ -2006,8 +2035,25 @@ img.learning-icon {
   background: var(--eyecode-surface);
 }
 
+.learning-footer-label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--eyecode-muted);
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
 .learning-related {
+  flex: 1 1 auto;
   min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .learning-actions {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
 }
 
 

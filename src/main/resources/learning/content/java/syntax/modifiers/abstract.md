@@ -4,13 +4,12 @@ title: abstract
 concept: abstract
 level: beginner
 duration: 1
-category: MODIFIERS
+category: MODIFICADORES
 depth: quick
 related:
   - java/types/class
   - java/types/interface
 ---
+`abstract` marca uma classe ou membro como incompleto e dependente de uma implementação concreta.
 
-`abstract` marks a class or member as incomplete and requiring a concrete implementation.
-
-An abstract class cannot be instantiated directly.
+Uma classe abstrata não pode ser instanciada diretamente.

@@ -4,22 +4,22 @@ title: LinkedList.add()
 concept: linked-list-add
 kind: method
 sourceMember: add
+sourceSignature: (E)
 level: beginner
 duration: 1
-category: COLLECTIONS
+category: COLEÇÕES
 depth: quick
 related:
   - java/jdk/linked-list
 parent: java/jdk/linked-list
 ---
+## O que ele faz?
 
-## What it does
-
-Appends an element to the list.
+Adiciona um elemento ao final da lista.
 
 ```java
 LinkedList<String> list = new LinkedList<>();
 list.add("Ada");
 ```
 
-The boolean result reports whether the collection changed.
+O resultado booleano informa se a coleção foi alterada.

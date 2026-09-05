@@ -4,13 +4,12 @@ title: throws
 concept: throws
 level: beginner
 duration: 1
-category: EXCEPTIONS
+category: EXCEÇÕES
 depth: quick
 related:
   - java/syntax/exceptions/throw
   - java/syntax/exceptions/try
 ---
+`throws` declara as exceções verificadas que um método pode repassar ao chamador.
 
-`throws` declares checked exceptions that a method may pass to its caller.
-
-It does not itself throw an exception.
+Ele não lança uma exceção por si só.

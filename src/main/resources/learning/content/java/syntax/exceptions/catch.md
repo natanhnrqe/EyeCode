@@ -4,13 +4,12 @@ title: catch
 concept: catch
 level: beginner
 duration: 1
-category: EXCEPTIONS
+category: EXCEÇÕES
 depth: quick
 related:
   - java/syntax/exceptions/try
   - java/syntax/exceptions/finally
 ---
+`catch` trata uma exceção compatível lançada pelo bloco `try` associado.
 
-`catch` handles a matching exception thrown from its associated `try` block.
-
-Catch the most specific useful type first.
+Capture primeiro o tipo mais específico que seja útil.

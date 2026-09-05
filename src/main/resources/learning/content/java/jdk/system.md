@@ -4,17 +4,16 @@ title: System
 concept: system
 level: beginner
 duration: 3
-category: JAVA API
+category: API JAVA
 officialDocs:
   label: System
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/System.html
 related:
   - java/jdk/string
 ---
+## O que é isso?
 
-## What it is
-
-`System` exposes useful process-wide services such as standard output and environment properties.
+`System` expõe serviços úteis de todo o processo, como a saída padrão e propriedades do ambiente.
 
 ```java
 System.out.println("Hello");

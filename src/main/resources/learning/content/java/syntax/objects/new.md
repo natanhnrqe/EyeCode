@@ -4,13 +4,12 @@ title: new
 concept: new
 level: beginner
 duration: 1
-category: OBJECTS
+category: OBJETOS
 depth: quick
 related:
   - java/types/class
 ---
-
-`new` creates an object or array and runs the selected constructor when applicable.
+`new` cria um objeto ou array e executa o construtor escolhido quando aplicável.
 
 ```java
 User user = new User();

@@ -4,12 +4,11 @@ title: import
 concept: import
 level: beginner
 duration: 1
-category: ORGANIZATION
+category: ORGANIZAÇÃO
 depth: quick
 related:
   - java/syntax/organization/package
 ---
+`import` permite usar um tipo pelo nome simples. Ele não copia nem carrega código.
 
-`import` lets source use a type by its simple name. It does not copy or load code.
-
-Types in `java.lang` are imported implicitly.
+Tipos de `java.lang` são importados implicitamente.

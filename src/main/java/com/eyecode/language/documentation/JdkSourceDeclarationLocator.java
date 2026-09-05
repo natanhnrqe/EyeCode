@@ -5,6 +5,7 @@ import com.eyecode.language.Token;
 import com.eyecode.language.java.JavaLexerService;
 import com.eyecode.language.java.JavaTokenType;
 
+import java.util.List;
 import java.util.Set;
 
 /** Finds a conservative declaration anchor in JDK source text. */
@@ -53,7 +54,7 @@ public final class JdkSourceDeclarationLocator {
             return 0;
         }
         if (target.memberName() != null) {
-            int memberOffset = findMember(source, target.memberName());
+            int memberOffset = findMember(source, target.memberName(), target.memberSignature());
             if (memberOffset > 0) {
                 return memberOffset;
             }
@@ -63,7 +64,7 @@ public final class JdkSourceDeclarationLocator {
         return find(source, simpleName);
     }
 
-    private int findMember(String source, String memberName) {
+    private int findMember(String source, String memberName, String signature) {
         var tokens = lexerService.lex(DocumentSnapshot.oneShot(source)).tokens();
         for (int index = 0; index < tokens.size(); index++) {
             Token name = tokens.get(index);
@@ -82,12 +83,63 @@ public final class JdkSourceDeclarationLocator {
             if (close < 0) {
                 continue;
             }
+            if (signature != null && !signatureMatches(tokens, next, close, signature)) {
+                continue;
+            }
             int after = nextSignificant(tokens, close + 1);
             if (after < tokens.size() && isDeclarationTail(tokens, after)) {
                 return name.startOffset();
             }
         }
         return 0;
+    }
+
+    private static boolean signatureMatches(List<Token> tokens, int open, int close,
+                                            String expectedSignature) {
+        String expected = expectedSignature.trim();
+        if (expected.startsWith("(") && expected.endsWith(")")) {
+            expected = expected.substring(1, expected.length() - 1);
+        }
+        List<String> expectedTypes = expected.isBlank()
+                ? List.of()
+                : java.util.Arrays.stream(expected.split(","))
+                .map(String::trim)
+                .map(JdkSourceDeclarationLocator::normalizeType)
+                .toList();
+        if (close == open + 1) return expectedTypes.isEmpty();
+        List<String> actualTypes = new java.util.ArrayList<>();
+        int segmentStart = open + 1;
+        int depth = 0;
+        for (int index = open + 1; index <= close; index++) {
+            String text = index == close ? "," : tokens.get(index).text();
+            if ("<".equals(text) || "(".equals(text) || "[".equals(text)) depth++;
+            if (">".equals(text) || ")".equals(text) || "]".equals(text)) depth--;
+            if (",".equals(text) && depth == 0) {
+                actualTypes.add(parameterType(tokens, segmentStart, index));
+                segmentStart = index + 1;
+            }
+        }
+        return expectedTypes.equals(actualTypes);
+    }
+
+    private static String parameterType(List<Token> tokens, int start, int end) {
+        List<Token> significant = new java.util.ArrayList<>();
+        for (int index = start; index < end; index++) {
+            Token token = tokens.get(index);
+            if (token.type() != JavaTokenType.WHITESPACE && token.type() != JavaTokenType.COMMENT) {
+                significant.add(token);
+            }
+        }
+        if (significant.isEmpty()) return "";
+        int nameIndex = significant.size() - 1;
+        if (significant.get(nameIndex).type() == JavaTokenType.IDENTIFIER) nameIndex--;
+        StringBuilder type = new StringBuilder();
+        for (int index = 0; index <= nameIndex; index++) type.append(significant.get(index).text());
+        return normalizeType(type.toString());
+    }
+
+    private static String normalizeType(String type) {
+        return type.replace(" ", "").replace("	", "");
     }
 
     private static boolean isDeclarationTail(java.util.List<Token> tokens, int index) {

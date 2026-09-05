@@ -4,7 +4,7 @@ title: Records em Java
 concept: record
 level: intermediate
 duration: 10
-category: JAVA CONCEPT
+category: CONCEITO JAVA
 officialDocs:
   label: Java Record Classes
   url: https://docs.oracle.com/en/java/javase/21/language/records.html
@@ -14,7 +14,7 @@ related:
 next: java/types/class
 ---
 
-## 💡 O que é isso?
+## O que é isso?
 
 Um `record` é uma forma concisa de declarar uma classe imutável que serve apenas para transportar dados.
 
@@ -22,9 +22,9 @@ Introduzido no Java 14 (oficial no Java 16), o record elimina cerimônia: você 
 
 ---
 
-## 🏠 Analogia
+## Analogia
 
-## 📘 Informação
+## Informação
 Pense em um formulário de cadastro pré-preenchido.
 
 Você só preenche os campos obrigatórios e pronto — o sistema já sabe que o formulário tem nome, data e assinatura. Não precisa desenhar o formulário do zero.
@@ -34,7 +34,7 @@ O record funciona igual: você lista os componentes e o Java cuida de todo o res
 
 ---
 
-## 🌎 Onde isso aparece?
+## Onde isso aparece?
 
 APIs REST que recebem e devolvem dados.
 
@@ -44,7 +44,7 @@ Antes dos records, você precisava escrever uma classe inteira com construtor, g
 
 ---
 
-## 💻 Exemplo
+## Exemplo
 
 ```java
 record Pessoa(String nome, int idade) {}
@@ -67,7 +67,7 @@ O `toString` gerado mostra o nome do record e todos os campos com seus valores.
 
 ---
 
-## 🧠 Como funciona?
+## Como funciona?
 
 O compilador transforma o record em uma classe final com campos `private final`.
 
@@ -89,21 +89,21 @@ O record não pode estender outra classe (mas implementa interfaces normalmente)
 
 ---
 
-## ⚠️ Erros comuns
+## Erros comuns
 
-## ⚠️ Atenção
+## Atenção
 Tentar modificar um campo do record depois de criado.
 
 
 Records são imutáveis. Se você precisa modificar dados, crie um novo record ou use uma classe normal.
 
-## ⚠️ Atenção
+## Atenção
 Adicionar lógica complexa no record.
 
 
 Record é para dados. Lógica de negócio complexa deve ficar em classes separadas (serviços, validadores).
 
-## ⚠️ Atenção
+## Atenção
 Usar record para classes que precisam de herança.
 
 
@@ -111,7 +111,7 @@ Record é `final` e não pode estender outras classes. Se você precisa de heran
 
 ---
 
-## ➡️ Próximo passo
+## Próximo passo
 
 Com classes, interfaces, enums e records, você já conhece os principais tipos do Java.
 

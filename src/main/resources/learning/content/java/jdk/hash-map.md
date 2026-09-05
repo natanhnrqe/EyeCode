@@ -4,7 +4,7 @@ title: HashMap
 concept: hash-map
 level: beginner
 duration: 4
-category: COLLECTIONS
+category: COLEÇÕES
 officialDocs:
   label: HashMap
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/HashMap.html
@@ -12,27 +12,20 @@ related:
   - java/jdk/map
 parent: java/jdk/map
 ---
+## O que é isso?
 
-## What it is
+`HashMap` armazena pares de chave e valor e oferece busca média rápida pela chave. Ele não garante a ordem de iteração.
 
-`HashMap` stores key-value pairs and provides fast average lookup by key. It does not guarantee iteration order.
+## Como funciona?
 
-## The mental model
-
-For a key, Java uses `hashCode()` to choose a bucket and then uses `equals()`
-to find the matching key among entries in that bucket.
+Para uma chave, o Java usa `hashCode()` para escolher um compartimento e depois usa `equals()` para localizar a chave correspondente entre as entradas.
 
 ```text
-key -> hashCode() -> bucket -> equals() -> value
+chave -> hashCode() -> compartimento -> equals() -> valor
 ```
 
-Different keys can collide in one bucket. The map resizes as its load grows so
-average lookup remains efficient, but the exact table strategy is an
-implementation detail rather than a contract to program against.
+Quando muitas chaves caem no mesmo compartimento, a estrutura ainda mantém a busca eficiente em média, mas a estratégia exata da tabela é um detalhe de implementação.
 
-## Common mistakes
+## Erros comuns
 
-Keys should have stable `hashCode()` and `equals()` behavior while stored. A
-mutable key that changes after insertion can become difficult to find. Also,
-use `Map` in APIs when callers need the abstraction, and `HashMap` when the
-concrete implementation is an intentional choice.
+As chaves devem manter um comportamento estável de `hashCode()` e `equals()` enquanto estiverem armazenadas. Use `Map` nas APIs quando os chamadores precisarem da abstração e `HashMap` quando a implementação concreta for necessária.

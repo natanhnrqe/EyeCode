@@ -4,22 +4,22 @@ title: LinkedList.getFirst()
 concept: linked-list-get-first
 kind: method
 sourceMember: getFirst
+sourceSignature: ()
 level: beginner
 duration: 1
-category: COLLECTIONS
+category: COLEÇÕES
 depth: quick
 related:
   - java/jdk/linked-list
 parent: java/jdk/linked-list
 ---
+## O que ele faz?
 
-## What it does
-
-Returns the first element.
+Retorna o primeiro elemento.
 
 ```java
 LinkedList<String> list = new LinkedList<>();
 String first = list.getFirst();
 ```
 
-It throws when the list is empty; check emptiness when needed.
+O método lança uma exceção quando a lista está vazia; verifique o estado quando necessário.

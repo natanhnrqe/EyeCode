@@ -4,10 +4,9 @@ title: else
 concept: else
 level: beginner
 duration: 1
-category: CONTROL FLOW
+category: FLUXO DE CONTROLE
 depth: quick
 related:
   - java/syntax/control-flow/if
 ---
-
-`else` supplies the branch used when the preceding `if` condition is false.
+`else` fornece o ramo usado quando a condição do `if` anterior é falsa.

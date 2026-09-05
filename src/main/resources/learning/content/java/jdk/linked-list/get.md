@@ -4,22 +4,22 @@ title: LinkedList.get()
 concept: linked-list-get
 kind: method
 sourceMember: get
+sourceSignature: (int)
 level: beginner
 duration: 1
-category: COLLECTIONS
+category: COLEÇÕES
 depth: quick
 related:
   - java/jdk/linked-list
 parent: java/jdk/linked-list
 ---
+## O que ele faz?
 
-## What it does
-
-Returns the element at an index.
+Retorna o elemento de um índice.
 
 ```java
 LinkedList<String> list = new LinkedList<>();
 String value = list.get(2);
 ```
 
-Indexed access requires traversal, unlike an ArrayList lookup.
+O acesso por índice exige percurso, diferente de uma busca equivalente em `ArrayList`.

@@ -6,6 +6,10 @@ import com.eyecode.autosave.SavedEvent;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.filesystem.DefaultFileSystemService;
 import com.eyecode.javafx.monaco.MonacoModelId;
+import com.eyecode.language.documentation.JdkSourceDeclarationLocator;
+import com.eyecode.language.documentation.JdkSourceLoader;
+import com.eyecode.language.documentation.JdkSourceTarget;
+import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.project.ProjectLifecycleService;
 import com.eyecode.project.ProjectFileOperationService;
 import com.eyecode.project.model.ProjectModel;
@@ -21,6 +25,7 @@ import javafx.stage.Window;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Files;
 import java.util.Comparator;
@@ -30,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Optional;
 import java.util.Set;
 
@@ -44,6 +50,12 @@ public final class WebShellWorkspaceController {
     private final RunService runService;
     private final TerminalService terminalService;
     private final ProjectFileOperationService fileOperations = new ProjectFileOperationService();
+    private final JdkSourceLoader jdkSourceLoader = new JdkSourceLoader();
+    private final JdkSourceDeclarationLocator jdkSourceDeclarationLocator = new JdkSourceDeclarationLocator();
+    private final Map<String, WebJdkSourceDocument> jdkSourceDocuments = new LinkedHashMap<>();
+    private final Map<String, WebDocumentationDocument> documentationDocuments = new LinkedHashMap<>();
+    private final JavaFxWebDocumentationHost documentationHost;
+    private final java.util.function.Consumer<DocumentationTarget> documentationOpener;
     private final Map<String, EditorDocument> observedDocuments = new LinkedHashMap<>();
     private final Map<String, String> untitledNames = new LinkedHashMap<>();
     private final Set<String> reidentifyingSessions = new java.util.HashSet<>();
@@ -51,11 +63,29 @@ public final class WebShellWorkspaceController {
     private boolean disposed;
 
     public WebShellWorkspaceController(JavaFxWebShellSurface surface) {
+        this(surface, target -> { }, null);
+    }
+
+    public WebShellWorkspaceController(JavaFxWebShellSurface surface,
+                                       java.util.function.Consumer<DocumentationTarget> documentationOpener) {
+        this(surface, documentationOpener, null);
+    }
+
+    public WebShellWorkspaceController(JavaFxWebShellSurface surface,
+                                       JavaFxWebDocumentationHost documentationHost) {
+        this(surface, documentationHost::open, documentationHost);
+    }
+
+    private WebShellWorkspaceController(JavaFxWebShellSurface surface,
+                                        java.util.function.Consumer<DocumentationTarget> documentationOpener,
+                                        JavaFxWebDocumentationHost documentationHost) {
         this.surface = surface;
+        this.documentationOpener = documentationOpener == null ? target -> { } : documentationOpener;
+        this.documentationHost = documentationHost;
         this.manager = new EditorManager(null, new DefaultFileSystemService(),
                 new WebShellEditorViewFactory());
         this.completionController = new WebShellCompletionController(surface, manager);
-        this.learningController = new WebShellLearningController(surface, manager);
+        this.learningController = new WebShellLearningController(surface, manager, this::openDocumentationTarget, this::openJdkSource);
         this.diagnosticsController = new WebShellDiagnosticsController(surface);
         this.projectLifecycleService = new ProjectLifecycleService();
         this.runService = new RunService(projectLifecycleService);
@@ -91,6 +121,7 @@ public final class WebShellWorkspaceController {
         surface.registerHandler("document", "change", this::change);
         surface.registerHandler("document", "save", this::save);
         surface.registerHandler("document", "close", this::close);
+        surface.registerHandler("document", "layout", this::documentationLayout);
         surface.registerHandler("workspace", "snapshot", this::workspaceSnapshot);
         surface.registerHandler("workspace", "openProject", this::openProject);
         surface.registerHandler("workspace", "refresh", this::refreshWorkspace);
@@ -133,6 +164,9 @@ public final class WebShellWorkspaceController {
         projectLifecycleService.removeListener(terminalWorkspaceListener);
         observedDocuments.clear();
         untitledNames.clear();
+        jdkSourceDocuments.clear();
+        documentationDocuments.clear();
+        if (documentationHost != null) documentationHost.hide();
     }
 
     private WebShellEnvelope open(WebShellEnvelope message) {
@@ -407,9 +441,21 @@ public final class WebShellWorkspaceController {
                 "endpoint", status.endpoint());
     }
     private WebShellEnvelope activate(WebShellEnvelope message) {
+        WebDocumentationDocument documentation = documentationFor(message.payload());
+        if (documentation != null) {
+            if (documentationHost != null) documentationHost.open(documentation.target());
+            sendActiveChanged(documentation);
+            return message.response(Map.of("document", documentation.payload()));
+        }
+        WebJdkSourceDocument source = sourceFor(message.payload());
+        if (source != null) {
+            sendActiveChanged(source);
+            return message.response(Map.of("document", source.payload()));
+        }
         EditorSession session = sessionFor(message.payload());
         if (session == null) return message.error(new WebShellError(
                 "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
+        if (documentationHost != null) documentationHost.hide();
         manager.activateSession(session.getSessionId());
         sendActiveChanged(session);
         return message.response(Map.of("document", snapshot(session).payload()));
@@ -433,6 +479,10 @@ public final class WebShellWorkspaceController {
     }
 
     private WebShellEnvelope change(WebShellEnvelope message) {
+        if (sourceFor(message.payload()) != null) {
+            return message.error(new WebShellError("DOCUMENT_READ_ONLY",
+                    "JDK source documents are read-only", true));
+        }
         EditorSession session = sessionFor(message.payload());
         if (session == null) return message.error(new WebShellError(
                 "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
@@ -452,6 +502,10 @@ public final class WebShellWorkspaceController {
     }
 
     private WebShellEnvelope save(WebShellEnvelope message) {
+        if (sourceFor(message.payload()) != null) {
+            return message.error(new WebShellError("DOCUMENT_READ_ONLY",
+                    "JDK source documents are read-only", true));
+        }
         EditorSession session = sessionFor(message.payload());
         if (session == null) return message.error(new WebShellError(
                 "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
@@ -521,6 +575,23 @@ public final class WebShellWorkspaceController {
     }
 
     private WebShellEnvelope close(WebShellEnvelope message) {
+        String documentationUri = text(message.payload(), "uri");
+        WebDocumentationDocument documentation = documentationDocuments.remove(documentationUri);
+        if (documentation != null) {
+            if (documentationHost != null) documentationHost.hide();
+            surface.send(WebShellEnvelope.event("document", "closed", Map.of("uri", documentation.uri())));
+            EditorSession active = manager.getCurrentSession();
+            if (active != null) sendActiveChanged(active);
+            return message.response(Map.of("closed", true));
+        }
+        String sourceUri = documentationUri;
+        WebJdkSourceDocument source = jdkSourceDocuments.remove(sourceUri);
+        if (source != null) {
+            surface.send(WebShellEnvelope.event("document", "closed", Map.of("uri", source.uri())));
+            EditorSession active = manager.getCurrentSession();
+            if (active != null) sendActiveChanged(active);
+            return message.response(Map.of("closed", true));
+        }
         EditorSession session = sessionFor(message.payload());
         if (session == null) return message.error(new WebShellError(
                 "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
@@ -596,6 +667,74 @@ public final class WebShellWorkspaceController {
                 "documentId", session.getDocumentId())));
     }
 
+    private void openDocumentationTarget(DocumentationTarget target) {
+        String uri = documentationUri(target);
+        boolean existing = documentationDocuments.containsKey(uri);
+        WebDocumentationDocument document = documentationDocuments.computeIfAbsent(uri,
+                ignored -> new WebDocumentationDocument(uri, target));
+        if (!existing) surface.send(WebShellEnvelope.event("document", "opened", document.payload()));
+        documentationOpener.accept(target);
+        sendActiveChanged(document);
+    }
+
+    private WebShellEnvelope documentationLayout(WebShellEnvelope message) {
+        if (documentationHost != null) {
+            documentationHost.layoutFromBrowser(
+                    number(message.payload(), "x", 0),
+                    number(message.payload(), "y", 0),
+                    number(message.payload(), "width", 0),
+                    number(message.payload(), "height", 0));
+        }
+        return message.response(Map.of("updated", true));
+    }
+
+    private static String documentationUri(DocumentationTarget target) {
+        String token = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(target.url().getBytes(StandardCharsets.UTF_8));
+        return "documentation://" + token;
+    }
+    private void openJdkSource(JdkSourceTarget target) {
+        String uri = target.sourceIdentity();
+        WebJdkSourceDocument cached = jdkSourceDocuments.get(uri);
+        String content = cached == null
+                ? jdkSourceLoader.load(target).orElseThrow(() ->
+                new IllegalStateException("JDK source is unavailable for " + target.displayName()))
+                : cached.content();
+        int offset = jdkSourceDeclarationLocator.find(content, target);
+        int line = 1;
+        int column = 1;
+        for (int index = 0; index < offset; index++) {
+            if (content.charAt(index) == '\n') {
+                line++;
+                column = 1;
+            } else {
+                column++;
+            }
+        }
+        WebJdkSourceDocument source = new WebJdkSourceDocument(
+                uri, target.displayName(), content, line, column);
+        jdkSourceDocuments.put(uri, source);
+        surface.send(WebShellEnvelope.event("document", "opened", source.payload()));
+        sendActiveChanged(source);
+    }
+    private void sendActiveChanged(WebDocumentationDocument document) {
+        surface.send(WebShellEnvelope.event("document", "activeChanged", Map.of(
+                "uri", document.uri(), "documentId", document.uri())));
+    }
+
+    private WebDocumentationDocument documentationFor(Map<String, Object> payload) {
+        String uri = text(payload, "uri");
+        return uri.isBlank() ? null : documentationDocuments.get(uri);
+    }
+    private void sendActiveChanged(WebJdkSourceDocument source) {
+        surface.send(WebShellEnvelope.event("document", "activeChanged", Map.of(
+                "uri", source.uri(), "documentId", source.uri())));
+    }
+
+    private WebJdkSourceDocument sourceFor(Map<String, Object> payload) {
+        String uri = text(payload, "uri");
+        return uri.isBlank() ? null : jdkSourceDocuments.get(uri);
+    }
     private EditorSession sessionFor(Map<String, Object> payload) {
         String uri = text(payload, "uri");
         String documentId = text(payload, "documentId");
@@ -827,6 +966,40 @@ public final class WebShellWorkspaceController {
         if (!disposed) surface.send(WebShellEnvelope.event("run", "state", runPayload()));
     }
 
+    private record WebDocumentationDocument(String uri, DocumentationTarget target) {
+        private Map<String, Object> payload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("uri", uri);
+            payload.put("documentId", uri);
+            payload.put("displayName", "Documentação: " + target.label());
+            payload.put("language", "html");
+            payload.put("content", "");
+            payload.put("version", 1);
+            payload.put("dirty", false);
+            payload.put("readOnly", true);
+            payload.put("kind", "documentation");
+            payload.put("documentationUrl", target.url());
+            return payload;
+        }
+    }
+    private record WebJdkSourceDocument(String uri, String displayName, String content,
+                                        int revealLine, int revealColumn) {
+        private Map<String, Object> payload() {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("uri", uri);
+            payload.put("documentId", uri);
+            payload.put("displayName", displayName);
+            payload.put("language", "java");
+            payload.put("content", content);
+            payload.put("version", 1);
+            payload.put("dirty", false);
+            payload.put("readOnly", true);
+            payload.put("kind", "jdk-source");
+            payload.put("revealLine", revealLine);
+            payload.put("revealColumn", revealColumn);
+            return payload;
+        }
+    }
     private static String text(Map<String, Object> payload, String key) {
         Object value = payload == null ? null : payload.get(key);
         return value == null ? "" : String.valueOf(value);

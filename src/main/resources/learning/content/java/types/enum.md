@@ -4,7 +4,7 @@ title: Enums em Java
 concept: enum
 level: beginner
 duration: 10
-category: JAVA CONCEPT
+category: CONCEITO JAVA
 officialDocs:
   label: Java Enum Types
   url: https://docs.oracle.com/javase/tutorial/java/javaOO/enum.html
@@ -13,7 +13,7 @@ related:
 next: java/types/class
 ---
 
-## 💡 O que é isso?
+## O que é isso?
 
 Um `enum` (enumeração) é um tipo especial em Java que define um conjunto fixo de constantes nomeadas.
 
@@ -21,9 +21,9 @@ Diferente de constantes soltas (`static final`), um enum agrupa valores relacion
 
 ---
 
-## 🏠 Analogia
+## Analogia
 
-## 📘 Informação
+## Informação
 Pense nos dias da semana.
 
 Existem exatamente 7 dias: segunda, terça, quarta, quinta, sexta, sábado e domingo. Não há um oitavo dia. Esse conjunto fixo e bem definido é uma enumeração.
@@ -35,7 +35,7 @@ Usar `String` para representar dias da semana abre espaço para erros de digita�
 
 ---
 
-## 🌎 Onde isso aparece?
+## Onde isso aparece?
 
 Status de um pedido em um e-commerce.
 
@@ -45,7 +45,7 @@ Com um enum `StatusPedido`, o sistema garante que todo pedido tem um status vál
 
 ---
 
-## 💻 Exemplo
+## Exemplo
 
 ```java
 enum StatusPedido {
@@ -80,7 +80,7 @@ O método `pagar()` verifica o status atual antes de mudar, prevenindo estados i
 
 ---
 
-## 🧠 Como funciona?
+## Como funciona?
 
 Enums em Java são classes especiais. Cada constante enum é uma instância pública e imutável do próprio enum.
 
@@ -103,21 +103,21 @@ Enum pode implementar interfaces, mas não pode estender outra classe (todo enum
 
 ---
 
-## ⚠️ Erros comuns
+## Erros comuns
 
-## ⚠️ Atenção
+## Atenção
 Usar `String` ou `int` quando um enum seria mais seguro.
 
 
 Constantes soltas permitem valores inválidos. Um enum restringe as opções e centraliza a definição.
 
-## ⚠️ Atenção
+## Atenção
 Comparar enums com `equals` em vez de `==`.
 
 
 Enums podem ser comparados com `==` porque cada constante é um singleton. Isso é mais seguro e mais performático que `equals`.
 
-## ⚠️ Atenção
+## Atenção
 Colocar lógica complexa dentro do enum.
 
 
@@ -125,7 +125,7 @@ Enums devem representar valores e comportamentos simples. Lógica de negócio co
 
 ---
 
-## ➡️ Próximo passo
+## Próximo passo
 
 Agora que você conhece enums, o próximo passo é entender os records.
 

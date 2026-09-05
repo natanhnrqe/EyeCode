@@ -102,7 +102,7 @@ final class LearningFrontMatterParser {
                 new LearningMetadata(id, title, concept, level, duration, category, docs,
                         related, values.get("next"), values.get("parent"), members,
                         LearningDepth.parse(values.get("depth")), LearningKind.parse(values.get("kind")),
-                        values.get("sourceMember")),
+                        values.get("sourceMember"), values.get("sourceSignature")),
                 body);
     }
 

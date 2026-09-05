@@ -4,7 +4,7 @@ title: String
 concept: string
 level: beginner
 duration: 4
-category: JAVA API
+category: API JAVA
 officialDocs:
   label: String
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html
@@ -18,18 +18,17 @@ members:
   - replace(): java/jdk/string/replace
   - split(): java/jdk/string/split
 ---
+## O que é isso?
 
-## What it is
-
-`String` represents text. Strings are immutable, so operations create a new value.
+`String` representa texto. Strings são imutáveis, portanto cada operação produz um novo valor.
 
 ```java
 String greeting = "Hello";
 String loud = greeting.toUpperCase();
 ```
 
-Use `equals` to compare text, not `==`.
+Use `equals` para comparar texto, e não `==`.
 
-## Common methods
+## Métodos comuns
 
-Choose a method below to explore common String operations.
+Escolha um método abaixo para explorar operações frequentes de `String`.

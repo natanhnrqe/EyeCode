@@ -4,14 +4,13 @@ title: static
 concept: static
 level: beginner
 duration: 1
-category: MODIFIERS
+category: MODIFICADORES
 depth: quick
 related:
   - java/syntax/modifiers/final
   - java/types/class
 ---
-
-`static` attaches a field, method, or nested type to the class rather than each instance.
+`static` associa um campo, método ou tipo aninhado à classe, e não a cada instância.
 
 ```java
 static int count;

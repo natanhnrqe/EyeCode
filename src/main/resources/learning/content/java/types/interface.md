@@ -4,7 +4,7 @@ title: Interfaces em Java
 concept: interface
 level: intermediate
 duration: 10
-category: JAVA CONCEPT
+category: CONCEITO JAVA
 officialDocs:
   label: Java Interfaces
   url: https://docs.oracle.com/javase/tutorial/java/IandI/createinterface.html
@@ -14,7 +14,7 @@ related:
 next: java/types/record
 ---
 
-## 💡 O que é isso?
+## O que é isso?
 
 Uma interface define um contrato que qualquer classe pode assinar.
 
@@ -24,9 +24,9 @@ Desde o Java 8, interfaces também podem conter métodos `default` e `static` co
 
 ---
 
-## 🏠 Analogia
+## Analogia
 
-## 📘 Informação
+## Informação
 Pense em uma tomada elétrica.
 
 A tomada é uma interface: ela define um padrão (dois ou três pinos, voltagem, formato) que qualquer aparelho deve seguir para se conectar à rede elétrica.
@@ -38,7 +38,7 @@ Em Java é a mesma ideia: se uma classe implementa uma interface, ela garante qu
 
 ---
 
-## 🌎 Onde isso aparece?
+## Onde isso aparece?
 
 Sistemas de pagamento online.
 
@@ -52,7 +52,7 @@ O sistema de checkout não precisa saber qual método de pagamento foi escolhido
 
 ---
 
-## 💻 Exemplo
+## Exemplo
 
 ```java
 interface Pagamento {
@@ -85,7 +85,7 @@ pag.processar(150.00); // saída: Pix: R$ 150.00
 
 ---
 
-## 🧠 Como funciona?
+## Como funciona?
 
 Quando uma classe usa `implements`, o compilador verifica se todos os métodos da interface foram implementados.
 
@@ -107,21 +107,21 @@ Variáveis declaradas com o tipo da interface podem receber qualquer objeto que 
 
 ---
 
-## ⚠️ Erros comuns
+## Erros comuns
 
-## ⚠️ Atenção
+## Atenção
 Implementar a interface mas esquecer um método.
 
 
 O compilador aponta o erro na hora. Se a classe não implementa todos os métodos da interface, ela precisa ser declarada como `abstract`.
 
-## ⚠️ Atenção
+## Atenção
 Usar interface quando uma classe abstrata seria mais adequada.
 
 
 Se você precisa compartilhar estado (campos) ou construtores, prefira uma classe abstrata. Interface é apenas contrato.
 
-## ⚠️ Atenção
+## Atenção
 Criar interfaces muito grandes ("interface God").
 
 
@@ -129,7 +129,7 @@ Uma interface deve ter uma responsabilidade bem definida. Vários métodos não 
 
 ---
 
-## ➡️ Próximo passo
+## Próximo passo
 
 Interfaces são a base do polimorfismo em Java.
 

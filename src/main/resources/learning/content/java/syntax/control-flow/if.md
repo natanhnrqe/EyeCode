@@ -4,13 +4,12 @@ title: if
 concept: if
 level: beginner
 duration: 1
-category: CONTROL FLOW
+category: FLUXO DE CONTROLE
 depth: quick
 related:
   - java/syntax/control-flow/else
   - java/syntax/control-flow/switch
 ---
+`if` executa um bloco somente quando sua condição booleana é verdadeira.
 
-`if` runs a block only when its boolean condition is true.
-
-Use `else` for the alternative branch.
+Use `else` para definir o ramo alternativo.

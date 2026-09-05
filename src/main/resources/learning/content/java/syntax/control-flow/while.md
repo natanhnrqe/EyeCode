@@ -4,13 +4,12 @@ title: while
 concept: while
 level: beginner
 duration: 1
-category: CONTROL FLOW
+category: FLUXO DE CONTROLE
 depth: quick
 related:
   - java/syntax/control-flow/for
   - java/syntax/control-flow/break
 ---
+`while` repete um bloco enquanto sua condição continuar verdadeira.
 
-`while` repeats a block while its condition remains true.
-
-The condition is checked before every iteration.
+A condição é verificada antes de cada iteração.

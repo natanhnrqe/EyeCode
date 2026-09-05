@@ -1,10 +1,10 @@
 ---
 id: java/basics/variables
-title: Java Variables
+title: Variáveis em Java
 concept: variable
 level: beginner
 duration: 5
-category: BASICS
+category: FUNDAMENTOS
 officialDocs:
   label: Java Language Specification
   url: https://docs.oracle.com/javase/specs/
@@ -12,38 +12,37 @@ related:
   - java/types/class
 next: java/types/class
 ---
+Variáveis dão nome aos dados que um programa Java precisa lembrar. Uma variável tem um **tipo**, um nome e um valor.
 
-Variables give a name to data that a Java program needs to remember. A variable has a **type**, a name, and a value.
+## Declarando uma variável
 
-## Declaring a variable
-
-Use a type such as `int`, followed by a descriptive name:
+Use um tipo como `int`, seguido de um nome descritivo:
 
 ```java
 int score = 10;
 String playerName = "Ada";
 ```
 
-The value of `score` can change later in the program.
+O valor de `score` pode mudar mais tarde no programa.
 
-### Useful habits
+### Hábitos úteis
 
-- Choose names that explain the data.
-- Initialise a variable before reading it.
-- Keep the type aligned with the value you need to store.
+- Escolha nomes que expliquem os dados.
+- Inicialize uma variável antes de lê-la.
+- Mantenha o tipo coerente com o valor que precisa armazenar.
 
-## Steps
+## Etapas
 
-1. Choose the value you need to store.
-2. Choose its Java type.
-3. Give the variable a clear name.
+1. Escolha o valor que precisa armazenar.
+2. Escolha o tipo Java desse valor.
+3. Dê um nome claro à variável.
 
-> A variable is a labelled place in memory. Its type tells Java which values are valid there.
+> Uma variável é um espaço identificado na memória. Seu tipo informa ao Java quais valores são válidos ali.
 
-| Type | Example value | Typical use |
+| Tipo | Exemplo | Uso comum |
 | --- | --- | --- |
-| `int` | `10` | Whole numbers |
-| `String` | `"Ada"` | Text |
-| `boolean` | `true` | Yes or no |
+| `int` | `10` | Números inteiros |
+| `String` | `"Ada"` | Texto |
+| `boolean` | `true` | Sim ou não |
 
-Read more in the [Java language specification](https://docs.oracle.com/javase/specs/).
+Leia mais na [especificação da linguagem Java](https://docs.oracle.com/javase/specs/).

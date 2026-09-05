@@ -4,17 +4,16 @@ title: null
 concept: null
 level: beginner
 duration: 2
-category: LITERALS
+category: LITERAIS
 depth: quick
 related:
   - java/syntax/types/instanceof
   - java/syntax/control-flow/if
 ---
-
-`null` means an object reference currently points to no object. It is not an object or a type.
+`null` significa que uma referência de objeto não aponta atualmente para nenhum objeto. Ele não é um objeto nem um tipo.
 
 ```java
 if (value == null) { return; }
 ```
 
-Calling an instance member through `null` causes `NullPointerException`.
+Chamar um membro de instância por meio de `null` causa `NullPointerException`.

@@ -4,24 +4,21 @@ title: String.contains()
 concept: string-contains
 kind: method
 sourceMember: contains
+sourceSignature: (CharSequence)
 level: beginner
 duration: 1
-category: JAVA API
+category: API JAVA
 depth: quick
 related:
   - java/jdk/string
 parent: java/jdk/string
 ---
+## O que ele faz?
 
-## What it does
-
-`contains()` checks whether one string occurs inside another.
+`contains()` verifica se uma sequência aparece no texto.
 
 ```java
-boolean hasCode = "EyeCode".contains("Code");
+boolean found = "EyeCode".contains("Code");
 ```
 
-It returns a boolean and is case-sensitive.
-
-For a case-insensitive check, normalize both values deliberately rather than
-assuming `contains()` ignores case.
+O resultado é `true` quando a sequência está presente e `false` caso contrário.

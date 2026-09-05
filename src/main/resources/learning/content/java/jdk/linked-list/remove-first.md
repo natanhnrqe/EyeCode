@@ -4,22 +4,22 @@ title: LinkedList.removeFirst()
 concept: linked-list-remove-first
 kind: method
 sourceMember: removeFirst
+sourceSignature: ()
 level: beginner
 duration: 1
-category: COLLECTIONS
+category: COLEÇÕES
 depth: quick
 related:
   - java/jdk/linked-list
 parent: java/jdk/linked-list
 ---
+## O que ele faz?
 
-## What it does
-
-Removes and returns the first element.
+Remove e retorna o primeiro elemento.
 
 ```java
 LinkedList<String> list = new LinkedList<>();
 String first = list.removeFirst();
 ```
 
-It throws when the list is empty.
+O método lança uma exceção quando a lista está vazia.

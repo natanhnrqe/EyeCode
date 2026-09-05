@@ -4,11 +4,10 @@ title: implements
 concept: implements
 level: beginner
 duration: 1
-category: TYPE SYSTEM
+category: SISTEMA DE TIPOS
 depth: quick
 related:
   - java/types/interface
   - java/syntax/types/extends
 ---
-
-`implements` declares that a class provides the contract of one or more interfaces.
+`implements` declara que uma classe fornece o contrato de uma ou mais interfaces.

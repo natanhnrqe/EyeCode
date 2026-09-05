@@ -13,6 +13,7 @@ import type { LearningPopupState } from './protocol';
 type Props = {
   state: LearningPopupState;
   onNavigate: (identifier: string) => void;
+  onAction: (action: 'openDocumentation' | 'openJdkSource') => void;
   onHover: (hovered: boolean) => void;
 };
 
@@ -28,6 +29,7 @@ const ANCHOR_GAP = 5;
 export function LearningCard({
   state,
   onNavigate,
+  onAction,
   onHover,
 }: Props) {
   const cardRef = useRef<HTMLElement>(null);
@@ -188,7 +190,7 @@ export function LearningCard({
 
       {card.commonMethods.length > 0 && (
         <section className="learning-common-methods">
-          <span>Common methods</span>
+          <span>Métodos comuns</span>
 
           <div>
             {card.commonMethods.map(item => (
@@ -209,28 +211,40 @@ export function LearningCard({
         </section>
       )}
 
-      {card.relatedItems.length > 0 && (
+      {(card.relatedItems.length > 0 || card.docsAvailable || card.sourceAvailable) && (
         <footer className="learning-footer">
-          <div className="learning-related">
-            <span>Related</span>
+          {card.relatedItems.length > 0 && (
+            <div className="learning-related">
+              <span className="learning-footer-label">Relacionados</span>
 
-            <div>
-              {card.relatedItems.map(item => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={event =>
-                    navigate(
-                      event,
-                      item.id,
-                    )
-                  }
-                >
-                  {item.title}
-                </button>
-              ))}
+              <div>
+                {card.relatedItems.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={event => navigate(event, item.id)}
+                  >
+                    {item.title}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+          {(card.docsAvailable || card.sourceAvailable) && (
+            <div className="learning-actions">
+              <span className="learning-footer-label">Referências</span>
+              {card.docsAvailable && (
+                <button type="button" onClick={() => onAction('openDocumentation')}>
+                  Abrir documentação
+                </button>
+              )}
+              {card.sourceAvailable && (
+                <button type="button" onClick={() => onAction('openJdkSource')}>
+                  Abrir fonte do JDK
+                </button>
+              )}
+            </div>
+          )}
         </footer>
       )}
     </section>

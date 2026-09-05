@@ -4,12 +4,11 @@ title: package
 concept: package
 level: beginner
 duration: 1
-category: ORGANIZATION
+category: ORGANIZAÇÃO
 depth: quick
 related:
   - java/syntax/organization/import
 ---
+`package` associa uma classe a um namespace e organiza seus limites de origem e acesso.
 
-`package` assigns a class to a namespace and organizes its source and access boundaries.
-
-The declaration normally appears at the top of the file.
+A declaração normalmente aparece no início do arquivo.

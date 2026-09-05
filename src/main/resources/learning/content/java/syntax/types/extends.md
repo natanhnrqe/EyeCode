@@ -4,13 +4,12 @@ title: extends
 concept: extends
 level: beginner
 duration: 1
-category: TYPE SYSTEM
+category: SISTEMA DE TIPOS
 depth: quick
 related:
   - java/syntax/objects/super
   - java/syntax/types/implements
 ---
+`extends` declara herança de classe ou as interfaces ancestrais de uma interface.
 
-`extends` declares class inheritance or an interface's parent interfaces.
-
-A class directly extends at most one class.
+Uma classe estende diretamente no máximo uma classe.

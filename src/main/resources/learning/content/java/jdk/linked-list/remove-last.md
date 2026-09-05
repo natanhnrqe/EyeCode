@@ -4,22 +4,22 @@ title: LinkedList.removeLast()
 concept: linked-list-remove-last
 kind: method
 sourceMember: removeLast
+sourceSignature: ()
 level: beginner
 duration: 1
-category: COLLECTIONS
+category: COLEÇÕES
 depth: quick
 related:
   - java/jdk/linked-list
 parent: java/jdk/linked-list
 ---
+## O que ele faz?
 
-## What it does
-
-Removes and returns the last element.
+Remove e retorna o último elemento.
 
 ```java
 LinkedList<String> list = new LinkedList<>();
 String last = list.removeLast();
 ```
 
-It throws when the list is empty.
+O método lança uma exceção quando a lista está vazia.

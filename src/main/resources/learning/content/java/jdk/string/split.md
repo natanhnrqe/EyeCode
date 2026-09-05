@@ -4,24 +4,23 @@ title: String.split()
 concept: string-split
 kind: method
 sourceMember: split
+sourceSignature: (String)
 level: beginner
 duration: 2
-category: JAVA API
+category: API JAVA
 depth: quick
 related:
   - java/jdk/string
 parent: java/jdk/string
 ---
+## O que ele faz?
 
-## What it does
-
-`split()` divides a string around a regular-expression delimiter.
+`split()` divide uma string ao redor de um delimitador que é uma expressão regular.
 
 ```java
 String[] words = "learn java".split(" ");
 ```
 
-Remember that the delimiter is a regular expression, not always a literal character.
+Lembre que o delimitador é uma expressão regular, e não necessariamente um caractere literal.
 
-The result is a new array. Use the overload with a limit when trailing empty
-fields or the number of splits matters.
+O resultado é um novo array. Use a sobrecarga com limite quando os campos vazios finais ou o número de divisões forem importantes.

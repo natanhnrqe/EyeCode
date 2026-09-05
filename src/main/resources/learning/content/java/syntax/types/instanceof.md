@@ -4,13 +4,12 @@ title: instanceof
 concept: instanceof
 level: beginner
 duration: 1
-category: TYPE SYSTEM
+category: SISTEMA DE TIPOS
 depth: quick
 related:
   - java/syntax/literals/null
   - java/types/class
 ---
+`instanceof` verifica se uma referência é compatível com um tipo. O resultado é falso para `null`.
 
-`instanceof` tests whether a reference is compatible with a type. It is false for `null`.
-
-Modern Java can bind a matching variable in the test.
+O Java moderno pode vincular uma variável correspondente no próprio teste.
