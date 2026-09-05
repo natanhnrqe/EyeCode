@@ -60,6 +60,15 @@ public final class JavaSyntaxLearningCatalog {
         register(entries, "import", "java/syntax/organization/import", "import", "organization", List.of("package"));
         register(entries, "void", "java/syntax/types/void", "void", "type-system", List.of("return", "method"));
         register(entries, "var", "java/syntax/types/var", "var", "type-system", List.of("final", "class"));
+        register(entries, "yield", "java/syntax/control-flow/yield", "yield", "control-flow", List.of("switch", "case", "default", "return"));
+        register(entries, "byte", "java/basics/primitive-types", "primitive types", "type-system", List.of("int", "long", "boolean"));
+        register(entries, "short", "java/basics/primitive-types", "primitive types", "type-system", List.of("int", "long", "boolean"));
+        register(entries, "int", "java/basics/primitive-types", "primitive types", "type-system", List.of("byte", "long", "boolean"));
+        register(entries, "long", "java/basics/primitive-types", "primitive types", "type-system", List.of("int", "double", "boolean"));
+        register(entries, "float", "java/basics/primitive-types", "primitive types", "type-system", List.of("double", "int", "boolean"));
+        register(entries, "double", "java/basics/primitive-types", "primitive types", "type-system", List.of("float", "long", "boolean"));
+        register(entries, "char", "java/basics/primitive-types", "primitive types", "type-system", List.of("int", "boolean", "String"));
+        register(entries, "boolean", "java/basics/primitive-types", "primitive types", "type-system", List.of("char", "int", "true"));
         register(entries, "null", "java/syntax/literals/null", "null", "literals", List.of("instanceof", "if"));
         register(entries, "true", "java/syntax/literals/true", "true", "literals", List.of("false", "if"));
         register(entries, "false", "java/syntax/literals/false", "false", "literals", List.of("true", "if"));

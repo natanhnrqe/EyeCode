@@ -5,6 +5,7 @@ import com.eyecode.learning.content.LearningDepth;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -39,5 +40,18 @@ class JavaSyntaxLearningCatalogTest {
                 engine.loadDocument("java/syntax/modifiers/final").metadata().depth());
         assertEquals(LearningDepth.FULL,
                 engine.loadDocument("java/types/class").metadata().depth());
+    }
+    @Test
+    void primitiveKeywordsShareThePrimitiveTypesLesson() {
+        JavaSyntaxLearningCatalog catalog = new JavaSyntaxLearningCatalog();
+
+        for (String primitive : List.of("byte", "short", "int", "long", "float", "double", "char", "boolean")) {
+            assertEquals("java/basics/primitive-types", catalog.find(primitive).orElseThrow().getPage().getId());
+        }
+
+        assertEquals("java/syntax/literals/true", catalog.find("true").orElseThrow().getPage().getId());
+        assertEquals("java/syntax/literals/false", catalog.find("false").orElseThrow().getPage().getId());
+        assertEquals("java/syntax/literals/null", catalog.find("null").orElseThrow().getPage().getId());
+        assertEquals("java/syntax/types/instanceof", catalog.find("instanceof").orElseThrow().getPage().getId());
     }
 }
