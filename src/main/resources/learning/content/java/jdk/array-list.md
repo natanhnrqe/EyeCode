@@ -10,6 +10,9 @@ officialDocs:
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ArrayList.html
 related:
   - java/jdk/list
+  - java/jdk/linked-list
+  - java/jdk/iterable
+  - java/generics/generics
 parent: java/jdk/list
 ---
 ## O que é isso?

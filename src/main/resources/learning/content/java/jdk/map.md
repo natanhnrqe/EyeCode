@@ -10,6 +10,7 @@ officialDocs:
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html
 related:
   - java/jdk/hash-map
+  - java/generics/generics
 ---
 ## O que é isso?
 

@@ -10,6 +10,9 @@ officialDocs:
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html
 related:
   - java/jdk/array-list
+  - java/jdk/linked-list
+  - java/jdk/iterable
+  - java/generics/generics
 ---
 ## O que é isso?
 

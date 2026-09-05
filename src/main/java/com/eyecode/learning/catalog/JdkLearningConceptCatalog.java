@@ -42,7 +42,8 @@ public final class JdkLearningConceptCatalog {
             Map.entry("ArrayList", "java/jdk/array-list"),
             Map.entry("LinkedList", "java/jdk/linked-list"),
             Map.entry("Map", "java/jdk/map"),
-            Map.entry("HashMap", "java/jdk/hash-map"));
+            Map.entry("HashMap", "java/jdk/hash-map"),
+            Map.entry("Arrays", "java/jdk/arrays"));
 
     private final LearningContentRepository repository = new LearningContentRepository();
     private final Map<String, Map<String, String>> memberIndexes = new java.util.concurrent.ConcurrentHashMap<>();

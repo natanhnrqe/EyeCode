@@ -11,6 +11,8 @@ officialDocs:
 related:
   - java/jdk/array-list
   - java/jdk/list
+  - java/jdk/iterable
+  - java/generics/generics
 members:
   - add(): java/jdk/linked-list/add
   - addFirst(): java/jdk/linked-list/add-first

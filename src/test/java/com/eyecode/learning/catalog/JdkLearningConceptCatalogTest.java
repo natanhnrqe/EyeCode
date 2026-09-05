@@ -17,7 +17,7 @@ class JdkLearningConceptCatalogTest {
                 "List", "ArrayList", "LinkedList", "Map", "HashMap", "Number", "Byte",
                 "Short", "Long", "Float", "Double", "Boolean", "Character", "CharSequence",
                 "StringBuilder", "Comparable", "Iterable", "AutoCloseable", "Throwable",
-                "Exception", "RuntimeException", "Error"}) {
+                "Exception", "RuntimeException", "Error", "Arrays"}) {
             var concept = catalog.find(name).orElseThrow();
             assertEquals(name, concept.getTitle());
             assertTrue(concept.getPage().getId().startsWith("java/jdk/"));

@@ -62,6 +62,18 @@ class JavaMemberTargetResolverTest {
     }
 
     @Test
+    void resolvesImportedArraysStaticMember() {
+        String source = "import java.util.Arrays; class Demo { void run() { int[] values = {3, 1, 2}; "
+                + "Arrays.sort(values); } }";
+
+        JavaMemberTarget target = resolve(source, "sort", source.indexOf("Arrays.sort"));
+
+        assertEquals("java.util.Arrays", target.ownerQualifiedName());
+        assertEquals("sort", target.memberName());
+        assertEquals(1, target.argumentCount());
+    }
+
+    @Test
     void supportsExplicitQualifiedTypeAndDoesNotResolveCommentsOrStrings() {
         String source = "class Demo { void run() { java.lang.String s = null; "
                 + "s.isBlank(); // s.contains(\"x\")\n"
