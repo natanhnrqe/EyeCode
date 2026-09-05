@@ -53,6 +53,20 @@ public final class JavaJdkTypeCatalog {
         add(types, "Map", "java.util.Map", "java.base");
         add(types, "HashMap", "java.util.HashMap", "java.base");
         add(types, "Arrays", "java.util.Arrays", "java.base");
+        add(types, "Collection", "java.util.Collection", "java.base");
+        add(types, "Iterator", "java.util.Iterator", "java.base");
+        add(types, "Collections", "java.util.Collections", "java.base");
+        add(types, "Set", "java.util.Set", "java.base");
+        add(types, "HashSet", "java.util.HashSet", "java.base");
+        add(types, "LinkedHashSet", "java.util.LinkedHashSet", "java.base");
+        add(types, "TreeSet", "java.util.TreeSet", "java.base");
+        add(types, "LinkedHashMap", "java.util.LinkedHashMap", "java.base");
+        add(types, "TreeMap", "java.util.TreeMap", "java.base");
+        add(types, "Queue", "java.util.Queue", "java.base");
+        add(types, "Deque", "java.util.Deque", "java.base");
+        add(types, "ArrayDeque", "java.util.ArrayDeque", "java.base");
+        add(types, "PriorityQueue", "java.util.PriorityQueue", "java.base");
+        add(types, "Comparator", "java.util.Comparator", "java.base");
         add(types, "UIManager", "javax.swing.UIManager", "java.desktop");
         return Map.copyOf(types);
     }

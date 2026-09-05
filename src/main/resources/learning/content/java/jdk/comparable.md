@@ -12,6 +12,9 @@ related:
   - java/jdk/integer
   - java/jdk/string
   - java/basics/reference-types
+  - java/jdk/tree-set
+  - java/jdk/tree-map
+  - java/jdk/priority-queue
 ---
 Comparable<T> define a ordenação natural de um tipo por meio de compareTo(T other).
 

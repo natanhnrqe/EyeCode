@@ -13,6 +13,8 @@ related:
   - java/jdk/string
   - java/jdk/char-sequence
   - java/jdk/list
+  - java/jdk/collection
+  - java/jdk/iterator
   - java/generics/generics
 ---
 Iterable representa algo que pode fornecer um Iterator e participar do enhanced for-loop.

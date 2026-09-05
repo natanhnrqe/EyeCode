@@ -11,6 +11,7 @@ import com.eyecode.learning.model.LearningConcept;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /** Maps supported JDK types to concise, bundled learning lessons. */
 public final class JdkLearningConceptCatalog {
@@ -43,7 +44,21 @@ public final class JdkLearningConceptCatalog {
             Map.entry("LinkedList", "java/jdk/linked-list"),
             Map.entry("Map", "java/jdk/map"),
             Map.entry("HashMap", "java/jdk/hash-map"),
-            Map.entry("Arrays", "java/jdk/arrays"));
+            Map.entry("Arrays", "java/jdk/arrays"),
+            Map.entry("Collection", "java/jdk/collection"),
+            Map.entry("Iterator", "java/jdk/iterator"),
+            Map.entry("Collections", "java/jdk/collections"),
+            Map.entry("Set", "java/jdk/set"),
+            Map.entry("HashSet", "java/jdk/hash-set"),
+            Map.entry("LinkedHashSet", "java/jdk/linked-hash-set"),
+            Map.entry("TreeSet", "java/jdk/tree-set"),
+            Map.entry("LinkedHashMap", "java/jdk/linked-hash-map"),
+            Map.entry("TreeMap", "java/jdk/tree-map"),
+            Map.entry("Queue", "java/jdk/queue"),
+            Map.entry("Deque", "java/jdk/deque"),
+            Map.entry("ArrayDeque", "java/jdk/array-deque"),
+            Map.entry("PriorityQueue", "java/jdk/priority-queue"),
+            Map.entry("Comparator", "java/jdk/comparator"));
 
     private final LearningContentRepository repository = new LearningContentRepository();
     private final Map<String, Map<String, String>> memberIndexes = new java.util.concurrent.ConcurrentHashMap<>();
@@ -77,7 +92,7 @@ public final class JdkLearningConceptCatalog {
         concept.setId(id);
         concept.setTitle(type.simpleName());
         concept.setDescription("A practical introduction to " + type.simpleName() + " in Java.");
-        concept.setType(type.simpleName().equals("List") || type.simpleName().equals("Map")
+        concept.setType(Set.of("List", "Map", "Collection", "Set", "Queue", "Deque", "Comparator").contains(type.simpleName())
                 ? ConceptType.INTERFACE : ConceptType.CLASS);
         concept.setDifficulty(DifficultyLevel.BEGINNER);
         concept.setQualifiedName(type.qualifiedName());

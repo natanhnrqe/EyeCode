@@ -11,6 +11,8 @@ officialDocs:
 related:
   - java/jdk/array-list
   - java/jdk/list
+  - java/jdk/collection
+  - java/jdk/deque
   - java/jdk/iterable
   - java/generics/generics
 members:
@@ -45,3 +47,17 @@ Cada elemento carrega o custo de seus links, e nós separados costumam ter pior 
 ## Membros úteis
 
 `add()`, `addFirst()`, `addLast()`, `getFirst()`, `getLast()`, `removeFirst()`, `removeLast()`, `get()` e `size()` cobrem usos comuns. O tipo também implementa as abstrações `List` e `Deque`.
+## Dois contratos
+
+Além de `List`, `LinkedList` implementa `Deque`, permitindo operações nas duas extremidades.
+
+```java
+Deque<String> deque = new LinkedList<>();
+deque.addFirst("A");
+deque.addLast("B");
+
+System.out.println(deque.removeFirst());
+System.out.println(deque.removeLast());
+```
+
+Isso não torna qualquer inserção no meio automaticamente mais rápida: localizar a posição ainda pode exigir percorrer nós. Escolha `LinkedList` pelo contrato e pelo padrão de operações, não por uma regra geral de desempenho.
