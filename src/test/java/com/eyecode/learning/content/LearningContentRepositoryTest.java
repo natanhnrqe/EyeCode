@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,20 +22,51 @@ class LearningContentRepositoryTest {
     }
 
     @Test
-    void exposesStructuredMetadataAndBody() {
+    void parsesStructuredMetadataAndBodyFromControlledResource() {
+        LearningFrontMatterParser.Parsed parsed = new LearningFrontMatterParser().parse("""
+                ---
+                id: test/structured
+                title: Structured lesson
+                concept: structured
+                level: beginner
+                duration: 7
+                category: TEST CATEGORY
+                officialDocs:
+                  label: Test documentation
+                  url: https://example.com/docs
+                related:
+                  - test/first
+                  - test/second
+                next: test/next
+                ---
+                Body content.
+                """, "test/structured");
+        LearningMetadata metadata = parsed.metadata();
+
+        assertEquals("test/structured", metadata.id());
+        assertEquals("Structured lesson", metadata.title());
+        assertEquals("structured", metadata.concept());
+        assertEquals("beginner", metadata.level());
+        assertEquals(7, metadata.duration());
+        assertEquals("TEST CATEGORY", metadata.category());
+        assertEquals("Test documentation", metadata.officialDocs().label());
+        assertEquals(List.of("test/first", "test/second"),
+                metadata.related());
+        assertEquals("test/next", metadata.next());
+        assertEquals("Body content.", parsed.body());
+    }
+
+    @Test
+    void loadsStableMetadataFromBundledClassLesson() {
         LearningDocument document = repository.loadDocument("java/types/class");
 
         assertEquals("java/types/class", document.metadata().id());
         assertEquals("Classes em Java", document.metadata().title());
         assertEquals("class", document.metadata().concept());
-        assertEquals("beginner", document.metadata().level());
-        assertEquals(16, document.metadata().duration());
-        assertEquals("JAVA CONCEPT", document.metadata().category());
+        assertEquals("CONCEITO JAVA", document.metadata().category());
         assertEquals("Java Classes and Objects", document.metadata().officialDocs().label());
-        assertEquals(List.of("java/types/object", "java/types/interface", "java/types/record"),
-                document.metadata().related());
-        assertEquals("java/types/object", document.metadata().next());
-        assertTrue(!document.markdownBody().startsWith("---"));
+        assertFalse(document.metadata().related().isEmpty());
+        assertFalse(document.markdownBody().isBlank());
     }
 
     @Test

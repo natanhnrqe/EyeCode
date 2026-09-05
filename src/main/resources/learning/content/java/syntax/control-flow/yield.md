@@ -26,3 +26,6 @@ int dias = switch (mes) {
 ```
 
 Use `return` para sair do método e `yield` para fornecer o valor de um bloco da expressão `switch`.
+
+
+Use yield apenas para fornecer o valor de um bloco da expressão switch; ele não retorna do método.

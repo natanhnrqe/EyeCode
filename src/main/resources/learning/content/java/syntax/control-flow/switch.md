@@ -36,3 +36,6 @@ int dias = switch (mes) {
 ~~~
 
 A sintaxe com setas não tem fall-through implícito. Pattern matching fica fora deste card.
+
+
+Para estudar expressões switch e pattern matching no switch em detalhes, consulte os cards relacionados.

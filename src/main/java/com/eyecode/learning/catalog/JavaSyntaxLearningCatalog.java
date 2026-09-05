@@ -22,6 +22,9 @@ public final class JavaSyntaxLearningCatalog {
         register(entries, "interface", "java/types/interface", "Interface", "type", List.of("implements", "class"));
         register(entries, "enum", "java/types/enum", "Enum", "type", List.of("class"));
         register(entries, "record", "java/types/record", "Record", "type", List.of("class"));
+        register(entries, "sealed", "java/syntax/types/sealed", "sealed", "type-system", List.of("java/types/sealed", "permits"));
+        register(entries, "permits", "java/syntax/types/permits", "permits", "type-system", List.of("java/types/sealed", "sealed"));
+
 
         register(entries, "public", "java/syntax/visibility/public", "public", "visibility", List.of("private", "protected"));
         register(entries, "private", "java/syntax/visibility/private", "private", "visibility", List.of("public", "protected"));

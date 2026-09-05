@@ -12,6 +12,7 @@ import com.eyecode.language.documentation.JdkSourceTarget;
 import com.eyecode.language.semantic.JavaMemberTargetResolver;
 import com.eyecode.javafx.monaco.MonacoModelId;
 import com.eyecode.learning.catalog.JavaSyntaxLearningCatalog;
+import com.eyecode.learning.catalog.JavaSyntaxLearningResolver;
 import com.eyecode.learning.catalog.JdkLearningConceptCatalog;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.learning.content.LearningContentEngine;
@@ -40,6 +41,7 @@ public final class WebShellLearningController {
     private final DocumentationAtCaretResolver jdkResolver = new DocumentationAtCaretResolver();
     private final JdkLearningConceptCatalog jdkCatalog = new JdkLearningConceptCatalog();
     private final JavaSyntaxLearningCatalog syntaxCatalog = new JavaSyntaxLearningCatalog();
+    private final JavaSyntaxLearningResolver syntaxResolver = new JavaSyntaxLearningResolver(syntaxCatalog);
     private final JdkSourceResolver sourceResolver = new JdkSourceResolver();
     private final Consumer<DocumentationTarget> documentationOpener;
     private final Consumer<JdkSourceTarget> sourceOpener;
@@ -143,7 +145,11 @@ public final class WebShellLearningController {
                     .flatMap(resolved -> jdkCatalog.find(resolved.simpleName()));
             if (type.isPresent()) return type;
         }
-        return token.get().type() == TokenType.KEYWORD ? syntaxCatalog.find(token.get().text()) : Optional.empty();
+        if (token.get().type() != TokenType.KEYWORD) return Optional.empty();
+        Optional<LearningConcept> contextual = syntaxResolver.resolve(content, offset);
+        if (contextual.isPresent()) return contextual;
+        return JavaSyntaxLearningResolver.isContextualToken(token.get().text())
+                ? Optional.empty() : syntaxCatalog.find(token.get().text());
     }
 
     private Optional<LearningConcept> conceptForIdentifier(String identifier) {

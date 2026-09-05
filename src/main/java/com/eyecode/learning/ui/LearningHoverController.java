@@ -11,6 +11,7 @@ import com.eyecode.learning.analysis.LearningContextResolver;
 import com.eyecode.learning.content.LearningPage;
 import com.eyecode.learning.hover.HoverEngine;
 import com.eyecode.learning.model.LearningConcept;
+import com.eyecode.learning.catalog.JavaSyntaxLearningResolver;
 import com.eyecode.learning.model.LearningContext;
 import com.eyecode.learning.render.LearningRenderer;
 import com.eyecode.learning.renderer.LearningCardRenderer;
@@ -37,6 +38,7 @@ public final class LearningHoverController {
     private final Function<Integer, Optional<LearningConcept>> jdkConceptResolver;
     private final Function<Integer, Optional<LearningConcept>> memberConceptResolver;
     private final Function<String, Optional<LearningConcept>> syntaxConceptResolver;
+    private final JavaSyntaxLearningResolver contextualSyntaxResolver = new JavaSyntaxLearningResolver();
     private final boolean ownsRenderer;
     private final IntConsumer moveListener;
     private final Runnable cancelListener;
@@ -500,7 +502,10 @@ public final class LearningHoverController {
         if (candidate.isEmpty()) return null;
         SyntaxToken token = candidate.get();
 
-        Optional<LearningConcept> syntaxConcept = syntaxConceptResolver.apply(token.text());
+        Optional<LearningConcept> syntaxConcept = contextualSyntaxResolver.resolve(syntax, offset);
+        if (syntaxConcept.isEmpty() && !JavaSyntaxLearningResolver.isContextualToken(token.text())) {
+            syntaxConcept = syntaxConceptResolver.apply(token.text());
+        }
         if (syntaxConcept.isPresent()) {
             return new HoverSnapshot("syntax:" + token.startOffset() + ":" + token.endOffset(), syntaxConcept.get());
         }

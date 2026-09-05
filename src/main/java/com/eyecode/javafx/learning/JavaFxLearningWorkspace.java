@@ -4,6 +4,7 @@ import com.eyecode.javafx.ui.toolwindow.content.JavaFxCeffxLearningSurface;
 import com.eyecode.learning.catalog.DefaultLearningCatalog;
 import com.eyecode.learning.catalog.JdkLearningConceptCatalog;
 import com.eyecode.learning.catalog.JavaSyntaxLearningCatalog;
+import com.eyecode.learning.catalog.JavaSyntaxLearningResolver;
 import com.eyecode.learning.content.LearningContentEngine;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.language.documentation.JdkSourceTarget;
@@ -39,6 +40,7 @@ public final class JavaFxLearningWorkspace {
     private final JavaMemberTargetResolver memberTargetResolver = new JavaMemberTargetResolver();
     private final JdkLearningConceptCatalog jdkCatalog = new JdkLearningConceptCatalog();
     private final JavaSyntaxLearningCatalog syntaxCatalog = new JavaSyntaxLearningCatalog();
+    private final JavaSyntaxLearningResolver syntaxResolver = new JavaSyntaxLearningResolver(syntaxCatalog);
     private final DocumentationAtCaretResolver jdkResolver = new DocumentationAtCaretResolver();
     private final ExecutorService monacoLearningExecutor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "eyecode-learning-preparation");
@@ -134,6 +136,9 @@ public final class JavaFxLearningWorkspace {
                     .flatMap(resolved -> jdkCatalog.find(resolved.simpleName()));
             if (type.isPresent()) return type;
         }
+        Optional<com.eyecode.learning.model.LearningConcept> contextual = syntaxResolver.resolve(target.documentText(), target.startOffset());
+        if (contextual.isPresent()) return contextual;
+        if (JavaSyntaxLearningResolver.isContextualToken(target.text())) return Optional.empty();
         return syntaxCatalog.find(target.text());
     }
 

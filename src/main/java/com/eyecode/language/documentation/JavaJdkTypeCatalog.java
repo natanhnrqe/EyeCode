@@ -67,6 +67,14 @@ public final class JavaJdkTypeCatalog {
         add(types, "ArrayDeque", "java.util.ArrayDeque", "java.base");
         add(types, "PriorityQueue", "java.util.PriorityQueue", "java.base");
         add(types, "Comparator", "java.util.Comparator", "java.base");
+        add(types, "FunctionalInterface", "java.lang.FunctionalInterface", "java.base");
+        add(types, "Runnable", "java.lang.Runnable", "java.base");
+        add(types, "Supplier", "java.util.function.Supplier", "java.base");
+        add(types, "Consumer", "java.util.function.Consumer", "java.base");
+        add(types, "Function", "java.util.function.Function", "java.base");
+        add(types, "Predicate", "java.util.function.Predicate", "java.base");
+        add(types, "UnaryOperator", "java.util.function.UnaryOperator", "java.base");
+        add(types, "BinaryOperator", "java.util.function.BinaryOperator", "java.base");
         add(types, "UIManager", "javax.swing.UIManager", "java.desktop");
         return Map.copyOf(types);
     }

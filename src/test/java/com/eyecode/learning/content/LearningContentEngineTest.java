@@ -2,10 +2,11 @@ package com.eyecode.learning.content;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.eyecode.learning.content.LearningResourceLoader;
 
@@ -44,16 +45,40 @@ class LearningContentEngineTest {
 
     @Test
     void rendersBundledLessonMarkdownFeatures() {
-        String html = engine.loadHtml("/learning/content/java/basics/variables.md");
+        String html = engine.convert("""
+                # Variáveis
 
-        assertTrue(html.contains("Variables give a name to data"));
-        assertTrue(html.contains("<ul>"));
+                Um parágrafo com `int`.
+
+                1. Primeiro passo
+                2. Segundo passo
+
+                > Uma citação.
+
+                | Tipo | Exemplo |
+                | --- | --- |
+                | int | 20 |
+
+                ```java
+                int age = 20;
+                ```
+                """);
+
+        assertTrue(html.contains("<h1>Variáveis</h1>"));
+        assertTrue(html.contains("<p>Um parágrafo com <code>int</code>.</p>"));
         assertTrue(html.contains("<ol>"));
-        assertTrue(html.contains("<code>int</code>"));
         assertTrue(html.contains("<pre><code class=\"language-java\">"));
         assertTrue(html.contains("<blockquote>"));
         assertTrue(html.contains("<table>"));
-        assertTrue(html.contains("href=\"https://docs.oracle.com/javase/specs/\""));
+    }
+
+    @Test
+    void loadsBundledVariablesLessonAsPortugueseContent() {
+        LearningDocument document = engine.loadDocument("java/basics/variables");
+
+        assertEquals("Variáveis em Java", document.metadata().title());
+        assertFalse(document.markdownBody().isBlank());
+        assertTrue(document.renderedHtml().contains("<pre><code class=\"language-java\">"));
     }
 
     @Test

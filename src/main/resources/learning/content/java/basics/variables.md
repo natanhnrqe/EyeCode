@@ -60,3 +60,5 @@ Uma variável só pode ser usada dentro do escopo em que foi declarada. Um bloco
 - Use o tipo mais adequado ao domínio do dado.
 - Inicialize variáveis locais antes de lê-las.
 - Separe a ideia de variável, tipo e objeto: uma referência pode apontar para um objeto, enquanto um primitivo guarda seu próprio valor.
+
+Para inferência de tipo local, consulte Inferência de tipo local com var. var exige um inicializador e continua produzindo um tipo estático.

@@ -1,15 +1,28 @@
 ---
 id: java/syntax/types/var
-title: var
+title: Inferência de tipo local com var
 concept: var
-level: beginner
-duration: 1
-category: SISTEMA DE TIPOS
-depth: quick
+level: intermediate
+duration: 6
+category: JAVA MODERNO
+depth: full
 related:
-  - java/syntax/modifiers/final
-  - java/types/class
+  - java/basics/variables
+  - java/generics/generics
 ---
-`var` pede ao compilador que infira o tipo estático de uma variável local a partir do inicializador.
+var permite que o compilador infira o tipo estático de uma variável local a partir do inicializador. Java não se torna dinamicamente tipado.
 
-Ele não representa tipagem dinâmica e não substitui o tipo de retorno de um método nem o tipo de um campo.
+~~~java
+var nome = "EyeCode";
+var quantidade = 10;
+var lista = new ArrayList<String>();
+~~~
+
+O inicializador é obrigatório e determina um tipo específico. var não significa qualquer tipo e não pode ser usado para campos, parâmetros ou variáveis sem inicialização.
+
+~~~java
+var valor;
+var nulo = null;
+~~~
+
+A inferência de tipo local tornou-se padrão no Java 10. Use var quando o tipo for evidente; prefira a declaração explícita quando ela tornar a intenção mais clara.
