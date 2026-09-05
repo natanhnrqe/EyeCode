@@ -1478,12 +1478,12 @@ html, body, #root {
 
 .learning-popup {
   position: fixed;
+
   display: flex;
   flex-direction: column;
 
-   width: min(720px, calc(100vw - 16px));
-   max-width: min(720px, calc(100vw - 16px));
-
+  width: min(720px, calc(100vw - 16px));
+  max-width: min(720px, calc(100vw - 16px));
   max-height: min(600px, calc(100vh - 16px));
 
   overflow: hidden;
@@ -1508,8 +1508,6 @@ html, body, #root {
 /* Sizes */
 /* ========================================================================== */
 
-
-
 .learning-popup.learning-size-quick {
   width: min(430px, calc(100vw - 16px));
   max-height: 360px;
@@ -1530,34 +1528,47 @@ html, body, #root {
 /* Header */
 /* ========================================================================== */
 
-.learning-header,
-.learning-footer {
-  flex: 0 0 auto;
-  background: var(--eyecode-surface);
-}
-
 .learning-header {
+  flex: 0 0 auto;
+
   padding: 13px 16px 11px;
 
   border-bottom: 1px solid var(--eyecode-border);
+
+  background: var(--eyecode-surface);
+}
+
+.learning-header-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 18px;
+}
+
+.learning-heading {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .learning-title-row {
   display: flex;
   align-items: center;
+
+  min-width: 0;
+
   gap: 8px;
 }
 
 .learning-icon {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
 
   width: 18px;
   height: 18px;
 
   flex: 0 0 18px;
-
-  align-items: center;
-  justify-content: center;
 
   border: 1px solid currentColor;
   border-radius: 50%;
@@ -1573,33 +1584,90 @@ html, body, #root {
 img.learning-icon {
   border: 0;
   border-radius: 0;
+
   object-fit: contain;
 }
 
 .learning-title {
+  min-width: 0;
+
+  overflow: hidden;
+
   color: var(--eyecode-text);
 
   font-family: var(--eyecode-font-code);
   font-size: 15px;
   font-weight: 600;
   line-height: 1.3;
-}
 
-.learning-subtitle,
-.learning-breadcrumb,
-.learning-footer {
-  color: var(--eyecode-muted);
-  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .learning-subtitle {
   margin: 3px 0 0 26px;
+
+  color: var(--eyecode-muted);
 
   font-family: var(--eyecode-font-code);
   font-size: 10px;
 
   letter-spacing: .04em;
 }
+
+
+/* ========================================================================== */
+/* Header Actions */
+/* ========================================================================== */
+
+.learning-header-actions {
+  display: flex;
+  align-items: center;
+
+  flex: 0 0 auto;
+
+  gap: 7px;
+}
+
+.learning-header-actions button {
+  min-height: 28px;
+
+  padding: 5px 10px;
+
+  border: 1px solid var(--eyecode-border);
+  border-radius: var(--eyecode-radius-sm);
+
+  background: var(--eyecode-surface-elevated);
+  color: var(--eyecode-text-secondary);
+
+  font: 11px var(--eyecode-font-ui);
+
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  transition:
+    background-color 100ms ease,
+    border-color 100ms ease,
+    color 100ms ease,
+    transform 70ms ease;
+}
+
+.learning-header-actions button:hover {
+  border-color: var(--eyecode-accent);
+
+  background: var(--eyecode-hover);
+  color: var(--eyecode-text);
+}
+
+.learning-header-actions button:active {
+  transform: translateY(1px);
+}
+
+
+/* ========================================================================== */
+/* Breadcrumb */
+/* ========================================================================== */
 
 .learning-breadcrumb {
   display: flex;
@@ -1610,13 +1678,13 @@ img.learning-icon {
 
   margin: 7px 0 0 26px;
 
+  color: var(--eyecode-muted);
+
   font-family: var(--eyecode-font-code);
   font-size: 10px;
 }
 
-.learning-breadcrumb button,
-.learning-common-methods button,
-.learning-related button {
+.learning-breadcrumb button {
   padding: 2px 4px;
 
   border: 0;
@@ -1631,8 +1699,7 @@ img.learning-icon {
 
   transition:
     background-color 100ms ease,
-    color 100ms ease,
-    border-color 100ms ease;
+    color 100ms ease;
 }
 
 .learning-breadcrumb button::after {
@@ -1643,10 +1710,13 @@ img.learning-icon {
   color: var(--eyecode-muted);
 }
 
-.learning-breadcrumb button:hover,
-.learning-related button:hover {
+.learning-breadcrumb button:hover {
   color: var(--eyecode-text);
   background: var(--eyecode-hover);
+}
+
+.learning-breadcrumb span {
+  color: var(--eyecode-muted);
 }
 
 
@@ -1656,8 +1726,10 @@ img.learning-icon {
 
 .learning-body {
   flex: 1 1 auto;
+
   min-width: 0;
   min-height: 0;
+
   overflow-x: hidden;
   overflow-y: auto;
 
@@ -1669,39 +1741,6 @@ img.learning-icon {
   font-family: var(--eyecode-font-ui);
   font-size: 13px;
   line-height: 1.5;
-}
-
-/* ========================================================================== */
-/* Emoji */
-/* ========================================================================== */
-
-.learning-body :is(h1, h2, h3, h4, h5, h6) {
-  font-family: "Emoji", var(--eyecode-font-ui), sans-serif;
-}
-.learning-body .emoji {
-  font-family:
-    "Segoe UI Emoji",
-    "Noto Color Emoji",
-    "Apple Color Emoji",
-    "Segoe UI Symbol",
-    sans-serif;
-
-  font-style: normal;
-  font-weight: normal;
-}
-
-.learning-body img.emoji {
-  display: inline-block;
-
-  width: 1em;
-  height: 1em;
-
-  margin: 0 .05em;
-
-  vertical-align: -.12em;
-
-  border: 0;
-  background: transparent;
 }
 
 
@@ -1730,6 +1769,7 @@ img.learning-icon {
 .learning-body h6 {
   color: var(--eyecode-text);
 
+  font-family: var(--eyecode-font-ui);
   font-weight: 600;
   line-height: 1.25;
 }
@@ -1774,6 +1814,7 @@ img.learning-icon {
 .learning-body ul,
 .learning-body ol {
   margin: 0 0 9px;
+
   padding-left: 20px;
 }
 
@@ -1815,6 +1856,7 @@ img.learning-icon {
 
 .learning-body pre {
   margin: 9px 0 11px;
+
   padding: 9px 10px;
 
   overflow-x: auto;
@@ -1847,18 +1889,42 @@ img.learning-icon {
 }
 
 
+/* ========================================================================== */
+/* Java Syntax Highlight */
+/* ========================================================================== */
 
-.learning-body pre code .learning-token-comment { color: #8f9aa7; }
-.learning-body pre code .learning-token-keyword { color: #f0aa82; font-weight: 500; }
-.learning-body pre code .learning-token-string { color: #9bd49f; }
-.learning-body pre code .learning-token-number { color: #62d3db; }
-.learning-body pre code .learning-token-type { color: #b4c8ff; font-weight: 500; }
+.learning-body pre code .learning-token-comment {
+  color: #8f9aa7;
+}
+
+.learning-body pre code .learning-token-keyword {
+  color: #f0aa82;
+
+  font-weight: 500;
+}
+
+.learning-body pre code .learning-token-string {
+  color: #9bd49f;
+}
+
+.learning-body pre code .learning-token-number {
+  color: #62d3db;
+}
+
+.learning-body pre code .learning-token-type {
+  color: #b4c8ff;
+
+  font-weight: 500;
+}
+
+
 /* ========================================================================== */
 /* Blockquote */
 /* ========================================================================== */
 
 .learning-body blockquote {
   margin: 9px 0 11px;
+
   padding: 6px 10px;
 
   border-left: 3px solid var(--eyecode-accent);
@@ -1950,8 +2016,7 @@ img.learning-icon {
   font-size: 11px;
 }
 
-.learning-common-methods > span,
-.learning-related > span {
+.learning-common-methods > span {
   display: block;
 
   margin-bottom: 4px;
@@ -1964,71 +2029,53 @@ img.learning-icon {
   text-transform: uppercase;
 }
 
-.learning-common-methods > div,
-.learning-related > div {
+.learning-common-methods > div {
   display: flex;
   flex-wrap: wrap;
 
-  gap: 3px 5px;
+  gap: 3px 7px;
 }
 
 .learning-common-methods button {
   padding: 1px 3px;
 
+  border: 0;
+  border-radius: var(--eyecode-radius-sm);
+
+  background: transparent;
   color: var(--eyecode-muted);
 
   font-family: var(--eyecode-font-code);
   font-size: 11px;
   line-height: 1.35;
+
+  cursor: pointer;
+
+  transition:
+    background-color 100ms ease,
+    color 100ms ease;
 }
 
 .learning-common-methods button:hover {
+  background: var(--eyecode-hover);
   color: var(--eyecode-text);
 }
 
 
-.learning-actions {
-  display: flex;
-  flex: 0 1 190px;
-  min-width: 150px;
-  flex-direction: column;
-  align-items: stretch;
-
-  gap: 6px;
-}
-
-.learning-actions button {
-  min-height: 28px;
-  padding: 5px 10px;
-
-  border: 1px solid var(--eyecode-border);
-  border-radius: var(--eyecode-radius-sm);
-
-  background: var(--eyecode-surface-elevated);
-  color: var(--eyecode-text-secondary);
-
-  font: 11px var(--eyecode-font-ui);
-  text-align: left;
-  cursor: pointer;
-}
-
-.learning-actions button:hover {
-  border-color: var(--eyecode-accent);
-  color: var(--eyecode-text);
-}
 /* ========================================================================== */
-/* Footer */
+/* Footer — Related Learning */
 /* ========================================================================== */
 
 .learning-footer {
   display: flex;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
+  flex-direction: column;
 
   align-items: flex-start;
 
-  gap: 12px 20px;
+  gap: 8px;
 
-  padding: 8px 16px 9px;
+  padding: 10px 16px 12px;
 
   border-top: 1px solid var(--eyecode-border);
 
@@ -2037,22 +2084,91 @@ img.learning-icon {
 
 .learning-footer-label {
   display: block;
-  margin-bottom: 5px;
+
+  margin: 0;
+
   color: var(--eyecode-muted);
-  font-size: 10px;
-  letter-spacing: .04em;
+
+  font-size: 9px;
+  font-weight: 600;
+
+  letter-spacing: .07em;
   text-transform: uppercase;
 }
 
-.learning-related {
-  flex: 1 1 auto;
-  min-width: 0;
+.learning-related-items {
+  display: grid;
+
+  grid-template-columns: repeat(3, max-content);
+
+  align-items: center;
+
+  gap: 7px 10px;
+
+  max-width: 100%;
 }
 
-@media (max-width: 520px) {
-  .learning-actions {
-    flex: 1 1 100%;
-    min-width: 0;
+.learning-related-items button {
+  min-height: 27px;
+
+  padding: 4px 9px;
+
+  border: 1px solid var(--eyecode-border);
+  border-radius: var(--eyecode-radius-sm);
+
+  background: transparent;
+  color: var(--eyecode-accent-bright);
+
+  font: 11px var(--eyecode-font-ui);
+
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  transition:
+    background-color 100ms ease,
+    border-color 100ms ease,
+    color 100ms ease,
+    transform 70ms ease;
+}
+
+.learning-related-items button:hover {
+  border-color: var(--eyecode-accent);
+
+  background: var(--eyecode-hover);
+  color: var(--eyecode-text);
+}
+
+.learning-related-items button:active {
+  transform: translateY(1px);
+}
+
+
+/* ========================================================================== */
+/* Responsive */
+/* ========================================================================== */
+
+@media (max-width: 560px) {
+  .learning-header-main {
+    flex-direction: column;
+
+    gap: 9px;
+  }
+
+  .learning-header-actions {
+    align-self: stretch;
+
+    flex-wrap: wrap;
+  }
+
+  .learning-related-items {
+    grid-template-columns: repeat(2, max-content);
+  }
+}
+
+@media (max-width: 420px) {
+  .learning-related-items {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2060,6 +2176,14 @@ img.learning-icon {
 /* ========================================================================== */
 /* Scrollbar */
 /* ========================================================================== */
+
+.learning-body,
+.learning-body pre {
+  scrollbar-width: thin;
+  scrollbar-color:
+    var(--eyecode-border-strong)
+    var(--eyecode-surface);
+}
 
 .learning-body::-webkit-scrollbar,
 .learning-body pre::-webkit-scrollbar {
@@ -2074,10 +2198,10 @@ img.learning-icon {
 
 .learning-body::-webkit-scrollbar-thumb,
 .learning-body pre::-webkit-scrollbar-thumb {
-  background: var(--eyecode-border-strong);
-
   border: 2px solid var(--eyecode-surface);
   border-radius: 999px;
+
+  background: var(--eyecode-border-strong);
 }
 
 .learning-body::-webkit-scrollbar-thumb:hover,

@@ -124,61 +124,83 @@ export function LearningCard({
       onMouseLeave={() => onHover(false)}
     >
 <header className="learning-header">
-        <div className="learning-title-row">
-          {card.iconUrl ? (
-            <img
-              className="learning-icon"
-              src={card.iconUrl}
-              alt=""
-            />
-          ) : (
-            <span
-              className="learning-icon"
-              aria-hidden="true"
-            >
-              {card.iconKind.slice(0, 1)}
-            </span>
-          )}
-
-          <div className="learning-title">
-            {card.title}
-          </div>
-        </div>
-
-        <div className="learning-subtitle">
-          {card.subtitle}
-        </div>
-
-        {card.breadcrumb.length > 0 && (
-          <nav
-            className="learning-breadcrumb"
-            aria-label="Learning path"
+  <div className="learning-header-main">
+    <div className="learning-heading">
+      <div className="learning-title-row">
+        {card.iconUrl ? (
+          <img
+            className="learning-icon"
+            src={card.iconUrl}
+            alt=""
+          />
+        ) : (
+          <span
+            className="learning-icon"
+            aria-hidden="true"
           >
-            {card.breadcrumb.map(
-              (item, index) =>
-                index ===
-                card.breadcrumb.length - 1 ? (
-                  <span key={item.id}>
-                    {item.title}
-                  </span>
-                ) : (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={event =>
-                      navigate(
-                        event,
-                        item.id,
-                      )
-                    }
-                  >
-                    {item.title}
-                  </button>
-                ),
-            )}
-          </nav>
+            {card.iconKind.slice(0, 1)}
+          </span>
         )}
-      </header>
+
+        <div className="learning-title">
+          {card.title}
+        </div>
+      </div>
+
+      <div className="learning-subtitle">
+        {card.subtitle}
+      </div>
+    </div>
+
+    {(card.docsAvailable || card.sourceAvailable) && (
+      <div className="learning-header-actions">
+        {card.docsAvailable && (
+          <button
+            type="button"
+            onClick={() => onAction('openDocumentation')}
+          >
+            Abrir documentação
+          </button>
+        )}
+
+        {card.sourceAvailable && (
+          <button
+            type="button"
+            onClick={() => onAction('openJdkSource')}
+          >
+            Abrir fonte do JDK
+          </button>
+        )}
+      </div>
+    )}
+  </div>
+
+  {card.breadcrumb.length > 0 && (
+    <nav
+      className="learning-breadcrumb"
+      aria-label="Learning path"
+    >
+      {card.breadcrumb.map(
+        (item, index) =>
+          index === card.breadcrumb.length - 1 ? (
+            <span key={item.id}>
+              {item.title}
+            </span>
+          ) : (
+            <button
+              key={item.id}
+              type="button"
+              onClick={event =>
+                navigate(event, item.id)
+              }
+            >
+              {item.title}
+            </button>
+          ),
+      )}
+    </nav>
+  )}
+</header>
 
       <section
         className="learning-body"
@@ -211,42 +233,27 @@ export function LearningCard({
         </section>
       )}
 
-      {(card.relatedItems.length > 0 || card.docsAvailable || card.sourceAvailable) && (
-        <footer className="learning-footer">
           {card.relatedItems.length > 0 && (
-            <div className="learning-related">
-              <span className="learning-footer-label">Relacionados</span>
+            <footer className="learning-footer">
+              <span className="learning-footer-label">
+                Relacionados
+              </span>
 
-              <div>
+              <div className="learning-related-items">
                 {card.relatedItems.map(item => (
                   <button
                     key={item.id}
                     type="button"
-                    onClick={event => navigate(event, item.id)}
+                    onClick={event =>
+                      navigate(event, item.id)
+                    }
                   >
                     {item.title}
                   </button>
                 ))}
               </div>
-            </div>
+            </footer>
           )}
-          {(card.docsAvailable || card.sourceAvailable) && (
-            <div className="learning-actions">
-              <span className="learning-footer-label">Referências</span>
-              {card.docsAvailable && (
-                <button type="button" onClick={() => onAction('openDocumentation')}>
-                  Abrir documentação
-                </button>
-              )}
-              {card.sourceAvailable && (
-                <button type="button" onClick={() => onAction('openJdkSource')}>
-                  Abrir fonte do JDK
-                </button>
-              )}
-            </div>
-          )}
-        </footer>
-      )}
-    </section>
-  );
-}
+        </section>
+      );
+    }
