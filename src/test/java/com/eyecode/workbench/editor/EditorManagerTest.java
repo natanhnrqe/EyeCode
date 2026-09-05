@@ -134,6 +134,66 @@ class EditorManagerTest {
     }
 
     @Test
+    void activationKeepsEachOpenDocumentContentAndDirtyState() {
+        EditorManager manager = newManager();
+        EditorSession a = manager.openDocument(null, "class A {}");
+        EditorBuffer aBuffer = manager.getBuffer(a.getSessionId()).orElseThrow();
+        aBuffer.replaceText("class A { int value; }");
+
+        EditorSession b = manager.openDocument(null, "class B {}");
+        String aSessionId = a.getSessionId();
+        String aDocumentId = a.getDocumentId();
+
+        manager.activateSession(aSessionId);
+
+        assertSame(a, manager.getCurrentSession());
+        assertEquals(aSessionId, a.getSessionId());
+        assertEquals(aDocumentId, a.getDocumentId());
+        assertEquals("class A { int value; }", aBuffer.getDocument().getText());
+        assertTrue(aBuffer.getDocument().isDirty());
+        assertEquals("class B {}", manager.getBuffer(b.getSessionId()).orElseThrow().getDocument().getText());
+        assertFalse(manager.getBuffer(b.getSessionId()).orElseThrow().getDocument().isDirty());
+    }
+
+    @Test
+    void flushSessionKeepsDocumentAndSessionIdentity() throws Exception {
+        Path file = Files.createTempFile("ec-manager-save", ".java");
+        Files.writeString(file, "class Saved {}");
+        EditorManager manager = newManager();
+        EditorSession session = manager.openDocument(file);
+        EditorBuffer buffer = manager.getBuffer(session.getSessionId()).orElseThrow();
+        String sessionId = session.getSessionId();
+        String documentId = session.getDocumentId();
+
+        buffer.replaceText("class Saved { int value; }");
+        assertTrue(manager.flushSession(sessionId));
+
+        assertSame(session, manager.getSession(sessionId).orElseThrow());
+        assertEquals(documentId, session.getDocumentId());
+        assertSame(buffer, manager.getBuffer(sessionId).orElseThrow());
+        assertEquals("class Saved { int value; }", buffer.getDocument().getText());
+        assertFalse(buffer.getDocument().isDirty());
+        assertEquals("class Saved { int value; }", Files.readString(file));
+        manager.shutdownAutosave();
+    }
+
+    @Test
+    void definitionResolutionUsesCurrentDirtyDocumentSnapshot() throws Exception {
+        EditorManager manager = newManager();
+        EditorSession session = manager.openDocument(Files.createTempFile("ec-live", ".java"), "class Live { void use() {} }");
+        EditorBuffer buffer = manager.getBuffer(session.getSessionId()).orElseThrow();
+        String source = "class Live { int current; void use() { current = 1; } }";
+        buffer.replaceText(source);
+        int reference = source.lastIndexOf("current");
+
+        var location = manager.resolveDefinition(session.getSessionId(), reference);
+
+        assertTrue(buffer.getDocument().isDirty());
+        assertTrue(location.isPresent());
+        assertEquals(source.indexOf("int current"), location.orElseThrow().declarationRange().startOffset());
+    }
+
+    @Test
     void closeSessionRemoveSessaoEInvocaViewDispose() {
         EditorManager manager = newManager();
         EditorSession a = manager.openDocument(Path.of("demo/A.java"), "a");
@@ -172,6 +232,22 @@ class EditorManagerTest {
         manager.closeSession(a.getSessionId());
 
         assertEquals(0, manager.getSessions().size());
+    }
+
+    @Test
+    void closeAllSessionsClearsActiveSessionForWorkspaceReplacement() {
+        EditorManager manager = newManager();
+        EditorSession a = manager.openDocument(Path.of("demo/A.java"), "class A {}");
+        EditorSession b = manager.openDocument(Path.of("demo/B.java"), "class B {}");
+
+        manager.closeAllSessions();
+
+        assertTrue(manager.getSessions().isEmpty());
+        assertNull(manager.getCurrentSession());
+        assertFalse(manager.getSession(a.getSessionId()).isPresent());
+        assertFalse(manager.getSession(b.getSessionId()).isPresent());
+        assertEquals(SessionState.DISPOSED, a.getState());
+        assertEquals(SessionState.DISPOSED, b.getState());
     }
 
     @Test

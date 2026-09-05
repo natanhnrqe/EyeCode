@@ -58,6 +58,12 @@ class MonacoOverlayResourceTest {
             assertTrue(page.contains("scheduleHandoffHide"));
             assertTrue(page.contains("if (!command.hard)"));
             assertTrue(page.contains("meta charset=\"UTF-8\""));
+            assertTrue(page.contains("const models = new Map()"));
+            assertTrue(page.contains("monaco.editor.createModel(command.content || '', command.language || 'java', monaco.Uri.parse(command.id))"));
+            assertTrue(page.contains("if (hostUpdates.delete(command.id)) return;"));
+            assertTrue(page.contains("model.getValue() !== command.content"));
+            assertTrue(page.contains("monaco.editor.create(document.getElementById('editor'), { theme: 'eyecode-dark'"));
+            assertTrue(!page.contains("inmemory://model/1"));
         }
     }
 
