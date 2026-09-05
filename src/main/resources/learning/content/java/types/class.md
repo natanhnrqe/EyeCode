@@ -10,9 +10,10 @@ officialDocs:
   url: https://docs.oracle.com/javase/tutorial/java/javaOO/classes.html
 related:
   - java/types/object
-  - java/types/interface
-  - java/types/record
-next: java/types/object
+  - java/oop/constructors
+  - java/oop/fields
+  - java/oop/inheritance
+  - java/oop/access-modifiers
 ---
 
 ## O que é isso?

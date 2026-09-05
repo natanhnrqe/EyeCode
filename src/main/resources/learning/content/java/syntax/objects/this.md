@@ -9,5 +9,8 @@ depth: quick
 related:
   - java/syntax/objects/super
   - java/types/class
+  - java/oop/constructors
+  - java/oop/fields
+  - java/oop/instance-members
 ---
 `this` refere-se ao objeto atual. Ele também pode delegar de um construtor para outro com `this(...)`.

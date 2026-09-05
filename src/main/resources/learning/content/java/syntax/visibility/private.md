@@ -9,6 +9,8 @@ depth: quick
 related:
   - java/syntax/visibility/public
   - java/syntax/visibility/protected
+  - java/oop/access-modifiers
+  - java/oop/encapsulation
 ---
 `private` mantém um membro acessível somente dentro da classe que o declara e de contextos aninhados.
 

@@ -9,5 +9,8 @@ depth: quick
 related:
   - java/types/interface
   - java/syntax/types/extends
+  - java/oop/inheritance
+  - java/oop/polymorphism
+  - java/oop/method-overriding
 ---
 `implements` declara que uma classe fornece o contrato de uma ou mais interfaces.

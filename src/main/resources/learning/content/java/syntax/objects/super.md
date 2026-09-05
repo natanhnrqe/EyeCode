@@ -9,5 +9,8 @@ depth: quick
 related:
   - java/syntax/objects/this
   - java/syntax/types/extends
+  - java/oop/inheritance
+  - java/oop/constructors
+  - java/oop/method-overriding
 ---
 `super` acessa um membro herdado ou chama o construtor da superclasse com `super(...)`.

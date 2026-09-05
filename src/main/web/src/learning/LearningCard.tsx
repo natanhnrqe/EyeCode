@@ -241,15 +241,26 @@ export function LearningCard({
 
               <div className="learning-related-items">
                 {card.relatedItems.map(item => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={event =>
-                      navigate(event, item.id)
-                    }
-                  >
-                    {item.title}
-                  </button>
+               <button
+                 key={item.id}
+                 type="button"
+                 onClick={event => navigate(event, item.id)}
+               >
+                 <span className="learning-related-label-viewport">
+                   <span className="learning-related-label-track">
+                     <span className="learning-related-label">
+                       {item.title}
+                     </span>
+
+                     <span
+                       className="learning-related-label"
+                       aria-hidden="true"
+                     >
+                       {item.title}
+                     </span>
+                   </span>
+                 </span>
+               </button>
                 ))}
               </div>
             </footer>

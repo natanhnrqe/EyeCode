@@ -10,8 +10,10 @@ officialDocs:
   url: https://docs.oracle.com/javase/tutorial/java/IandI/createinterface.html
 related:
   - java/types/class
-  - java/types/record
-next: java/types/record
+  - java/syntax/types/implements
+  - java/oop/polymorphism
+  - java/oop/method-overriding
+  - java/syntax/modifiers/abstract
 ---
 
 ## O que é isso?

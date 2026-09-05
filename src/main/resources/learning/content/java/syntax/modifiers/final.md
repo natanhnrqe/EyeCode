@@ -9,6 +9,8 @@ depth: quick
 related:
   - java/syntax/modifiers/static
   - java/types/class
+  - java/oop/inheritance
+  - java/oop/method-overriding
 ---
 `final` impede a reatribuição de uma variável, a sobrescrita de um método ou a extensão de uma classe.
 

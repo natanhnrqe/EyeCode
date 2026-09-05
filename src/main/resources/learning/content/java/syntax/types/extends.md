@@ -9,6 +9,9 @@ depth: quick
 related:
   - java/syntax/objects/super
   - java/syntax/types/implements
+  - java/oop/inheritance
+  - java/oop/method-overriding
+  - java/oop/polymorphism
 ---
 `extends` declara herança de classe ou as interfaces ancestrais de uma interface.
 

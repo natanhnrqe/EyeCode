@@ -9,6 +9,9 @@ depth: quick
 related:
   - java/types/class
   - java/types/interface
+  - java/oop/inheritance
+  - java/oop/method-overriding
+  - java/oop/polymorphism
 ---
 `abstract` marca uma classe ou membro como incompleto e dependente de uma implementação concreta.
 

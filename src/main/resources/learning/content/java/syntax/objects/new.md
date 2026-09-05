@@ -8,6 +8,9 @@ category: OBJETOS
 depth: quick
 related:
   - java/types/class
+  - java/oop/constructors
+  - java/types/object
+  - java/oop/fields
 ---
 `new` cria um objeto ou array e executa o construtor escolhido quando aplicável.
 
