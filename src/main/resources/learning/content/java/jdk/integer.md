@@ -10,6 +10,9 @@ officialDocs:
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Integer.html
 related:
   - java/jdk/string
+  - java/jdk/number
+  - java/jdk/long
+  - java/jdk/double
 ---
 
 ## O que é isso?

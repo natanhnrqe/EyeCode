@@ -11,6 +11,10 @@ related:
   - java/basics/literals
   - java/basics/type-conversion
   - java/jdk/integer
+  - java/jdk/long
+  - java/jdk/double
+  - java/jdk/boolean
+  - java/jdk/character
 ---
 Tipos primitivos representam valores diretamente, sem serem referências para objetos. Java possui oito tipos primitivos.
 

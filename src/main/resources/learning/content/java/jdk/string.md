@@ -10,6 +10,8 @@ officialDocs:
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html
 related:
   - java/jdk/object
+  - java/jdk/char-sequence
+  - java/jdk/string-builder
 members:
   - length(): java/jdk/string/length
   - isBlank(): java/jdk/string/is-blank
