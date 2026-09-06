@@ -4,6 +4,13 @@ title: Throwable
 concept: throwable
 level: beginner
 duration: 4
+members:
+- getMessage(): java/jdk/throwable/get-message
+- getCause(): java/jdk/throwable/get-cause
+- getStackTrace(): java/jdk/throwable/get-stack-trace
+- printStackTrace(): java/jdk/throwable/print-stack-trace
+- addSuppressed(): java/jdk/throwable/add-suppressed
+- getSuppressed(): java/jdk/throwable/get-suppressed
 category: API JAVA
 officialDocs:
   label: Throwable

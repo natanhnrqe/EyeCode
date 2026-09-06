@@ -165,7 +165,7 @@ class JavaFxLearningCardMetadataTest {
                 JdkSourceTarget expected = new JdkSourceTarget(
                         "java.lang.String", "java.base",
                         "java.base/java/lang/String.java", "String.java", "contains");
-                assertEquals(List.of(expected, expected), opened);
+                assertEquals(List.of(expected, expected.withMemberSignature("(CharSequence)")), opened);
 
                 workspace.rendererForTest().navigateToIdentifier("java/jdk/string");
                 workspace.rendererForTest().footerForTest().fireSourceForTest();

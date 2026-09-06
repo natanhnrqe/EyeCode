@@ -5,6 +5,14 @@ concept: list
 level: beginner
 duration: 4
 category: COLEÇÕES
+members:
+- get(): java/jdk/list/get
+- set(): java/jdk/list/set
+- add(): java/jdk/list/add
+- remove(): java/jdk/list/remove
+- indexOf(): java/jdk/list/index-of
+- lastIndexOf(): java/jdk/list/last-index-of
+- subList(): java/jdk/list/sub-list
 officialDocs:
   label: List
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html

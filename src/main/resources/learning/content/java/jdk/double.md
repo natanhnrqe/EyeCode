@@ -4,6 +4,14 @@ title: Double
 concept: double-wrapper
 level: beginner
 duration: 4
+members:
+- parseDouble(): java/jdk/double/parse-double
+- valueOf(): java/jdk/double/value-of
+- compare(): java/jdk/double/compare
+- compareTo(): java/jdk/double/compare-to
+- doubleValue(): java/jdk/double/double-value
+- isNaN(): java/jdk/double/is-na-n
+- isInfinite(): java/jdk/double/is-infinite
 category: API JAVA
 officialDocs:
   label: Double

@@ -269,6 +269,11 @@ public final class WebShellLearningController {
 
     private JdkSourceTarget sourceTarget(LearningMetadata metadata) {
         LearningMetadata reference = referenceMetadata(metadata);
+        return sourceTarget(metadata, reference, sourceResolver);
+    }
+
+    static JdkSourceTarget sourceTarget(LearningMetadata metadata, LearningMetadata reference,
+                                        JdkSourceResolver sourceResolver) {
         if (reference == null || reference.officialDocs() == null) return null;
         return JavaJdkTypeCatalog.findSimple(reference.officialDocs().label())
                 .flatMap(sourceResolver::resolve)

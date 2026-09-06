@@ -5,6 +5,19 @@ concept: collection
 level: beginner
 duration: 6
 category: COLEÇÕES
+members:
+- add(): java/jdk/collection/add
+- addAll(): java/jdk/collection/add-all
+- remove(): java/jdk/collection/remove
+- removeAll(): java/jdk/collection/remove-all
+- retainAll(): java/jdk/collection/retain-all
+- contains(): java/jdk/collection/contains
+- containsAll(): java/jdk/collection/contains-all
+- size(): java/jdk/collection/size
+- isEmpty(): java/jdk/collection/is-empty
+- clear(): java/jdk/collection/clear
+- toArray(): java/jdk/collection/to-array
+- iterator(): java/jdk/collection/iterator
 officialDocs:
   label: Collection
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Collection.html

@@ -4,6 +4,13 @@ title: Integer
 concept: integer
 level: beginner
 duration: 3
+members:
+- parseInt(): java/jdk/integer/parse-int
+- valueOf(): java/jdk/integer/value-of
+- compare(): java/jdk/integer/compare
+- compareTo(): java/jdk/integer/compare-to
+- toString(): java/jdk/integer/to-string
+- intValue(): java/jdk/integer/int-value
 category: JAVA API
 officialDocs:
   label: Integer

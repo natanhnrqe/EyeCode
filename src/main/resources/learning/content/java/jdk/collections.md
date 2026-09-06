@@ -4,6 +4,19 @@ title: Collections
 concept: collections-utility
 level: beginner
 duration: 6
+members:
+- sort(): java/jdk/collections/sort
+- reverse(): java/jdk/collections/reverse
+- shuffle(): java/jdk/collections/shuffle
+- binarySearch(): java/jdk/collections/binary-search
+- min(): java/jdk/collections/min
+- max(): java/jdk/collections/max
+- frequency(): java/jdk/collections/frequency
+- disjoint(): java/jdk/collections/disjoint
+- unmodifiableList(): java/jdk/collections/unmodifiable-list
+- unmodifiableSet(): java/jdk/collections/unmodifiable-set
+- unmodifiableMap(): java/jdk/collections/unmodifiable-map
+- synchronizedList(): java/jdk/collections/synchronized-list
 category: COLEÇÕES
 officialDocs:
   label: Collections

@@ -4,6 +4,14 @@ title: Float
 concept: float-wrapper
 level: beginner
 duration: 4
+members:
+- parseFloat(): java/jdk/float/parse-float
+- valueOf(): java/jdk/float/value-of
+- compare(): java/jdk/float/compare
+- compareTo(): java/jdk/float/compare-to
+- floatValue(): java/jdk/float/float-value
+- isNaN(): java/jdk/float/is-na-n
+- isInfinite(): java/jdk/float/is-infinite
 category: API JAVA
 officialDocs:
   label: Float

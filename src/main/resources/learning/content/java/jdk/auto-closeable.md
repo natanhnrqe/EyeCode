@@ -4,6 +4,8 @@ title: AutoCloseable
 concept: auto-closeable
 level: beginner
 duration: 4
+members:
+  - close(): java/jdk/auto-closeable/close
 category: API JAVA
 officialDocs:
   label: AutoCloseable

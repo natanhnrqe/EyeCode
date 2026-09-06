@@ -5,6 +5,18 @@ concept: string-builder
 level: beginner
 duration: 4
 category: API JAVA
+members:
+- append(): java/jdk/string-builder/append
+- insert(): java/jdk/string-builder/insert
+- delete(): java/jdk/string-builder/delete
+- deleteCharAt(): java/jdk/string-builder/delete-char-at
+- replace(): java/jdk/string-builder/replace
+- reverse(): java/jdk/string-builder/reverse
+- setLength(): java/jdk/string-builder/set-length
+- length(): java/jdk/string-builder/length
+- capacity(): java/jdk/string-builder/capacity
+- charAt(): java/jdk/string-builder/char-at
+- toString(): java/jdk/string-builder/to-string
 officialDocs:
   label: StringBuilder
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/StringBuilder.html

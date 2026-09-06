@@ -4,6 +4,17 @@ title: Arrays
 concept: arrays-class
 level: beginner
 duration: 5
+members:
+- sort(): java/jdk/arrays/sort
+- binarySearch(): java/jdk/arrays/binary-search
+- fill(): java/jdk/arrays/fill
+- copyOf(): java/jdk/arrays/copy-of
+- copyOfRange(): java/jdk/arrays/copy-of-range
+- equals(): java/jdk/arrays/equals
+- deepEquals(): java/jdk/arrays/deep-equals
+- toString(): java/jdk/arrays/to-string
+- deepToString(): java/jdk/arrays/deep-to-string
+- asList(): java/jdk/arrays/as-list
 category: API JAVA
 officialDocs:
   label: Arrays

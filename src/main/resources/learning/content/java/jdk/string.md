@@ -19,6 +19,23 @@ members:
   - contains(): java/jdk/string/contains
   - replace(): java/jdk/string/replace
   - split(): java/jdk/string/split
+- isEmpty(): java/jdk/string/is-empty
+- charAt(): java/jdk/string/char-at
+- startsWith(): java/jdk/string/starts-with
+- endsWith(): java/jdk/string/ends-with
+- indexOf(): java/jdk/string/index-of
+- lastIndexOf(): java/jdk/string/last-index-of
+- equals(): java/jdk/string/equals
+- equalsIgnoreCase(): java/jdk/string/equals-ignore-case
+- compareTo(): java/jdk/string/compare-to
+- replaceAll(): java/jdk/string/replace-all
+- trim(): java/jdk/string/trim
+- strip(): java/jdk/string/strip
+- toLowerCase(): java/jdk/string/to-lower-case
+- toUpperCase(): java/jdk/string/to-upper-case
+- formatted(): java/jdk/string/formatted
+- join(): java/jdk/string/join
+- valueOf(): java/jdk/string/value-of
 ---
 ## O que é isso?
 

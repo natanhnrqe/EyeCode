@@ -4,6 +4,12 @@ title: Long
 concept: long-wrapper
 level: beginner
 duration: 4
+members:
+- parseLong(): java/jdk/long/parse-long
+- valueOf(): java/jdk/long/value-of
+- compare(): java/jdk/long/compare
+- compareTo(): java/jdk/long/compare-to
+- longValue(): java/jdk/long/long-value
 category: API JAVA
 officialDocs:
   label: Long

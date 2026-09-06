@@ -4,6 +4,17 @@ title: Character
 concept: character-wrapper
 level: beginner
 duration: 4
+members:
+- isLetter(): java/jdk/character/is-letter
+- isDigit(): java/jdk/character/is-digit
+- isWhitespace(): java/jdk/character/is-whitespace
+- isUpperCase(): java/jdk/character/is-upper-case
+- isLowerCase(): java/jdk/character/is-lower-case
+- toUpperCase(): java/jdk/character/to-upper-case
+- toLowerCase(): java/jdk/character/to-lower-case
+- getNumericValue(): java/jdk/character/get-numeric-value
+- compare(): java/jdk/character/compare
+- charValue(): java/jdk/character/char-value
 category: API JAVA
 officialDocs:
   label: Character

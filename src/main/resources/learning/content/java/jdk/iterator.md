@@ -4,6 +4,11 @@ title: Iterator
 concept: iterator
 level: beginner
 duration: 5
+members:
+- hasNext(): java/jdk/iterator/has-next
+- next(): java/jdk/iterator/next
+- remove(): java/jdk/iterator/remove
+- forEachRemaining(): java/jdk/iterator/for-each-remaining
 category: COLEÇÕES
 officialDocs:
   label: Iterator

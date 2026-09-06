@@ -19,6 +19,7 @@ public final class JdkLearningConceptCatalog {
     private static final Map<String, String> IDS = Map.ofEntries(
             Map.entry("String", "java/jdk/string"),
             Map.entry("Object", "java/jdk/object"),
+            Map.entry("Enum", "java/jdk/enum"),
             Map.entry("Integer", "java/jdk/integer"),
             Map.entry("Number", "java/jdk/number"),
             Map.entry("Byte", "java/jdk/byte"),
@@ -59,6 +60,8 @@ public final class JdkLearningConceptCatalog {
             Map.entry("ArrayDeque", "java/jdk/array-deque"),
             Map.entry("PriorityQueue", "java/jdk/priority-queue"),
             Map.entry("Comparator", "java/jdk/comparator"),
+            Map.entry("Optional", "java/jdk/optional"),
+            Map.entry("Stream", "java/jdk/stream"),
             Map.entry("FunctionalInterface", "java/jdk/functional-interface"),
             Map.entry("Runnable", "java/jdk/runnable"),
             Map.entry("Supplier", "java/jdk/supplier"),
@@ -100,7 +103,7 @@ public final class JdkLearningConceptCatalog {
         concept.setId(id);
         concept.setTitle(type.simpleName());
         concept.setDescription("A practical introduction to " + type.simpleName() + " in Java.");
-        concept.setType(Set.of("List", "Map", "Collection", "Set", "Queue", "Deque", "Comparator", "FunctionalInterface", "Runnable", "Supplier", "Consumer", "Function", "Predicate", "UnaryOperator", "BinaryOperator").contains(type.simpleName())
+        concept.setType(Set.of("List", "Map", "Collection", "Set", "Queue", "Deque", "Comparator", "Stream", "FunctionalInterface", "Runnable", "Supplier", "Consumer", "Function", "Predicate", "UnaryOperator", "BinaryOperator").contains(type.simpleName())
                 ? ConceptType.INTERFACE : ConceptType.CLASS);
         concept.setDifficulty(DifficultyLevel.BEGINNER);
         concept.setQualifiedName(type.qualifiedName());

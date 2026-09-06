@@ -5,6 +5,23 @@ concept: map
 level: beginner
 duration: 4
 category: COLEÇÕES
+members:
+- put(): java/jdk/map/put
+- putIfAbsent(): java/jdk/map/put-if-absent
+- get(): java/jdk/map/get
+- getOrDefault(): java/jdk/map/get-or-default
+- containsKey(): java/jdk/map/contains-key
+- containsValue(): java/jdk/map/contains-value
+- remove(): java/jdk/map/remove
+- replace(): java/jdk/map/replace
+- keySet(): java/jdk/map/key-set
+- values(): java/jdk/map/values
+- entrySet(): java/jdk/map/entry-set
+- forEach(): java/jdk/map/for-each
+- computeIfAbsent(): java/jdk/map/compute-if-absent
+- computeIfPresent(): java/jdk/map/compute-if-present
+- compute(): java/jdk/map/compute
+- merge(): java/jdk/map/merge
 officialDocs:
   label: Map
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Map.html

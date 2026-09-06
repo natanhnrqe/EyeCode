@@ -233,7 +233,8 @@ public final class MonacoLearningCardRenderer implements LearningCardRenderer, M
         if (reference == null || reference.officialDocs() == null) return null;
         return JavaJdkTypeCatalog.findSimple(reference.officialDocs().label())
                 .flatMap(sourceResolver::resolve)
-                .map(target -> target.withMember(metadata.sourceMember())).orElse(null);
+                .map(target -> target.withMember(metadata.sourceMember())
+                        .withMemberSignature(metadata.sourceSignature())).orElse(null);
     }
 
     private LearningMetadata referenceMetadata(LearningMetadata metadata) {

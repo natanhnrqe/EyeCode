@@ -27,6 +27,7 @@ public final class JavaJdkTypeCatalog {
         Map<String, JavaJdkType> types = new LinkedHashMap<>();
         add(types, "String", "java.lang.String", "java.base");
         add(types, "Object", "java.lang.Object", "java.base");
+        add(types, "Enum", "java.lang.Enum", "java.base");
         add(types, "Integer", "java.lang.Integer", "java.base");
         add(types, "Number", "java.lang.Number", "java.base");
         add(types, "Byte", "java.lang.Byte", "java.base");
@@ -67,6 +68,8 @@ public final class JavaJdkTypeCatalog {
         add(types, "ArrayDeque", "java.util.ArrayDeque", "java.base");
         add(types, "PriorityQueue", "java.util.PriorityQueue", "java.base");
         add(types, "Comparator", "java.util.Comparator", "java.base");
+        add(types, "Optional", "java.util.Optional", "java.base");
+        add(types, "Stream", "java.util.stream.Stream", "java.base");
         add(types, "FunctionalInterface", "java.lang.FunctionalInterface", "java.base");
         add(types, "Runnable", "java.lang.Runnable", "java.base");
         add(types, "Supplier", "java.util.function.Supplier", "java.base");

@@ -58,4 +58,15 @@ class JdkSourceDeclarationLocatorTest {
 
         assertEquals(source.indexOf("substring(int start)"), locator.find(source, target));
     }
+
+    @Test
+    void findsRepresentativeMethodUsingExactSignature() {
+        String source = "class String { char charAt(int index) { return 0; } "
+                + "char charAt(long index) { return 0; } }";
+        JdkSourceTarget target = new JdkSourceTarget(
+                "java.lang.String", "java.base", "java.base/java/lang/String.java",
+                "String.java", "charAt", "(int)");
+
+        assertEquals(source.indexOf("charAt(int index)"), locator.find(source, target));
+    }
 }

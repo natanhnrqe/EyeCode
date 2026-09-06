@@ -4,6 +4,8 @@ title: Comparable
 concept: comparable
 level: beginner
 duration: 4
+members:
+  - compareTo(): java/jdk/comparable/ordering
 category: API JAVA
 officialDocs:
   label: Comparable

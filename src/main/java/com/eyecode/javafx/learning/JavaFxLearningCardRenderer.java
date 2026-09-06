@@ -337,7 +337,8 @@ public final class JavaFxLearningCardRenderer implements LearningCardRenderer {
         }
         return JavaJdkTypeCatalog.findSimple(targetMetadata.officialDocs().label())
                 .flatMap(sourceResolver::resolve)
-                .map(target -> target.withMember(metadata.sourceMember()))
+                .map(target -> target.withMember(metadata.sourceMember())
+                        .withMemberSignature(metadata.sourceSignature()))
                 .orElse(null);
     }
 

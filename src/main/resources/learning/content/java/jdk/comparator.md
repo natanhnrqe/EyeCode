@@ -4,6 +4,13 @@ title: Comparator
 concept: comparator
 level: beginner
 duration: 6
+members:
+- compare(): java/jdk/comparator/compare
+- reversed(): java/jdk/comparator/reversed
+- thenComparing(): java/jdk/comparator/then-comparing
+- comparing(): java/jdk/comparator/comparing
+- naturalOrder(): java/jdk/comparator/natural-order
+- reverseOrder(): java/jdk/comparator/reverse-order
 category: COLEÇÕES
 officialDocs:
   label: Comparator

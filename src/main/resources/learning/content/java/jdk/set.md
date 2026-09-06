@@ -5,6 +5,12 @@ concept: set
 level: beginner
 duration: 5
 category: COLEÇÕES
+members:
+- add(): java/jdk/set/add
+- remove(): java/jdk/set/remove
+- contains(): java/jdk/set/contains
+- addAll(): java/jdk/set/add-all
+- retainAll(): java/jdk/set/retain-all
 officialDocs:
   label: Set
   url: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Set.html

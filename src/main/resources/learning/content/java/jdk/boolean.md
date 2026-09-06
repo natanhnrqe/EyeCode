@@ -4,6 +4,14 @@ title: Boolean
 concept: boolean-wrapper
 level: beginner
 duration: 4
+members:
+- parseBoolean(): java/jdk/boolean/parse-boolean
+- valueOf(): java/jdk/boolean/value-of
+- compare(): java/jdk/boolean/compare
+- booleanValue(): java/jdk/boolean/boolean-value
+- logicalAnd(): java/jdk/boolean/logical-and
+- logicalOr(): java/jdk/boolean/logical-or
+- logicalXor(): java/jdk/boolean/logical-xor
 category: API JAVA
 officialDocs:
   label: Boolean

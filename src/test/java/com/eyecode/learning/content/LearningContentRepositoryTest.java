@@ -73,7 +73,7 @@ class LearningContentRepositoryTest {
     void exposesStringMemberDestinationsFromFrontMatter() {
         LearningMetadata metadata = repository.loadDocument("java/jdk/string").metadata();
 
-        assertEquals(6, metadata.members().size());
+        assertEquals(23, metadata.members().size());
         assertEquals("length()", metadata.members().getFirst().label());
         assertEquals("java/jdk/string/length", metadata.members().getFirst().identifier());
     }
