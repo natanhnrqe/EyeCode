@@ -1,6 +1,11 @@
 package com.eyecode.editor.v2.completion;
 
 import com.eyecode.editor.v2.language.LanguageContext;
+import com.eyecode.editor.v2.syntax.SyntaxToken;
+import com.eyecode.editor.v2.syntax.TokenType;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 public final class CompletionContextResolver {
 
@@ -25,5 +30,42 @@ public final class CompletionContextResolver {
             return CompletionContextKind.TYPE;
         }
         return CompletionContextKind.IDENTIFIER;
+    }
+
+    public static boolean isMethodBodyExpressionContext(LanguageContext context) {
+        if (context == null || context.getSyntax() == null) {
+            return false;
+        }
+        int offset = context.getDocument().offsetOf(context.getCaret());
+        Deque<Integer> braces = new ArrayDeque<>();
+        int openBrace = -1;
+        var tokens = context.getSyntax().getTokens();
+        for (int index = 0; index < tokens.size(); index++) {
+            SyntaxToken token = tokens.get(index);
+            if (token.startOffset() >= offset) {
+                break;
+            }
+            if ("{".equals(token.text())) {
+                braces.push(index);
+            } else if ("}".equals(token.text()) && !braces.isEmpty()) {
+                braces.pop();
+            }
+        }
+        if (!braces.isEmpty()) {
+            openBrace = braces.peek();
+        }
+        if (openBrace < 0) {
+            return false;
+        }
+        for (int index = openBrace - 1; index >= 0; index--) {
+            SyntaxToken token = tokens.get(index);
+            if (token.type() == TokenType.WHITESPACE || token.type() == TokenType.COMMENT) {
+                continue;
+            }
+            return ")".equals(token.text()) || "->".equals(token.text())
+                    || "else".equals(token.text()) || "try".equals(token.text())
+                    || "finally".equals(token.text()) || "do".equals(token.text());
+        }
+        return false;
     }
 }

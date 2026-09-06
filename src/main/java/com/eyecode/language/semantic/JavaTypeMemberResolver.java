@@ -80,6 +80,9 @@ public final class JavaTypeMemberResolver {
 
     private Optional<ResolvedType> resolveInitial(JavaFileModel file, String name, int receiverOffset, int caretOffset) {
         JavaClassModel enclosing = enclosingType(file, caretOffset);
+        if ("this".equals(name) && enclosing != null) {
+            return Optional.of(new ResolvedType(enclosing, null, false));
+        }
         if (enclosing != null) {
             JavaMethodModel method = enclosingMethod(enclosing, caretOffset);
             if (method != null) {
@@ -308,7 +311,8 @@ public final class JavaTypeMemberResolver {
             if (token.endOffset() <= start || token.startOffset() >= end) {
                 continue;
             }
-            if (token.type() == JavaTokenType.IDENTIFIER) {
+            if (token.type() == JavaTokenType.IDENTIFIER
+                    || (token.type() == JavaTokenType.KEYWORD && "this".equals(token.text()))) {
                 result.append(token.text());
             }
         }

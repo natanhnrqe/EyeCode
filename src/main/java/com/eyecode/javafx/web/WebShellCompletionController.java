@@ -26,10 +26,15 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class WebShellCompletionController {
     private final JavaFxWebShellSurface surface;
     private final EditorManager manager;
+    private final ExecutorService executor;
+    private final Map<String, String> latestRequestByUri = new ConcurrentHashMap<>();
     private final JavaSyntaxAnalyzer syntaxAnalyzer = new JavaSyntaxAnalyzer();
     private final EyeCodeCompletionService completionService = new EyeCodeCompletionService(
             new CompletionEngine(List.of(
@@ -40,20 +45,42 @@ public final class WebShellCompletionController {
                     new JavaSnippetProvider(),
                     new SemanticCompletionProvider(new SemanticSymbolRegistry())
             )));
+    private volatile boolean disposed;
 
     public WebShellCompletionController(JavaFxWebShellSurface surface, EditorManager manager) {
         this.surface = surface;
         this.manager = manager;
+        this.executor = Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "eyecode-web-completion");
+            thread.setDaemon(true);
+            return thread;
+        });
         surface.registerHandler("completion", "request", this::request);
     }
 
+    public void dispose() {
+        if (disposed) return;
+        disposed = true;
+        latestRequestByUri.clear();
+        executor.shutdownNow();
+    }
+
     private WebShellEnvelope request(WebShellEnvelope message) {
+        String modelId = text(message.payload(), "uri");
+        if (modelId.isBlank()) modelId = text(message.payload(), "modelId");
+        String requestModelId = modelId;
+        latestRequestByUri.put(requestModelId, message.requestId());
+        executor.execute(() -> compute(message, requestModelId));
+        return acknowledgment(message, true);
+    }
+
+    private void compute(WebShellEnvelope message, String modelId) {
+        if (disposed || !isLatest(modelId, message.requestId())) return;
         try {
-            String modelId = text(message.payload(), "uri");
-            if (modelId.isBlank()) modelId = text(message.payload(), "modelId");
             EditorSession session = sessionForModel(modelId);
             if (session == null) {
-                return publish(message, responsePayload(message, modelId, List.of()));
+                publish(message, responsePayload(message, modelId, List.of()));
+                return;
             }
             String content = text(message.payload(), "content");
             if (content.isEmpty()) {
@@ -77,13 +104,19 @@ public final class WebShellCompletionController {
                     DiagnosticSnapshot.empty());
             MonacoCompletionRequest completionRequest = toRequest(message, modelId, content, offset);
             List<MonacoCompletionItem> items = completionService.complete(completionRequest, context);
-            return publish(message, responsePayload(message, modelId, items));
+            if (isLatest(modelId, message.requestId())) {
+                publish(message, responsePayload(message, modelId, items));
+            }
         } catch (RuntimeException exception) {
+            if (!isLatest(modelId, message.requestId())) return;
             WebShellEnvelope error = message.error(new WebShellError("COMPLETION_FAILED",
                     exception.getMessage() == null ? "Completion failed" : exception.getMessage(), true));
             surface.send(error);
-            return acknowledgment(message, false);
         }
+    }
+
+    private boolean isLatest(String modelId, String requestId) {
+        return requestId.equals(latestRequestByUri.get(modelId));
     }
 
     private WebShellEnvelope publish(WebShellEnvelope message, Map<String, Object> response) {
@@ -138,6 +171,7 @@ public final class WebShellCompletionController {
             value.put("owner", item.owner());
             value.put("example", item.example());
             value.put("category", item.category());
+            value.put("matchIndices", item.matchIndices());
             serialized.add(value);
         }
         Map<String, Object> response = new LinkedHashMap<>();

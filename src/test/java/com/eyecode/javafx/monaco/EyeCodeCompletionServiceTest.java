@@ -107,6 +107,72 @@ class EyeCodeCompletionServiceTest {
     }
 
     @Test
+    void fuzzyMatchingReachesCaseInsensitiveAndCamelCandidates() {
+        assertCandidate("arrl", "ArrayList");
+        assertCandidate("ArLi", "ArrayList");
+        assertCandidate("getN", "getName");
+    }
+
+    @Test
+    void thisCompletionReturnsCurrentClassMembers() {
+        EditorDocument document = new EditorDocument(null, """
+                class Example {
+                    int count;
+                    void ping() { }
+                    void test() {
+                        this.
+                    }
+                }
+                """);
+        int offset = document.getText().indexOf("this.") + "this.".length();
+        List<MonacoCompletionItem> items = service.complete(
+                snapshotRequest(document, offset, offset, offset), context(document, offset));
+
+        assertTrue(items.stream().anyMatch(item -> item.label().equals("count")));
+        assertTrue(items.stream().anyMatch(item -> item.label().equals("ping")));
+    }
+
+    @Test
+    void methodBodyDoesNotSuggestAccessModifiers() {
+        EditorDocument document = new EditorDocument(null, """
+                class Example {
+                    void test() {
+                        pri
+                    }
+                }
+                """);
+        int offset = document.getText().indexOf("pri") + 3;
+        List<MonacoCompletionItem> items = service.complete(
+                snapshotRequest(document, offset, offset - 3, offset),
+                context(document, offset));
+
+        assertFalse(items.stream().anyMatch(item -> item.label().equals("private")));
+    }
+
+    @Test
+    void explicitEmptyPrefixIsBoundedAfterRanking() {
+        EditorDocument document = new EditorDocument(null, "");
+        List<MonacoCompletionItem> items = service.complete(
+                request(document, 1, 1, true, MonacoCompletionRequest.TriggerKind.INVOKED),
+                context(document, 0));
+
+        assertTrue(items.size() <= EyeCodeCompletionService.MAX_RESULTS);
+    }
+
+    @Test
+    void matchIndicesDescribeTheLabelAlignment() {
+        EditorDocument document = new EditorDocument(null, "arrl");
+        List<MonacoCompletionItem> items = service.complete(
+                request(document, 1, 5, false, MonacoCompletionRequest.TriggerKind.INVOKED),
+                context(document, 4));
+
+        MonacoCompletionItem arrayList = items.stream()
+                .filter(item -> item.label().equals("ArrayList"))
+                .findFirst().orElseThrow();
+        assertEquals(List.of(0, 1, 2, 5), arrayList.matchIndices());
+    }
+
+    @Test
     void localStringReceiverReturnsMembersForAnEmptyTerminalPrefix() {
         EditorDocument document = new EditorDocument(null, """
                 class Example {
@@ -197,6 +263,13 @@ class EyeCodeCompletionServiceTest {
                 false, MonacoCompletionRequest.TriggerKind.INVOKED), context(document, prefix.length()));
         assertTrue(items.stream().anyMatch(candidate -> candidate.label().equals(keyword)
                 && candidate.kind() == com.eyecode.editor.v2.completion.CompletionItemKind.KEYWORD));
+    }
+
+    private void assertCandidate(String prefix, String candidate) {
+        EditorDocument document = new EditorDocument(null, prefix);
+        List<MonacoCompletionItem> items = service.complete(request(document, 1, prefix.length() + 1,
+                false, MonacoCompletionRequest.TriggerKind.INVOKED), context(document, prefix.length()));
+        assertTrue(items.stream().anyMatch(item -> item.label().equals(candidate)));
     }
 
     private static LanguageContext context(EditorDocument document, int offset) {

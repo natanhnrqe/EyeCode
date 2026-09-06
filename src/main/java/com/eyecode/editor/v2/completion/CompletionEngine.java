@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class CompletionEngine {
 
@@ -40,8 +41,18 @@ public final class CompletionEngine {
             }
         }
         String prefix = CompletionPrefixResolver.resolvePrefix(context);
-        List<CompletionItem> ranked = ranking.rank(new ArrayList<>(merged.values()), prefix, manual);
+        List<CompletionItem> candidates = new ArrayList<>(merged.values());
+        if (CompletionContextResolver.isMethodBodyExpressionContext(context)) {
+            candidates.removeIf(item -> item.getKind() == CompletionItemKind.KEYWORD
+                    && Set.of("public", "private", "protected").contains(item.getLabel()));
+        }
+        List<CompletionItem> ranked = ranking.rank(candidates, prefix,
+                manual || contextKind == CompletionContextKind.MEMBER_ACCESS);
         return new CompletionSnapshot(ranked);
+    }
+
+    public List<Integer> matchIndices(CompletionItem item, String query) {
+        return ranking.matchIndices(item, query);
     }
 
     private boolean isSuppressedContext(LanguageContext context) {

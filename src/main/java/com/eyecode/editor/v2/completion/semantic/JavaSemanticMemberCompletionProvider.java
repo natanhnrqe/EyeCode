@@ -12,7 +12,6 @@ import com.eyecode.language.semantic.JavaResolvedMember;
 import com.eyecode.language.semantic.JavaTypeMemberResolver;
 
 import java.util.List;
-import java.util.Locale;
 
 public final class JavaSemanticMemberCompletionProvider implements CompletionProvider {
 
@@ -39,10 +38,8 @@ public final class JavaSemanticMemberCompletionProvider implements CompletionPro
     @Override
     public CompletionSnapshot complete(LanguageContext context, boolean manual) {
 
-        String prefix = CompletionPrefixResolver.resolvePrefix(context).toLowerCase(Locale.ROOT);
         int offset = context.getDocument().offsetOf(context.getCaret());
         List<CompletionItem> items = resolver.resolveMembers(context.getDocument().getText(), offset).stream()
-                .filter(member -> member.name().toLowerCase(Locale.ROOT).startsWith(prefix))
                 .map(this::toItem)
                 .toList();
 

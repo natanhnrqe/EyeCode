@@ -18,6 +18,7 @@ export type MonacoCompletionItem = {
   owner: string;
   example: string;
   category: string;
+  matchIndices: number[];
 };
 
 export type CompletionResponse = {

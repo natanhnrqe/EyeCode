@@ -69,6 +69,14 @@ public final class CompletionRanking {
                 .toList();
     }
 
+    public List<Integer> matchIndices(CompletionItem item, String query) {
+        if (item == null || query == null || query.isEmpty()) {
+            return List.of();
+        }
+        Alignment alignment = bestAlignment(query, item.getLabel());
+        return alignment == null ? List.of() : alignment.indices();
+    }
+
     // ── Scoring ───────────────────────────────────────────────────────────────
 
     /** Score used when prefix is empty: kind + priority weight only. */
@@ -113,6 +121,52 @@ public final class CompletionRanking {
         for (int[] row : memo) Arrays.fill(row, Integer.MIN_VALUE);
         int result = bestScore(query, target, qLow, tLow, 0, 0, -1, memo);
         return result == Integer.MIN_VALUE ? 0 : result;
+    }
+
+    private Alignment bestAlignment(String query, String target) {
+        if (target == null || target.isEmpty()) {
+            return null;
+        }
+        String qLow = query.toLowerCase();
+        String tLow = target.toLowerCase();
+        if (!isSubsequence(qLow, tLow)) {
+            return null;
+        }
+        return bestAlignment(query, target, qLow, tLow, 0, 0, -1);
+    }
+
+    private Alignment bestAlignment(String query, String target, String qLow, String tLow,
+                                    int qi, int ti, int previous) {
+        if (qi == qLow.length()) {
+            return new Alignment(0, List.of());
+        }
+        if (ti >= tLow.length()) {
+            return null;
+        }
+        Alignment best = null;
+        for (int i = ti; i < tLow.length(); i++) {
+            if (tLow.charAt(i) != qLow.charAt(qi)) {
+                continue;
+            }
+            Alignment rest = bestAlignment(query, target, qLow, tLow, qi + 1, i + 1, i);
+            if (rest == null) {
+                continue;
+            }
+            int gap = previous < 0 ? 0 : i - previous - 1;
+            int score = BASE_CHAR - gap * GAP_PENALTY
+                    + boundaryBonus(target, i)
+                    + contiguousBonus(previous, i)
+                    + exactCaseBonus(query.charAt(qi), target.charAt(i))
+                    + rest.score();
+            List<Integer> indices = new java.util.ArrayList<>();
+            indices.add(i);
+            indices.addAll(rest.indices());
+            Alignment candidate = new Alignment(score, List.copyOf(indices));
+            if (best == null || candidate.score() > best.score()) {
+                best = candidate;
+            }
+        }
+        return best;
     }
 
     /**
@@ -193,4 +247,5 @@ public final class CompletionRanking {
     }
 
     private record ScoredItem(CompletionItem item, int score, int rawLabelScore) {}
+    private record Alignment(int score, List<Integer> indices) {}
 }

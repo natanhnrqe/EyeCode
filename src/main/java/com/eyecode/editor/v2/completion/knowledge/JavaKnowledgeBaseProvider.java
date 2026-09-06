@@ -25,9 +25,6 @@ public final class JavaKnowledgeBaseProvider implements CompletionProvider {
             return CompletionSnapshot.empty();
         }
 
-        List<CompletionItem> items = prefix.isEmpty()
-                ? JavaKnowledgeBase.findByPrefix("")
-                : JavaKnowledgeBase.findByPrefix(prefix);
-        return new CompletionSnapshot(items);
+        return new CompletionSnapshot(JavaKnowledgeBase.getAll());
     }
 }

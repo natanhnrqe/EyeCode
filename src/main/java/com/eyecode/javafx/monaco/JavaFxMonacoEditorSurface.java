@@ -16,6 +16,7 @@ import javafx.geometry.Point2D;
 import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -534,9 +535,19 @@ public final class JavaFxMonacoEditorSurface extends Region {
                     .append(",\"owner\":\"").append(escape(item.owner())).append("\"")
                     .append(",\"example\":\"").append(escape(item.example())).append("\"")
                     .append(",\"category\":\"").append(escape(item.category())).append("\"")
+                    .append(",\"matchIndices\":").append(intArray(item.matchIndices()))
                     .append('}');
         }
         return json.append("]}").toString();
+    }
+
+    private static String intArray(List<Integer> values) {
+        StringBuilder result = new StringBuilder("[");
+        for (int index = 0; index < values.size(); index++) {
+            if (index > 0) result.append(',');
+            result.append(values.get(index));
+        }
+        return result.append(']').toString();
     }
 
     private static String object(Map<String, Object> values) {

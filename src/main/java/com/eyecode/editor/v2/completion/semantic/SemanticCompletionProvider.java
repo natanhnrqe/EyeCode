@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -80,7 +79,6 @@ public final class SemanticCompletionProvider implements CompletionProvider {
             return CompletionSnapshot.empty();
         }
         List<CompletionItem> items = registry.getSymbols().stream()
-                .filter(symbol -> symbol.getName().startsWith(prefix))
                 .map(symbol -> new CompletionItem(
                         symbol.getName(),
                         symbol.getName(),
@@ -103,9 +101,6 @@ public final class SemanticCompletionProvider implements CompletionProvider {
             List<Symbol> declared = new ArrayList<>(next.declaredSymbols());
             declared.sort(Comparator.comparingInt(symbol -> symbol.declarationRange().startOffset()));
             for (Symbol symbol : declared) {
-                if (!matchesPrefix(symbol.name(), query.prefix())) {
-                    continue;
-                }
                 CompletionItem item = toItem(symbol);
                 if (item != null) {
                     items.putIfAbsent(item.getLabel(), item);
@@ -131,9 +126,6 @@ public final class SemanticCompletionProvider implements CompletionProvider {
         members.sort(Comparator.comparingInt(member -> member.declarationRange().startOffset()));
         for (Symbol member : members) {
             if (!isQualifiedMemberVisible(member)) {
-                continue;
-            }
-            if (!matchesPrefix(member.name(), query.prefix())) {
                 continue;
             }
             CompletionItem item = toItem(member);
@@ -182,13 +174,6 @@ public final class SemanticCompletionProvider implements CompletionProvider {
         int start = scope.range().startOffset();
         int end = scope.range().endOffset();
         return start <= offset && offset <= end;
-    }
-
-    private boolean matchesPrefix(String candidate, String prefix) {
-        if (prefix == null || prefix.isEmpty()) {
-            return true;
-        }
-        return candidate.toLowerCase(Locale.ROOT).startsWith(prefix.toLowerCase(Locale.ROOT));
     }
 
     private boolean isStaticTypeQualifier(Symbol symbol) {

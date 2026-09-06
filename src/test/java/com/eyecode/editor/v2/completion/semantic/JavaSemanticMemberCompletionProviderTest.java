@@ -85,7 +85,7 @@ class JavaSemanticMemberCompletionProviderTest {
     }
 
     @Test
-    void filtersOnlyTheReceiverMembersForPartialMemberPrefixes() {
+    void exposesReceiverMembersForFuzzyRanking() {
         CompletionSnapshot snapshot = complete("""
                 class Person {
                     String getName() { return ""; }
@@ -100,7 +100,7 @@ class JavaSemanticMemberCompletionProviderTest {
                 """);
 
         assertTrue(labels(snapshot).contains("getName"));
-        assertFalse(labels(snapshot).contains("sayHello"));
+        assertTrue(labels(snapshot).contains("sayHello"));
         assertFalse(labels(snapshot).contains("return"));
     }
 

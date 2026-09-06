@@ -44,15 +44,15 @@ class JavaFxSemanticAutocompleteTest {
         runInFx("""
                 class Example {
                     void test() {
-                        pri
+                        ret
                     }
                 }
-                """, "pri", harness -> {
+                """, "ret", harness -> {
             harness.controller().invokeCompletion(true);
             List<String> labels = harness.buffer().getCompletionSnapshot().getItems().stream()
                     .map(CompletionItem::getLabel)
                     .toList();
-            assertTrue(labels.contains("private"));
+            assertTrue(labels.contains("return"));
         });
     }
 
@@ -235,10 +235,10 @@ class JavaFxSemanticAutocompleteTest {
         runInFx("""
                 class Example {
                     void test() {
-                        pri
+                        ret
                     }
                 }
-                """, "pri", harness -> {
+                """, "ret", harness -> {
             harness.controller().invokeCompletion(true);
             harness.primePopup();
             String selected = harness.popup().getSelectedItem().getInsertText();
@@ -317,7 +317,7 @@ class JavaFxSemanticAutocompleteTest {
             List<String> labels = harness.buffer().getCompletionSnapshot().getItems().stream()
                     .map(CompletionItem::getLabel)
                     .toList();
-            assertTrue(labels.contains("private"));
+            assertFalse(labels.contains("private"));
             assertFalse(labels.contains("protected"));
         });
     }

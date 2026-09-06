@@ -29,6 +29,7 @@ public class Document {
     public void setContent(String content) {
         this.content = content;
         this.modified = true;
+
     }
 
     public Boolean getModified() {

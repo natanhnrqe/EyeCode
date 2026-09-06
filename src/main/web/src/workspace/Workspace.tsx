@@ -29,6 +29,8 @@ const emptyTerminalState: TerminalState = { requested: false, running: false, wo
 
 export function Workspace() {
   const service = useRef(new MonacoWorkspaceService()).current;
+  const selectCompletion = useRef((index: number) => service.selectCompletion(index)).current;
+  const acceptCompletion = useRef(() => service.acceptSelectedCompletion()).current;
   const [documents, setDocuments] = useState<DocumentTab[]>([]);
   const [activeUri, setActiveUri] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
@@ -355,7 +357,7 @@ export function Workspace() {
     <StatusBar activeUri={activeEditorDocument?.uri} displayName={activeEditorDocument?.displayName}
       projectRoot={workspace.project?.root.path} projectName={workspace.project?.name} caret={caret} message={message} />
     <div className="overlay-root">
-      {completion && <CompletionPopup state={completion} onSelect={index => service.selectCompletion(index)} onAccept={() => service.acceptSelectedCompletion()} />}
+      {completion && <CompletionPopup state={completion} onSelect={selectCompletion} onAccept={acceptCompletion} />}
       {learning && <LearningCard state={learning} onNavigate={identifier => service.navigateLearning(identifier)}
         onAction={action => service.openLearningAction(action)} onHover={hovered => service.setLearningHovered(hovered)} />}
     </div>
@@ -377,4 +379,3 @@ function formatError(error: unknown): string {
   }
   return error instanceof Error ? error.message : String(error);
 }
-

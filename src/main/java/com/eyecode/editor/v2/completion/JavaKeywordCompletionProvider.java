@@ -5,6 +5,7 @@ import com.eyecode.editor.v2.completion.insert.CompletionPrefixResolver;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class JavaKeywordCompletionProvider implements CompletionProvider {
 
@@ -49,6 +50,7 @@ public final class JavaKeywordCompletionProvider implements CompletionProvider {
     );
 
     private static final List<String> KEYWORDS = List.copyOf(KEYWORD_DOCS.keySet());
+    private static final Set<String> DECLARATION_ONLY_MODIFIERS = Set.of("public", "private", "protected");
 
     @Override
     public CompletionSnapshot complete(LanguageContext context) {
@@ -66,7 +68,8 @@ public final class JavaKeywordCompletionProvider implements CompletionProvider {
         }
 
         List<CompletionItem> items = KEYWORDS.stream()
-                .filter(keyword -> keyword.startsWith(prefix))
+                .filter(keyword -> !DECLARATION_ONLY_MODIFIERS.contains(keyword)
+                        || !CompletionContextResolver.isMethodBodyExpressionContext(context))
                 .map(keyword -> CompletionItem.builder(keyword, keyword, CompletionItemKind.KEYWORD)
                         .detail("Java keyword")
                         .owner("java.lang")

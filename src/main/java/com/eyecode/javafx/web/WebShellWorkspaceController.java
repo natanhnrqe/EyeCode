@@ -155,6 +155,7 @@ public final class WebShellWorkspaceController {
     public void dispose() {
         if (disposed) return;
         disposed = true;
+        completionController.dispose();
         diagnosticsController.dispose();
         manager.closeAllSessions();
         manager.shutdownAutosave();
@@ -1020,7 +1021,6 @@ public final class WebShellWorkspaceController {
         return result;
     }
 }
-
 
 
 

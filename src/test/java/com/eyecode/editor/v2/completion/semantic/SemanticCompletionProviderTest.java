@@ -176,7 +176,7 @@ class SemanticCompletionProviderTest {
     }
 
     @Test
-    void prefixFilteringKeepsOnlyMatchingItems() {
+    void exposesVisibleItemsForFuzzyRanking() {
         CompletionSnapshot snapshot = provider.complete(context("""
                 class Example {
                     void printValue() { }
@@ -189,7 +189,7 @@ class SemanticCompletionProviderTest {
 
         List<String> labels = labels(snapshot);
         assertTrue(labels.contains("printValue"));
-        assertFalse(labels.contains("value"));
+        assertTrue(labels.contains("value"));
     }
 
     @Test
@@ -203,7 +203,7 @@ class SemanticCompletionProviderTest {
                 }
                 """));
 
-        assertEquals(List.of("value"), labels(snapshot));
+        assertEquals(1, labels(snapshot).stream().filter("value"::equals).count());
     }
 
     @Test

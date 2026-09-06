@@ -53,6 +53,9 @@ export class MonacoWorkspaceService {
   private completionState: CompletionPopupState | null = null;
   private readonly pendingCompletions = new Map<string, PendingCompletion>();
   private latestCompletionRequestId: string | null = null;
+  private completionNavigationFrame: number | null = null;
+  private completionNavigationDelta = 0;
+  private completionNavigationSession: string | null = null;
   private suppressCompletionTrigger = false;
   private onLearningState: ((state: LearningPopupState | null) => void) | null = null;
   private learningState: LearningPopupState | null = null;
@@ -131,7 +134,7 @@ export class MonacoWorkspaceService {
   }
 
   selectCompletion(index: number): void {
-    if (!this.completionIsCurrent() || !this.completionState
+    if (!this.completionIsNavigable() || !this.completionState
         || index < 0 || index >= this.completionState.items.length) return;
     this.publishCompletion({ ...this.completionState, selectedIndex: index });
   }
@@ -521,7 +524,6 @@ export class MonacoWorkspaceService {
     const requestId = bridge.reserveRequestId();
     const modelVersion = model.getAlternativeVersionId();
     const caretOffset = model.getOffsetAt(position);
-    this.hideCompletion(false);
     this.pendingCompletions.set(requestId, { uri, modelVersion, editor, model, position, caretOffset });
     this.latestCompletionRequestId = requestId;
     const payload = {
@@ -581,12 +583,22 @@ export class MonacoWorkspaceService {
     }
     const anchor = this.currentCompletionAnchor(pending.editor, pending.model, pending.position);
     if (!anchor) return;
+    const previous = this.completionState;
+    const previousItem = previous?.items[previous.selectedIndex];
+    const previousIdentity = previousItem ? completionIdentity(previousItem) : null;
+    const preservedIndex = previousIdentity
+      ? items.findIndex(item => completionIdentity(item) === previousIdentity)
+      : -1;
+    const selectedIndex = preservedIndex >= 0
+      ? preservedIndex
+      : Math.min(previous?.selectedIndex ?? 0, items.length - 1);
+    this.cancelCompletionNavigation();
     this.publishCompletion({
       requestId: response.requestId,
       uri: response.uri,
       version: response.version,
       items,
-      selectedIndex: 0,
+      selectedIndex,
       anchor: anchor.anchor
     });
   }
@@ -746,7 +758,7 @@ export class MonacoWorkspaceService {
   }
 
   private handleCompletionKey(event: MonacoKeyEvent): void {
-    if (!this.completionIsCurrent()) return;
+    if (!this.completionIsNavigable()) return;
     const api = this.api;
     if (!api || !this.completionState) return;
     const key = event.keyCode;
@@ -760,10 +772,8 @@ export class MonacoWorkspaceService {
     event.stopPropagation?.();
     if (isNavigation) {
       const direction = key === api.KeyCode.DownArrow ? 1 : -1;
-      const count = this.completionState.items.length;
-      this.publishCompletion({ ...this.completionState,
-        selectedIndex: (this.completionState.selectedIndex + direction + count) % count });
-    } else if (isAccept) {
+      this.queueCompletionNavigation(direction);
+    } else if (isAccept && this.completionIsCurrent()) {
       this.acceptCompletion();
     } else {
       this.hideCompletion();
@@ -809,12 +819,53 @@ export class MonacoWorkspaceService {
       && model.getAlternativeVersionId() === state.version;
   }
 
+  private completionIsNavigable(): boolean {
+    const state = this.completionState;
+    const model = this.editor?.getModel();
+    return !!state && state.items.length > 0 && state.selectedIndex >= 0
+      && state.selectedIndex < state.items.length && !!model
+      && this.documentUri(model) === state.uri;
+  }
+
+  private queueCompletionNavigation(delta: number): void {
+    const state = this.completionState;
+    if (!state || !this.completionIsNavigable()) return;
+    if (this.completionNavigationSession !== state.requestId) {
+      this.cancelCompletionNavigation();
+      this.completionNavigationSession = state.requestId;
+    }
+    this.completionNavigationDelta += delta;
+    if (this.completionNavigationFrame !== null) return;
+    this.completionNavigationFrame = window.requestAnimationFrame(() => {
+      const session = this.completionNavigationSession;
+      const pendingDelta = this.completionNavigationDelta;
+      this.completionNavigationFrame = null;
+      this.completionNavigationDelta = 0;
+      this.completionNavigationSession = null;
+      const current = this.completionState;
+      if (!session || !current || current.requestId !== session || !this.completionIsNavigable()) return;
+      const count = current.items.length;
+      const selectedIndex = ((current.selectedIndex + pendingDelta) % count + count) % count;
+      this.publishCompletion({ ...current, selectedIndex });
+    });
+  }
+
+  private cancelCompletionNavigation(): void {
+    if (this.completionNavigationFrame !== null) {
+      window.cancelAnimationFrame(this.completionNavigationFrame);
+      this.completionNavigationFrame = null;
+    }
+    this.completionNavigationDelta = 0;
+    this.completionNavigationSession = null;
+  }
+
   private publishCompletion(state: CompletionPopupState): void {
     this.completionState = state;
     this.onCompletionState?.(state);
   }
 
   hideCompletion(invalidatePending = true): void {
+    this.cancelCompletionNavigation();
     if (invalidatePending) {
       this.pendingCompletions.clear();
       this.latestCompletionRequestId = null;
@@ -849,6 +900,10 @@ export class MonacoWorkspaceService {
     }
     return null;
   }
+}
+
+function completionIdentity(item: { label: string; kind: string }): string {
+  return `${item.label}\u0000${item.kind}`;
 }
 
 function monacoBase(): string {

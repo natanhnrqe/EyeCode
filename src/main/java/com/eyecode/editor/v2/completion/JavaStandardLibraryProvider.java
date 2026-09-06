@@ -25,10 +25,6 @@ public final class JavaStandardLibraryProvider implements CompletionProvider {
             return CompletionSnapshot.empty();
         }
 
-        List<CompletionItem> items = LIBRARY_ITEMS.stream()
-                .filter(item -> item.getLabel().startsWith(prefix))
-                .toList();
-
-        return new CompletionSnapshot(items);
+        return new CompletionSnapshot(LIBRARY_ITEMS);
     }
 }

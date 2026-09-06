@@ -10,6 +10,8 @@ import com.eyecode.editor.intelligence.document.DocumentSnapshot;
 import java.util.List;
 
 public final class EyeCodeCompletionService {
+    /** Keeps explicit empty-prefix completion useful while bounding frontend pushes. */
+    public static final int MAX_RESULTS = 100;
     private final CompletionEngine engine;
     private final boolean markOriginal;
 
@@ -33,17 +35,20 @@ public final class EyeCodeCompletionService {
         int replaceStart = replacementStart(request, context.getDocument().snapshot(), caret, prefix);
         int replaceEnd = replacementEnd(request, context.getDocument().snapshot(), caret);
         return snapshot.getItems().stream()
-                .map(item -> mappedItem(item, replaceStart, replaceEnd))
+                .limit(MAX_RESULTS)
+                .map(item -> mappedItem(item, replaceStart, replaceEnd, prefix))
                 .toList();
     }
 
-    private MonacoCompletionItem mappedItem(CompletionItem item, int replaceStart, int replaceEnd) {
-        MonacoCompletionItem mapped = MonacoCompletionItem.from(item, replaceStart, replaceEnd);
+    private MonacoCompletionItem mappedItem(CompletionItem item, int replaceStart, int replaceEnd,
+                                            String prefix) {
+        MonacoCompletionItem mapped = MonacoCompletionItem.from(item, replaceStart, replaceEnd,
+                engine.matchIndices(item, prefix));
         if (!markOriginal) return mapped;
         return new MonacoCompletionItem(mapped.label(), mapped.kind(), "EYECODE_ORIGINAL",
                 mapped.documentation(), mapped.insertText(), mapped.filterText(), mapped.snippet(),
                 mapped.replaceStart(), mapped.replaceEnd(), mapped.sortKey(), mapped.signature(),
-                mapped.returnType(), mapped.owner(), mapped.example(), mapped.category());
+                mapped.returnType(), mapped.owner(), mapped.example(), mapped.category(), mapped.matchIndices());
     }
 
     private static int replacementStart(MonacoCompletionRequest request, DocumentSnapshot snapshot,
