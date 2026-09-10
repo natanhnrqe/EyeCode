@@ -1,0 +1,18 @@
+{
+  "id": "java.fundamentals.jvm-jre-jdk",
+  "version": 1,
+  "kind": "THEORY",
+  "title": "JVM, JRE e JDK",
+  "markdownResource": "java.fundamentals.jvm-jre-jdk.md",
+  "steps": [
+    {
+      "id": "platform",
+      "type": "DEMO",
+      "title": "Como o Java executa seu código",
+      "message": "Entenda a plataforma que transforma seu código em um programa executável.",
+      "presentations": [
+        {"id":"read","commands":[]}
+      ]
+    }
+  ]
+}

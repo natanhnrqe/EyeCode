@@ -12,6 +12,7 @@ class LessonContentServiceTest {
     @Test void loadsTheRepresentativeLesson() {
         LessonContent content = service.load("java.fundamentals.variables.int");
         assertEquals("java.fundamentals.variables.int", content.id());
+        assertEquals(LessonKind.PRACTICE, content.kind());
         assertEquals(6, content.steps().size());
         assertEquals("Tipos Primitivos", content.title());
         assertEquals(LessonContentBlockType.HEADING, content.steps().get(1).contentBlocks().getFirst().type());
@@ -45,6 +46,19 @@ class LessonContentServiceTest {
         assertEquals("public class Main {\n\n    public static void main(String[] args) {\n        int age = 20;\n    }\n}\n", animate.finalCode());
         assertEquals("public class Main {\n\n    public static void main(String[] args) {\n        long population = 8_000_000_000L;\n    }\n}\n", longInsert.finalCode());
         assertEquals(18, animate.cadenceMillis());
+    }
+
+    @Test void loadsTheTheoryLessonWithoutProfessorCommands() {
+        LessonContent content = service.load("java.fundamentals.jvm-jre-jdk");
+        assertEquals(LessonKind.THEORY, content.kind());
+        assertEquals("JVM, JRE e JDK", content.title());
+        assertEquals(1, content.steps().size());
+        assertTrue(content.steps().getFirst().presentations().getFirst().commands().isEmpty());
+        assertTrue(content.steps().getFirst().practice() == null);
+        assertTrue(content.steps().getFirst().contentBlocks().size() >= 10);
+        assertTrue(content.steps().getFirst().contentBlocks().stream().anyMatch(block -> block.inlineContent().stream()
+                .anyMatch(inline -> inline.type() == LessonInlineContentType.CODE)));
+        assertTrue(content.steps().getFirst().contentBlocks().stream().anyMatch(block -> "java".equals(block.language())));
     }
 
     @Test void rejectsUnknownMalformedAndInvalidRanges() {

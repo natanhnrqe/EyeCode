@@ -105,6 +105,7 @@ public final class WebShellLessonsController {
         payload.put("categoryId", lesson.categoryId());
         payload.put("topicId", lesson.topicId());
         payload.put("difficulty", lesson.difficulty().name());
+        payload.put("kind", lesson.kind().name());
         payload.put("estimatedMinutes", lesson.estimatedMinutes());
         payload.put("concepts", lesson.concepts());
         payload.put("executable", contentService.hasContent(lesson.id()));
@@ -148,6 +149,7 @@ public final class WebShellLessonsController {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("sessionId", snapshot.sessionId());
         payload.put("lessonId", snapshot.lessonId());
+        payload.put("kind", snapshot.kind().name());
         payload.put("currentStep", snapshot.currentStepIndex());
         payload.put("totalSteps", snapshot.totalSteps());
         payload.put("currentPresentation", snapshot.currentPresentationIndex());
@@ -189,6 +191,11 @@ public final class WebShellLessonsController {
         if (block.language() != null) payload.put("language", block.language());
         if (block.code() != null) payload.put("code", block.code());
         if (!block.items().isEmpty()) payload.put("items", block.items());
+        if (!block.inlineContent().isEmpty()) payload.put("inlineContent", block.inlineContent().stream()
+                .map(inline -> inline.url() == null ? Map.of("type", inline.type().name(), "text", inline.text())
+                        : Map.of("type", inline.type().name(), "text", inline.text(), "url", inline.url()))
+                .toList());
+        if (block.ordered()) payload.put("ordered", true);
         return payload;
     }
 

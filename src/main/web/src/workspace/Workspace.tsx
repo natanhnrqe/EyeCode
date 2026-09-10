@@ -8,13 +8,14 @@ import type { DiagnosticsViewState, WebDiagnostic } from '../diagnostics/protoco
 import type { DocumentPayload, DocumentSnapshot } from '../document/protocol';
 import { LearningCard } from '../learning/LearningCard';
 import type { LearningPopupState } from '../learning/protocol';
-import { LearnWorkspace } from '../lessons/LearnWorkspace';
+import { LearnWorkspace, type LearnNavigationState } from '../lessons/LearnWorkspace';
 import { LessonAnnotation } from '../lessons/LessonAnnotation';
 import { LessonEditorController } from '../lessons/LessonEditorController';
 import { LessonPanel } from '../lessons/LessonPanel';
 import type { LessonDescriptor, LessonSession, LessonVerificationResponse, PracticeVerificationResult } from '../lessons/protocol';
 import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
 import { BottomPanel } from './BottomPanel';
+import { DockLayout } from './DockLayout';
 import { EditorTabs } from './EditorTabs';
 import { EyeCodeIcon } from './EyeCodeIcon';
 import { MonacoHost } from './MonacoHost';
@@ -24,12 +25,14 @@ import { ProjectExplorer } from './ProjectExplorer';
 import { StatusBar } from './StatusBar';
 import { TopToolbar } from './TopToolbar';
 import { WelcomeScreen } from './WelcomeScreen';
+import { learnDockArrangementForDrop, learnDockTree, learnLessonLeftDockTree, projectDockTree, theoryDockTree, type LearnDockArrangement, type WorkspacePaneId } from './WorkspacePane';
 import type { ProjectNode, RunState, TerminalState, WorkspaceSnapshot } from './protocol';
 
 type DocumentTab = Omit<DocumentSnapshot, 'content'>;
 type BottomPanelId = 'run' | 'terminal' | 'output' | 'problems' | 'git';
 type SidePanelId = 'project' | 'search' | 'documentation' | 'settings';
 type AppMode = 'WELCOME' | 'PROJECT' | 'LEARN';
+type DockMode = 'PROJECT' | 'LEARN';
 type ExplorerOperation = 'createFile' | 'createDirectory' | 'createJavaClass' | 'createPackage' | 'rename' | 'delete' | 'duplicate';
 type ExplorerOperationResult = { path?: string; parent?: string; openFile?: boolean; ancestors?: string[] };
 
@@ -67,6 +70,8 @@ export function Workspace() {
   const [selectedLearnLesson, setSelectedLearnLesson] = useState<LessonDescriptor | null>(null);
   const [selectedLearnRoadmapItemId, setSelectedLearnRoadmapItemId] = useState<string | null>(null);
   const [learnPath, setLearnPath] = useState<string[]>(['Java', 'Fundamentos', 'Tipos Primitivos']);
+  const [learnNavigation, setLearnNavigation] = useState<LearnNavigationState>({ screen: 'HOME' });
+  const [lessonOrigin, setLessonOrigin] = useState<LearnNavigationState>({ screen: 'HOME' });
   const [lessonSession, setLessonSession] = useState<LessonSession | null>(null);
   const [lessonPresentationReady, setLessonPresentationReady] = useState(false);
   const lessonSessionRef = useRef<LessonSession | null>(null);
@@ -74,6 +79,8 @@ export function Workspace() {
   const [lessonBusy, setLessonBusy] = useState(false);
   const [practiceVerification, setPracticeVerification] = useState<PracticeVerificationResult | null>(null);
   const [practiceVerifying, setPracticeVerifying] = useState(false);
+  const [dockRatios, setDockRatios] = useState<Record<DockMode, Record<string, number>>>(() => ({ PROJECT: {}, LEARN: {} }));
+  const [learnDockArrangement, setLearnDockArrangement] = useState<LearnDockArrangement>('LESSON_RIGHT');
 
   useEffect(() => () => service.dispose(), [service]);
 
@@ -398,6 +405,7 @@ export function Workspace() {
     if (mode !== 'LEARN') {
       service.clearActiveModel();
     }
+    setLearnNavigation({ screen: 'HOME' });
     setMode('LEARN');
   }
 
@@ -421,9 +429,11 @@ export function Workspace() {
       const session = await bridge.request<LessonSession>('lessons', 'session/start', { lessonId: lesson.id });
       if (requestId !== lessonRequest.current) return;
       setLessonPresentationReady(false);
-      lessonEditor.enter(session);
+      if (session.kind === 'THEORY') lessonEditor.exit();
+      else lessonEditor.enter(session);
       lessonSessionRef.current = session;
       setLessonSession(session);
+      setLearnNavigation({ screen: 'LESSON' });
       setMessage('');
     } catch (error) { if (requestId === lessonRequest.current) setMessage(formatError(error)); }
     finally { if (requestId === lessonRequest.current) setLessonBusy(false); }
@@ -440,7 +450,8 @@ export function Workspace() {
     try {
       const session = await bridge.request<LessonSession>('lessons', `session/${action}`, { sessionId: current.sessionId });
       if (requestId !== lessonRequest.current || lessonSessionRef.current?.sessionId !== session.sessionId) return;
-      if (session.phase === 'PRACTICE') lessonEditor.enterPractice(session.practice!.starterCode);
+      if (session.kind === 'THEORY') lessonEditor.exit();
+      else if (session.phase === 'PRACTICE') lessonEditor.enterPractice(session.practice!.starterCode);
       else lessonEditor.apply(session.commands);
       lessonSessionRef.current = session;
       setLessonSession(session);
@@ -489,54 +500,86 @@ export function Workspace() {
     setMode('WELCOME');
   }
 
-  const selectLearnLesson = useCallback((lesson: LessonDescriptor | null, path: string[], roadmapItemId: string | null) => {
+  async function returnToLearnTopic() {
+    await closeLesson();
+    setLearnNavigation(lessonOrigin.screen === 'LESSON' ? { screen: 'HOME' } : lessonOrigin);
+  }
+
+  function openLearnLesson(lesson: LessonDescriptor, path: string[]) {
+    if (!lesson.executable) return;
     setSelectedLearnLesson(lesson);
     setLearnPath(path);
-    setSelectedLearnRoadmapItemId(roadmapItemId);
-  }, []);
+    setSelectedLearnRoadmapItemId(null);
+    setLessonOrigin(learnNavigation);
+    void startLesson(lesson);
+  }
 
   const activeDocument = documents.find(document => document.uri === activeUri);
   const activeEditorDocument = activeDocument?.kind === 'documentation' ? undefined : activeDocument;
   const projectMode = mode === 'PROJECT';
   const learnMode = mode === 'LEARN';
+  const learnNavigationVisible = learnMode && learnNavigation.screen !== 'LESSON';
+  const dockMode: DockMode = learnMode ? 'LEARN' : 'PROJECT';
   const toolbar = <TopToolbar projectName={projectMode ? workspace.project?.name : undefined} projectPath={projectMode ? workspace.project?.path : undefined} recentProjects={workspace.recentProjects} runState={runState}
     onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()}
     onOpenRecentProject={path => void openProject(path)} onWelcome={() => void leaveProject()} onRun={() => void run('run')} onRerun={() => void run('rerun')}
     onStop={() => void run('stop')} onSelectConfiguration={id => void selectConfiguration(id)}
     onOpenSearch={() => setSidePanel('search')} onOpenSettings={() => setSidePanel('settings')}
     onWindowAction={action => void windowAction(action)} />;
+  const renderPane = (paneId: WorkspacePaneId) => {
+    if (paneId === 'explorer') return <aside className="side-panel">
+      {learnMode ? null : sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
+        reveal={workspace.reveal} treeChangedPath={treeChangedPath} treeRefreshRevision={treeRefreshRevision} onLoadChildren={loadChildren} onOpenFile={openFile}
+        onRefresh={refreshProject} onOperation={operateProject} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()} /> : <section className="auxiliary-panel">
+        <header className="panel-heading"><span>{sideTitle(sidePanel)}</span></header>
+        <div className="toolwindow-placeholder"><strong>{sideTitle(sidePanel)}</strong>
+          <span>This shell view is composed and ready for its dedicated service integration.</span></div>
+      </section>}
+    </aside>;
+    if (paneId === 'editor') return <section className="main-workspace">
+      <div className="editor-stack">
+        {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)} /> : <header className="document-tabs learn-editor-tabs">{learnPath.join(' / ')}</header>}
+        <section className="editor-region">
+          {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
+            <span>Open a file from Project panel or create something new.</span><div><button type="button" className="primary-action" onClick={() => setNewJavaClassOpen(true)}>New Java Class</button></div></div>}
+          {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
+          <MonacoHost service={service} />
+          {projectMode && <EditorDiagnosticStrip state={diagnostics} onNavigate={navigateProblem} />}
+        </section>
+      </div>
+    </section>;
+    if (paneId === 'bottom') return <BottomPanel active={bottomPanel} output={runOutput} terminalState={terminalState}
+      diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
+      onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />;
+    return lessonSession ? <LessonPanel session={lessonSession} onPrevious={() => void changeLessonStep('previous')}
+      onNext={() => void changeLessonStep('next')} onExit={() => void returnToLearnTopic()} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} /> : null;
+  };
+  const updateDockRatio = (splitId: string, ratio: number) => {
+    setDockRatios(current => ({ ...current, [dockMode]: { ...current[dockMode], [splitId]: ratio } }));
+  };
+  const dockTree = learnMode ? lessonSession?.kind === 'THEORY' ? theoryDockTree
+    : learnDockArrangement === 'LESSON_LEFT' ? learnLessonLeftDockTree : learnDockTree : projectDockTree;
+  const layoutKind = learnMode && lessonSession?.kind === 'THEORY' ? 'THEORY' : learnMode ? 'LEARN' : 'PROJECT';
+  const canDockDrop = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM') =>
+    learnDockArrangementForDrop(learnDockArrangement, paneId, targetId, side) !== null;
+  const handleDockDrop = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM') => {
+    const arrangement = learnDockArrangementForDrop(learnDockArrangement, paneId, targetId, side);
+    if (arrangement) setLearnDockArrangement(arrangement);
+  };
   return <main className="app-shell">
     {toolbar}
-    <div className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}`} aria-hidden={mode === 'WELCOME'}>
+    <div className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}`} aria-hidden={mode === 'WELCOME'}>
       {projectMode ? <nav className="activity-bar" aria-label="Workspace views">
         {(['project', 'search', 'documentation', 'settings'] as SidePanelId[]).map(id => <button key={id}
           type="button" className={sidePanel === id ? 'is-active' : ''} onClick={() => selectSidePanel(id)} aria-label={id}><EyeCodeIcon name={sideIcon(id)} /></button>)}
-      </nav> : <nav className="activity-bar learn-activity-bar" aria-hidden="true" />}
-      <aside className="side-panel">
-        {learnMode ? <LearnWorkspace selectedRoadmapItemId={selectedLearnRoadmapItemId} onLessonSelected={selectLearnLesson} /> : sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
-          reveal={workspace.reveal} treeChangedPath={treeChangedPath} treeRefreshRevision={treeRefreshRevision} onLoadChildren={loadChildren} onOpenFile={openFile}
-          onRefresh={refreshProject} onOperation={operateProject} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()} /> : <section className="auxiliary-panel">
-          <header className="panel-heading"><span>{sideTitle(sidePanel)}</span></header>
-          <div className="toolwindow-placeholder"><strong>{sideTitle(sidePanel)}</strong>
-            <span>This shell view is composed and ready for its dedicated service integration.</span></div>
-        </section>}
-      </aside>
-      <section className="main-workspace">
-        <div className="editor-stack">
-          {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)} /> : <header className="document-tabs learn-editor-tabs">{learnPath.join(' / ')}</header>}
-          <section className="editor-region">
-            {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
-              <span>Open a file from Project panel or create something new.</span><div><button type="button" className="primary-action" onClick={() => setNewJavaClassOpen(true)}>New Java Class</button></div></div>}
-            {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
-            <MonacoHost service={service} />
-            {projectMode && <EditorDiagnosticStrip state={diagnostics} onNavigate={navigateProblem} />}
-          </section>
-        </div>
-      </section>
-      {projectMode ? <BottomPanel active={bottomPanel} output={runOutput} terminalState={terminalState}
-        diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
-        onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} /> : lessonSession ? <LessonPanel session={lessonSession} onPrevious={() => void changeLessonStep('previous')}
-        onNext={() => void changeLessonStep('next')} onExit={() => void leaveLearn()} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} /> : <section className="bottom-panel lesson-preview-panel"><header className="bottom-tabs"><strong>Aula</strong></header><div className="bottom-panel-content"><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><p>{selectedLearnLesson?.description ?? 'Selecione uma aula no roteiro para começar.'}</p></div></section>}
+      </nav> : !learnNavigationVisible && <nav className="activity-bar learn-activity-bar" aria-hidden="true" />}
+      {learnNavigationVisible && <LearnWorkspace navigation={learnNavigation} onHome={() => setLearnNavigation({ screen: 'HOME' })}
+        onOpenRoadmap={categoryId => setLearnNavigation({ screen: 'ROADMAP', categoryId })}
+        onOpenTopic={(categoryId, topicId) => setLearnNavigation({ screen: 'TOPIC', categoryId, topicId })}
+        onOpenLesson={openLearnLesson} />}
+      <DockLayout tree={dockTree} ratios={dockRatios[dockMode]} renderPane={renderPane} layoutKind={layoutKind}
+        canDockDrop={layoutKind === 'LEARN' ? canDockDrop : undefined} onDockDrop={handleDockDrop}
+        onRatioChange={updateDockRatio} onEditorGeometryChange={() => service.layout()} />
     </div>
     {projectMode ? <StatusBar activeUri={activeEditorDocument?.uri} displayName={activeEditorDocument?.displayName}
       projectRoot={workspace.project?.root.path} projectName={workspace.project?.name} caret={caret} message={message} />
@@ -547,7 +590,7 @@ export function Workspace() {
       {completion && <CompletionPopup state={completion} onSelect={selectCompletion} onAccept={acceptCompletion} />}
       {learning && <LearningCard state={learning} onNavigate={identifier => service.navigateLearning(identifier)}
         onAction={action => service.openLearningAction(action)} onHover={hovered => service.setLearningHovered(hovered)} />}
-      {learnMode && lessonSession && lessonPresentationReady && <LessonAnnotation service={service} lessonUri={lessonEditor.lessonUri()} annotation={lessonSession.annotation} />}
+      {learnMode && lessonSession?.kind === 'PRACTICE' && lessonPresentationReady && <LessonAnnotation service={service} lessonUri={lessonEditor.lessonUri()} annotation={lessonSession.annotation} />}
       {newProjectOpen && <NewProjectDialog onCancel={() => setNewProjectOpen(false)} onBrowse={chooseProjectLocation} onCreate={createProject} />}
       {newJavaClassOpen && <NewJavaClassDialog onCancel={() => setNewJavaClassOpen(false)} onCreate={createJavaClass} />}
     </div>

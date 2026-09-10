@@ -39,6 +39,11 @@ class WebShellLessonsControllerTest {
 
         assertEquals("Tipos Primitivos", primitiveTypes.get("title"));
         assertEquals(true, primitiveTypes.get("executable"));
+        assertEquals("PRACTICE", primitiveTypes.get("kind"));
+        Map<String, Object> jvm = maps(fundamentals.get("lessons")).stream()
+                .filter(lesson -> "java.fundamentals.jvm-jre-jdk".equals(lesson.get("id"))).findFirst().orElseThrow();
+        assertEquals("THEORY", jvm.get("kind"));
+        assertEquals(true, jvm.get("executable"));
     }
 
     @Test void preservesSessionStepAndCommandsInTheBridgePayload() {
@@ -49,6 +54,7 @@ class WebShellLessonsControllerTest {
         assertEquals(1, payload.get("currentStep"));
         assertEquals(0, payload.get("currentPresentation"));
         assertEquals("int", payload.get("presentationId"));
+        assertEquals("PRACTICE", payload.get("kind"));
         assertEquals(6, payload.get("totalSteps"));
         assertEquals("HEADING", ((Map<?, ?>) ((List<?>) payload.get("contentBlocks")).getFirst()).get("type"));
         Map<?, ?> annotation = (Map<?, ?>) payload.get("annotation");
@@ -59,6 +65,17 @@ class WebShellLessonsControllerTest {
         assertTrue(((String) animate.get("replacementText")).contains("int age = 20;"));
         assertTrue(((String) animate.get("finalCode")).contains("int age = 20;"));
         assertEquals(18, animate.get("cadenceMillis"));
+    }
+
+    @Test void serializesTheorySessionPayloadWithoutCommandsOrPractice() {
+        var sessions = new LessonSessionService(new LessonContentService());
+        var snapshot = sessions.start("java.fundamentals.jvm-jre-jdk");
+        Map<String, Object> payload = WebShellLessonsController.sessionPayload(snapshot);
+        assertEquals("THEORY", payload.get("kind"));
+        assertEquals(List.of(), payload.get("commands"));
+        assertFalse(payload.containsKey("practice"));
+        assertFalse(payload.toString().contains("<script"));
+        assertTrue(maps(payload.get("contentBlocks")).stream().anyMatch(block -> block.containsKey("inlineContent")));
     }
 
     @Test void serializesTheActivePracticeContract() {

@@ -1,5 +1,6 @@
 package com.eyecode.lessons.catalog;
 
+import com.eyecode.lessons.content.LessonKind;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,6 +20,12 @@ class ResourceLearningCatalogTest {
         assertEquals(LessonDifficulty.ADVANCED, lesson.difficulty());
         assertEquals(30, lesson.estimatedMinutes());
         assertTrue(lesson.concepts().contains("ProcessBuilder"));
+    }
+
+    @Test void exposesExplicitKindsForTheExecutableFundamentalsLessons() {
+        ResourceLearningCatalog catalog = new ResourceLearningCatalog();
+        assertEquals(LessonKind.THEORY, catalog.lesson("java.fundamentals.jvm-jre-jdk").orElseThrow().kind());
+        assertEquals(LessonKind.PRACTICE, catalog.lesson("java.fundamentals.variables.int").orElseThrow().kind());
     }
 
     @Test void rejectsDuplicateCategoryIds() {

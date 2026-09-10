@@ -11,6 +11,7 @@ import java.util.Map;
 
 public final class LessonContentService {
     private static final String RESOURCE_PREFIX = "/learning/lessons/content/";
+    private final LessonMarkdownNormalizer markdownNormalizer = new LessonMarkdownNormalizer();
 
     public LessonContent load(String lessonId) {
         if (lessonId == null || lessonId.isBlank()) throw new IllegalArgumentException("ID de aula inválido");
@@ -34,7 +35,31 @@ public final class LessonContentService {
         int version = number(root, "version");
         List<LessonStep> steps = new ArrayList<>();
         for (Object value : array(root, "steps")) steps.add(step(object(value, "etapa")));
-        return new LessonContent(id, version, required(root, "title"), steps);
+        LessonKind kind;
+        try { kind = LessonKind.valueOf(required(root, "kind")); }
+        catch (IllegalArgumentException exception) { throw new IllegalArgumentException("Tipo de aula inválido", exception); }
+        String markdownResource = optional(root, "markdownResource");
+        if (markdownResource != null) applyMarkdown(steps, markdownResource);
+        return new LessonContent(id, version, kind, required(root, "title"), steps);
+    }
+
+    private void applyMarkdown(List<LessonStep> steps, String markdownResource) {
+        if (steps.size() != 1 || markdownResource.contains("..") || !markdownResource.endsWith(".md")) {
+            throw new IllegalArgumentException("Recurso Markdown de aula inválido");
+        }
+        LessonStep step = steps.getFirst();
+        LessonStep normalized = new LessonStep(step.id(), step.type(), step.title(), step.message(),
+                markdownNormalizer.normalize(readMarkdown(markdownResource)), step.presentations(), step.practice());
+        steps.set(0, normalized);
+    }
+
+    private static String readMarkdown(String resource) {
+        try (InputStream stream = LessonContentService.class.getResourceAsStream(RESOURCE_PREFIX + resource)) {
+            if (stream == null) throw new IllegalArgumentException("Recurso Markdown da aula não encontrado: " + resource);
+            return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Não foi possível ler o Markdown da aula", exception);
+        }
     }
 
     private static LessonStep step(Map<?, ?> object) {

@@ -1,6 +1,7 @@
 package com.eyecode.lessons.session;
 
 import com.eyecode.lessons.content.LessonContentService;
+import com.eyecode.lessons.content.LessonKind;
 import com.eyecode.lessons.practice.PracticeValidator;
 import com.eyecode.lessons.practice.PracticeVerificationStatus;
 import org.junit.jupiter.api.Test;
@@ -69,6 +70,15 @@ class LessonSessionServiceTest {
         LessonSessionSnapshot session = service.start("java.fundamentals.variables.int");
         assertEquals(LessonSessionState.CLOSED, service.close(session.sessionId()).state());
         assertThrows(IllegalArgumentException.class, () -> service.next(session.sessionId()));
+    }
+
+    @Test void startsTheoryAsAContentOnlyLesson() {
+        LessonSessionSnapshot theory = new LessonSessionService(new LessonContentService()).start("java.fundamentals.jvm-jre-jdk");
+        assertEquals(LessonKind.THEORY, theory.kind());
+        assertEquals(LessonSessionPhase.PRESENTATION, theory.phase());
+        assertTrue(theory.presentation().commands().isEmpty());
+        assertTrue(theory.practice() == null);
+        assertFalse(theory.canNext());
     }
 
     private static String source(String declaration) {

@@ -1,6 +1,7 @@
 {
   "id": "java.fundamentals.variables.int",
   "version": 1,
+  "kind": "PRACTICE",
   "title": "Tipos Primitivos",
   "steps": [
     {

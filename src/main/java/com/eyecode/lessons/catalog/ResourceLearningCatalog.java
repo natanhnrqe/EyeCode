@@ -1,5 +1,6 @@
 package com.eyecode.lessons.catalog;
 
+import com.eyecode.lessons.content.LessonKind;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -80,10 +81,13 @@ public final class ResourceLearningCatalog implements LearningCatalog {
             LessonDifficulty difficulty;
             try { difficulty = LessonDifficulty.valueOf(required(object, "difficulty")); }
             catch (IllegalArgumentException exception) { throw new IllegalArgumentException("Dificuldade de aula inválida para " + id, exception); }
+            LessonKind kind;
+            try { kind = LessonKind.valueOf(text(object, "kind").isBlank() ? "THEORY" : required(object, "kind")); }
+            catch (IllegalArgumentException exception) { throw new IllegalArgumentException("Tipo de aula inválido para " + id, exception); }
             int minutes = number(object, "estimatedMinutes");
             if (minutes < 0) throw new IllegalArgumentException("A duração da aula não pode ser negativa: " + id);
             result.put(id, new LessonDescriptor(id, required(object, "title"), required(object, "description"), categoryId,
-                    topicId, difficulty, minutes, strings(array(object, "concepts"), "concept")));
+                    topicId, difficulty, minutes, kind, strings(array(object, "concepts"), "concept")));
         }
         return Collections.unmodifiableMap(new LinkedHashMap<>(result));
     }

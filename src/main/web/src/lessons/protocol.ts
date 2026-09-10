@@ -1,4 +1,5 @@
 export type LessonDifficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+export type LessonKind = 'THEORY' | 'PRACTICE';
 
 export type LearningRoadmapItem = { id: string; title: string; description: string };
 export type LearningRoadmapSection = { id: string; title: string; description: string; items: LearningRoadmapItem[] };
@@ -10,6 +11,7 @@ export type LessonDescriptor = {
   topicId: string;
   difficulty: LessonDifficulty;
   estimatedMinutes: number;
+  kind: LessonKind;
   concepts: string[];
   executable: boolean;
 };
@@ -35,11 +37,13 @@ export type LessonEditorCommand = {
   finalCode?: string;
   cadenceMillis?: number;
 };
-export type LessonContentBlock = { type: 'HEADING' | 'PARAGRAPH' | 'CODE' | 'LIST' | 'CALLOUT'; text?: string; title?: string; language?: string; code?: string; items?: string[] };
+export type LessonInlineContent = { type: 'TEXT' | 'CODE' | 'EMPHASIS' | 'STRONG' | 'LINK'; text: string; url?: string };
+export type LessonContentBlock = { type: 'HEADING' | 'PARAGRAPH' | 'CODE' | 'LIST' | 'CALLOUT'; text?: string; title?: string; language?: string; code?: string; items?: string[]; inlineContent?: LessonInlineContent[]; ordered?: boolean };
 export type LessonAnnotation = { title: string; message: string; range: LessonEditorRange };
 export type LessonSession = {
   sessionId: string;
   lessonId: string;
+  kind: LessonKind;
   currentStep: number;
   currentPresentation: number;
   presentationId: string;

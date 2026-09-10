@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouse
 import { createPortal } from 'react-dom';
 import type { ProjectNode, ProjectSnapshot, TreeReveal } from './protocol';
 import { EyeCodeIcon } from './EyeCodeIcon';
+import { DockPane } from './DockPane';
 
 type Props = {
   project?: ProjectSnapshot;
@@ -107,13 +108,13 @@ export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPa
     nodeRefs.current.get(selectedPath)?.scrollIntoView({ block: 'nearest' });
   }, [childrenByPath, expandedPaths, selectedPath]);
 
-  if (!project) return <section className="project-explorer project-explorer-empty">
+  if (!project) return <DockPane paneId="explorer" className="project-explorer project-explorer-empty" label="Project" bodyClassName="project-explorer-body">
     <div className="empty-mark">EC</div>
     <strong>No project open</strong>
     <span>Open a Java workspace to browse and edit its source.</span>
     <button type="button" className="primary-action" onClick={onOpenProject}>Open Project</button>
     <button type="button" className="quiet-action" onClick={onNewFile}>New File</button>
-  </section>;
+  </DockPane>;
 
   const toggle = (node: ProjectNode) => {
     if (node.kind === 'file') {
@@ -129,20 +130,19 @@ export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPa
     setExpandedPaths(paths => { const next = new Set(paths); next.delete(node.path); return next; });
   };
 
-  return <section className="project-explorer">
-    <header className="panel-heading">
+  return <DockPane paneId="explorer" className="project-explorer" label="Project" headerClassName="panel-heading" header={<>
       <span>Project</span>
       <div className="panel-heading-actions">
         <button type="button" onClick={onNewFile} aria-label="New file"><EyeCodeIcon name="newFile" /></button>
         <button type="button" onClick={() => void refreshExpandedPaths()} aria-label="Refresh project"><EyeCodeIcon name="reload" /></button>
       </div>
-    </header>
+    </>} bodyClassName="project-explorer-body">
     <div className="project-tree" role="tree">
       <TreeNode node={project.root} depth={0} childrenByPath={childrenByPath} expandedPaths={expandedPaths}
         loadingPaths={loadingPaths} failedPaths={failedPaths} selectedPath={selectedPath} onToggle={toggle} onContextMenu={showContextMenu} nodeRefs={nodeRefs} />
     </div>
     {renderOverlay()}
-  </section>;
+  </DockPane>;
 
   async function refreshExpandedPaths() {
     const paths = [...new Set([...Object.keys(childrenByPath), ...expandedPaths])];

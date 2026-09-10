@@ -1,6 +1,7 @@
 import { ProblemsPanel } from '../diagnostics/ProblemsPanel';
 import type { DiagnosticsViewState, WebDiagnostic } from '../diagnostics/protocol';
 import { TerminalPanel } from './TerminalPanel';
+import { DockPane } from './DockPane';
 import type { TerminalState } from './protocol';
 
 type BottomPanelId = 'run' | 'terminal' | 'output' | 'problems' | 'git';
@@ -23,14 +24,12 @@ const panels: Array<{ id: BottomPanelId; label: string }> = [
 
 export function BottomPanel({ active, output, terminalState, diagnostics, documents, onSelect, onNavigateProblem }: Props) {
   const problemCount = diagnostics?.results.reduce((total, result) => total + result.diagnostics.length, 0) ?? 0;
-  return <section className="bottom-panel">
-    <nav className="bottom-tabs" aria-label="Tool windows">
+  return <DockPane paneId="bottom" className="bottom-panel" label="Tool windows" headerClassName="bottom-tabs" headerLabel="Tool windows" header={<>
       {panels.map(panel => <button type="button" key={panel.id}
         className={active === panel.id ? 'is-active' : ''} onClick={() => onSelect(panel.id)}>
         {panel.label}{panel.id === 'problems' && problemCount ? ` ${problemCount}` : ''}
       </button>)}
-    </nav>
-    <div className="bottom-panel-content">
+    </>} bodyClassName="bottom-panel-content">
       {active === 'problems' ? <ProblemsPanel state={diagnostics} documents={documents} onNavigate={onNavigateProblem} />
       : active === 'run' || active === 'output' ? <pre className="run-output">
         {output.length ? output.join('\n') : 'Run output will appear here.'}
@@ -39,6 +38,5 @@ export function BottomPanel({ active, output, terminalState, diagnostics, docume
         <strong>{panels.find(panel => panel.id === active)?.label}</strong>
         <span>This Web Shell panel is ready for its existing service integration.</span>
       </div>}
-    </div>
-  </section>;
+  </DockPane>;
 }
