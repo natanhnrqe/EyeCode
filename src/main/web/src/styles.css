@@ -267,9 +267,15 @@ html, body, #root {
   cursor: row-resize;
 }
 
-.dock-pane-header[data-dock-handle] { cursor: grab; }
-.dock-layout.is-dragging .dock-pane-header[data-dock-handle] { cursor: grabbing; }
+.dock-leaf.is-draggable [data-dock-handle] { cursor: grab; user-select: none; -webkit-user-select: none; }
+.dock-leaf.is-draggable [data-dock-handle] button, .dock-leaf.is-draggable [data-dock-handle] a, .dock-leaf.is-draggable [data-dock-handle] input, .dock-leaf.is-draggable [data-dock-handle] select, .dock-leaf.is-draggable [data-dock-handle] textarea, .dock-leaf.is-draggable [data-dock-handle] [role='button'], .dock-leaf.is-draggable [data-dock-handle] [role='tab'] { cursor: pointer; }
+.dock-layout.is-dragging .dock-leaf.is-dragging [data-dock-handle] { cursor: grabbing; }
+.is-dock-dragging, .is-dock-dragging * { user-select: none; -webkit-user-select: none; }
 .dock-preview { position: fixed; z-index: 35; box-sizing: border-box; border: 1px solid var(--eyecode-accent-bright); border-radius: var(--eyecode-radius-sm); background: var(--eyecode-accent-soft); pointer-events: none; }
+.dock-drag-indicator { position: fixed; z-index: 39; width: 22px; height: 18px; padding: 3px; border: 1px solid var(--eyecode-accent-bright); border-radius: var(--eyecode-radius-sm); background: rgba(30, 32, 48, .94); box-shadow: 0 4px 12px rgba(0, 0, 0, .28); pointer-events: none; }
+.dock-drag-indicator span { display: block; width: 100%; height: 100%; border: 1px solid rgba(221, 224, 231, .68); border-radius: 1px; }
+.dock-leaf.is-dragging [data-pane-id] { border-color: var(--eyecode-accent-bright); box-shadow: 0 10px 24px rgba(0, 0, 0, .26); }
+.dock-leaf.is-dragging [data-pane-id] > .dock-pane-header { background: rgba(169, 146, 255, .10); }
 
 .dock-split-separator::after {
   position: absolute;
@@ -286,29 +292,25 @@ html, body, #root {
 .dock-split-separator-horizontal::after {
   top: 0;
   bottom: 0;
-  left: 2px;
+  left: 5px;
   width: 1px;
 }
 
 .dock-split-separator-horizontal::before {
   top: 0;
   bottom: 0;
-  left: -3px;
-  width: 11px;
+  inset-inline: 0;
 }
 
 .dock-split-separator-vertical::after {
   right: 0;
-  bottom: 2px;
+  bottom: 5px;
   left: 0;
   height: 1px;
 }
 
 .dock-split-separator-vertical::before {
-  right: 0;
-  bottom: -3px;
-  left: 0;
-  height: 11px;
+  inset: 0;
 }
 
 .dock-split-separator:hover::after, .dock-split-separator.is-active::after {

@@ -19,19 +19,12 @@ import com.eyecode.runtime.RunService;
 import com.eyecode.terminal.TerminalService;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorSession;
-import javafx.stage.DirectoryChooser;
-import javafx.application.Platform;
-import javafx.stage.FileChooser;
-import javafx.stage.Window;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Files;
 import java.util.Comparator;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +34,8 @@ import java.util.Optional;
 import java.util.Set;
 
 public final class WebShellWorkspaceController {
-    private final JavaFxWebShellSurface surface;
+    private final WebShellSurface surface;
+    private final WebShellNativeUi nativeUi;
     private final EditorManager manager;
     private final WebShellCompletionController completionController;
     private final WebShellLearningController learningController;
@@ -66,23 +60,31 @@ public final class WebShellWorkspaceController {
     private boolean disposed;
 
     public WebShellWorkspaceController(JavaFxWebShellSurface surface) {
-        this(surface, target -> { }, null);
+        this(surface, target -> { }, null, WebShellNativeUi.unavailable());
     }
 
     public WebShellWorkspaceController(JavaFxWebShellSurface surface,
                                        java.util.function.Consumer<DocumentationTarget> documentationOpener) {
-        this(surface, documentationOpener, null);
+        this(surface, documentationOpener, null, WebShellNativeUi.unavailable());
     }
 
     public WebShellWorkspaceController(JavaFxWebShellSurface surface,
                                        JavaFxWebDocumentationHost documentationHost) {
-        this(surface, documentationHost::open, documentationHost);
+        this(surface, documentationHost::open, documentationHost, WebShellNativeUi.unavailable());
     }
 
-    private WebShellWorkspaceController(JavaFxWebShellSurface surface,
+    public WebShellWorkspaceController(WebShellSurface surface,
                                         java.util.function.Consumer<DocumentationTarget> documentationOpener,
-                                        JavaFxWebDocumentationHost documentationHost) {
+                                        WebShellNativeUi nativeUi) {
+        this(surface, documentationOpener, null, nativeUi);
+    }
+
+    private WebShellWorkspaceController(WebShellSurface surface,
+                                        java.util.function.Consumer<DocumentationTarget> documentationOpener,
+                                        JavaFxWebDocumentationHost documentationHost,
+                                        WebShellNativeUi nativeUi) {
         this.surface = surface;
+        this.nativeUi = nativeUi == null ? WebShellNativeUi.unavailable() : nativeUi;
         this.documentationOpener = documentationOpener == null ? target -> { } : documentationOpener;
         this.documentationHost = documentationHost;
         this.manager = new EditorManager(null, new DefaultFileSystemService(),
@@ -581,35 +583,8 @@ public final class WebShellWorkspaceController {
     }
 
     private Path chooseSaveTarget(EditorSession session) {
-        if (Platform.isFxApplicationThread()) return showSaveDialog(session);
-        CompletableFuture<Path> result = new CompletableFuture<>();
-        try {
-            Platform.runLater(() -> {
-                try {
-                    result.complete(showSaveDialog(session));
-                } catch (RuntimeException exception) {
-                    result.completeExceptionally(exception);
-                }
-            });
-            return result.get();
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            return null;
-        } catch (ExecutionException | IllegalStateException exception) {
-            return null;
-        }
-    }
-
-    private Path showSaveDialog(EditorSession session) {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Save Java File");
-        chooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Java Files", "*.java"));
         String suggestedName = untitledNames.get(session.getSessionId());
-        if (suggestedName != null) chooser.setInitialFileName(suggestedName);
-        Window owner = surface.getScene() == null ? null : surface.getScene().getWindow();
-        java.io.File selected = chooser.showSaveDialog(owner);
-        return selected == null ? null : selected.toPath().toAbsolutePath().normalize();
+        return nativeUi.chooseJavaSaveTarget(suggestedName);
     }
 
     private WebShellEnvelope close(WebShellEnvelope message) {
@@ -957,31 +932,7 @@ public final class WebShellWorkspaceController {
     }
 
     private Path chooseDirectory(String title) {
-        if (Platform.isFxApplicationThread()) return showDirectoryDialog(title);
-        CompletableFuture<Path> result = new CompletableFuture<>();
-        try {
-            Platform.runLater(() -> {
-                try {
-                    result.complete(showDirectoryDialog(title));
-                } catch (RuntimeException exception) {
-                    result.completeExceptionally(exception);
-                }
-            });
-            return result.get();
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            return null;
-        } catch (ExecutionException | IllegalStateException exception) {
-            return null;
-        }
-    }
-
-    private Path showDirectoryDialog(String title) {
-        DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setTitle(title);
-        Window owner = surface.getScene() == null ? null : surface.getScene().getWindow();
-        File selected = chooser.showDialog(owner);
-        return selected == null ? null : selected.toPath().toAbsolutePath().normalize();
+        return nativeUi.chooseDirectory(title);
     }
 
     private Map<String, Object> runPayload() {

@@ -2,14 +2,19 @@ package com.eyecode.javafx.web;
 
 import com.eyecode.javafx.ceffx.CeffxRuntime;
 import com.techsenger.ceffx.core.CefClient;
+import com.techsenger.ceffx.core.CefSettings;
 import com.techsenger.ceffx.core.browser.CefBrowser;
 import com.techsenger.ceffx.core.browser.CefFrame;
 import com.techsenger.ceffx.core.browser.CefMessageRouter;
 import com.techsenger.ceffx.core.callback.CefQueryCallback;
+import com.techsenger.ceffx.core.handler.CefCursorUtils;
+import com.techsenger.ceffx.core.handler.CefDisplayHandlerAdapter;
 import com.techsenger.ceffx.core.handler.CefMessageRouterHandlerAdapter;
 import javafx.application.Platform;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Region;
 
 import java.util.Map;
@@ -17,7 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public final class JavaFxWebShellSurface extends Region {
+public final class JavaFxWebShellSurface extends Region implements WebShellSurface {
     private final WebShellAssetResolver assetResolver;
     private final WebShellProtocolCodec codec;
     private final WebShellDispatcher dispatcher;
@@ -27,6 +32,7 @@ public final class JavaFxWebShellSurface extends Region {
     private CefMessageRouter router;
     private Node browserNode;
     private boolean disposed;
+    private int mouseMovesToLog;
 
     public JavaFxWebShellSurface() {
         this(new WebShellAssetResolver());
@@ -57,6 +63,7 @@ public final class JavaFxWebShellSurface extends Region {
         return assetResolver.entryUrl();
     }
 
+    @Override
     public void registerHandler(String channel, String name, WebShellMessageHandler handler) {
         if (disposed) return;
         dispatcher.register(channel, name, handler);
@@ -68,6 +75,7 @@ public final class JavaFxWebShellSurface extends Region {
         }
     }
 
+    @Override
     public void send(WebShellEnvelope message) {
         if (message == null || disposed) return;
         String json = codec.encode(message);
@@ -145,6 +153,7 @@ public final class JavaFxWebShellSurface extends Region {
                 CefBrowser createdBrowser = null;
                 try {
                     createdClient = CeffxRuntime.app().createClient();
+                    createdClient.addDisplayHandler(new CeffxInputDiagnosticHandler());
                     createdRouter = CefMessageRouter.create(new RouterHandler());
                     createdClient.addMessageRouter(createdRouter);
                     createdBrowser = createdClient.createBrowser(assetResolver.entryUrl(), true, false);
@@ -190,6 +199,7 @@ public final class JavaFxWebShellSurface extends Region {
         browser = createdBrowser;
         router = createdRouter;
         browserNode = createdBrowser.getPane();
+        browserNode.addEventFilter(MouseEvent.ANY, this::traceFxMouseEvent);
         browserNode.setManaged(true);
         if (browserNode instanceof Region region) {
             region.setMinSize(0, 0);
@@ -198,6 +208,38 @@ public final class JavaFxWebShellSurface extends Region {
         getChildren().setAll(browserNode);
         System.out.println("WEB_SHELL loaded");
         requestLayout();
+    }
+
+    private void traceFxMouseEvent(MouseEvent event) {
+        if (event.getEventType() == MouseEvent.MOUSE_PRESSED) {
+            mouseMovesToLog = 3;
+        } else if (event.getEventType() == MouseEvent.MOUSE_RELEASED) {
+            mouseMovesToLog = 3;
+        } else if ((event.getEventType() == MouseEvent.MOUSE_MOVED
+                || event.getEventType() == MouseEvent.MOUSE_DRAGGED) && mouseMovesToLog-- <= 0) {
+            return;
+        }
+        System.out.printf("[CEFFX-MOUSE] FX %s button=%s primaryDown=%s middleDown=%s secondaryDown=%s x=%.1f y=%.1f%n",
+                event.getEventType().getName(), event.getButton(), event.isPrimaryButtonDown(),
+                event.isMiddleButtonDown(), event.isSecondaryButtonDown(), event.getX(), event.getY());
+    }
+
+    private static final class CeffxInputDiagnosticHandler extends CefDisplayHandlerAdapter {
+        @Override
+        public boolean onConsoleMessage(CefBrowser browser, CefSettings.LogSeverity level, String message,
+                                        String source, int line) {
+            if (message != null && message.startsWith("[WEB-MOUSE]")) {
+                System.out.printf("%s source=%s:%d%n", message, source, line);
+            }
+            return false;
+        }
+
+        @Override
+        public boolean onCursorChange(CefBrowser browser, int cursorType) {
+            Cursor mapped = CefCursorUtils.getCursor(cursorType);
+            System.out.printf("[CEFFX-CURSOR] requested=%d mapped=%s applied=false%n", cursorType, mapped);
+            return false;
+        }
     }
 
     private void showFailure(Throwable failure) {

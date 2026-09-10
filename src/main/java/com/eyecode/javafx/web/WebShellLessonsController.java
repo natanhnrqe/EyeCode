@@ -26,7 +26,7 @@ public final class WebShellLessonsController {
     private final LessonSessionService sessionService;
     private final PracticeValidator practiceValidator;
 
-    public WebShellLessonsController(JavaFxWebShellSurface surface) {
+    public WebShellLessonsController(WebShellSurface surface) {
         LearningCatalog loadedCatalog = null;
         String loadError = null;
         try {

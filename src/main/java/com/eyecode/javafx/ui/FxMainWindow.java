@@ -4,6 +4,7 @@ import com.eyecode.javafx.ceffx.CeffxRuntime;
 import com.eyecode.javafx.web.JavaFxWebShellSurface;
 import com.eyecode.javafx.web.JavaFxWebDocumentationHost;
 import com.eyecode.javafx.web.WebShellNativeController;
+import com.eyecode.javafx.web.JavaFxWebShellNativeUi;
 import com.eyecode.javafx.web.WebShellMode;
 import com.eyecode.javafx.web.WebShellWorkspaceController;
 import javafx.application.Platform;
@@ -30,8 +31,9 @@ public final class FxMainWindow {
         if (WebShellMode.configured() == WebShellMode.WEB_SHELL) {
             webShellSurface = new JavaFxWebShellSurface();
             webDocumentationHost = new JavaFxWebDocumentationHost(webShellSurface);
-            webShellWorkspace = new WebShellWorkspaceController(webShellSurface, webDocumentationHost);
-            new WebShellNativeController(webShellSurface, stage);
+            JavaFxWebShellNativeUi nativeUi = new JavaFxWebShellNativeUi(stage);
+            webShellWorkspace = new WebShellWorkspaceController(webShellSurface, webDocumentationHost::open, nativeUi);
+            new WebShellNativeController(webShellSurface, nativeUi);
             root = new StackPane(webShellSurface, webDocumentationHost);
         } else {
             webShellSurface = null;
@@ -66,5 +68,4 @@ public final class FxMainWindow {
         System.exit(0);
     }
 }
-
 

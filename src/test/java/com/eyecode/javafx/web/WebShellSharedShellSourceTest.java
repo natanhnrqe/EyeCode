@@ -139,6 +139,9 @@ class WebShellSharedShellSourceTest {
         assertTrue(lessonPanel.contains("className={`lesson-panel${session.kind === 'THEORY' ? ' is-theory' : ''}`"));
         assertFalse(lessonPanel.contains("bottom-panel lesson-panel"));
         assertTrue(projectExplorer.contains("<DockPane paneId=\"explorer\""));
+        assertTrue(projectExplorer.contains("headerClassName=\"panel-heading\""));
+        assertTrue(bottomPanel.contains("headerClassName=\"bottom-tabs\""));
+        assertTrue(lessonPanel.contains("headerClassName=\"bottom-tabs lesson-pane-header\""));
         assertTrue(learnWorkspace.contains("learn-navigation-page"));
         assertFalse(learnWorkspace.contains("DockPane"));
     }
@@ -158,7 +161,7 @@ class WebShellSharedShellSourceTest {
         assertEquals(1, occurrences(pane, "paneId: 'bottom'"));
         assertEquals(3, occurrences(pane, "paneId: 'lesson'"));
         assertTrue(layout.contains("dock-split-${node.orientation}"));
-        assertTrue(layout.contains("const draggablePanes"));
+        assertTrue(layout.contains("const draggablePaneIds = new Set(dockPaneIds(tree).filter"));
         assertFalse(layout.contains("onDrag"));
         assertEquals(1, occurrences(workspace, "<MonacoHost"));
         assertTrue(workspace.contains("const [learnDockArrangement, setLearnDockArrangement]"));
@@ -201,7 +204,7 @@ class WebShellSharedShellSourceTest {
         assertTrue(workspace.contains("[dockMode]: { ...current[dockMode], [splitId]: ratio }"));
         assertTrue(workspace.contains("onEditorGeometryChange={() => service.layout()}"));
         assertFalse(dockPane.contains("onPointer"));
-        assertTrue(layout.contains("const draggablePanes"));
+        assertTrue(layout.contains("const draggablePaneIds = new Set(dockPaneIds(tree).filter"));
         assertFalse(layout.contains("onDrag"));
     }
 
@@ -294,11 +297,26 @@ class WebShellSharedShellSourceTest {
         assertTrue(pane.contains("export const learnLessonLeftDockTree"));
         assertTrue(pane.contains("export function learnDockArrangementForDrop"));
         assertFalse(pane.contains("export function moveDockPane"));
-        assertTrue(layout.contains("const draggablePanes = new Set<WorkspacePaneId>(['lesson'])"));
-        assertTrue(layout.contains("draggablePanes.has(pane)"));
-        assertTrue(layout.contains("closest('[data-dock-handle]')"));
-        assertTrue(layout.contains("closest('button,a,input,select,textarea,[role=\"tab\"]')"));
+        assertTrue(pane.contains("export const dockSeparatorSize = 11"));
+        assertTrue(layout.contains("const draggablePaneIds = new Set(dockPaneIds(tree).filter"));
+        assertTrue(layout.contains("dockSides.some(side => canDockDrop?.(paneId, targetId, side))"));
+        assertTrue(layout.contains("const dockDragThreshold = 5"));
+        assertTrue(layout.contains("const dockInputDebug = true"));
+        assertTrue(layout.contains("draggablePaneIds.has(pane)"));
+        assertTrue(layout.contains("closest<HTMLElement>('[data-dock-handle]')"));
+        assertTrue(layout.contains("closest('button,a,input,select,textarea,[role=\"button\"],[role=\"tab\"],[contenteditable=\"true\"]')"));
+        assertTrue(layout.contains("event.preventDefault()"));
         assertTrue(layout.contains("setPointerCapture(event.pointerId)"));
+        assertTrue(layout.contains("Math.hypot(event.clientX - active.startX, event.clientY - active.startY) < dockDragThreshold"));
+        assertTrue(layout.contains("document.body.classList.add('is-dock-dragging')"));
+        assertTrue(layout.contains("document.body.classList.remove('is-dock-dragging')"));
+        assertTrue(layout.contains("logDockInput('header:pointerdown'"));
+        assertTrue(layout.contains("logDockInput('separator:pointerdown'"));
+        assertTrue(layout.contains("logDockInput(`separator:${event.type}`"));
+        assertTrue(layout.contains("onPointerUp={finishResize} onPointerCancel={finishResize}"));
+        assertTrue(layout.contains("onLostPointerCapture"));
+        assertTrue(layout.contains("cleanupDrag('lostpointercapture')"));
+        assertTrue(layout.contains("cleanupDrag('layout-change')"));
         assertTrue(layout.contains("document.elementFromPoint"));
         assertTrue(layout.contains("canDockDrop?.(active.paneId, targetId, side)"));
         assertTrue(layout.contains("onDockDrop?.(active.paneId, target.paneId, target.side)"));
@@ -310,6 +328,10 @@ class WebShellSharedShellSourceTest {
         assertTrue(layout.contains("key={`pane-${node.paneId}`}"));
         assertFalse(layout.contains("service.dispose"));
         assertTrue(styles.contains(".dock-preview"));
+        assertTrue(styles.contains(".dock-drag-indicator"));
+        assertTrue(styles.contains(".dock-leaf.is-dragging"));
+        assertTrue(styles.contains(".dock-leaf.is-draggable [data-dock-handle] { cursor: grab; user-select: none; -webkit-user-select: none; }"));
+        assertTrue(styles.contains(".is-dock-dragging, .is-dock-dragging * { user-select: none; -webkit-user-select: none; }"));
         assertTrue(styles.contains("@container explorer (max-width: 92px)"));
     }
 

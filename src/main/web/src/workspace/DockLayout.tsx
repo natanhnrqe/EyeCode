@@ -13,8 +13,10 @@ type Props = {
   onDockDrop?(paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: DockSide): void;
 };
 
-type ActiveDrag = { pointerId: number; paneId: WorkspacePaneId; element: HTMLDivElement; target: { paneId: WorkspacePaneId; side: DockSide } | null };
-const draggablePanes = new Set<WorkspacePaneId>(['lesson']);
+type ActiveDrag = { pointerId: number; paneId: WorkspacePaneId; element: HTMLDivElement; startX: number; startY: number; started: boolean; target: { paneId: WorkspacePaneId; side: DockSide } | null };
+const dockDragThreshold = 5;
+const dockInputDebug = true;
+const dockSides: DockSide[] = ['LEFT', 'RIGHT', 'TOP', 'BOTTOM'];
 
 type ActiveResize = {
   pointerId: number;
@@ -31,39 +33,62 @@ export function DockLayout({ tree, ratios, renderPane, onRatioChange, onEditorGe
   const activeDrag = useRef<ActiveDrag | null>(null);
   const [preview, setPreview] = useState<{ paneId: WorkspacePaneId; side: DockSide; bounds: DOMRect } | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [draggingPane, setDraggingPane] = useState<WorkspacePaneId>();
+  const [dragPointer, setDragPointer] = useState<{ x: number; y: number }>();
   const [activeResizeId, setActiveResizeId] = useState<string>();
+  const draggablePaneIds = new Set(dockPaneIds(tree).filter(paneId => dockPaneIds(tree).some(targetId => targetId !== paneId && dockSides.some(side => canDockDrop?.(paneId, targetId, side)))));
 
   useEffect(() => () => {
     const active = activeResize.current;
     if (active && active.frame !== null) cancelAnimationFrame(active.frame);
+    cleanupDrag('unmount');
   }, []);
 
   useEffect(() => {
-    const cancel = (event: KeyboardEvent) => { if (event.key === 'Escape') cancelDrag(); };
+    const cancel = (event: KeyboardEvent) => { if (event.key === 'Escape') cleanupDrag('escape'); };
     window.addEventListener('keydown', cancel);
     return () => window.removeEventListener('keydown', cancel);
   }, []);
 
-  function cancelDrag() {
+  useEffect(() => { cleanupDrag('layout-change'); }, [layoutKind, tree]);
+
+  function cleanupDrag(reason: string) {
     const active = activeDrag.current;
-    if (active?.element.hasPointerCapture(active.pointerId)) active.element.releasePointerCapture(active.pointerId);
     activeDrag.current = null;
+    if (active?.element.hasPointerCapture(active.pointerId)) active.element.releasePointerCapture(active.pointerId);
+    if (active) logDockCleanup(reason, active);
+    document.body.classList.remove('is-dock-dragging');
     setPreview(null);
     setDragging(false);
+    setDraggingPane(undefined);
+    setDragPointer(undefined);
   }
 
   function beginDrag(event: PointerEvent<HTMLDivElement>) {
-    if (layoutKind === 'THEORY' || !canDockDrop || event.button !== 0 || !(event.target as HTMLElement).closest('[data-dock-handle]') || (event.target as HTMLElement).closest('button,a,input,select,textarea,[role="tab"]')) return;
+    const target = event.target as HTMLElement;
+    const handle = target.closest<HTMLElement>('[data-dock-handle]');
+    const interactive = target.closest('button,a,input,select,textarea,[role="button"],[role="tab"],[contenteditable="true"]');
+    if (layoutKind === 'THEORY' || event.button !== 0 || !handle || interactive) return;
     const pane = (event.target as HTMLElement).closest<HTMLElement>('[data-pane-id]')?.dataset.paneId as WorkspacePaneId | undefined;
-    if (!pane || !draggablePanes.has(pane)) return;
+    if (!pane || !draggablePaneIds.has(pane)) return;
+    event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    activeDrag.current = { pointerId: event.pointerId, paneId: pane, element: event.currentTarget, target: null };
-    setDragging(true);
+    activeDrag.current = { pointerId: event.pointerId, paneId: pane, element: event.currentTarget, startX: event.clientX, startY: event.clientY, started: false, target: null };
+    logDockInput('header:pointerdown', event, { paneId: pane, preventDefault: true, candidate: true, thresholdCrossed: false });
   }
 
   function moveDrag(event: PointerEvent<HTMLDivElement>) {
     const active = activeDrag.current;
     if (!active || active.pointerId !== event.pointerId) return;
+    if (!active.started) {
+      if (Math.hypot(event.clientX - active.startX, event.clientY - active.startY) < dockDragThreshold) return;
+      active.started = true;
+      document.body.classList.add('is-dock-dragging');
+      setDragging(true);
+      setDraggingPane(active.paneId);
+      logDockInput('header:threshold', event, { paneId: active.paneId, candidate: true, thresholdCrossed: true });
+    }
+    setDragPointer({ x: event.clientX, y: event.clientY });
     const leaf = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-dock-leaf]');
     const targetId = leaf?.dataset.dockLeaf as WorkspacePaneId | undefined;
     const bounds = leaf?.getBoundingClientRect();
@@ -78,8 +103,10 @@ export function DockLayout({ tree, ratios, renderPane, onRatioChange, onEditorGe
     const active = activeDrag.current;
     if (!active || active.pointerId !== event.pointerId) return;
     const target = active.target;
-    cancelDrag();
-    if (target) onDockDrop?.(active.paneId, target.paneId, target.side);
+    const started = active.started;
+    logDockInput('header:pointerup', event, { paneId: active.paneId, candidate: true, thresholdCrossed: started });
+    cleanupDrag('pointerup');
+    if (started && target) onDockDrop?.(active.paneId, target.paneId, target.side);
   }
 
   function scheduleRatio(active: ActiveResize, ratio: number) {
@@ -97,6 +124,7 @@ export function DockLayout({ tree, ratios, renderPane, onRatioChange, onEditorGe
   function finishResize(event: PointerEvent<HTMLDivElement>) {
     const active = activeResize.current;
     if (!active || active.pointerId !== event.pointerId) return;
+    logDockInput(`separator:${event.type}`, event, { splitId: active.splitId, orientation: active.node.orientation });
     if (active.frame !== null) {
       cancelAnimationFrame(active.frame);
       active.frame = null;
@@ -114,6 +142,7 @@ export function DockLayout({ tree, ratios, renderPane, onRatioChange, onEditorGe
     if (!bounds) return;
     event.preventDefault();
     separator.setPointerCapture(event.pointerId);
+    logDockInput('separator:pointerdown', event, { splitId, orientation: node.orientation, preventDefault: true });
     const size = node.orientation === 'horizontal' ? bounds.width : bounds.height;
     const separatorBounds = separator.getBoundingClientRect();
     const position = node.orientation === 'horizontal'
@@ -141,10 +170,30 @@ export function DockLayout({ tree, ratios, renderPane, onRatioChange, onEditorGe
     scheduleRatio(active, clampedPosition / available);
   }
 
-  return <div className={`dock-layout${layoutKind === 'THEORY' ? ' is-theory' : ''}${dragging ? ' is-dragging' : ''}`} onPointerDown={beginDrag} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={cancelDrag}>
-    {renderNode(tree, ratios, renderPane, beginResize, moveResize, finishResize, 'root', layoutKind, activeResizeId)}
+  return <div className={`dock-layout${layoutKind === 'THEORY' ? ' is-theory' : ''}${dragging ? ' is-dragging' : ''}`} onPointerDown={beginDrag} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={event => { if (activeDrag.current) { logDockInput('header:pointercancel', event, {}); cleanupDrag('pointercancel'); } }} onLostPointerCapture={event => { if (activeDrag.current) { logDockInput('header:lostpointercapture', event, {}); cleanupDrag('lostpointercapture'); } }}>
+    {renderNode(tree, ratios, renderPane, beginResize, moveResize, finishResize, 'root', layoutKind, activeResizeId, draggingPane, draggablePaneIds)}
     {preview && <div className={`dock-preview dock-preview-${preview.side.toLowerCase()}`} data-dock-preview={preview.paneId} style={previewStyle(preview)} />}
+    {dragPointer && <div className="dock-drag-indicator" aria-hidden="true" style={{ left: dragPointer.x + 12, top: dragPointer.y + 12 }}><span /></div>}
   </div>;
+}
+
+function logDockInput(eventName: string, event: PointerEvent<HTMLElement>, detail: Record<string, unknown>) {
+  if (!dockInputDebug) return;
+  const target = event.target instanceof HTMLElement ? event.target : null;
+  const currentTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+  console.info('[DOCK-INPUT]', eventName, {
+    target: target?.tagName ?? 'unknown', currentTarget: currentTarget?.className ?? 'unknown', pointerId: event.pointerId,
+    button: event.button, buttons: event.buttons, hasPointerCapture: currentTarget?.hasPointerCapture(event.pointerId) ?? false, ...detail
+  });
+}
+
+function logDockCleanup(reason: string, active: ActiveDrag) {
+  if (!dockInputDebug) return;
+  console.info('[DOCK-INPUT]', 'header:cleanup', { reason, paneId: active.paneId, pointerId: active.pointerId });
+}
+
+function dockPaneIds(node: DockNode): WorkspacePaneId[] {
+  return node.type === 'pane' ? [node.paneId] : [...dockPaneIds(node.first), ...dockPaneIds(node.second)];
 }
 
 export function dockSide(bounds: DOMRect, x: number, y: number): DockSide {
@@ -164,10 +213,10 @@ function previewStyle(preview: { side: DockSide; bounds: DOMRect }) {
   return { left: side === 'RIGHT' ? bounds.left + width : bounds.left, top: side === 'BOTTOM' ? bounds.top + height : bounds.top, width, height };
 }
 
-function renderNode(node: DockNode, ratios: Props['ratios'], renderPane: Props['renderPane'], beginResize: (event: PointerEvent<HTMLDivElement>, splitId: string, node: DockSplitNode) => void, moveResize: (event: PointerEvent<HTMLDivElement>) => void, finishResize: (event: PointerEvent<HTMLDivElement>) => void, path: string, layoutKind: Props['layoutKind'], activeResizeId: string | undefined): ReactNode {
+function renderNode(node: DockNode, ratios: Props['ratios'], renderPane: Props['renderPane'], beginResize: (event: PointerEvent<HTMLDivElement>, splitId: string, node: DockSplitNode) => void, moveResize: (event: PointerEvent<HTMLDivElement>) => void, finishResize: (event: PointerEvent<HTMLDivElement>) => void, path: string, layoutKind: Props['layoutKind'], activeResizeId: string | undefined, draggingPane: WorkspacePaneId | undefined, draggablePaneIds: ReadonlySet<WorkspacePaneId>): ReactNode {
   if (node.type === 'pane') {
     const hidden = layoutKind === 'THEORY' && node.paneId === 'editor';
-    return <div key={`pane-${node.paneId}`} className={`dock-leaf${hidden ? ' is-theory-hidden' : ''}`} data-dock-leaf={node.paneId}>{renderPane(node.paneId)}</div>;
+    return <div key={`pane-${node.paneId}`} className={`dock-leaf${hidden ? ' is-theory-hidden' : ''}${draggingPane === node.paneId ? ' is-dragging' : ''}${draggablePaneIds.has(node.paneId) ? ' is-draggable' : ''}`} data-dock-leaf={node.paneId}>{renderPane(node.paneId)}</div>;
   }
   const ratio = ratios[path];
   const theoryContentSplit = layoutKind === 'THEORY' && path === 'root-second';
@@ -177,9 +226,9 @@ function renderNode(node: DockNode, ratios: Props['ratios'], renderPane: Props['
     : { gridTemplateRows: `${resolvedRatio}fr ${dockSeparatorSize}px ${1 - resolvedRatio}fr` };
   const separatorOrientation = node.orientation === 'horizontal' ? 'vertical' : 'horizontal';
   return <div key={`split-${path}`} className={`dock-split dock-split-${node.orientation} ${path === 'root' ? 'dock-split-root' : 'dock-split-nested'}`} data-dock-ratio={ratio ?? node.ratio} style={style}>
-    {renderNode(node.first, ratios, renderPane, beginResize, moveResize, finishResize, `${path}-first`, layoutKind, activeResizeId)}
+    {renderNode(node.first, ratios, renderPane, beginResize, moveResize, finishResize, `${path}-first`, layoutKind, activeResizeId, draggingPane, draggablePaneIds)}
     <div className={`dock-split-separator dock-split-separator-${node.orientation}${activeResizeId === path ? ' is-active' : ''}`} role="separator" aria-orientation={separatorOrientation} aria-valuenow={Math.round(resolvedRatio * 100)}
       onPointerDown={event => beginResize(event, path, node)} onPointerMove={moveResize} onPointerUp={finishResize} onPointerCancel={finishResize}><span className="dock-split-grip" aria-hidden="true" /></div>
-    {renderNode(node.second, ratios, renderPane, beginResize, moveResize, finishResize, `${path}-second`, layoutKind, activeResizeId)}
+    {renderNode(node.second, ratios, renderPane, beginResize, moveResize, finishResize, `${path}-second`, layoutKind, activeResizeId, draggingPane, draggablePaneIds)}
   </div>;
 }

@@ -28,7 +28,7 @@ export type DockPaneMinimum = {
   minHeight: number;
 };
 
-export const dockSeparatorSize = 5;
+export const dockSeparatorSize = 11;
 export const explorerCollapsedRailWidth = 64;
 
 export const workspacePaneMinimums: Readonly<Record<WorkspacePaneId, DockPaneMinimum>> = {

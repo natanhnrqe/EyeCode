@@ -31,7 +31,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class WebShellCompletionController {
-    private final JavaFxWebShellSurface surface;
+    private final WebShellSurface surface;
     private final EditorManager manager;
     private final ExecutorService executor;
     private final Map<String, String> latestRequestByUri = new ConcurrentHashMap<>();
@@ -47,7 +47,7 @@ public final class WebShellCompletionController {
             )));
     private volatile boolean disposed;
 
-    public WebShellCompletionController(JavaFxWebShellSurface surface, EditorManager manager) {
+    public WebShellCompletionController(WebShellSurface surface, EditorManager manager) {
         this.surface = surface;
         this.manager = manager;
         this.executor = Executors.newSingleThreadExecutor(runnable -> {

@@ -15,17 +15,17 @@ import java.util.concurrent.TimeUnit;
 
 public final class WebShellDiagnosticsController {
 
-    private final JavaFxWebShellSurface surface;
+    private final WebShellSurface surface;
     private final JavaSyntaxDiagnosticAnalyzer analyzer;
     private final ThreadPoolExecutor executor;
     private final Map<String, String> latestRequestByUri = new java.util.concurrent.ConcurrentHashMap<>();
     private volatile boolean disposed;
 
-    public WebShellDiagnosticsController(JavaFxWebShellSurface surface) {
+    public WebShellDiagnosticsController(WebShellSurface surface) {
         this(surface, new JavaSyntaxDiagnosticAnalyzer());
     }
 
-    WebShellDiagnosticsController(JavaFxWebShellSurface surface, JavaSyntaxDiagnosticAnalyzer analyzer) {
+    WebShellDiagnosticsController(WebShellSurface surface, JavaSyntaxDiagnosticAnalyzer analyzer) {
         this.surface = surface;
         this.analyzer = analyzer == null ? new JavaSyntaxDiagnosticAnalyzer() : analyzer;
         this.executor = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1),

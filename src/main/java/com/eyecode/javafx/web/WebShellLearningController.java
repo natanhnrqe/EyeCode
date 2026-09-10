@@ -33,7 +33,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 public final class WebShellLearningController {
-    private final JavaFxWebShellSurface surface;
+    private final WebShellSurface surface;
     private final EditorManager manager;
     private final LearningContentEngine contentEngine = new LearningContentEngine();
     private final JavaSyntaxAnalyzer syntaxAnalyzer = new JavaSyntaxAnalyzer();
@@ -46,11 +46,11 @@ public final class WebShellLearningController {
     private final Consumer<DocumentationTarget> documentationOpener;
     private final Consumer<JdkSourceTarget> sourceOpener;
 
-    public WebShellLearningController(JavaFxWebShellSurface surface, EditorManager manager) {
+    public WebShellLearningController(WebShellSurface surface, EditorManager manager) {
         this(surface, manager, target -> { }, target -> { });
     }
 
-    public WebShellLearningController(JavaFxWebShellSurface surface, EditorManager manager,
+    public WebShellLearningController(WebShellSurface surface, EditorManager manager,
                                       Consumer<DocumentationTarget> documentationOpener,
                                       Consumer<JdkSourceTarget> sourceOpener) {
         this.surface = surface;
