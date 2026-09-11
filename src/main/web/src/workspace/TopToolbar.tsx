@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { bridge } from '../bridge/EyeCodeBridge';
 import type { RecentProject, RunState } from './protocol';
 import { EyeCodeIcon } from './EyeCodeIcon';
 
@@ -24,8 +25,23 @@ type Props = {
 export function TopToolbar({ projectName, projectPath, recentProjects, runState, onNewProject, onOpenProject, onNewFile, onOpenRecentProject, onWelcome, onRun, onRerun, onStop, onSelectConfiguration, onOpenSearch, onOpenSettings, onWindowAction }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const dragPointer = useRef<number | null>(null);
   const otherRecentProjects = recentProjects.filter(project => project.path !== projectPath);
-  return <header className="app-toolbar">
+  const startDrag = (event: React.PointerEvent<HTMLElement>) => {
+    if ((event.target as HTMLElement).closest('button,a,input,select,textarea,[role="button"],[role="tab"]')) return;
+    dragPointer.current = event.pointerId;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    bridge.emit('native', 'windowDragStart', { screenX: event.screenX, screenY: event.screenY });
+  };
+  const moveDrag = (event: React.PointerEvent<HTMLElement>) => {
+    if (dragPointer.current === event.pointerId) bridge.emit('native', 'windowDragMove', { screenX: event.screenX, screenY: event.screenY });
+  };
+  const endDrag = (event: React.PointerEvent<HTMLElement>) => {
+    if (dragPointer.current !== event.pointerId) return;
+    dragPointer.current = null;
+    bridge.emit('native', 'windowDragEnd', {});
+  };
+  return <header className="app-toolbar" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}>
     <div className="toolbar-brand">
       <div className="toolbar-menu">
         <button type="button" className="toolbar-icon" aria-label="Main menu" onClick={() => setMenuOpen(value => !value)}>

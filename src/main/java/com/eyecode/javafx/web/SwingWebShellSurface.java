@@ -21,12 +21,17 @@ import org.cef.network.CefURLRequest;
 
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Cursor;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
+import javax.swing.SwingUtilities;
 
 public final class SwingWebShellSurface implements WebShellSurface {
     private static final String CONTROL_PAGE_PROPERTY = "eyecode.swing.spike.controlPage";
@@ -40,6 +45,8 @@ public final class SwingWebShellSurface implements WebShellSurface {
     private CefMessageRouter router;
     private boolean disposed;
     private String initialUrl;
+    private volatile int requestedCursorType = Integer.MIN_VALUE;
+    private volatile int lastCursorCallbackType = Integer.MIN_VALUE;
 
     public SwingWebShellSurface() {
         this(null, new WebShellAssetResolver());
@@ -75,6 +82,32 @@ public final class SwingWebShellSurface implements WebShellSurface {
                 System.out.println("[JCEF-CONSOLE] level=" + level + " message=" + message
                         + " source=" + sourceName + " line=" + line);
                 return false;
+            }
+
+            @Override
+            public boolean onCursorChange(CefBrowser source, int cursorType) {
+                int previous = lastCursorCallbackType;
+                if (previous != cursorType) {
+                    lastCursorCallbackType = cursorType;
+                    System.out.println("[CURSOR] callback old=" + previous + " new=" + cursorType);
+                }
+                if (source == null) return false;
+                if (requestedCursorType == cursorType) return true;
+                Cursor cursor;
+                try {
+                    cursor = new Cursor(cursorType);
+                } catch (IllegalArgumentException ignored) {
+                    return false;
+                }
+                requestedCursorType = cursorType;
+                Runnable applyCursor = () -> {
+                    if (requestedCursorType != cursorType) return;
+                    Component component = source.getUIComponent();
+                    if (component != null) component.setCursor(cursor);
+                };
+                if (SwingUtilities.isEventDispatchThread()) applyCursor.run();
+                else SwingUtilities.invokeLater(applyCursor);
+                return true;
             }
         });
         client.addRequestHandler(new CefRequestHandlerAdapter() {
@@ -144,6 +177,10 @@ public final class SwingWebShellSurface implements WebShellSurface {
         });
         router = CefMessageRouter.create(new RouterHandler());
         client.addMessageRouter(router);
+    }
+
+    public void start() {
+        if (disposed || browser != null) return;
         initialUrl = initialUrl();
         browser = client.createBrowser(initialUrl, CefRendering.DEFAULT, false);
         System.out.println("[JCEF-SPIKE] browser created class=" + browser.getClass().getName()
@@ -151,11 +188,31 @@ public final class SwingWebShellSurface implements WebShellSurface {
         System.out.println("[JCEF-SPIKE] ui component class=" + browser.getUIComponent().getClass().getName());
         System.out.println("[JCEF-SPIKE] browser createImmediately EDT=" + javax.swing.SwingUtilities.isEventDispatchThread());
         browser.createImmediately();
+        installCursorMouseDiagnostic(browser.getUIComponent());
         System.out.println("[JCEF-SPIKE] browser identifier after createImmediately=" + browser.getIdentifier());
     }
 
+    private void installCursorMouseDiagnostic(Component component) {
+        component.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent event) {
+                logCursorMouseEvent("MOUSE_PRESSED", component);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent event) {
+                logCursorMouseEvent("MOUSE_RELEASED", component);
+            }
+        });
+    }
+
+    private void logCursorMouseEvent(String event, Component component) {
+        System.out.println("[CURSOR] event=" + event + " componentCursor=" + component.getCursor().getType()
+                + " requestedCursorType=" + requestedCursorType);
+    }
+
     public Component component() {
-        if (browser == null) throw new IllegalStateException("Swing WebShell browser is not available");
+        if (browser == null) throw new IllegalStateException("Swing WebShell browser has not started");
         return browser.getUIComponent();
     }
 
@@ -229,12 +286,80 @@ public final class SwingWebShellSurface implements WebShellSurface {
         settings.log_severity = CefSettings.LogSeverity.LOGSEVERITY_INFO;
         System.out.println("[JCEF-SPIKE] settings windowless=" + settings.windowless_rendering_enabled
                 + " log=" + settings.log_file);
-        return CefApp.getInstance(arguments, settings);
+        return createCefApp(arguments, settings);
+    }
+
+    private static CefApp createCefApp(String[] arguments, CefSettings settings) {
+        try {
+            Method legacyFactory = CefApp.class.getMethod("getInstance", String[].class, CefSettings.class);
+            return invokeCefAppFactory(legacyFactory, arguments, settings);
+        } catch (NoSuchMethodException ignored) {
+            try {
+                Method currentFactory = CefApp.class.getMethod("getInstance", String[].class, CefSettings.class, File.class);
+                return invokeCefAppFactory(currentFactory, arguments, settings, null);
+            } catch (ReflectiveOperationException exception) {
+                throw new IllegalStateException("Unsupported JCEF CefApp bootstrap API", exception);
+            }
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Unable to initialize JCEF", exception);
+        }
+    }
+
+    private static CefApp invokeCefAppFactory(Method factory, Object... arguments) throws ReflectiveOperationException {
+        try {
+            return (CefApp) factory.invoke(null, arguments);
+        } catch (InvocationTargetException exception) {
+            Throwable cause = exception.getCause();
+            if (cause instanceof RuntimeException runtimeException) throw runtimeException;
+            if (cause instanceof Error error) throw error;
+            throw exception;
+        }
     }
 
     private String initialUrl() {
         if (Boolean.getBoolean(CONTROL_PAGE_PROPERTY)) {
-            String html = "<html><body><h1>JCEF OK</h1></body></html>";
+            String html = """
+    <html>
+    <body style="padding:40px; font-family:sans-serif">
+
+        <h1>JCEF Cursor Test</h1>
+
+        <input
+            placeholder="TEXT"
+            style="font-size:20px; padding:10px">
+
+        <br><br>
+
+        <button
+            style="cursor:pointer; font-size:20px; padding:10px">
+            HAND / POINTER
+        </button>
+
+        <br><br>
+
+        <div style="
+            cursor:col-resize;
+            width:300px;
+            height:80px;
+            background:#ddd;
+            padding:20px">
+            COL-RESIZE
+        </div>
+
+        <br><br>
+
+        <div style="
+            cursor:row-resize;
+            width:300px;
+            height:80px;
+            background:#bbb;
+            padding:20px">
+            ROW-RESIZE
+        </div>
+
+    </body>
+    </html>
+    """;
             return "data:text/html;charset=UTF-8;base64,"
                     + Base64.getEncoder().encodeToString(html.getBytes(StandardCharsets.UTF_8));
         }

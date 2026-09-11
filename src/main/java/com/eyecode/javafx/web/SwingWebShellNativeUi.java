@@ -11,6 +11,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public final class SwingWebShellNativeUi implements WebShellNativeUi {
     private final JFrame frame;
+    private int dragOffsetX;
+    private int dragOffsetY;
+    private boolean dragging;
 
     public SwingWebShellNativeUi(JFrame frame) {
         this.frame = frame;
@@ -53,6 +56,29 @@ public final class SwingWebShellNativeUi implements WebShellNativeUi {
     @Override
     public void closeWindow() {
         SwingUtilities.invokeLater(frame::dispose);
+    }
+
+    @Override
+    public void beginWindowDrag(int screenX, int screenY) {
+        SwingUtilities.invokeLater(() -> {
+            dragOffsetX = screenX - frame.getX();
+            dragOffsetY = screenY - frame.getY();
+            dragging = true;
+        });
+    }
+
+    @Override
+    public void moveWindow(int screenX, int screenY) {
+        SwingUtilities.invokeLater(() -> {
+            if (dragging && frame.getExtendedState() != JFrame.MAXIMIZED_BOTH) {
+                frame.setLocation(screenX - dragOffsetX, screenY - dragOffsetY);
+            }
+        });
+    }
+
+    @Override
+    public void endWindowDrag() {
+        SwingUtilities.invokeLater(() -> dragging = false);
     }
 
     private static <T> T callOnEdt(Callable<T> task) {

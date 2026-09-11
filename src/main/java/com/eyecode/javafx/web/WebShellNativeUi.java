@@ -13,6 +13,12 @@ public interface WebShellNativeUi {
 
     void closeWindow();
 
+    default void beginWindowDrag(int screenX, int screenY) { }
+
+    default void moveWindow(int screenX, int screenY) { }
+
+    default void endWindowDrag() { }
+
     static WebShellNativeUi unavailable() {
         return new WebShellNativeUi() {
             @Override public Path chooseDirectory(String title) { return null; }

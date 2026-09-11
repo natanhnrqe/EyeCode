@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { bridge } from '../bridge/EyeCodeBridge';
 import type { ShellBootstrap, WebShellEnvelope } from '../bridge/protocol';
 import type { CompletionPopupState } from '../completion/protocol';
@@ -81,6 +81,7 @@ export function Workspace() {
   const [practiceVerifying, setPracticeVerifying] = useState(false);
   const [dockRatios, setDockRatios] = useState<Record<DockMode, Record<string, number>>>(() => ({ PROJECT: {}, LEARN: {} }));
   const [learnDockArrangement, setLearnDockArrangement] = useState<LearnDockArrangement>('LESSON_RIGHT');
+  const previousEditorVisible = useRef<boolean | null>(null);
 
   useEffect(() => () => service.dispose(), [service]);
 
@@ -519,6 +520,7 @@ export function Workspace() {
   const projectMode = mode === 'PROJECT';
   const learnMode = mode === 'LEARN';
   const learnNavigationVisible = learnMode && learnNavigation.screen !== 'LESSON';
+  const editorVisible = projectMode || (learnMode && !learnNavigationVisible && lessonSession?.kind !== 'THEORY');
   const dockMode: DockMode = learnMode ? 'LEARN' : 'PROJECT';
   const toolbar = <TopToolbar projectName={projectMode ? workspace.project?.name : undefined} projectPath={projectMode ? workspace.project?.path : undefined} recentProjects={workspace.recentProjects} runState={runState}
     onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()}
@@ -566,6 +568,13 @@ export function Workspace() {
     const arrangement = learnDockArrangementForDrop(learnDockArrangement, paneId, targetId, side);
     if (arrangement) setLearnDockArrangement(arrangement);
   };
+  useLayoutEffect(() => {
+    const previous = previousEditorVisible.current;
+    previousEditorVisible.current = editorVisible;
+    if (previous === false && editorVisible) {
+      service.layout();
+    }
+  }, [editorVisible, service]);
   return <main className="app-shell">
     {toolbar}
     <div className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}`} aria-hidden={mode === 'WELCOME'}>

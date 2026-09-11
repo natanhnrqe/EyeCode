@@ -37,6 +37,7 @@ public final class SwingWebShellSpike {
             SwingWebShellNativeUi nativeUi = new SwingWebShellNativeUi(frame);
             workspaceController = new WebShellWorkspaceController(surface, target -> { }, nativeUi);
             new WebShellNativeController(surface, nativeUi);
+            surface.start();
             frame.add(surface.component(), BorderLayout.CENTER);
             frame.setSize(1440, 900);
             frame.setLocationByPlatform(true);
