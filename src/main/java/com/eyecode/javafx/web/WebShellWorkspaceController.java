@@ -165,6 +165,7 @@ public final class WebShellWorkspaceController {
         disposed = true;
         lessonsController.closeActiveSession();
         completionController.dispose();
+        learningController.dispose();
         diagnosticsController.dispose();
         manager.closeAllSessions();
         manager.shutdownAutosave();

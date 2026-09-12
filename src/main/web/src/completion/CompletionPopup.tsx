@@ -36,11 +36,7 @@ function iconName(kind: MonacoCompletionItem['kind']): string {
 }
 
 function iconUrl(kind: MonacoCompletionItem['kind']): string {
-  const base = window.location.protocol === 'file:'
-    ? './icons/completion'
-    : '/icons/completion';
-
-  return `${base}/${iconName(kind)}.svg`;
+  return new URL(`icons/completion/${iconName(kind)}.svg`, window.location.href).toString();
 }
 
 function highlightedLabel(item: MonacoCompletionItem) {
