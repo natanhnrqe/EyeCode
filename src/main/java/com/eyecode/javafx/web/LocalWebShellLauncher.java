@@ -1,7 +1,5 @@
 package com.eyecode.javafx.web;
 
-import com.eyecode.learning.content.DocumentationTarget;
-
 import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URI;
@@ -13,19 +11,13 @@ public final class LocalWebShellLauncher {
     public static void main(String[] args) {
         LocalWebShellSurface surface = new LocalWebShellSurface();
         WebShellWorkspaceController workspace = new WebShellWorkspaceController(surface,
-                LocalWebShellLauncher::openBrowser, WebShellNativeUi.unavailable());
+                target -> { }, new LocalWebShellNativeUi());
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             workspace.dispose();
             surface.close();
         }, "eyecode-local-webshell-shutdown"));
         openBrowser(surface.entryUrl());
         System.out.println("[LOCAL-WEBSHELL] opened " + surface.entryUrl());
-    }
-
-    private static void openBrowser(DocumentationTarget target) {
-        if (target != null) {
-            openBrowser(target.url());
-        }
     }
 
     private static void openBrowser(String url) {

@@ -16,6 +16,7 @@ import type { LessonDescriptor, LessonSession, LessonVerificationResponse, Pract
 import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
 import { BottomPanel } from './BottomPanel';
 import { DockLayout } from './DockLayout';
+import { DocumentationTab } from './DocumentationTab';
 import { EditorTabs } from './EditorTabs';
 import { EyeCodeIcon } from './EyeCodeIcon';
 import { MonacoHost } from './MonacoHost';
@@ -498,7 +499,8 @@ export function Workspace() {
   const projectMode = mode === 'PROJECT';
   const learnMode = mode === 'LEARN';
   const learnNavigationVisible = learnMode && learnNavigation.screen !== 'LESSON';
-  const editorVisible = projectMode || (learnMode && !learnNavigationVisible && lessonSession?.kind !== 'THEORY');
+  const editorVisible = (projectMode && activeDocument?.kind !== 'documentation')
+    || (learnMode && !learnNavigationVisible && lessonSession?.kind !== 'THEORY');
   const dockMode: DockMode = learnMode ? 'LEARN' : 'PROJECT';
   const toolbar = <TopToolbar projectName={projectMode ? workspace.project?.name : undefined} projectPath={projectMode ? workspace.project?.path : undefined} recentProjects={workspace.recentProjects} runState={runState}
     onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()}
@@ -520,6 +522,7 @@ export function Workspace() {
       <div className="editor-stack">
         {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)} /> : <header className="document-tabs learn-editor-tabs">{learnPath.join(' / ')}</header>}
         <section className="editor-region" data-editor-region-slot>
+          {projectMode && activeDocument?.kind === 'documentation' && <DocumentationTab document={activeDocument} />}
           {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
             <span>Open a file from Project panel or create something new.</span><div><button type="button" className="primary-action" onClick={() => setNewJavaClassOpen(true)}>New Java Class</button></div></div>}
           {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
@@ -539,7 +542,7 @@ export function Workspace() {
   const dockTree = learnMode ? lessonSession?.kind === 'THEORY' ? theoryDockTree
     : learnDockArrangement === 'LESSON_LEFT' ? learnLessonLeftDockTree : learnDockTree : projectDockTree;
   const layoutKind = learnMode && lessonSession?.kind === 'THEORY' ? 'THEORY' : learnMode ? 'LEARN' : 'PROJECT';
-  const editorSurfaceKey = `${mode}:${learnNavigation.screen}:${lessonSession?.kind ?? 'NONE'}`;
+  const editorSurfaceKey = `${mode}:${learnNavigation.screen}:${lessonSession?.kind ?? 'NONE'}:${activeDocument?.kind ?? 'NONE'}`;
   const editorSurfaceVisible = editorVisible && editorSurfaceBounds?.key === editorSurfaceKey
     && editorSurfaceBounds.width > 0 && editorSurfaceBounds.height > 0;
   const canDockDrop = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM') =>

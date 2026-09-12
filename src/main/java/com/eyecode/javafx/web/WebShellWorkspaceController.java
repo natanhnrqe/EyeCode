@@ -208,7 +208,17 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope openProject(WebShellEnvelope message) {
         String rawPath = text(message.payload(), "path");
-        Path root = rawPath.isBlank() ? chooseDirectory("Open Project") : Path.of(rawPath);
+        if (rawPath.isBlank() && nativeUi instanceof LocalWebShellNativeUi localNativeUi) {
+            localNativeUi.chooseDirectoryAsync("Open Project")
+                    .thenApplyAsync(root -> openProjectResult(message, root))
+                    .exceptionally(exception -> message.error(new WebShellError("NATIVE_UI_FAILED", exception.getMessage(), true)))
+                    .thenAccept(surface::send);
+            return null;
+        }
+        return openProjectResult(message, rawPath.isBlank() ? chooseDirectory("Open Project") : Path.of(rawPath));
+    }
+
+    private WebShellEnvelope openProjectResult(WebShellEnvelope message, Path root) {
         if (root == null) return message.response(Map.of("cancelled", true));
         try {
             return message.response(openWorkspace(root));
@@ -233,7 +243,17 @@ public final class WebShellWorkspaceController {
     }
 
     private WebShellEnvelope chooseDirectory(WebShellEnvelope message) {
-        Path directory = chooseDirectory("Choose Project Location");
+        if (nativeUi instanceof LocalWebShellNativeUi localNativeUi) {
+            localNativeUi.chooseDirectoryAsync("Choose Project Location")
+                    .thenApplyAsync(directory -> chooseDirectoryResult(message, directory))
+                    .exceptionally(exception -> message.error(new WebShellError("NATIVE_UI_FAILED", exception.getMessage(), true)))
+                    .thenAccept(surface::send);
+            return null;
+        }
+        return chooseDirectoryResult(message, chooseDirectory("Choose Project Location"));
+    }
+
+    private WebShellEnvelope chooseDirectoryResult(WebShellEnvelope message, Path directory) {
         return message.response(directory == null ? Map.of("cancelled", true) : Map.of("path", directory.toString()));
     }
 
