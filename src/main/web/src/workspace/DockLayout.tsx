@@ -225,7 +225,7 @@ function renderNode(node: DockNode, ratios: Props['ratios'], renderPane: Props['
     ? { gridTemplateColumns: `${resolvedRatio}fr ${dockSeparatorSize}px ${1 - resolvedRatio}fr` }
     : { gridTemplateRows: `${resolvedRatio}fr ${dockSeparatorSize}px ${1 - resolvedRatio}fr` };
   const separatorOrientation = node.orientation === 'horizontal' ? 'vertical' : 'horizontal';
-  return <div key={`split-${path}`} className={`dock-split dock-split-${node.orientation} ${path === 'root' ? 'dock-split-root' : 'dock-split-nested'}`} data-dock-ratio={ratio ?? node.ratio} style={style}>
+  return <div key={`split-${path}`} className={`dock-split dock-split-${node.orientation} ${path === 'root' ? 'dock-split-root' : 'dock-split-nested'}`} data-dock-path={path} data-dock-ratio={ratio ?? node.ratio} style={style}>
     {renderNode(node.first, ratios, renderPane, beginResize, moveResize, finishResize, `${path}-first`, layoutKind, activeResizeId, draggingPane, draggablePaneIds)}
     <div className={`dock-split-separator dock-split-separator-${node.orientation}${activeResizeId === path ? ' is-active' : ''}`} role="separator" aria-orientation={separatorOrientation} aria-valuenow={Math.round(resolvedRatio * 100)}
       onPointerDown={event => beginResize(event, path, node)} onPointerMove={moveResize} onPointerUp={finishResize} onPointerCancel={finishResize}><span className="dock-split-grip" aria-hidden="true" /></div>

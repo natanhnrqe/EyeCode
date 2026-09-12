@@ -21,7 +21,7 @@ class WebShellSharedShellSourceTest {
 
         assertTrue(workspace.contains("type AppMode = 'WELCOME' | 'PROJECT' | 'LEARN'"));
         assertEquals(1, occurrences(workspace, "<MonacoHost"));
-        assertTrue(workspace.contains("<div className={`shell-workspace"));
+        assertTrue(workspace.contains("<div ref={shellWorkspace} className={`shell-workspace"));
         assertTrue(workspace.contains("learnNavigationVisible && <LearnWorkspace"));
         assertFalse(workspace.contains("LessonsPanel"));
         assertFalse(learnWorkspace.contains("MonacoHost"));
@@ -131,7 +131,8 @@ class WebShellSharedShellSourceTest {
         assertFalse(dockPane.contains("onPointer"));
         assertFalse(dockPane.contains("drag"));
         assertEquals(1, occurrences(workspace, "<MonacoHost"));
-        assertTrue(workspace.contains("<section className=\"editor-region\">\n"));
+        assertTrue(workspace.contains("data-editor-region-slot"));
+        assertTrue(workspace.contains("persistent-editor-surface"));
         assertFalse(workspace.contains("<DockPane paneId=\"editor\""));
         assertTrue(bottomPanel.contains("<DockPane paneId=\"bottom\""));
         assertTrue(bottomPanel.contains("<TerminalPanel state={terminalState} />"));
@@ -256,6 +257,18 @@ class WebShellSharedShellSourceTest {
         assertTrue(styles.contains(".dock-leaf.is-theory-hidden"));
         assertTrue(panel.contains("lesson-reading-article"));
         assertTrue(panel.contains("session.kind === 'THEORY'"));
+    }
+
+    @Test
+    void enteringLearnPreservesTheActiveProjectModelForLessonRestoration() throws IOException {
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+        String controller = Files.readString(Path.of("src/main/web/src/lessons/LessonEditorController.ts"));
+        String openLessons = workspace.substring(workspace.indexOf("function openLessons()"), workspace.indexOf("async function leaveProject()"));
+
+        assertFalse(openLessons.contains("clearActiveModel"));
+        assertTrue(controller.contains("this.previousUri = this.service.activeModelUri();"));
+        assertTrue(controller.contains("this.service.disposeEphemeralModel(uri);"));
+        assertTrue(controller.contains("if (previousUri) this.service.activate(previousUri);"));
     }
 
     @Test

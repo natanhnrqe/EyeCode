@@ -156,7 +156,9 @@ export class MonacoWorkspaceService {
 
   setEphemeralReadOnly(uri: string, readOnly: boolean): void {
     const model = this.ephemeralModels.get(uri);
-    if (model && this.editor?.getModel() === model) this.editor.updateOptions({ readOnly });
+    if (model && this.editor?.getModel() === model) {
+      this.editor.updateOptions({ readOnly });
+    }
   }
 
   setLessonPracticeIntelligence(uri: string, enabled: boolean): void {
@@ -475,7 +477,8 @@ export class MonacoWorkspaceService {
       this.viewStates.set(currentUri, this.editor.saveViewState());
     }
     this.editor.setModel(next);
-    this.editor.updateOptions({ readOnly: this.readOnly.get(uri) ?? false });
+    const readOnly = this.readOnly.get(uri) ?? false;
+    this.editor.updateOptions({ readOnly });
     const viewState = this.viewStates.get(uri);
     if (viewState) this.editor.restoreViewState(viewState);
     const reveal = this.pendingReveals.get(uri);
@@ -506,7 +509,9 @@ export class MonacoWorkspaceService {
     const model = this.models.get(uri);
     this.invalidateDiagnostics(uri, model ?? null);
     if (!model) return;
-    if (this.editor?.getModel() === model) this.editor.setModel(null);
+    if (this.editor?.getModel() === model) {
+      this.editor.setModel(null);
+    }
     model.dispose();
     this.models.delete(uri);
     this.viewStates.delete(uri);

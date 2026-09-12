@@ -8,7 +8,7 @@ import type { DiagnosticsViewState, WebDiagnostic } from '../diagnostics/protoco
 import type { DocumentPayload, DocumentSnapshot } from '../document/protocol';
 import { LearningCard } from '../learning/LearningCard';
 import type { LearningPopupState } from '../learning/protocol';
-import { LearnWorkspace, type LearnNavigationState } from '../lessons/LearnWorkspace';
+import { LearnExplorer, LearnWorkspace, type LearnNavigationState } from '../lessons/LearnWorkspace';
 import { LessonAnnotation } from '../lessons/LessonAnnotation';
 import { LessonEditorController } from '../lessons/LessonEditorController';
 import { LessonPanel } from '../lessons/LessonPanel';
@@ -35,6 +35,7 @@ type AppMode = 'WELCOME' | 'PROJECT' | 'LEARN';
 type DockMode = 'PROJECT' | 'LEARN';
 type ExplorerOperation = 'createFile' | 'createDirectory' | 'createJavaClass' | 'createPackage' | 'rename' | 'delete' | 'duplicate';
 type ExplorerOperationResult = { path?: string; parent?: string; openFile?: boolean; ancestors?: string[] };
+type EditorSurfaceBounds = { key: string; left: number; top: number; width: number; height: number };
 
 const emptyRunState: RunState = { running: false, rerunAvailable: false, configurations: [], selectedConfigurationId: '' };
 const emptyTerminalState: TerminalState = { requested: false, running: false, workingDirectory: '' };
@@ -81,7 +82,8 @@ export function Workspace() {
   const [practiceVerifying, setPracticeVerifying] = useState(false);
   const [dockRatios, setDockRatios] = useState<Record<DockMode, Record<string, number>>>(() => ({ PROJECT: {}, LEARN: {} }));
   const [learnDockArrangement, setLearnDockArrangement] = useState<LearnDockArrangement>('LESSON_RIGHT');
-  const previousEditorVisible = useRef<boolean | null>(null);
+  const shellWorkspace = useRef<HTMLDivElement>(null);
+  const [editorSurfaceBounds, setEditorSurfaceBounds] = useState<EditorSurfaceBounds | null>(null);
 
   useEffect(() => () => service.dispose(), [service]);
 
@@ -240,29 +242,6 @@ export function Workspace() {
   }, [lessonEditor, loadChildren, refreshWorkspace, service, updateDocument]);
 
   useEffect(() => {
-    const region = document.querySelector<HTMLElement>('.editor-region');
-    if (!region) return;
-    const reportLayout = () => {
-      const rect = region.getBoundingClientRect();
-      bridge.emit('document', 'layout', {
-        x: rect.left,
-        y: rect.top,
-        width: rect.width,
-        height: rect.height,
-      });
-      service.layout();
-    };
-    const observer = new ResizeObserver(reportLayout);
-    observer.observe(region);
-    reportLayout();
-    window.addEventListener('resize', reportLayout);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', reportLayout);
-    };
-  }, [activeUri, bottomPanel, sidePanel, documents.length, mode, service]);
-
-  useEffect(() => {
     const initialFile = bootstrap?.initialFile;
     if (initialFile) void bridge.request('document', 'open', { path: initialFile }).catch(error => setMessage(formatError(error)));
   }, [bootstrap]);
@@ -403,16 +382,12 @@ export function Workspace() {
   }
 
   function openLessons() {
-    if (mode !== 'LEARN') {
-      service.clearActiveModel();
-    }
     setLearnNavigation({ screen: 'HOME' });
     setMode('LEARN');
   }
 
   async function leaveProject() {
     if (lessonSessionRef.current) await closeLesson();
-    service.clearActiveModel();
     setMode('WELCOME');
   }
 
@@ -506,13 +481,16 @@ export function Workspace() {
     setLearnNavigation(lessonOrigin.screen === 'LESSON' ? { screen: 'HOME' } : lessonOrigin);
   }
 
-  function openLearnLesson(lesson: LessonDescriptor, path: string[]) {
+  async function openLearnLesson(lesson: LessonDescriptor, path: string[]) {
     if (!lesson.executable) return;
+    const currentSession = lessonSessionRef.current;
+    if (currentSession?.lessonId === lesson.id) return;
+    if (currentSession) await closeLesson();
     setSelectedLearnLesson(lesson);
     setLearnPath(path);
     setSelectedLearnRoadmapItemId(null);
-    setLessonOrigin(learnNavigation);
-    void startLesson(lesson);
+    if (learnNavigation.screen !== 'LESSON') setLessonOrigin(learnNavigation);
+    await startLesson(lesson);
   }
 
   const activeDocument = documents.find(document => document.uri === activeUri);
@@ -530,7 +508,7 @@ export function Workspace() {
     onWindowAction={action => void windowAction(action)} />;
   const renderPane = (paneId: WorkspacePaneId) => {
     if (paneId === 'explorer') return <aside className="side-panel">
-      {learnMode ? null : sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
+      {learnMode ? <LearnExplorer selectedLessonId={lessonSession?.lessonId ?? selectedLearnLesson?.id ?? null} onOpenLesson={openLearnLesson} /> : sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
         reveal={workspace.reveal} treeChangedPath={treeChangedPath} treeRefreshRevision={treeRefreshRevision} onLoadChildren={loadChildren} onOpenFile={openFile}
         onRefresh={refreshProject} onOperation={operateProject} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()} /> : <section className="auxiliary-panel">
         <header className="panel-heading"><span>{sideTitle(sidePanel)}</span></header>
@@ -541,11 +519,10 @@ export function Workspace() {
     if (paneId === 'editor') return <section className="main-workspace">
       <div className="editor-stack">
         {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)} /> : <header className="document-tabs learn-editor-tabs">{learnPath.join(' / ')}</header>}
-        <section className="editor-region">
+        <section className="editor-region" data-editor-region-slot>
           {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
             <span>Open a file from Project panel or create something new.</span><div><button type="button" className="primary-action" onClick={() => setNewJavaClassOpen(true)}>New Java Class</button></div></div>}
           {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
-          <MonacoHost service={service} />
           {projectMode && <EditorDiagnosticStrip state={diagnostics} onNavigate={navigateProblem} />}
         </section>
       </div>
@@ -562,6 +539,9 @@ export function Workspace() {
   const dockTree = learnMode ? lessonSession?.kind === 'THEORY' ? theoryDockTree
     : learnDockArrangement === 'LESSON_LEFT' ? learnLessonLeftDockTree : learnDockTree : projectDockTree;
   const layoutKind = learnMode && lessonSession?.kind === 'THEORY' ? 'THEORY' : learnMode ? 'LEARN' : 'PROJECT';
+  const editorSurfaceKey = `${mode}:${learnNavigation.screen}:${lessonSession?.kind ?? 'NONE'}`;
+  const editorSurfaceVisible = editorVisible && editorSurfaceBounds?.key === editorSurfaceKey
+    && editorSurfaceBounds.width > 0 && editorSurfaceBounds.height > 0;
   const canDockDrop = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM') =>
     learnDockArrangementForDrop(learnDockArrangement, paneId, targetId, side) !== null;
   const handleDockDrop = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM') => {
@@ -569,15 +549,55 @@ export function Workspace() {
     if (arrangement) setLearnDockArrangement(arrangement);
   };
   useLayoutEffect(() => {
-    const previous = previousEditorVisible.current;
-    previousEditorVisible.current = editorVisible;
-    if (previous === false && editorVisible) {
-      service.layout();
+    const shell = shellWorkspace.current;
+    const slot = shell?.querySelector<HTMLElement>('[data-editor-region-slot]');
+    if (!shell || !slot) {
+      setEditorSurfaceBounds(null);
+      return;
     }
-  }, [editorVisible, service]);
+    let frame: number | null = null;
+    let layoutFrame: number | null = null;
+    const measure = () => {
+      const shellBounds = shell.getBoundingClientRect();
+      const slotBounds = slot.getBoundingClientRect();
+      const next = {
+        key: editorSurfaceKey,
+        left: slotBounds.left - shellBounds.left,
+        top: slotBounds.top - shellBounds.top,
+        width: slotBounds.width,
+        height: slotBounds.height
+      };
+      setEditorSurfaceBounds(current => current && current.key === next.key && current.left === next.left && current.top === next.top
+        && current.width === next.width && current.height === next.height ? current : next);
+      bridge.emit('document', 'layout', { x: slotBounds.left, y: slotBounds.top, width: slotBounds.width, height: slotBounds.height });
+      if (editorVisible && slotBounds.width > 0 && slotBounds.height > 0) {
+        if (layoutFrame !== null) cancelAnimationFrame(layoutFrame);
+        layoutFrame = requestAnimationFrame(() => {
+          layoutFrame = null;
+          service.layout();
+        });
+      }
+    };
+    const schedule = () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        measure();
+      });
+    };
+    const observer = new ResizeObserver(schedule);
+    observer.observe(shell);
+    observer.observe(slot);
+    measure();
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      if (layoutFrame !== null) cancelAnimationFrame(layoutFrame);
+      observer.disconnect();
+    };
+  }, [editorSurfaceKey, editorVisible, service]);
   return <main className="app-shell">
     {toolbar}
-    <div className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}`} aria-hidden={mode === 'WELCOME'}>
+    <div ref={shellWorkspace} className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}`} aria-hidden={mode === 'WELCOME'}>
       {projectMode ? <nav className="activity-bar" aria-label="Workspace views">
         {(['project', 'search', 'documentation', 'settings'] as SidePanelId[]).map(id => <button key={id}
           type="button" className={sidePanel === id ? 'is-active' : ''} onClick={() => selectSidePanel(id)} aria-label={id}><EyeCodeIcon name={sideIcon(id)} /></button>)}
@@ -589,6 +609,14 @@ export function Workspace() {
       <DockLayout tree={dockTree} ratios={dockRatios[dockMode]} renderPane={renderPane} layoutKind={layoutKind}
         canDockDrop={layoutKind === 'LEARN' ? canDockDrop : undefined} onDockDrop={handleDockDrop}
         onRatioChange={updateDockRatio} onEditorGeometryChange={() => service.layout()} />
+      <section className={`persistent-editor-surface${editorSurfaceVisible ? '' : ' is-hidden'}`} style={editorSurfaceBounds ? {
+        left: editorSurfaceBounds.left,
+        top: editorSurfaceBounds.top,
+        width: editorSurfaceBounds.width,
+        height: editorSurfaceBounds.height
+      } : undefined} aria-hidden={!editorSurfaceVisible}>
+        <MonacoHost service={service} />
+      </section>
     </div>
     {projectMode ? <StatusBar activeUri={activeEditorDocument?.uri} displayName={activeEditorDocument?.displayName}
       projectRoot={workspace.project?.root.path} projectName={workspace.project?.name} caret={caret} message={message} />
