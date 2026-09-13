@@ -7,7 +7,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
@@ -31,11 +35,17 @@ public final class WebShellAssetServer implements AutoCloseable {
     private final HttpServer server;
     private final ExecutorService executor;
     private final Supplier<String> bootstrapScript;
+    private final Supplier<String> bootstrapPayload;
+    private final Set<String> bootstrapOrigins;
+    private final AtomicBoolean closed = new AtomicBoolean();
 
-    private WebShellAssetServer(HttpServer server, ExecutorService executor, Supplier<String> bootstrapScript) {
+    private WebShellAssetServer(HttpServer server, ExecutorService executor, Supplier<String> bootstrapScript,
+                                Supplier<String> bootstrapPayload, Set<String> bootstrapOrigins) {
         this.server = server;
         this.executor = executor;
         this.bootstrapScript = bootstrapScript == null ? () -> "" : bootstrapScript;
+        this.bootstrapPayload = bootstrapPayload == null ? () -> "" : bootstrapPayload;
+        this.bootstrapOrigins = bootstrapOrigins == null ? Set.of() : Set.copyOf(bootstrapOrigins);
     }
 
     public static WebShellAssetServer start() {
@@ -43,6 +53,11 @@ public final class WebShellAssetServer implements AutoCloseable {
     }
 
     public static WebShellAssetServer start(Supplier<String> bootstrapScript) {
+        return start(bootstrapScript, () -> "", Set.of());
+    }
+
+    public static WebShellAssetServer start(Supplier<String> bootstrapScript, Supplier<String> bootstrapPayload,
+                                            Set<String> bootstrapOrigins) {
         try {
             HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
             ExecutorService executor = Executors.newCachedThreadPool(runnable -> {
@@ -50,9 +65,11 @@ public final class WebShellAssetServer implements AutoCloseable {
                 thread.setDaemon(true);
                 return thread;
             });
-            WebShellAssetServer assetServer = new WebShellAssetServer(server, executor, bootstrapScript);
+            WebShellAssetServer assetServer = new WebShellAssetServer(server, executor, bootstrapScript,
+                    bootstrapPayload, bootstrapOrigins);
             server.createContext(WEB_SHELL_ROOT, exchange -> assetServer.serve(exchange, WEB_SHELL_ROOT));
             server.createContext(MONACO_ROOT, exchange -> assetServer.serve(exchange, MONACO_ROOT));
+            server.createContext(WEB_SHELL_ROOT + "/bootstrap", assetServer::serveBootstrap);
             server.setExecutor(executor);
             server.start();
             System.out.println("[WEBSHELL-HTTP] started " + assetServer.baseUrl());
@@ -72,8 +89,15 @@ public final class WebShellAssetServer implements AutoCloseable {
 
     @Override
     public void close() {
+        if (!closed.compareAndSet(false, true)) return;
         server.stop(0);
-        executor.shutdownNow();
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(2, TimeUnit.SECONDS)) executor.shutdownNow();
+        } catch (InterruptedException exception) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void serve(HttpExchange exchange, String root) throws IOException {
@@ -110,6 +134,34 @@ public final class WebShellAssetServer implements AutoCloseable {
         }
     }
 
+    private void serveBootstrap(HttpExchange exchange) throws IOException {
+        try {
+            String origin = exchange.getRequestHeaders().getFirst("Origin");
+            if (bootstrapOrigins.isEmpty() || origin == null || !bootstrapOrigins.contains(origin)) {
+                exchange.sendResponseHeaders(403, -1);
+                return;
+            }
+            exchange.getResponseHeaders().set("Access-Control-Allow-Origin", origin);
+            exchange.getResponseHeaders().set("Vary", "Origin");
+            if (exchange.getRequestMethod().equals("OPTIONS")) {
+                exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, OPTIONS");
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            if (!exchange.getRequestMethod().equals("GET")) {
+                exchange.sendResponseHeaders(405, -1);
+                return;
+            }
+            byte[] body = bootstrapPayload.get().getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+            exchange.getResponseHeaders().set("Cache-Control", "no-store");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+        } finally {
+            exchange.close();
+        }
+    }
+
     private byte[] body(String resource, byte[] source) {
         if (!resource.equals("index.html")) {
             return source;
@@ -118,14 +170,14 @@ public final class WebShellAssetServer implements AutoCloseable {
         if (script == null || script.isBlank()) {
             return source;
         }
-        String html = new String(source, java.nio.charset.StandardCharsets.UTF_8);
+        String html = new String(source, StandardCharsets.UTF_8);
         String tag = "<script>" + script + "</script>";
         int headEnd = html.indexOf("</head>");
         if (headEnd < 0) {
             return source;
         }
         return (html.substring(0, headEnd) + tag + html.substring(headEnd))
-                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                .getBytes(StandardCharsets.UTF_8);
     }
 
     private static String resourcePath(String rawPath, String root) {

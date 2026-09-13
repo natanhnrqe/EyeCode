@@ -101,6 +101,11 @@ function existingEyeCodeIcons() {
 export default defineConfig({
   base: './',
   plugins: [react(), existingMonacoAssets(), existingCompletionIcons(), existingEyeCodeIcons()],
+  server: {
+    host: '127.0.0.1',
+    port: 5173,
+    strictPort: true
+  },
   build: {
     outDir: '../../main/resources/webshell',
     emptyOutDir: true

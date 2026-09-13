@@ -40,11 +40,12 @@ export function LearnWorkspace({ navigation, onHome, onOpenRoadmap, onOpenTopic,
 }
 
 type LearnExplorerProps = {
+  activeTrackId: string | null;
   selectedLessonId: string | null;
   onOpenLesson(lesson: LessonDescriptor, path: string[]): void;
 };
 
-export function LearnExplorer({ selectedLessonId, onOpenLesson }: LearnExplorerProps) {
+export function LearnExplorer({ activeTrackId, selectedLessonId, onOpenLesson }: LearnExplorerProps) {
   const [catalog, setCatalog] = useState<LessonsCatalog | null>(null);
   const [error, setError] = useState('');
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(() => new Set(['java.fundamentals']));
@@ -64,10 +65,13 @@ export function LearnExplorer({ selectedLessonId, onOpenLesson }: LearnExplorerP
     });
   }
 
+  const category = catalog?.categories.find(item => item.id === activeTrackId);
+  const topics = catalog ? topicsForTrack(catalog, activeTrackId) : [];
+
   return <section className="project-explorer learn-explorer" data-pane-id="explorer" aria-label="Navegação das aulas">
     <header className="panel-heading" data-dock-handle><span>Aulas</span></header>
     <div className="project-tree" role="tree">
-      {catalog?.categories.flatMap(category => category.topics.map(topic => {
+      {topics.map(topic => {
         const expanded = expandedTopics.has(topic.id);
         return <div key={topic.id} className="tree-node" role="treeitem" aria-expanded={expanded}>
           <button type="button" className="tree-row tree-directory" onClick={() => toggle(topic.id)} style={{ paddingLeft: '8px' }}>
@@ -75,12 +79,12 @@ export function LearnExplorer({ selectedLessonId, onOpenLesson }: LearnExplorerP
           </button>
           {expanded && topic.lessons.map(lesson => <div key={lesson.id} className="tree-node" role="treeitem">
             <button type="button" className={`tree-row tree-file${selectedLessonId === lesson.id ? ' is-selected' : ''}`} disabled={!lesson.executable}
-              onClick={() => onOpenLesson(lesson, [category.title, topic.title, lesson.title])} style={{ paddingLeft: '38px' }}>
+              onClick={() => onOpenLesson(lesson, [category?.title ?? '', topic.title, lesson.title])} style={{ paddingLeft: '38px' }}>
               <span className="tree-chevron" /><EyeCodeIcon name="file" className="tree-icon" /><span className="tree-label">{lesson.title}</span>
             </button>
           </div>)}
         </div>;
-      }))}
+      })}
     </div>
     {error && <div className="learn-roadmap-error" role="alert">{error}</div>}
   </section>;
@@ -88,35 +92,45 @@ export function LearnExplorer({ selectedLessonId, onOpenLesson }: LearnExplorerP
 
 function LearnHome({ catalog, onOpenRoadmap }: { catalog: LessonsCatalog; onOpenRoadmap(categoryId: string): void }) {
   return <main className="learn-navigation-page learn-home-page">
-    <header className="learn-page-heading"><span>Aulas</span><h1>Aprenda no seu ritmo</h1><p>Escolha uma trilha para começar.</p></header>
-    <section className="learn-roadmap-cards" aria-label="Trilhas disponíveis">
-      {catalog.categories.map(category => <button key={category.id} type="button" className="learn-roadmap-card" onClick={() => onOpenRoadmap(category.id)}>
-        <strong>{category.title}</strong><span>{category.description}</span><small>{category.topics.length} tópicos · {availableLessons(category)} aulas disponíveis</small>
-      </button>)}
-    </section>
+    <div className="shell-page-content">
+      <header className="learn-page-heading"><span>Aulas</span><h1>Aprenda no seu ritmo</h1><p>Escolha uma trilha para começar.</p></header>
+      <section className="learn-roadmap-cards" aria-label="Trilhas disponíveis">
+        {catalog.categories.map(category => <button key={category.id} type="button" className="learn-roadmap-card" onClick={() => onOpenRoadmap(category.id)}>
+          <strong>{category.title}</strong><span>{category.description}</span><small>{category.topics.length} tópicos · {availableLessons(category)} aulas disponíveis</small>
+        </button>)}
+      </section>
+    </div>
   </main>;
 }
 
 function Roadmap({ category, onHome, onOpenTopic }: { category: LearningCategory; onHome(): void; onOpenTopic(categoryId: string, topicId: string): void }) {
   return <main className="learn-navigation-page learn-roadmap-page">
-    <button type="button" className="learn-back" onClick={onHome}>Aulas</button>
-    <header className="learn-page-heading"><span>Trilha</span><h1>{category.title}</h1><p>{category.description}</p></header>
-    <section className="learn-topic-trail" aria-label={`Tópicos de ${category.title}`}>
-      {category.topics.map((topic, index) => <button key={topic.id} type="button" className="learn-topic-card" onClick={() => onOpenTopic(category.id, topic.id)}>
-        <span className="learn-topic-marker">{index + 1}</span><span><strong>{topic.title}</strong><small>{topic.description}</small><em>{topic.lessons.length} aulas · {availableLessons(topic)} disponíveis</em></span>
-      </button>)}
-    </section>
+    <div className="shell-page-content">
+      <button type="button" className="learn-back" onClick={onHome}>Aulas</button>
+      <header className="learn-page-heading"><span>Trilha</span><h1>{category.title}</h1><p>{category.description}</p></header>
+      <section className="learn-topic-trail" aria-label={`Tópicos de ${category.title}`}>
+        {category.topics.map((topic, index) => <button key={topic.id} type="button" className="learn-topic-card" onClick={() => onOpenTopic(category.id, topic.id)}>
+          <span className="learn-topic-marker">{index + 1}</span><span><strong>{topic.title}</strong><small>{topic.description}</small><em>{topic.lessons.length} aulas · {availableLessons(topic)} disponíveis</em></span>
+        </button>)}
+      </section>
+    </div>
   </main>;
 }
 
 function TopicPage({ category, topic, onBack, onOpenLesson }: { category: LearningCategory; topic: LearningTopic; onBack(): void; onOpenLesson(lesson: LessonDescriptor, path: string[]): void }) {
   return <main className="learn-navigation-page learn-topic-page">
-    <button type="button" className="learn-back" onClick={onBack}>Voltar para {category.title}</button>
-    <header className="learn-page-heading"><span>{category.title}</span><h1>{topic.title}</h1><p>{topic.description}</p></header>
-    <section className="learn-lesson-list" aria-label={`Aulas de ${topic.title}`}>
-      {roadmapLessons(topic).map((lesson, index) => <LessonItem key={lesson.id} lesson={lesson} index={index} onOpen={() => onOpenLesson(lesson, [category.title, topic.title, lesson.title])} />)}
-    </section>
+    <div className="shell-page-content">
+      <button type="button" className="learn-back" onClick={onBack}>Voltar para {category.title}</button>
+      <header className="learn-page-heading"><span>{category.title}</span><h1>{topic.title}</h1><p>{topic.description}</p></header>
+      <section className="learn-lesson-list" aria-label={`Aulas de ${topic.title}`}>
+        {roadmapLessons(topic).map((lesson, index) => <LessonItem key={lesson.id} lesson={lesson} index={index} onOpen={() => onOpenLesson(lesson, [category.title, topic.title, lesson.title])} />)}
+      </section>
+    </div>
   </main>;
+}
+
+export function topicsForTrack(catalog: LessonsCatalog, activeTrackId: string | null): LearningTopic[] {
+  return catalog.categories.find(category => category.id === activeTrackId)?.topics ?? [];
 }
 
 function LessonItem({ lesson, index, onOpen }: { lesson: LessonDescriptor; index: number; onOpen(): void }) {

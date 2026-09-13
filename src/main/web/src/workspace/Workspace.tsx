@@ -72,6 +72,7 @@ export function Workspace() {
   const [selectedLearnRoadmapItemId, setSelectedLearnRoadmapItemId] = useState<string | null>(null);
   const [learnPath, setLearnPath] = useState<string[]>(['Java', 'Fundamentos', 'Tipos Primitivos']);
   const [learnNavigation, setLearnNavigation] = useState<LearnNavigationState>({ screen: 'HOME' });
+  const [activeLearnTrackId, setActiveLearnTrackId] = useState<string | null>(null);
   const [lessonOrigin, setLessonOrigin] = useState<LearnNavigationState>({ screen: 'HOME' });
   const [lessonSession, setLessonSession] = useState<LessonSession | null>(null);
   const [lessonPresentationReady, setLessonPresentationReady] = useState(false);
@@ -382,6 +383,7 @@ export function Workspace() {
   }
 
   function openLessons() {
+    setActiveLearnTrackId(null);
     setLearnNavigation({ screen: 'HOME' });
     setMode('LEARN');
   }
@@ -481,12 +483,29 @@ export function Workspace() {
     setLearnNavigation(lessonOrigin.screen === 'LESSON' ? { screen: 'HOME' } : lessonOrigin);
   }
 
+  async function returnToLearnRoadmap() {
+    const lesson = selectedLearnLesson;
+    await closeLesson();
+    if (!lesson) return setLearnNavigation({ screen: 'HOME' });
+    setActiveLearnTrackId(lesson.categoryId);
+    setLearnNavigation({ screen: 'ROADMAP', categoryId: lesson.categoryId });
+  }
+
+  async function returnToLearnTopicFromBreadcrumb() {
+    const lesson = selectedLearnLesson;
+    await closeLesson();
+    if (!lesson) return setLearnNavigation({ screen: 'HOME' });
+    setActiveLearnTrackId(lesson.categoryId);
+    setLearnNavigation({ screen: 'TOPIC', categoryId: lesson.categoryId, topicId: lesson.topicId });
+  }
+
   async function openLearnLesson(lesson: LessonDescriptor, path: string[]) {
     if (!lesson.executable) return;
     const currentSession = lessonSessionRef.current;
     if (currentSession?.lessonId === lesson.id) return;
     if (currentSession) await closeLesson();
     setSelectedLearnLesson(lesson);
+    setActiveLearnTrackId(lesson.categoryId);
     setLearnPath(path);
     setSelectedLearnRoadmapItemId(null);
     if (learnNavigation.screen !== 'LESSON') setLessonOrigin(learnNavigation);
@@ -508,7 +527,7 @@ export function Workspace() {
     onWindowAction={action => void windowAction(action)} />;
   const renderPane = (paneId: WorkspacePaneId) => {
     if (paneId === 'explorer') return <aside className="side-panel">
-      {learnMode ? <LearnExplorer selectedLessonId={lessonSession?.lessonId ?? selectedLearnLesson?.id ?? null} onOpenLesson={openLearnLesson} /> : sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
+      {learnMode ? <LearnExplorer activeTrackId={activeLearnTrackId} selectedLessonId={lessonSession?.lessonId ?? selectedLearnLesson?.id ?? null} onOpenLesson={openLearnLesson} /> : sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
         reveal={workspace.reveal} treeChangedPath={treeChangedPath} treeRefreshRevision={treeRefreshRevision} onLoadChildren={loadChildren} onOpenFile={openFile}
         onRefresh={refreshProject} onOperation={operateProject} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()} /> : <section className="auxiliary-panel">
         <header className="panel-heading"><span>{sideTitle(sidePanel)}</span></header>
@@ -531,7 +550,7 @@ export function Workspace() {
     if (paneId === 'bottom') return <BottomPanel active={bottomPanel} output={runOutput} terminalState={terminalState}
       diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />;
-    return lessonSession ? <LessonPanel session={lessonSession} onPrevious={() => void changeLessonStep('previous')}
+    return lessonSession ? <LessonPanel session={lessonSession} breadcrumb={{ category: learnPath[0] ?? 'Aulas', topic: learnPath[1] ?? 'Aulas', onCategory: () => void returnToLearnRoadmap(), onTopic: () => void returnToLearnTopicFromBreadcrumb() }} onPrevious={() => void changeLessonStep('previous')}
       onNext={() => void changeLessonStep('next')} onExit={() => void returnToLearnTopic()} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} /> : null;
   };
   const layoutKind = learnMode && lessonSession?.kind === 'THEORY' ? 'THEORY' : learnMode ? 'LEARN' : 'PROJECT';
@@ -607,9 +626,9 @@ export function Workspace() {
         {(['project', 'search', 'documentation', 'settings'] as SidePanelId[]).map(id => <button key={id}
           type="button" className={sidePanel === id ? 'is-active' : ''} onClick={() => selectSidePanel(id)} aria-label={id}><EyeCodeIcon name={sideIcon(id)} /></button>)}
       </nav> : !learnNavigationVisible && <nav className="activity-bar learn-activity-bar" aria-hidden="true" />}
-      {learnNavigationVisible && <LearnWorkspace navigation={learnNavigation} onHome={() => setLearnNavigation({ screen: 'HOME' })}
-        onOpenRoadmap={categoryId => setLearnNavigation({ screen: 'ROADMAP', categoryId })}
-        onOpenTopic={(categoryId, topicId) => setLearnNavigation({ screen: 'TOPIC', categoryId, topicId })}
+      {learnNavigationVisible && <LearnWorkspace navigation={learnNavigation} onHome={() => { setActiveLearnTrackId(null); setLearnNavigation({ screen: 'HOME' }); }}
+        onOpenRoadmap={categoryId => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'ROADMAP', categoryId }); }}
+        onOpenTopic={(categoryId, topicId) => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'TOPIC', categoryId, topicId }); }}
         onOpenLesson={openLearnLesson} />}
       <DockLayout tree={dockTree} renderPane={renderPane} layoutKind={layoutKind}
         canDockDrop={dockRules ? canDockDrop : undefined} resolveDockPreview={dockRules ? resolveDockPreview : undefined} onDockDrop={handleDockDrop}

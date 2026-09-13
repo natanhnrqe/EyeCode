@@ -9,15 +9,23 @@ public final class LocalWebShellLauncher {
     }
 
     public static void main(String[] args) {
-        LocalWebShellSurface surface = new LocalWebShellSurface();
-        WebShellWorkspaceController workspace = new WebShellWorkspaceController(surface,
-                target -> { }, new LocalWebShellNativeUi());
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            workspace.dispose();
-            surface.close();
-        }, "eyecode-local-webshell-shutdown"));
-        openBrowser(surface.entryUrl());
-        System.out.println("[LOCAL-WEBSHELL] opened " + surface.entryUrl());
+        LocalWebShellRuntime runtime = new LocalWebShellRuntime();
+        Runtime.getRuntime().addShutdownHook(new Thread(runtime::close, "eyecode-local-webshell-shutdown"));
+        LocalWebShellSurface surface = runtime.surface();
+        try {
+            if (surface.development()) {
+                System.out.println("[EyeCode] WebShell DEV mode enabled");
+                System.out.println("[EyeCode] Frontend: " + surface.entryUrl().replaceFirst("/\\?backend=.*$", ""));
+                System.out.println("[EyeCode] Backend: " + surface.backendUrl());
+            } else {
+                System.out.println("[EyeCode] WebShell bundled mode");
+                System.out.println("[EyeCode] URL: " + surface.entryUrl());
+            }
+            openBrowser(surface.entryUrl());
+        } catch (RuntimeException exception) {
+            runtime.close();
+            throw exception;
+        }
     }
 
     private static void openBrowser(String url) {

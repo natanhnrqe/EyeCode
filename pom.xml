@@ -18,6 +18,8 @@
 
         <eyecode.ui>LEGACY_JAVAFX</eyecode.ui>
         <eyecode.webshell.devUrl></eyecode.webshell.devUrl>
+        <eyecode.web.dev>false</eyecode.web.dev>
+        <eyecode.web.dev.port>5173</eyecode.web.dev.port>
     </properties>
 
     <repositories>
@@ -189,6 +191,8 @@
                     <options>
                         <option>-Deyecode.ui=${eyecode.ui}</option>
                         <option>-Deyecode.webshell.devUrl=${eyecode.webshell.devUrl}</option>
+                        <option>-Deyecode.web.dev=${eyecode.web.dev}</option>
+                        <option>-Deyecode.web.dev.port=${eyecode.web.dev.port}</option>
 
                         <option>-Djava.library.path=${project.basedir}/chromium</option>
 

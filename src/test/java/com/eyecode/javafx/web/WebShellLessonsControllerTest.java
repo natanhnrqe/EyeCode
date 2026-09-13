@@ -21,6 +21,9 @@ class WebShellLessonsControllerTest {
         assertEquals(4, categories.size());
         Map<String, Object> java = categories.getFirst();
         assertEquals("java", java.get("id"));
+        assertTrue(maps(java.get("topics")).stream().allMatch(topic -> "java".equals(topic.get("categoryId"))));
+        assertTrue(maps(java.get("topics")).stream().anyMatch(topic -> "java.deep-dive".equals(topic.get("id"))));
+        assertFalse(maps(java.get("topics")).stream().anyMatch(topic -> "algorithms.complexity".equals(topic.get("id"))));
         Map<String, Object> strings = maps(java.get("topics")).stream()
                 .filter(topic -> "java.strings".equals(topic.get("id"))).findFirst().orElseThrow();
         Map<String, Object> lesson = maps(strings.get("lessons")).stream()

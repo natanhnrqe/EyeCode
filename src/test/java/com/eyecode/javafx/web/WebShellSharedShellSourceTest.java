@@ -300,6 +300,26 @@ class WebShellSharedShellSourceTest {
     }
 
     @Test
+    void learnExplorerUsesTheActiveCatalogTrackAndSharesTheShellPageBase() throws IOException {
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+        String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
+        String welcome = Files.readString(Path.of("src/main/web/src/workspace/WelcomeScreen.tsx"));
+        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+
+        assertTrue(workspace.contains("const [activeLearnTrackId, setActiveLearnTrackId]"));
+        assertTrue(workspace.contains("setActiveLearnTrackId(lesson.categoryId);"));
+        assertTrue(workspace.contains("<LearnExplorer activeTrackId={activeLearnTrackId}"));
+        assertTrue(learnWorkspace.contains("export function topicsForTrack"));
+        assertTrue(learnWorkspace.contains("category.id === activeTrackId"));
+        assertFalse(learnWorkspace.contains("categories.flatMap(category => category.topics"));
+        assertFalse(learnWorkspace.contains("slice(0,"));
+        assertTrue(welcome.contains("shell-page-content"));
+        assertTrue(learnWorkspace.contains("shell-page-content"));
+        assertTrue(styles.contains(".shell-page-content"));
+        assertTrue(styles.contains(".learn-navigation-page") && styles.contains("background: transparent"));
+    }
+
+    @Test
     void dockDragUsesStableSlotsAndKeepsTheEditorMounted() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String pane = Files.readString(Path.of("src/main/web/src/workspace/WorkspacePane.ts"));

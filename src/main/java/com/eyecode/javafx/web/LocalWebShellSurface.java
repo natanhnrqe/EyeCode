@@ -12,6 +12,7 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -21,9 +22,10 @@ public final class LocalWebShellSurface implements WebShellSurface, AutoCloseabl
     private final WebShellProtocolCodec codec = new WebShellProtocolCodec();
     private final WebShellDispatcher dispatcher = new WebShellDispatcher();
     private final String sessionToken = sessionToken();
+    private final LocalWebShellDevMode devMode;
     private final WebShellAssetServer assetServer;
     private final Server socketServer;
-    private final String expectedOrigin;
+    private final Set<String> acceptedOrigins;
     private final CountDownLatch started = new CountDownLatch(1);
     private final Object connectionLock = new Object();
     private final Object dispatchLock = new Object();
@@ -31,8 +33,10 @@ public final class LocalWebShellSurface implements WebShellSurface, AutoCloseabl
     private volatile boolean closed;
 
     public LocalWebShellSurface() {
-        assetServer = WebShellAssetServer.start(this::bootstrapScript);
-        expectedOrigin = assetServer.baseUrl();
+        devMode = LocalWebShellDevMode.fromSystemProperties();
+        assetServer = WebShellAssetServer.start(this::bootstrapScript, this::bootstrapPayload,
+                devMode.allowedOrigins());
+        acceptedOrigins = devMode.enabled() ? devMode.allowedOrigins() : Set.of(assetServer.baseUrl());
         socketServer = new Server(loopbackAddress());
         socketServer.start();
         awaitStartup();
@@ -41,7 +45,19 @@ public final class LocalWebShellSurface implements WebShellSurface, AutoCloseabl
     }
 
     public String entryUrl() {
+        if (devMode.enabled()) {
+            return devMode.frontendUrl() + "/?backend=" + java.net.URLEncoder.encode(assetServer.baseUrl(),
+                    java.nio.charset.StandardCharsets.UTF_8);
+        }
         return assetServer.entryUrl();
+    }
+
+    public String backendUrl() {
+        return assetServer.baseUrl();
+    }
+
+    public boolean development() {
+        return devMode.enabled();
     }
 
     @Override
@@ -103,12 +119,17 @@ public final class LocalWebShellSurface implements WebShellSurface, AutoCloseabl
                 + ",token:" + json(sessionToken) + "};";
     }
 
+    private String bootstrapPayload() {
+        return "{\"webSocketUrl\":" + json(socketUrl()) + ",\"token\":" + json(sessionToken)
+                + ",\"protocolVersion\":" + json(WebShellEnvelope.PROTOCOL) + "}";
+    }
+
     private String socketUrl() {
         return "ws://127.0.0.1:" + socketServer.getPort() + SOCKET_PATH + "?token=" + sessionToken;
     }
 
     private boolean accepts(ClientHandshake handshake) {
-        if (!Objects.equals(expectedOrigin, handshake.getFieldValue("Origin"))) {
+        if (!acceptedOrigins.contains(handshake.getFieldValue("Origin"))) {
             return false;
         }
         try {
