@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { bridge } from '../bridge/EyeCodeBridge';
+import { EyeCodeIcon } from '../workspace/EyeCodeIcon';
 import type { LearningCategory, LearningTopic, LessonDescriptor, LessonsCatalog } from './protocol';
 
 export type LearnNavigationState =
@@ -36,6 +37,53 @@ export function LearnWorkspace({ navigation, onHome, onOpenRoadmap, onOpenTopic,
   const topic = category.topics.find(item => item.id === navigation.topicId);
   if (!topic) return <Roadmap category={category} onHome={onHome} onOpenTopic={onOpenTopic} />;
   return <TopicPage category={category} topic={topic} onBack={() => onOpenRoadmap(category.id)} onOpenLesson={onOpenLesson} />;
+}
+
+type LearnExplorerProps = {
+  selectedLessonId: string | null;
+  onOpenLesson(lesson: LessonDescriptor, path: string[]): void;
+};
+
+export function LearnExplorer({ selectedLessonId, onOpenLesson }: LearnExplorerProps) {
+  const [catalog, setCatalog] = useState<LessonsCatalog | null>(null);
+  const [error, setError] = useState('');
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(() => new Set(['java.fundamentals']));
+
+  useEffect(() => {
+    void bridge.request<LessonsCatalog>('lessons', 'catalog', {})
+      .then(setCatalog)
+      .catch(reason => setError(reason instanceof Error ? reason.message : 'Não foi possível carregar as aulas.'));
+  }, []);
+
+  function toggle(topicId: string) {
+    setExpandedTopics(current => {
+      const next = new Set(current);
+      if (next.has(topicId)) next.delete(topicId);
+      else next.add(topicId);
+      return next;
+    });
+  }
+
+  return <section className="project-explorer learn-explorer" data-pane-id="explorer" aria-label="Navegação das aulas">
+    <header className="panel-heading" data-dock-handle><span>Aulas</span></header>
+    <div className="project-tree" role="tree">
+      {catalog?.categories.flatMap(category => category.topics.map(topic => {
+        const expanded = expandedTopics.has(topic.id);
+        return <div key={topic.id} className="tree-node" role="treeitem" aria-expanded={expanded}>
+          <button type="button" className="tree-row tree-directory" onClick={() => toggle(topic.id)} style={{ paddingLeft: '8px' }}>
+            <span className={`tree-chevron${expanded ? ' is-open' : ''}`}>›</span><EyeCodeIcon name={expanded ? 'folderOpen' : 'folder'} className="tree-icon" /><span className="tree-label">{topic.title}</span>
+          </button>
+          {expanded && topic.lessons.map(lesson => <div key={lesson.id} className="tree-node" role="treeitem">
+            <button type="button" className={`tree-row tree-file${selectedLessonId === lesson.id ? ' is-selected' : ''}`} disabled={!lesson.executable}
+              onClick={() => onOpenLesson(lesson, [category.title, topic.title, lesson.title])} style={{ paddingLeft: '38px' }}>
+              <span className="tree-chevron" /><EyeCodeIcon name="file" className="tree-icon" /><span className="tree-label">{lesson.title}</span>
+            </button>
+          </div>)}
+        </div>;
+      }))}
+    </div>
+    {error && <div className="learn-roadmap-error" role="alert">{error}</div>}
+  </section>;
 }
 
 function LearnHome({ catalog, onOpenRoadmap }: { catalog: LessonsCatalog; onOpenRoadmap(categoryId: string): void }) {

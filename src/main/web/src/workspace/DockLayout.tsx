@@ -1,67 +1,58 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent, ReactNode } from 'react';
-import { clampDockSplitPosition, dockSeparatorSize, type DockNode, type DockSide, type DockSplitNode, type WorkspacePaneId } from './WorkspacePane';
+import { clampDockSplitPosition, dockInsertionRatio, dockSeparatorSize, layoutDockTree, type DockNode, type DockRect, type DockSide, type DockSplitNode, type WorkspacePaneId } from './WorkspacePane';
 
 type Props = {
   tree: DockNode;
-  ratios: Readonly<Record<string, number>>;
   renderPane(paneId: WorkspacePaneId): ReactNode;
   onRatioChange(splitId: string, ratio: number): void;
   onEditorGeometryChange(): void;
   layoutKind?: 'PROJECT' | 'LEARN' | 'THEORY';
   canDockDrop?(paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: DockSide): boolean;
-  onDockDrop?(paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: DockSide): void;
+  resolveDockPreview?(paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: DockSide, ratio: number): DockNode | null;
+  onDockDrop?(paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: DockSide, ratio: number): void;
 };
 
-type ActiveDrag = { pointerId: number; paneId: WorkspacePaneId; element: HTMLDivElement; startX: number; startY: number; started: boolean; target: { paneId: WorkspacePaneId; side: DockSide } | null };
+type DragTarget = { paneId: WorkspacePaneId; side: DockSide; ratio: number; preview: DockRect };
+type ActiveDrag = { pointerId: number; paneId: WorkspacePaneId; element: HTMLDivElement; startX: number; startY: number; source: DockRect; offsetX: number; offsetY: number; started: boolean; target: DragTarget | null };
+type ActiveResize = { pointerId: number; splitId: string; node: DockSplitNode; bounds: DOMRect; separator: HTMLDivElement; pendingRatio: number | null; frame: number | null };
+
 const dockDragThreshold = 5;
-const dockInputDebug = true;
 const dockSides: DockSide[] = ['LEFT', 'RIGHT', 'TOP', 'BOTTOM'];
 
-type ActiveResize = {
-  pointerId: number;
-  splitId: string;
-  node: DockSplitNode;
-  bounds: DOMRect;
-  separator: HTMLDivElement;
-  pendingRatio: number | null;
-  frame: number | null;
-};
-
-export function DockLayout({ tree, ratios, renderPane, onRatioChange, onEditorGeometryChange, layoutKind = 'PROJECT', canDockDrop, onDockDrop }: Props) {
+export function DockLayout({ tree, renderPane, onRatioChange, onEditorGeometryChange, layoutKind = 'PROJECT', canDockDrop, resolveDockPreview, onDockDrop }: Props) {
   const activeResize = useRef<ActiveResize | null>(null);
   const activeDrag = useRef<ActiveDrag | null>(null);
-  const [preview, setPreview] = useState<{ paneId: WorkspacePaneId; side: DockSide; bounds: DOMRect } | null>(null);
+  const [preview, setPreview] = useState<DockRect | null>(null);
+  const [ghost, setGhost] = useState<{ paneId: WorkspacePaneId; source: DockRect; pointerX: number; pointerY: number; offsetX: number; offsetY: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [draggingPane, setDraggingPane] = useState<WorkspacePaneId>();
-  const [dragPointer, setDragPointer] = useState<{ x: number; y: number }>();
   const [activeResizeId, setActiveResizeId] = useState<string>();
   const draggablePaneIds = new Set(dockPaneIds(tree).filter(paneId => dockPaneIds(tree).some(targetId => targetId !== paneId && dockSides.some(side => canDockDrop?.(paneId, targetId, side)))));
 
   useEffect(() => () => {
     const active = activeResize.current;
-    if (active && active.frame !== null) cancelAnimationFrame(active.frame);
-    cleanupDrag('unmount');
+    if (active?.frame !== null && active?.frame !== undefined) cancelAnimationFrame(active.frame);
+    cleanupDrag();
   }, []);
 
   useEffect(() => {
-    const cancel = (event: KeyboardEvent) => { if (event.key === 'Escape') cleanupDrag('escape'); };
+    const cancel = (event: KeyboardEvent) => { if (event.key === 'Escape') cleanupDrag(); };
     window.addEventListener('keydown', cancel);
     return () => window.removeEventListener('keydown', cancel);
   }, []);
 
-  useEffect(() => { cleanupDrag('layout-change'); }, [layoutKind, tree]);
+  useEffect(() => { cleanupDrag(); }, [layoutKind, tree]);
 
-  function cleanupDrag(reason: string) {
+  function cleanupDrag() {
     const active = activeDrag.current;
     activeDrag.current = null;
     if (active?.element.hasPointerCapture(active.pointerId)) active.element.releasePointerCapture(active.pointerId);
-    if (active) logDockCleanup(reason, active);
     document.body.classList.remove('is-dock-dragging');
     setPreview(null);
+    setGhost(null);
     setDragging(false);
     setDraggingPane(undefined);
-    setDragPointer(undefined);
   }
 
   function beginDrag(event: PointerEvent<HTMLDivElement>) {
@@ -69,12 +60,24 @@ export function DockLayout({ tree, ratios, renderPane, onRatioChange, onEditorGe
     const handle = target.closest<HTMLElement>('[data-dock-handle]');
     const interactive = target.closest('button,a,input,select,textarea,[role="button"],[role="tab"],[contenteditable="true"]');
     if (layoutKind === 'THEORY' || event.button !== 0 || !handle || interactive) return;
-    const pane = (event.target as HTMLElement).closest<HTMLElement>('[data-pane-id]')?.dataset.paneId as WorkspacePaneId | undefined;
+    const pane = target.closest<HTMLElement>('[data-pane-id]')?.dataset.paneId as WorkspacePaneId | undefined;
     if (!pane || !draggablePaneIds.has(pane)) return;
+    const sourceBounds = target.closest<HTMLElement>('[data-dock-leaf]')?.getBoundingClientRect();
+    if (!sourceBounds) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    activeDrag.current = { pointerId: event.pointerId, paneId: pane, element: event.currentTarget, startX: event.clientX, startY: event.clientY, started: false, target: null };
-    logDockInput('header:pointerdown', event, { paneId: pane, preventDefault: true, candidate: true, thresholdCrossed: false });
+    activeDrag.current = {
+      pointerId: event.pointerId,
+      paneId: pane,
+      element: event.currentTarget,
+      startX: event.clientX,
+      startY: event.clientY,
+      source: toDockRect(sourceBounds, event.currentTarget.getBoundingClientRect()),
+      offsetX: event.clientX - sourceBounds.left,
+      offsetY: event.clientY - sourceBounds.top,
+      started: false,
+      target: null
+    };
   }
 
   function moveDrag(event: PointerEvent<HTMLDivElement>) {
@@ -86,17 +89,12 @@ export function DockLayout({ tree, ratios, renderPane, onRatioChange, onEditorGe
       document.body.classList.add('is-dock-dragging');
       setDragging(true);
       setDraggingPane(active.paneId);
-      logDockInput('header:threshold', event, { paneId: active.paneId, candidate: true, thresholdCrossed: true });
     }
-    setDragPointer({ x: event.clientX, y: event.clientY });
-    const leaf = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-dock-leaf]');
-    const targetId = leaf?.dataset.dockLeaf as WorkspacePaneId | undefined;
-    const bounds = leaf?.getBoundingClientRect();
-    const side = bounds ? dockSide(bounds, event.clientX, event.clientY) : null;
-    const target = targetId && targetId !== active.paneId && bounds && side && canDockDrop?.(active.paneId, targetId, side)
-      ? { paneId: targetId, side } : null;
+    const rootBounds = active.element.getBoundingClientRect();
+    const target = dockInsertionAt(tree, active, event.clientX, event.clientY, rootBounds, canDockDrop, resolveDockPreview);
     active.target = target;
-    setPreview(target && bounds ? { ...target, bounds } : null);
+    setPreview(target?.preview ?? null);
+    setGhost({ paneId: active.paneId, source: active.source, pointerX: event.clientX - rootBounds.left, pointerY: event.clientY - rootBounds.top, offsetX: active.offsetX, offsetY: active.offsetY });
   }
 
   function finishDrag(event: PointerEvent<HTMLDivElement>) {
@@ -104,9 +102,8 @@ export function DockLayout({ tree, ratios, renderPane, onRatioChange, onEditorGe
     if (!active || active.pointerId !== event.pointerId) return;
     const target = active.target;
     const started = active.started;
-    logDockInput('header:pointerup', event, { paneId: active.paneId, candidate: true, thresholdCrossed: started });
-    cleanupDrag('pointerup');
-    if (started && target) onDockDrop?.(active.paneId, target.paneId, target.side);
+    cleanupDrag();
+    if (started && target) onDockDrop?.(active.paneId, target.paneId, target.side, target.ratio);
   }
 
   function scheduleRatio(active: ActiveResize, ratio: number) {
@@ -124,11 +121,7 @@ export function DockLayout({ tree, ratios, renderPane, onRatioChange, onEditorGe
   function finishResize(event: PointerEvent<HTMLDivElement>) {
     const active = activeResize.current;
     if (!active || active.pointerId !== event.pointerId) return;
-    logDockInput(`separator:${event.type}`, event, { splitId: active.splitId, orientation: active.node.orientation });
-    if (active.frame !== null) {
-      cancelAnimationFrame(active.frame);
-      active.frame = null;
-    }
+    if (active.frame !== null) cancelAnimationFrame(active.frame);
     if (active.pendingRatio !== null) onRatioChange(active.splitId, active.pendingRatio);
     if (active.separator.hasPointerCapture(event.pointerId)) active.separator.releasePointerCapture(event.pointerId);
     activeResize.current = null;
@@ -141,22 +134,9 @@ export function DockLayout({ tree, ratios, renderPane, onRatioChange, onEditorGe
     const bounds = separator.parentElement?.getBoundingClientRect();
     if (!bounds) return;
     event.preventDefault();
+    event.stopPropagation();
     separator.setPointerCapture(event.pointerId);
-    logDockInput('separator:pointerdown', event, { splitId, orientation: node.orientation, preventDefault: true });
-    const size = node.orientation === 'horizontal' ? bounds.width : bounds.height;
-    const separatorBounds = separator.getBoundingClientRect();
-    const position = node.orientation === 'horizontal'
-      ? separatorBounds.left - bounds.left + separatorBounds.width / 2
-      : separatorBounds.top - bounds.top + separatorBounds.height / 2;
-    activeResize.current = {
-      pointerId: event.pointerId,
-      splitId,
-      node,
-      bounds,
-      separator,
-      pendingRatio: null,
-      frame: null
-    };
+    activeResize.current = { pointerId: event.pointerId, splitId, node, bounds, separator, pendingRatio: null, frame: null };
     setActiveResizeId(splitId);
   }
 
@@ -166,69 +146,89 @@ export function DockLayout({ tree, ratios, renderPane, onRatioChange, onEditorGe
     const size = active.node.orientation === 'horizontal' ? active.bounds.width : active.bounds.height;
     const position = active.node.orientation === 'horizontal' ? event.clientX - active.bounds.left : event.clientY - active.bounds.top;
     const available = Math.max(1, size - dockSeparatorSize);
-    const clampedPosition = clampDockSplitPosition(active.node, position, size);
-    scheduleRatio(active, clampedPosition / available);
+    scheduleRatio(active, clampDockSplitPosition(active.node, position, size) / available);
   }
 
-  return <div className={`dock-layout${layoutKind === 'THEORY' ? ' is-theory' : ''}${dragging ? ' is-dragging' : ''}`} onPointerDown={beginDrag} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={event => { if (activeDrag.current) { logDockInput('header:pointercancel', event, {}); cleanupDrag('pointercancel'); } }} onLostPointerCapture={event => { if (activeDrag.current) { logDockInput('header:lostpointercapture', event, {}); cleanupDrag('lostpointercapture'); } }}>
-    {renderNode(tree, ratios, renderPane, beginResize, moveResize, finishResize, 'root', layoutKind, activeResizeId, draggingPane, draggablePaneIds)}
-    {preview && <div className={`dock-preview dock-preview-${preview.side.toLowerCase()}`} data-dock-preview={preview.paneId} style={previewStyle(preview)} />}
-    {dragPointer && <div className="dock-drag-indicator" aria-hidden="true" style={{ left: dragPointer.x + 12, top: dragPointer.y + 12 }}><span /></div>}
+  return <div className={`dock-layout${layoutKind === 'THEORY' ? ' is-theory' : ''}${dragging ? ' is-dragging' : ''}`} onPointerDown={beginDrag} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={cleanupDrag} onLostPointerCapture={cleanupDrag}>
+    {renderNode(tree, renderPane, beginResize, moveResize, finishResize, 'root', layoutKind, activeResizeId, draggingPane, draggablePaneIds)}
+    {preview && <div className="dock-drop-preview" aria-hidden="true" style={previewStyle(preview)} />}
+    {ghost && <div className="dock-drag-ghost" aria-hidden="true" data-dock-ghost={ghost.paneId} style={ghostStyle(ghost)} />}
   </div>;
 }
 
-function logDockInput(eventName: string, event: PointerEvent<HTMLElement>, detail: Record<string, unknown>) {
-  if (!dockInputDebug) return;
-  const target = event.target instanceof HTMLElement ? event.target : null;
-  const currentTarget = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-  console.info('[DOCK-INPUT]', eventName, {
-    target: target?.tagName ?? 'unknown', currentTarget: currentTarget?.className ?? 'unknown', pointerId: event.pointerId,
-    button: event.button, buttons: event.buttons, hasPointerCapture: currentTarget?.hasPointerCapture(event.pointerId) ?? false, ...detail
-  });
+function dockInsertionAt(tree: DockNode, active: ActiveDrag, x: number, y: number, rootBounds: DOMRect, canDockDrop: Props['canDockDrop'], resolveDockPreview: Props['resolveDockPreview']): DragTarget | null {
+  if (!canDockDrop || !resolveDockPreview) return null;
+  const leaf = dockLeafAt(active.element, x, y);
+  const paneId = leaf?.dataset.dockLeaf as WorkspacePaneId | undefined;
+  if (!leaf || !paneId || paneId === active.paneId) return null;
+  const bounds = leaf.getBoundingClientRect();
+  const targetBounds = toDockRect(bounds, rootBounds);
+  const allowedSides = dockSides.filter(side => canDockDrop(active.paneId, paneId, side));
+  if (!allowedSides.length) return null;
+  const orientation = insertionOrientation(leaf, allowedSides);
+  const side = dockInsertionSide(targetBounds, orientation, x - rootBounds.left, y - rootBounds.top,
+    active.target?.paneId === paneId ? active.target.side : undefined);
+  if (!allowedSides.includes(side)) return null;
+  const ratio = dockInsertionRatio(active.source, targetBounds, side);
+  const candidate = resolveDockPreview(active.paneId, paneId, side, ratio);
+  const root = { left: 0, top: 0, width: rootBounds.width, height: rootBounds.height };
+  const preview = candidate ? layoutDockTree(candidate, root)[active.paneId] : undefined;
+  return preview ? { paneId, side, ratio, preview } : null;
 }
 
-function logDockCleanup(reason: string, active: ActiveDrag) {
-  if (!dockInputDebug) return;
-  console.info('[DOCK-INPUT]', 'header:cleanup', { reason, paneId: active.paneId, pointerId: active.pointerId });
+function dockLeafAt(layout: HTMLDivElement, x: number, y: number): HTMLElement | null {
+  return [...layout.querySelectorAll<HTMLElement>('[data-dock-leaf]')].find(leaf => {
+    const bounds = leaf.getBoundingClientRect();
+    return bounds.width > 0 && bounds.height > 0 && x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom;
+  }) ?? null;
+}
+
+function insertionOrientation(leaf: HTMLElement, allowedSides: DockSide[]): 'horizontal' | 'vertical' {
+  const horizontal = allowedSides.some(side => side === 'LEFT' || side === 'RIGHT');
+  const vertical = allowedSides.some(side => side === 'TOP' || side === 'BOTTOM');
+  if (horizontal !== vertical) return horizontal ? 'horizontal' : 'vertical';
+  return leaf.parentElement?.classList.contains('dock-split-vertical') ? 'vertical' : 'horizontal';
+}
+
+export function dockInsertionSide(bounds: DockRect, orientation: 'horizontal' | 'vertical', x: number, y: number, previous?: DockSide): DockSide {
+  const midpoint = orientation === 'horizontal' ? bounds.left + bounds.width / 2 : bounds.top + bounds.height / 2;
+  const pointer = orientation === 'horizontal' ? x : y;
+  const before = orientation === 'horizontal' ? 'LEFT' : 'TOP';
+  const after = orientation === 'horizontal' ? 'RIGHT' : 'BOTTOM';
+  if ((previous === before || previous === after) && Math.abs(pointer - midpoint) <= 10) return previous;
+  return pointer < midpoint ? before : after;
+}
+
+function toDockRect(bounds: DOMRect, rootBounds: DOMRect): DockRect {
+  return { left: bounds.left - rootBounds.left, top: bounds.top - rootBounds.top, width: bounds.width, height: bounds.height };
+}
+
+function previewStyle(preview: DockRect) {
+  return { left: preview.left, top: preview.top, width: preview.width, height: preview.height };
+}
+
+function ghostStyle(ghost: { source: DockRect; pointerX: number; pointerY: number; offsetX: number; offsetY: number }) {
+  return { left: ghost.pointerX - ghost.offsetX, top: ghost.pointerY - ghost.offsetY, width: ghost.source.width, height: ghost.source.height };
 }
 
 function dockPaneIds(node: DockNode): WorkspacePaneId[] {
   return node.type === 'pane' ? [node.paneId] : [...dockPaneIds(node.first), ...dockPaneIds(node.second)];
 }
 
-export function dockSide(bounds: DOMRect, x: number, y: number): DockSide {
-  const horizontal = (x - bounds.left) / Math.max(1, bounds.width);
-  const vertical = (y - bounds.top) / Math.max(1, bounds.height);
-  const horizontalDistance = Math.min(horizontal, 1 - horizontal);
-  const verticalDistance = Math.min(vertical, 1 - vertical);
-  if (horizontalDistance <= verticalDistance) return horizontal < .5 ? 'LEFT' : 'RIGHT';
-  return vertical < .5 ? 'TOP' : 'BOTTOM';
-}
-
-function previewStyle(preview: { side: DockSide; bounds: DOMRect }) {
-  const { bounds, side } = preview;
-  const horizontal = side === 'LEFT' || side === 'RIGHT';
-  const width = horizontal ? bounds.width / 2 : bounds.width;
-  const height = horizontal ? bounds.height : bounds.height / 2;
-  return { left: side === 'RIGHT' ? bounds.left + width : bounds.left, top: side === 'BOTTOM' ? bounds.top + height : bounds.top, width, height };
-}
-
-function renderNode(node: DockNode, ratios: Props['ratios'], renderPane: Props['renderPane'], beginResize: (event: PointerEvent<HTMLDivElement>, splitId: string, node: DockSplitNode) => void, moveResize: (event: PointerEvent<HTMLDivElement>) => void, finishResize: (event: PointerEvent<HTMLDivElement>) => void, path: string, layoutKind: Props['layoutKind'], activeResizeId: string | undefined, draggingPane: WorkspacePaneId | undefined, draggablePaneIds: ReadonlySet<WorkspacePaneId>): ReactNode {
+function renderNode(node: DockNode, renderPane: Props['renderPane'], beginResize: (event: PointerEvent<HTMLDivElement>, splitId: string, node: DockSplitNode) => void, moveResize: (event: PointerEvent<HTMLDivElement>) => void, finishResize: (event: PointerEvent<HTMLDivElement>) => void, path: string, layoutKind: Props['layoutKind'], activeResizeId: string | undefined, draggingPane: WorkspacePaneId | undefined, draggablePaneIds: ReadonlySet<WorkspacePaneId>): ReactNode {
   if (node.type === 'pane') {
     const hidden = layoutKind === 'THEORY' && node.paneId === 'editor';
     return <div key={`pane-${node.paneId}`} className={`dock-leaf${hidden ? ' is-theory-hidden' : ''}${draggingPane === node.paneId ? ' is-dragging' : ''}${draggablePaneIds.has(node.paneId) ? ' is-draggable' : ''}`} data-dock-leaf={node.paneId}>{renderPane(node.paneId)}</div>;
   }
-  const ratio = ratios[path];
   const theoryContentSplit = layoutKind === 'THEORY' && path === 'root-second';
-  const resolvedRatio = ratio ?? node.ratio;
   const style = theoryContentSplit ? { gridTemplateColumns: '0 0 minmax(0, 1fr)' } : node.orientation === 'horizontal'
-    ? { gridTemplateColumns: `${resolvedRatio}fr ${dockSeparatorSize}px ${1 - resolvedRatio}fr` }
-    : { gridTemplateRows: `${resolvedRatio}fr ${dockSeparatorSize}px ${1 - resolvedRatio}fr` };
+    ? { gridTemplateColumns: `${node.ratio}fr ${dockSeparatorSize}px ${1 - node.ratio}fr` }
+    : { gridTemplateRows: `${node.ratio}fr ${dockSeparatorSize}px ${1 - node.ratio}fr` };
   const separatorOrientation = node.orientation === 'horizontal' ? 'vertical' : 'horizontal';
-  return <div key={`split-${path}`} className={`dock-split dock-split-${node.orientation} ${path === 'root' ? 'dock-split-root' : 'dock-split-nested'}`} data-dock-ratio={ratio ?? node.ratio} style={style}>
-    {renderNode(node.first, ratios, renderPane, beginResize, moveResize, finishResize, `${path}-first`, layoutKind, activeResizeId, draggingPane, draggablePaneIds)}
-    <div className={`dock-split-separator dock-split-separator-${node.orientation}${activeResizeId === path ? ' is-active' : ''}`} role="separator" aria-orientation={separatorOrientation} aria-valuenow={Math.round(resolvedRatio * 100)}
+  return <div key={`split-${path}`} className={`dock-split dock-split-${node.orientation} ${path === 'root' ? 'dock-split-root' : 'dock-split-nested'}`} data-dock-path={path} data-dock-ratio={node.ratio} style={style}>
+    {renderNode(node.first, renderPane, beginResize, moveResize, finishResize, `${path}-first`, layoutKind, activeResizeId, draggingPane, draggablePaneIds)}
+    <div className={`dock-split-separator dock-split-separator-${node.orientation}${activeResizeId === path ? ' is-active' : ''}`} role="separator" aria-orientation={separatorOrientation} aria-valuenow={Math.round(node.ratio * 100)}
       onPointerDown={event => beginResize(event, path, node)} onPointerMove={moveResize} onPointerUp={finishResize} onPointerCancel={finishResize}><span className="dock-split-grip" aria-hidden="true" /></div>
-    {renderNode(node.second, ratios, renderPane, beginResize, moveResize, finishResize, `${path}-second`, layoutKind, activeResizeId, draggingPane, draggablePaneIds)}
+    {renderNode(node.second, renderPane, beginResize, moveResize, finishResize, `${path}-second`, layoutKind, activeResizeId, draggingPane, draggablePaneIds)}
   </div>;
 }

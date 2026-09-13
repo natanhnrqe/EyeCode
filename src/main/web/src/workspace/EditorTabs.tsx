@@ -12,7 +12,7 @@ type Props = {
 
 export function EditorTabs({ documents, activeUri, onActivate, onClose }: Props) {
   return (
-    <nav className="editor-tabs" aria-label="Open documents">
+    <nav className="editor-tabs" data-dock-handle aria-label="Open documents">
       {documents.map(document => (
         <button
           key={document.uri}

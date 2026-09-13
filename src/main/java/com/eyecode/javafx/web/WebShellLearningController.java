@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 public final class WebShellLearningController {
@@ -45,6 +47,8 @@ public final class WebShellLearningController {
     private final JdkSourceResolver sourceResolver = new JdkSourceResolver();
     private final Consumer<DocumentationTarget> documentationOpener;
     private final Consumer<JdkSourceTarget> sourceOpener;
+    private final ExecutorService executor;
+    private volatile boolean disposed;
 
     public WebShellLearningController(WebShellSurface surface, EditorManager manager) {
         this(surface, manager, target -> { }, target -> { });
@@ -57,18 +61,39 @@ public final class WebShellLearningController {
         this.manager = manager;
         this.documentationOpener = documentationOpener == null ? target -> { } : documentationOpener;
         this.sourceOpener = sourceOpener == null ? target -> { } : sourceOpener;
+        this.executor = Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "eyecode-web-learning");
+            thread.setDaemon(true);
+            return thread;
+        });
         surface.registerHandler("learning", "request", this::request);
         surface.registerHandler("learning", "close", message -> message.response(Map.of("accepted", true)));
         surface.registerHandler("learning", "openDocumentation", this::openDocumentation);
         surface.registerHandler("learning", "openJdkSource", this::openJdkSource);
     }
 
+    public void dispose() {
+        if (disposed) return;
+        disposed = true;
+        executor.shutdownNow();
+    }
+
     private WebShellEnvelope request(WebShellEnvelope message) {
+        if (disposed) return acknowledgment(message, false);
+        executor.execute(() -> compute(message));
+        return acknowledgment(message, true);
+    }
+
+    private void compute(WebShellEnvelope message) {
+        if (disposed) return;
         try {
             String uri = text(message.payload(), "uri");
             EditorSession session = sessionFor(uri);
             boolean lessonPractice = isLessonPracticeRequest(message.payload(), uri);
-            if (session == null && !lessonPractice) return publish(message, response(message, uri, false, Map.of()));
+            if (session == null && !lessonPractice) {
+                publish(message, response(message, uri, false, Map.of()));
+                return;
+            }
             String content = text(message.payload(), "content");
             if (content.isEmpty() && !lessonPractice) {
                 content = manager.getBuffer(session.getSessionId())
@@ -76,13 +101,15 @@ public final class WebShellLearningController {
             }
             int offset = clamp(number(message.payload(), "offset", 0), content.length());
             Optional<LearningConcept> concept = conceptFor(message.payload(), session, content, offset);
-            if (concept.isEmpty()) return publish(message, response(message, uri, false, Map.of()));
+            if (concept.isEmpty()) {
+                publish(message, response(message, uri, false, Map.of()));
+                return;
+            }
             Optional<Map<String, Object>> payload = payloadFor(concept.get());
-            return publish(message, response(message, uri, payload.isPresent(), payload.orElse(Map.of())));
+            publish(message, response(message, uri, payload.isPresent(), payload.orElse(Map.of())));
         } catch (RuntimeException exception) {
             surface.send(message.error(new WebShellError("LEARNING_FAILED",
                     exception.getMessage() == null ? "Learning request failed" : exception.getMessage(), true)));
-            return acknowledgment(message, false);
         }
     }
 
@@ -191,9 +218,8 @@ public final class WebShellLearningController {
         return Optional.of(toMap(overlay, metadata.id(), sourceTarget));
     }
 
-    private WebShellEnvelope publish(WebShellEnvelope message, Map<String, Object> response) {
+    private void publish(WebShellEnvelope message, Map<String, Object> response) {
         surface.send(message.response(response));
-        return acknowledgment(message, true);
     }
 
     private WebShellEnvelope acknowledgment(WebShellEnvelope message, boolean accepted) {

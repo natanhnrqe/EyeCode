@@ -211,6 +211,7 @@ html, body, #root {
   display: grid;
   grid-column: 2 / 4;
   grid-row: 1 / 3;
+  position: relative;
   min-width: 0;
   min-height: 0;
 }
@@ -245,16 +246,21 @@ html, body, #root {
   display: none;
 }
 
+.dock-layout.is-theory [data-dock-path='root-second'] > [data-dock-leaf='lesson'] {
+  grid-column: 3;
+}
+
 .dock-leaf > .side-panel,
 .dock-leaf > .main-workspace,
-.dock-leaf > .bottom-panel {
+.dock-leaf > .bottom-panel,
+.dock-leaf > .lesson-panel {
   width: 100%;
   height: 100%;
 }
 
 .dock-split-separator {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   touch-action: none;
   transition: background-color 120ms ease;
 }
@@ -270,11 +276,11 @@ html, body, #root {
 .dock-leaf.is-draggable [data-dock-handle] { cursor: grab; user-select: none; -webkit-user-select: none; }
 .dock-leaf.is-draggable [data-dock-handle] button, .dock-leaf.is-draggable [data-dock-handle] a, .dock-leaf.is-draggable [data-dock-handle] input, .dock-leaf.is-draggable [data-dock-handle] select, .dock-leaf.is-draggable [data-dock-handle] textarea, .dock-leaf.is-draggable [data-dock-handle] [role='button'], .dock-leaf.is-draggable [data-dock-handle] [role='tab'] { cursor: pointer; }
 .dock-layout.is-dragging .dock-leaf.is-dragging [data-dock-handle] { cursor: grabbing; }
-.is-dock-dragging, .is-dock-dragging * { user-select: none; -webkit-user-select: none; }
-.dock-preview { position: fixed; z-index: 35; box-sizing: border-box; border: 1px solid var(--eyecode-accent-bright); border-radius: var(--eyecode-radius-sm); background: var(--eyecode-accent-soft); pointer-events: none; }
-.dock-drag-indicator { position: fixed; z-index: 39; width: 22px; height: 18px; padding: 3px; border: 1px solid var(--eyecode-accent-bright); border-radius: var(--eyecode-radius-sm); background: rgba(30, 32, 48, .94); box-shadow: 0 4px 12px rgba(0, 0, 0, .28); pointer-events: none; }
-.dock-drag-indicator span { display: block; width: 100%; height: 100%; border: 1px solid rgba(221, 224, 231, .68); border-radius: 1px; }
-.dock-leaf.is-dragging [data-pane-id] { border-color: var(--eyecode-accent-bright); box-shadow: 0 10px 24px rgba(0, 0, 0, .26); }
+.is-dock-dragging, .is-dock-dragging * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+.dock-drop-preview, .dock-drag-ghost { position: absolute; box-sizing: border-box; pointer-events: none; }
+.dock-drop-preview { z-index: 35; border: 2px solid var(--eyecode-accent-bright); border-radius: var(--eyecode-radius-sm); background: rgba(169, 146, 255, .05); box-shadow: inset 0 0 0 1px rgba(230, 225, 255, .22), 0 0 16px rgba(169, 146, 255, .18); }
+.dock-drag-ghost { z-index: 36; border: 1px solid rgba(230, 225, 255, .88); border-radius: var(--eyecode-radius-sm); background: rgba(169, 146, 255, .12); box-shadow: 0 12px 28px rgba(0, 0, 0, .32); opacity: .72; }
+.dock-leaf.is-dragging [data-pane-id] { border-color: var(--eyecode-accent-bright); box-shadow: 0 10px 24px rgba(0, 0, 0, .26); opacity: .76; }
 .dock-leaf.is-dragging [data-pane-id] > .dock-pane-header { background: rgba(169, 146, 255, .10); }
 
 .dock-split-separator::after {
@@ -423,6 +429,7 @@ html, body, #root {
   grid-template-rows: minmax(0, 1fr) minmax(170px, 30%);
   gap: 5px;
   padding: 10px;
+  position: relative;
 }
 .shell-workspace.is-welcome { visibility: hidden; pointer-events: none; }
 .welcome-mode { grid-row: 2; z-index: 2; min-height: 0; }
@@ -1092,6 +1099,18 @@ html, body, #root {
   inset: 0;
 }
 
+.persistent-editor-surface {
+  position: absolute;
+  z-index: 2;
+  overflow: hidden;
+  background: var(--surface-editor);
+}
+
+.persistent-editor-surface.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .workspace-empty {
   position: absolute;
   z-index: 2;
@@ -1152,6 +1171,32 @@ html, body, #root {
   min-height: 0;
 
   overflow: hidden;
+}
+
+.documentation-viewer {
+  width: 100%;
+  height: 100%;
+  background: var(--surface-editor);
+}
+
+.documentation-viewer iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--surface-editor);
+}
+
+.documentation-viewer-fallback {
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  padding: 24px;
+  color: var(--eyecode-text-secondary);
+  text-align: center;
+}
+
+.documentation-viewer-fallback a {
+  color: var(--eyecode-accent-bright);
 }
 
 .editor-tab {
@@ -1335,6 +1380,16 @@ html, body, #root {
   background: transparent;
   min-height: 36px;
   border-bottom-color: rgba(196,201,255,.10);
+}
+
+.dock-drag-handle {
+  align-self: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 4px;
+  border-radius: 3px;
+  background: radial-gradient(circle, rgba(221,224,231,.72) 1px, transparent 1.5px) center / 4px 4px;
+  cursor: grab;
 }
 
 .bottom-tabs button {
@@ -2853,9 +2908,6 @@ img.learning-icon {
     grid-column: 3;
   }
 
-  .dock-split-vertical {
-    grid-template-rows: minmax(0, 1fr) 5px 145px !important;
-  }
 }
 
 @media (max-width: 840px) {

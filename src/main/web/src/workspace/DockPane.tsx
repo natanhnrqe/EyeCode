@@ -12,11 +12,12 @@ type Props = {
   bodyClassName?: string;
   footer?: ReactNode;
   footerClassName?: string;
+  dragHandleOnly?: boolean;
 };
 
-export function DockPane({ paneId, children, className, label, header, headerClassName, headerLabel, bodyClassName, footer, footerClassName }: Props) {
+export function DockPane({ paneId, children, className, label, header, headerClassName, headerLabel, bodyClassName, footer, footerClassName, dragHandleOnly = false }: Props) {
   return <section className={joinClasses('dock-pane', className)} data-pane-id={paneId} aria-label={label}>
-    {header && <header className={joinClasses('dock-pane-header', headerClassName)} data-dock-handle aria-label={headerLabel}>{header}</header>}
+    {header && <header className={joinClasses('dock-pane-header', headerClassName)} data-dock-handle={dragHandleOnly ? undefined : ''} aria-label={headerLabel}>{header}</header>}
     <div className={joinClasses('dock-pane-body', bodyClassName)}>{children}</div>
     {footer && <footer className={joinClasses('dock-pane-footer', footerClassName)}>{footer}</footer>}
   </section>;
