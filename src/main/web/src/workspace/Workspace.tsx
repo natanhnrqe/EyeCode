@@ -26,14 +26,13 @@ import { ProjectExplorer } from './ProjectExplorer';
 import { StatusBar } from './StatusBar';
 import { TopToolbar } from './TopToolbar';
 import { WelcomeScreen } from './WelcomeScreen';
-import { learnDockArrangementForDrop, learnDockTree, learnLessonLeftDockTree, projectDockTree, theoryDockTree, type LearnDockArrangement, type WorkspacePaneId } from './WorkspacePane';
+import { learnPracticeDockRules, learnPracticeDockTree, moveDockPane, projectDockRules, projectDockTree, theoryDockTree, updateDockSplitRatio, type DockNode, type DockRules, type WorkspacePaneId } from './WorkspacePane';
 import type { ProjectNode, RunState, TerminalState, WorkspaceSnapshot } from './protocol';
 
 type DocumentTab = Omit<DocumentSnapshot, 'content'>;
 type BottomPanelId = 'run' | 'terminal' | 'output' | 'problems' | 'git';
 type SidePanelId = 'project' | 'search' | 'documentation' | 'settings';
 type AppMode = 'WELCOME' | 'PROJECT' | 'LEARN';
-type DockMode = 'PROJECT' | 'LEARN';
 type ExplorerOperation = 'createFile' | 'createDirectory' | 'createJavaClass' | 'createPackage' | 'rename' | 'delete' | 'duplicate';
 type ExplorerOperationResult = { path?: string; parent?: string; openFile?: boolean; ancestors?: string[] };
 type EditorSurfaceBounds = { key: string; left: number; top: number; width: number; height: number };
@@ -81,8 +80,8 @@ export function Workspace() {
   const [lessonBusy, setLessonBusy] = useState(false);
   const [practiceVerification, setPracticeVerification] = useState<PracticeVerificationResult | null>(null);
   const [practiceVerifying, setPracticeVerifying] = useState(false);
-  const [dockRatios, setDockRatios] = useState<Record<DockMode, Record<string, number>>>(() => ({ PROJECT: {}, LEARN: {} }));
-  const [learnDockArrangement, setLearnDockArrangement] = useState<LearnDockArrangement>('LESSON_RIGHT');
+  const [projectDockLayout, setProjectDockLayout] = useState<DockNode>(() => projectDockTree);
+  const [learnPracticeDockLayout, setLearnPracticeDockLayout] = useState<DockNode>(() => learnPracticeDockTree);
   const shellWorkspace = useRef<HTMLDivElement>(null);
   const [editorSurfaceBounds, setEditorSurfaceBounds] = useState<EditorSurfaceBounds | null>(null);
 
@@ -501,7 +500,6 @@ export function Workspace() {
   const learnNavigationVisible = learnMode && learnNavigation.screen !== 'LESSON';
   const editorVisible = (projectMode && activeDocument?.kind !== 'documentation')
     || (learnMode && !learnNavigationVisible && lessonSession?.kind !== 'THEORY');
-  const dockMode: DockMode = learnMode ? 'LEARN' : 'PROJECT';
   const toolbar = <TopToolbar projectName={projectMode ? workspace.project?.name : undefined} projectPath={projectMode ? workspace.project?.path : undefined} recentProjects={workspace.recentProjects} runState={runState}
     onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()}
     onOpenRecentProject={path => void openProject(path)} onWelcome={() => void leaveProject()} onRun={() => void run('run')} onRerun={() => void run('rerun')}
@@ -518,9 +516,9 @@ export function Workspace() {
           <span>This shell view is composed and ready for its dedicated service integration.</span></div>
       </section>}
     </aside>;
-    if (paneId === 'editor') return <section className="main-workspace">
+    if (paneId === 'editor') return <section className="main-workspace" data-pane-id="editor">
       <div className="editor-stack">
-        {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)} /> : <header className="document-tabs learn-editor-tabs">{learnPath.join(' / ')}</header>}
+        {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)} /> : <header className="document-tabs learn-editor-tabs" data-dock-handle>{learnPath.join(' / ')}</header>}
         <section className="editor-region" data-editor-region-slot>
           {projectMode && activeDocument?.kind === 'documentation' && <DocumentationTab document={activeDocument} />}
           {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
@@ -536,20 +534,24 @@ export function Workspace() {
     return lessonSession ? <LessonPanel session={lessonSession} onPrevious={() => void changeLessonStep('previous')}
       onNext={() => void changeLessonStep('next')} onExit={() => void returnToLearnTopic()} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} /> : null;
   };
-  const updateDockRatio = (splitId: string, ratio: number) => {
-    setDockRatios(current => ({ ...current, [dockMode]: { ...current[dockMode], [splitId]: ratio } }));
-  };
-  const dockTree = learnMode ? lessonSession?.kind === 'THEORY' ? theoryDockTree
-    : learnDockArrangement === 'LESSON_LEFT' ? learnLessonLeftDockTree : learnDockTree : projectDockTree;
   const layoutKind = learnMode && lessonSession?.kind === 'THEORY' ? 'THEORY' : learnMode ? 'LEARN' : 'PROJECT';
-  const editorSurfaceKey = `${mode}:${learnNavigation.screen}:${lessonSession?.kind ?? 'NONE'}:${activeDocument?.kind ?? 'NONE'}`;
+  const dockTree = layoutKind === 'THEORY' ? theoryDockTree : layoutKind === 'LEARN' ? learnPracticeDockLayout : projectDockLayout;
+  const dockRules: DockRules | null = layoutKind === 'LEARN' ? learnPracticeDockRules : layoutKind === 'PROJECT' ? projectDockRules : null;
+  const updateDockRatio = (splitId: string, ratio: number) => {
+    if (layoutKind === 'LEARN') setLearnPracticeDockLayout(current => updateDockSplitRatio(current, splitId, ratio));
+    if (layoutKind === 'PROJECT') setProjectDockLayout(current => updateDockSplitRatio(current, splitId, ratio));
+  };
+  const editorSurfaceKey = `${mode}:${learnNavigation.screen}:${lessonSession?.kind ?? 'NONE'}:${layoutKind}:${activeDocument?.kind ?? 'NONE'}`;
   const editorSurfaceVisible = editorVisible && editorSurfaceBounds?.key === editorSurfaceKey
     && editorSurfaceBounds.width > 0 && editorSurfaceBounds.height > 0;
   const canDockDrop = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM') =>
-    learnDockArrangementForDrop(learnDockArrangement, paneId, targetId, side) !== null;
-  const handleDockDrop = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM') => {
-    const arrangement = learnDockArrangementForDrop(learnDockArrangement, paneId, targetId, side);
-    if (arrangement) setLearnDockArrangement(arrangement);
+    dockRules !== null && moveDockPane(dockTree, paneId, targetId, side, dockRules) !== null;
+  const resolveDockPreview = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM', ratio: number) =>
+    dockRules === null ? null : moveDockPane(dockTree, paneId, targetId, side, dockRules, ratio);
+  const handleDockDrop = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM', ratio: number) => {
+    if (!dockRules) return;
+    if (layoutKind === 'LEARN') setLearnPracticeDockLayout(current => moveDockPane(current, paneId, targetId, side, learnPracticeDockRules, ratio) ?? current);
+    if (layoutKind === 'PROJECT') setProjectDockLayout(current => moveDockPane(current, paneId, targetId, side, projectDockRules, ratio) ?? current);
   };
   useLayoutEffect(() => {
     const shell = shellWorkspace.current;
@@ -597,7 +599,7 @@ export function Workspace() {
       if (layoutFrame !== null) cancelAnimationFrame(layoutFrame);
       observer.disconnect();
     };
-  }, [editorSurfaceKey, editorVisible, service]);
+  }, [dockTree, editorSurfaceKey, editorVisible, service]);
   return <main className="app-shell">
     {toolbar}
     <div ref={shellWorkspace} className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}`} aria-hidden={mode === 'WELCOME'}>
@@ -609,8 +611,8 @@ export function Workspace() {
         onOpenRoadmap={categoryId => setLearnNavigation({ screen: 'ROADMAP', categoryId })}
         onOpenTopic={(categoryId, topicId) => setLearnNavigation({ screen: 'TOPIC', categoryId, topicId })}
         onOpenLesson={openLearnLesson} />}
-      <DockLayout tree={dockTree} ratios={dockRatios[dockMode]} renderPane={renderPane} layoutKind={layoutKind}
-        canDockDrop={layoutKind === 'LEARN' ? canDockDrop : undefined} onDockDrop={handleDockDrop}
+      <DockLayout tree={dockTree} renderPane={renderPane} layoutKind={layoutKind}
+        canDockDrop={dockRules ? canDockDrop : undefined} resolveDockPreview={dockRules ? resolveDockPreview : undefined} onDockDrop={handleDockDrop}
         onRatioChange={updateDockRatio} onEditorGeometryChange={() => service.layout()} />
       <section className={`persistent-editor-surface${editorSurfaceVisible ? '' : ' is-hidden'}`} style={editorSurfaceBounds ? {
         left: editorSurfaceBounds.left,

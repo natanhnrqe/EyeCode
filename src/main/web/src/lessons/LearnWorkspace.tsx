@@ -64,8 +64,8 @@ export function LearnExplorer({ selectedLessonId, onOpenLesson }: LearnExplorerP
     });
   }
 
-  return <section className="project-explorer learn-explorer" aria-label="Navegação das aulas">
-    <header className="panel-heading"><span>Aulas</span></header>
+  return <section className="project-explorer learn-explorer" data-pane-id="explorer" aria-label="Navegação das aulas">
+    <header className="panel-heading" data-dock-handle><span>Aulas</span></header>
     <div className="project-tree" role="tree">
       {catalog?.categories.flatMap(category => category.topics.map(topic => {
         const expanded = expandedTopics.has(topic.id);

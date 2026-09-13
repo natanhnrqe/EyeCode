@@ -24,7 +24,8 @@ const panels: Array<{ id: BottomPanelId; label: string }> = [
 
 export function BottomPanel({ active, output, terminalState, diagnostics, documents, onSelect, onNavigateProblem }: Props) {
   const problemCount = diagnostics?.results.reduce((total, result) => total + result.diagnostics.length, 0) ?? 0;
-  return <DockPane paneId="bottom" className="bottom-panel" label="Tool windows" headerClassName="bottom-tabs" headerLabel="Tool windows" header={<>
+  return <DockPane paneId="bottom" className="bottom-panel" label="Tool windows" headerClassName="bottom-tabs" headerLabel="Tool windows" dragHandleOnly header={<>
+      <span className="dock-drag-handle" data-dock-handle aria-label="Drag tool windows" />
       {panels.map(panel => <button type="button" key={panel.id}
         className={active === panel.id ? 'is-active' : ''} onClick={() => onSelect(panel.id)}>
         {panel.label}{panel.id === 'problems' && problemCount ? ` ${problemCount}` : ''}
