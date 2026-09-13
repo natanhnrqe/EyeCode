@@ -29,6 +29,8 @@ export type MonacoContentChangeEvent = { changes?: Array<{ text?: string; rangeL
 export type MonacoKeyEvent = { keyCode: number; browserEvent?: KeyboardEvent; preventDefault?: () => void; stopPropagation?: () => void };
 export type MonacoCursorPositionEvent = { position?: { lineNumber: number; column: number } | null };
 export type MonacoMouseEvent = { target?: { position?: { lineNumber: number; column: number } | null; range?: { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number } | null } | null };
+export type MonacoRange = { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number };
+export type MonacoSnippetController = { insert: (template: string) => void };
 
 export type MonacoEditor = {
   getModel: () => MonacoModel | null;
@@ -46,12 +48,13 @@ export type MonacoEditor = {
   addCommand: (keybinding: number, handler: () => void) => string;
   getPosition: () => { lineNumber: number; column: number } | null;
   setPosition: (position: { lineNumber: number; column: number }) => void;
+  setSelection: (range: MonacoRange) => void;
+  getContribution: (id: string) => unknown;
   revealPositionInCenterIfOutsideViewport: (position: { lineNumber: number; column: number }) => void;
   revealRangeInCenterIfOutsideViewport: (range: Record<string, number>) => void;
   getScrolledVisiblePosition: (position: { lineNumber: number; column: number }) => { left: number; top: number; height: number } | null;
   getDomNode: () => HTMLElement | null;
   executeEdits: (source: string, edits: Array<{ range: Record<string, number>; text: string; forceMoveMarkers?: boolean }>) => void;
-  trigger: (source: string, action: string, payload: Record<string, unknown>) => void;
   focus: () => void;
   dispose: () => void;
 };

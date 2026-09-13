@@ -107,6 +107,17 @@ class EyeCodeCompletionServiceTest {
     }
 
     @Test
+    void javaLiveTemplatesUseDistinctSnippetItemsAndMonacoPlaceholderText() {
+        assertSnippet("sout", "System.out.println(${0});");
+        assertSnippet("serr", "System.err.println(${0});");
+        assertSnippet("souf", "System.out.printf(${0});");
+        assertSnippet("psvm", "public static void main(String[] args) {\n    ${0}\n}");
+        assertSnippet("main", "public static void main(String[] args) {\n    ${0}\n}");
+        assertSnippet("fori", "for (int i = 0; i < ${1:length}; i++) {\n    ${0}\n}");
+        assertSnippet("foreach", "for (var item : collection) {\n    ${0}\n}");
+    }
+
+    @Test
     void fuzzyMatchingReachesCaseInsensitiveAndCamelCandidates() {
         assertCandidate("arrl", "ArrayList");
         assertCandidate("ArLi", "ArrayList");
@@ -270,6 +281,17 @@ class EyeCodeCompletionServiceTest {
         List<MonacoCompletionItem> items = service.complete(request(document, 1, prefix.length() + 1,
                 false, MonacoCompletionRequest.TriggerKind.INVOKED), context(document, prefix.length()));
         assertTrue(items.stream().anyMatch(item -> item.label().equals(candidate)));
+    }
+
+    private void assertSnippet(String prefix, String text) {
+        EditorDocument document = new EditorDocument(null, prefix);
+        MonacoCompletionItem item = service.complete(request(document, 1, prefix.length() + 1,
+                false, MonacoCompletionRequest.TriggerKind.INVOKED), context(document, prefix.length())).stream()
+                .filter(candidate -> candidate.label().equals(prefix))
+                .findFirst().orElseThrow();
+        assertEquals(com.eyecode.editor.v2.completion.CompletionItemKind.SNIPPET, item.kind());
+        assertTrue(item.snippet());
+        assertEquals(text, item.insertText());
     }
 
     private static LanguageContext context(EditorDocument document, int offset) {

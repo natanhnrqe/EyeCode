@@ -4,7 +4,7 @@ import type { DocumentSnapshot } from '../document/protocol';
 import type { CompletionPopupState, CompletionResponse } from '../completion/protocol';
 import type { LearningPopupState, LearningResponse } from '../learning/protocol';
 import type { DiagnosticsViewState, DiagnosticsPublish, WebDiagnostic } from '../diagnostics/protocol';
-import type { Disposable, MonacoApi, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoKeyEvent, MonacoModel, MonacoMouseEvent } from './api';
+import type { Disposable, MonacoApi, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoKeyEvent, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoSnippetController } from './api';
 import type { LessonEditorRange } from '../lessons/protocol';
 
 type DocumentChangeHandler = (document: DocumentSnapshot) => void;
@@ -22,7 +22,14 @@ type PendingLearning = PendingCompletion & {
   key: string;
   anchor?: { left: number; top: number };
 };
+type LearningRequestTarget = Omit<PendingLearning, 'modelVersion'> & {
+  startOffset?: number;
+  endOffset?: number;
+};
 type PendingDiagnostics = { uri: string; model: MonacoModel; modelVersion: number };
+
+const LEARNING_CARD_OPEN_DELAY_MS = 200;
+const LEARNING_CARD_CLOSE_DELAY_MS = 10;
 
 export class MonacoWorkspaceService {
   private readonly models = new Map<string, MonacoModel>();
@@ -72,6 +79,7 @@ export class MonacoWorkspaceService {
   private editorHovered = false;
   private learningHovered = false;
   private learningHideTimer: number | null = null;
+  private learningOpenTimer: number | null = null;
 
   setDocumentChangeHandler(handler: DocumentChangeHandler): void {
     this.onDocumentChange = handler;
@@ -337,6 +345,7 @@ export class MonacoWorkspaceService {
 
   hideLearning(): void {
     this.cancelLearningHide();
+    this.cancelLearningOpen();
     this.pendingLearning.clear();
     this.latestLearningRequestId = null;
     this.hoverKey = null;
@@ -418,6 +427,7 @@ export class MonacoWorkspaceService {
     this.mouseLeaveListener = this.editor.onMouseLeave(() => {
       this.editorHovered = false;
       this.hoverKey = null;
+      this.cancelLearningOpen();
       this.scheduleLearningHide();
     });
     this.scrollListener = this.editor.onDidScrollChange(() => this.notifyViewportListeners());
@@ -566,6 +576,8 @@ export class MonacoWorkspaceService {
   dispose(): void {
     if (this.disposed) return;
     this.cancelLessonTyping();
+    this.cancelLearningHide();
+    this.cancelLearningOpen();
     this.disposed = true;
     this.contentListener?.dispose();
     this.contentListener = null;
@@ -865,6 +877,7 @@ export class MonacoWorkspaceService {
     if (!editor || !model || !position) {
       this.editorHovered = false;
       this.hoverKey = null;
+      this.cancelLearningOpen();
       this.scheduleLearningHide();
       return;
     }
@@ -872,6 +885,7 @@ export class MonacoWorkspaceService {
     if (!word || position.column < word.startColumn || position.column >= word.endColumn) {
       this.editorHovered = false;
       this.hoverKey = null;
+      this.cancelLearningOpen();
       this.scheduleLearningHide();
       return;
     }
@@ -883,25 +897,28 @@ export class MonacoWorkspaceService {
     const end = model.getOffsetAt({ lineNumber: position.lineNumber, column: endColumn });
     const uri = this.documentUri(model);
     const lessonPractice = uri ? this.lessonPracticeUris.has(uri) : false;
-    if (!uri || (uri.startsWith('lesson://') && !lessonPractice)) return;
+    if (!uri || (uri.startsWith('lesson://') && !lessonPractice)) {
+      this.cancelLearningOpen();
+      return;
+    }
     const key = `${uri}:${model.getAlternativeVersionId()}:${position.lineNumber}:${startColumn}:${endColumn}`;
     if (key === this.hoverKey) return;
     this.hoverKey = key;
-    this.requestLearning('', { uri, model, editor, position,
+    this.scheduleLearningOpen('', { uri, model, editor, position,
       caretOffset: start, key, startOffset: start, endOffset: end });
   }
 
-  private requestLearning(identifier: string, target: {
-    uri: string;
-    model: MonacoModel;
-    editor: MonacoEditor;
-    position: { lineNumber: number; column: number };
-    caretOffset: number;
-    key: string;
-    startOffset?: number;
-    endOffset?: number;
-    anchor?: { left: number; top: number };
-  }): void {
+  private scheduleLearningOpen(identifier: string, target: LearningRequestTarget): void {
+    this.cancelLearningOpen();
+    this.learningOpenTimer = window.setTimeout(() => {
+      this.learningOpenTimer = null;
+      if (target.key !== this.hoverKey || target.editor.getModel() !== target.model
+          || this.documentUri(target.model) !== target.uri) return;
+      this.requestLearning(identifier, target);
+    }, LEARNING_CARD_OPEN_DELAY_MS);
+  }
+
+  private requestLearning(identifier: string, target: LearningRequestTarget): void {
     const requestId = bridge.reserveRequestId();
     const version = target.model.getAlternativeVersionId();
     this.pendingLearning.clear();
@@ -971,7 +988,16 @@ export class MonacoWorkspaceService {
     this.learningHideTimer = window.setTimeout(() => {
       this.learningHideTimer = null;
       if (!this.editorHovered && !this.learningHovered) this.hideLearning();
-    }, 140);
+    }, LEARNING_CARD_CLOSE_DELAY_MS);
+  }
+
+  private cancelLearningOpen(): void {
+    if (this.learningOpenTimer !== null) {
+      window.clearTimeout(this.learningOpenTimer);
+      this.learningOpenTimer = null;
+    }
+    this.pendingLearning.clear();
+    this.latestLearningRequestId = null;
   }
 
   private cancelLearningHide(): void {
@@ -1045,7 +1071,7 @@ export class MonacoWorkspaceService {
     if (!state || !editor || !model || !item || !this.completionIsCurrent()) return;
     const start = model.getPositionAt(item.replaceStart);
     const end = model.getPositionAt(item.replaceEnd);
-    const range = {
+    const range: MonacoRange = {
       startLineNumber: start.lineNumber,
       startColumn: start.column,
       endLineNumber: end.lineNumber,
@@ -1055,9 +1081,18 @@ export class MonacoWorkspaceService {
     this.suppressCompletionTrigger = true;
     try {
       if (item.snippet) {
-        editor.trigger('eyecode.completion', 'editor.action.insertSnippet', {
-          snippet: item.insertText, range
-        });
+        const snippetController = editor.getContribution('snippetController2') as MonacoSnippetController | null;
+        if (snippetController) {
+          editor.setSelection(range);
+          snippetController.insert(item.insertText);
+        } else {
+          console.warn('Monaco SnippetController2 is unavailable; inserting a placeholder-free snippet.');
+          editor.executeEdits('eyecode.completion.snippet-fallback', [{
+            range,
+            text: snippetFallbackText(item.insertText),
+            forceMoveMarkers: true
+          }]);
+        }
       } else {
         editor.executeEdits('eyecode.completion', [{ range, text: item.insertText, forceMoveMarkers: true }]);
       }
@@ -1176,6 +1211,13 @@ export class MonacoWorkspaceService {
 
 function completionIdentity(item: { label: string; kind: string }): string {
   return `${item.label}\u0000${item.kind}`;
+}
+
+function snippetFallbackText(snippet: string): string {
+  return snippet
+    .replace(/\$\{\d+:([^}]*)}/g, '$1')
+    .replace(/\$\{\d+}/g, '')
+    .replace(/\$\d+/g, '');
 }
 
 function monacoBase(): string {

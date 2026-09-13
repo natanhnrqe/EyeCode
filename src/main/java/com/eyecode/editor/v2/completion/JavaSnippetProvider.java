@@ -89,6 +89,14 @@ public final class JavaSnippetProvider implements CompletionProvider {
                     .priority(90)
                     .build(),
 
+            CompletionItem.builder("fori", "for (int i = 0; i < ${1:length}; i++) {\n    ${0}\n}", CompletionItemKind.SNIPPET)
+                    .detail("indexed for loop")
+                    .category("Snippet")
+                    .documentation("Generates an indexed for loop.")
+                    .example("for (int i = 0; i < length; i++) {\n    \n}")
+                    .priority(100)
+                    .build(),
+
             CompletionItem.builder("foreach", "for (var item : collection) {\n    ${0}\n}", CompletionItemKind.SNIPPET)
                     .detail("enhanced for loop")
                     .category("Snippet")
@@ -139,11 +147,11 @@ public final class JavaSnippetProvider implements CompletionProvider {
                     .build(),
 
             // ── Exception handling ───────────────────────────
-            CompletionItem.builder("try", "try {\n    ${0}\n}", CompletionItemKind.SNIPPET)
-                    .detail("try block")
+            CompletionItem.builder("try", "try {\n    ${1}\n} catch (Exception e) {\n    ${0}\n}", CompletionItemKind.SNIPPET)
+                    .detail("try-catch block")
                     .category("Snippet")
-                    .documentation("Generates a try block.")
-                    .example("try {\n    \n}")
+                    .documentation("Generates a try-catch block.")
+                    .example("try {\n    \n} catch (Exception e) {\n    \n}")
                     .priority(80)
                     .build(),
 

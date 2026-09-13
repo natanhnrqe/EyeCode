@@ -368,6 +368,35 @@ class WebShellSharedShellSourceTest {
         assertTrue(styles.contains("@container explorer (max-width: 92px)"));
     }
 
+    @Test
+    void snippetAcceptanceUsesTheBundledSnippetControllerAndKeepsNormalEditsDirect() throws IOException {
+        String monaco = Files.readString(Path.of("src/main/web/src/monaco/MonacoWorkspaceService.ts"));
+
+        assertFalse(monaco.contains("editor.action.insertSnippet"));
+        assertTrue(monaco.contains("editor.getContribution('snippetController2')"));
+        assertTrue(monaco.contains("editor.setSelection(range);"));
+        assertTrue(monaco.contains("snippetController.insert(item.insertText);"));
+        assertTrue(monaco.contains("eyecode.completion.snippet-fallback"));
+        assertTrue(monaco.contains("function snippetFallbackText"));
+        assertTrue(monaco.contains("editor.executeEdits('eyecode.completion', [{ range, text: item.insertText, forceMoveMarkers: true }]);"));
+    }
+
+    @Test
+    void learningCardOpeningIsDelayedAndPendingRequestsAreCancelled() throws IOException {
+        String monaco = Files.readString(Path.of("src/main/web/src/monaco/MonacoWorkspaceService.ts"));
+
+        assertTrue(monaco.contains("const LEARNING_CARD_OPEN_DELAY_MS = 200"));
+        assertTrue(monaco.contains("const LEARNING_CARD_CLOSE_DELAY_MS = 60"));
+        assertTrue(monaco.contains("private learningOpenTimer: number | null = null"));
+        assertTrue(monaco.contains("private scheduleLearningOpen"));
+        assertTrue(monaco.contains("window.setTimeout(() =>"));
+        assertTrue(monaco.contains("}, LEARNING_CARD_OPEN_DELAY_MS)"));
+        assertTrue(monaco.contains("target.key !== this.hoverKey"));
+        assertTrue(monaco.contains("private cancelLearningOpen"));
+        assertTrue(monaco.contains("this.cancelLearningOpen();"));
+        assertTrue(monaco.contains("}, LEARNING_CARD_CLOSE_DELAY_MS)"));
+    }
+
     private static int occurrences(String text, String target) {
         return text.split(java.util.regex.Pattern.quote(target), -1).length - 1;
     }
