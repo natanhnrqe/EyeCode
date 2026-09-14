@@ -1,10 +1,14 @@
 package com.eyecode.lessons.session;
 
 import com.eyecode.lessons.content.LessonContentService;
+import com.eyecode.lessons.content.LessonInlineContent;
+import com.eyecode.lessons.content.LessonInlineContentType;
 import com.eyecode.lessons.content.LessonKind;
 import com.eyecode.lessons.practice.PracticeValidator;
 import com.eyecode.lessons.practice.PracticeVerificationStatus;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -17,6 +21,10 @@ class LessonSessionServiceTest {
         LessonSessionSnapshot first = service.start("java.fundamentals.variables.int");
         assertEquals("java.fundamentals.variables.int", first.lessonId());
         assertEquals(0, first.currentStepIndex());
+        assertEquals(LessonSessionPhase.PRESENTATION, first.phase());
+        assertTrue(first.practice() == null);
+        assertEquals("tipos-primitivos", first.workspace().entryFileId());
+        assertEquals("TiposPrimitivos.java", first.workspace().files().getFirst().name());
         LessonSessionSnapshot integersInt = service.next(first.sessionId());
         assertEquals(1, integersInt.currentStepIndex());
         assertEquals(0, integersInt.currentPresentationIndex());
@@ -28,7 +36,11 @@ class LessonSessionServiceTest {
         LessonSessionSnapshot practice = service.next(first.sessionId());
         assertEquals(LessonSessionPhase.PRACTICE, practice.phase());
         assertEquals("integer-score", practice.practice().id());
-        assertEquals("Crie uma variável `int` chamada `score` com valor `100` dentro do método `main`.", practice.practice().instruction());
+        assertEquals(List.of(LessonInlineContentType.TEXT, LessonInlineContentType.CODE,
+                        LessonInlineContentType.TEXT, LessonInlineContentType.CODE, LessonInlineContentType.TEXT,
+                        LessonInlineContentType.CODE, LessonInlineContentType.TEXT, LessonInlineContentType.CODE,
+                        LessonInlineContentType.TEXT),
+                practice.practice().instruction().stream().map(LessonInlineContent::type).toList());
         assertEquals("public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n", practice.practice().starterCode());
         assertEquals(false, practice.canNext());
         assertEquals(LessonSessionPhase.PRACTICE, service.next(first.sessionId()).phase());
@@ -41,6 +53,8 @@ class LessonSessionServiceTest {
         LessonSessionSnapshot decimalsFloat = service.next(first.sessionId());
         assertEquals(2, decimalsFloat.currentStepIndex());
         assertEquals("float", decimalsFloat.presentation().id());
+        assertTrue(decimalsFloat.practice() == null);
+        assertEquals("tipos-primitivos", decimalsFloat.workspace().entryFileId());
         assertEquals("long", service.previous(first.sessionId()).presentation().id());
     }
 

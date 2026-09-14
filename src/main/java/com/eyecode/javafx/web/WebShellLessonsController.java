@@ -11,6 +11,8 @@ import com.eyecode.lessons.content.LessonContentService;
 import com.eyecode.lessons.content.LessonContentBlock;
 import com.eyecode.lessons.content.LessonEditorCommand;
 import com.eyecode.lessons.content.LessonEditorRange;
+import com.eyecode.lessons.content.LessonFile;
+import com.eyecode.lessons.content.LessonInlineContent;
 import com.eyecode.lessons.session.LessonSessionService;
 import com.eyecode.lessons.session.LessonSessionSnapshot;
 import com.eyecode.lessons.practice.PracticeValidator;
@@ -109,6 +111,20 @@ public final class WebShellLessonsController {
         payload.put("estimatedMinutes", lesson.estimatedMinutes());
         payload.put("concepts", lesson.concepts());
         payload.put("executable", contentService.hasContent(lesson.id()));
+        if (lesson.kind().name().equals("PRACTICE") && contentService.hasContent(lesson.id())) {
+            var workspace = contentService.load(lesson.id()).workspace();
+            if (workspace != null) payload.put("practiceFiles", workspace.files().stream().map(WebShellLessonsController::filePayload).toList());
+        }
+        return payload;
+    }
+
+    private static Map<String, Object> filePayload(LessonFile file) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", file.id());
+        payload.put("name", file.name());
+        payload.put("language", file.language());
+        payload.put("starterCode", file.starterCode());
+        payload.put("readOnly", file.readOnly());
         return payload;
     }
 
@@ -157,8 +173,12 @@ public final class WebShellLessonsController {
         payload.put("state", snapshot.state().name());
         payload.put("phase", snapshot.phase().name());
         payload.put("practiceCompleted", snapshot.practiceCompleted());
+        if (snapshot.workspace() != null) payload.put("workspace", Map.of(
+                "files", snapshot.workspace().files().stream().map(WebShellLessonsController::filePayload).toList(),
+                "entryFileId", snapshot.workspace().entryFileId()));
         if (snapshot.practice() != null) payload.put("practice", Map.of("id", snapshot.practice().id(),
-                "instruction", snapshot.practice().instruction(), "starterCode", snapshot.practice().starterCode()));
+                "instruction", inlinePayload(snapshot.practice().instruction()), "files", snapshot.practice().files().stream().map(WebShellLessonsController::filePayload).toList(),
+                "entryFileId", snapshot.practice().entryFileId()));
         payload.put("title", snapshot.step().title());
         payload.put("message", snapshot.step().message());
         payload.put("canPrevious", snapshot.canPrevious());
@@ -191,12 +211,16 @@ public final class WebShellLessonsController {
         if (block.language() != null) payload.put("language", block.language());
         if (block.code() != null) payload.put("code", block.code());
         if (!block.items().isEmpty()) payload.put("items", block.items());
-        if (!block.inlineContent().isEmpty()) payload.put("inlineContent", block.inlineContent().stream()
-                .map(inline -> inline.url() == null ? Map.of("type", inline.type().name(), "text", inline.text())
-                        : Map.of("type", inline.type().name(), "text", inline.text(), "url", inline.url()))
-                .toList());
+        if (!block.inlineContent().isEmpty()) payload.put("inlineContent", inlinePayload(block.inlineContent()));
         if (block.ordered()) payload.put("ordered", true);
         return payload;
+    }
+
+    private static List<Map<String, Object>> inlinePayload(List<LessonInlineContent> content) {
+        return content.stream()
+                .map(inline -> inline.url() == null ? Map.<String, Object>of("type", inline.type().name(), "text", inline.text())
+                        : Map.<String, Object>of("type", inline.type().name(), "text", inline.text(), "url", inline.url()))
+                .toList();
     }
 
     private static Map<String, Object> rangePayload(LessonEditorRange range) {

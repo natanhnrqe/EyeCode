@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { bridge } from '../bridge/EyeCodeBridge';
 import { EyeCodeIcon } from '../workspace/EyeCodeIcon';
-import type { LearningCategory, LearningTopic, LessonDescriptor, LessonsCatalog } from './protocol';
+import type { LearningCategory, LearningTopic, LessonDescriptor, LessonFile, LessonsCatalog } from './protocol';
 
 export type LearnNavigationState =
   | { screen: 'HOME' }
@@ -42,13 +42,17 @@ export function LearnWorkspace({ navigation, onHome, onOpenRoadmap, onOpenTopic,
 type LearnExplorerProps = {
   activeTrackId: string | null;
   selectedLessonId: string | null;
+  files?: LessonFile[];
+  activeFileId?: string | null;
+  onOpenFile?(fileId: string): void;
   onOpenLesson(lesson: LessonDescriptor, path: string[]): void;
 };
 
-export function LearnExplorer({ activeTrackId, selectedLessonId, onOpenLesson }: LearnExplorerProps) {
+export function LearnExplorer({ activeTrackId, selectedLessonId, files = [], activeFileId, onOpenFile, onOpenLesson }: LearnExplorerProps) {
   const [catalog, setCatalog] = useState<LessonsCatalog | null>(null);
   const [error, setError] = useState('');
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(() => new Set(['java.fundamentals']));
+  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     void bridge.request<LessonsCatalog>('lessons', 'catalog', {})
@@ -65,6 +69,15 @@ export function LearnExplorer({ activeTrackId, selectedLessonId, onOpenLesson }:
     });
   }
 
+  function toggleLesson(lessonId: string) {
+    setExpandedLessons(current => {
+      const next = new Set(current);
+      if (next.has(lessonId)) next.delete(lessonId);
+      else next.add(lessonId);
+      return next;
+    });
+  }
+
   const category = catalog?.categories.find(item => item.id === activeTrackId);
   const topics = catalog ? topicsForTrack(catalog, activeTrackId) : [];
 
@@ -77,12 +90,28 @@ export function LearnExplorer({ activeTrackId, selectedLessonId, onOpenLesson }:
           <button type="button" className="tree-row tree-directory" onClick={() => toggle(topic.id)} style={{ paddingLeft: '8px' }}>
             <span className={`tree-chevron${expanded ? ' is-open' : ''}`}>›</span><EyeCodeIcon name={expanded ? 'folderOpen' : 'folder'} className="tree-icon" /><span className="tree-label">{topic.title}</span>
           </button>
-          {expanded && topic.lessons.map(lesson => <div key={lesson.id} className="tree-node" role="treeitem">
-            <button type="button" className={`tree-row tree-file${selectedLessonId === lesson.id ? ' is-selected' : ''}`} disabled={!lesson.executable}
-              onClick={() => onOpenLesson(lesson, [category?.title ?? '', topic.title, lesson.title])} style={{ paddingLeft: '38px' }}>
-              <span className="tree-chevron" /><EyeCodeIcon name="file" className="tree-icon" /><span className="tree-label">{lesson.title}</span>
-            </button>
-          </div>)}
+          {expanded && topic.lessons.map(lesson => {
+            const practice = lesson.kind === 'PRACTICE' && lesson.practiceFiles !== undefined;
+            const lessonExpanded = expandedLessons.has(lesson.id);
+            const path = [category?.title ?? '', topic.title, lesson.title];
+            if (!practice) return <div key={lesson.id} className="tree-node" role="treeitem">
+              <button type="button" className={`tree-row tree-file${selectedLessonId === lesson.id ? ' is-selected' : ''}`} disabled={!lesson.executable}
+                onClick={() => onOpenLesson(lesson, path)} style={{ paddingLeft: '38px' }}>
+                <span className="tree-chevron" /><EyeCodeIcon name={lesson.kind === 'THEORY' ? 'markdown' : 'file'} className="tree-icon" /><span className="tree-label">{lesson.title}</span>
+              </button>
+            </div>;
+            return <div key={lesson.id} className="tree-node" role="treeitem" aria-expanded={lessonExpanded}>
+              <button type="button" className={`tree-row tree-directory${selectedLessonId === lesson.id ? ' is-selected' : ''}`} onClick={() => toggleLesson(lesson.id)} style={{ paddingLeft: '38px' }}>
+                <span className={`tree-chevron${lessonExpanded ? ' is-open' : ''}`}>›</span><EyeCodeIcon name={lessonExpanded ? 'folderOpen' : 'folder'} className="tree-icon" /><span className="tree-label">{lesson.title}</span>
+              </button>
+              {lessonExpanded && lesson.practiceFiles!.map(file => <button key={file.id} type="button" className={`tree-row tree-file${activeFileId === file.id && selectedLessonId === lesson.id ? ' is-selected' : ''}`} onClick={() => {
+                if (selectedLessonId === lesson.id && onOpenFile) onOpenFile(file.id);
+                else onOpenLesson(lesson, path);
+              }} style={{ paddingLeft: '68px' }}>
+                <span className="tree-chevron" /><EyeCodeIcon name="java" className="tree-icon" /><span className="tree-label">{file.name}</span>
+              </button>)}
+            </div>;
+          })}
         </div>;
       })}
     </div>

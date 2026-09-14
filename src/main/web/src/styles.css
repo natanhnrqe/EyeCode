@@ -974,6 +974,104 @@ html, body, #root {
   padding: 12px 20px;
 }
 
+.lesson-file-breadcrumb {
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--eyecode-border);
+  color: var(--eyecode-muted);
+  font: 11px var(--eyecode-font-ui);
+}
+
+.lesson-panel.is-practice {
+  grid-template-rows: 42px minmax(0, 1fr) auto;
+}
+
+.lesson-panel.is-practice .lesson-pane-header {
+  display: flex;
+  min-height: 42px;
+  padding-inline: 16px;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--eyecode-font-ui);
+}
+
+.lesson-panel.is-practice .lesson-panel-content {
+  padding: 16px 18px 20px;
+  color: var(--eyecode-text-secondary);
+  font-family: var(--eyecode-font-ui);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.lesson-panel.is-practice .lesson-reading-article {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.lesson-practice-header {
+  margin-bottom: 18px;
+  padding-bottom: 0;
+}
+
+.lesson-practice-kicker {
+  margin: 0 0 7px;
+  color: var(--eyecode-accent-bright);
+  font: 700 11px/1.2 var(--eyecode-font-ui);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.lesson-practice-title {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--eyecode-text);
+  font: 700 22px/1.25 var(--eyecode-font-ui);
+  letter-spacing: -.015em;
+}
+
+.lesson-practice-lead {
+  margin: 10px 0 0;
+  color: var(--eyecode-text-secondary);
+  font: 15px/1.6 var(--eyecode-font-ui);
+}
+
+.lesson-panel.is-practice .lesson-heading {
+  margin: 22px 0 9px;
+  padding: 0;
+  border: 0;
+  color: var(--eyecode-text);
+  font: 700 19px/1.35 var(--eyecode-font-ui);
+}
+
+.lesson-panel.is-practice .lesson-paragraph,
+.lesson-panel.is-practice .lesson-list {
+  margin-bottom: 14px;
+}
+
+.lesson-panel.is-practice .lesson-practice {
+  gap: 12px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.lesson-panel.is-practice .lesson-practice-feedback {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--eyecode-accent) 34%, var(--eyecode-border));
+  border-left: 4px solid var(--eyecode-accent);
+  border-radius: var(--eyecode-radius-sm);
+  background: color-mix(in srgb, var(--eyecode-accent-soft) 38%, transparent);
+}
+
+.lesson-panel.is-practice .lesson-practice-feedback strong {
+  font: 600 13px/1.35 var(--eyecode-font-ui);
+}
+
+.lesson-panel.is-practice .lesson-panel-actions {
+  padding: 10px 14px;
+}
+
 .lesson-panel-content h2 {
   margin: 0 0 10px;
   color: var(--eyecode-text);
@@ -1021,10 +1119,13 @@ html, body, #root {
 }
 
 .lesson-callout {
-  margin: 12px 0;
-  padding: 10px 12px;
+  margin: 16px 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--eyecode-accent) 28%, var(--eyecode-border));
   border-left: 3px solid var(--eyecode-accent);
-  background: var(--eyecode-accent-soft);
+  border-radius: var(--eyecode-radius-sm);
+  background: color-mix(in srgb, var(--eyecode-accent-soft) 28%, transparent);
+  font-family: var(--eyecode-font-ui);
 }
 
 .lesson-callout strong {
@@ -1082,21 +1183,27 @@ html, body, #root {
   position: fixed;
   z-index: 41;
   display: grid;
-  gap: 4px;
-  width: min(230px, calc(100vw - 16px));
-  padding: 10px 12px;
+  gap: 7px;
+  width: min(276px, calc(100vw - 24px));
+  padding: 12px 14px;
   border: 1px solid var(--eyecode-border-strong);
   border-radius: var(--eyecode-radius-md);
   background: var(--eyecode-surface-elevated);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
   color: var(--eyecode-text-secondary);
-  font: 12px/1.45 var(--eyecode-font-ui);
+  font: 13px/1.5 var(--eyecode-font-ui);
   pointer-events: none;
 }
 
 .lesson-annotation strong {
   color: var(--eyecode-accent-bright);
-  font: 600 12px var(--eyecode-font-code);
+  font: 700 11px/1.2 var(--eyecode-font-ui);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.lesson-annotation p {
+  margin: 0;
 }
 
 .lesson-panel-content.learning-body pre code {
@@ -1752,6 +1859,10 @@ html, body, #root {
   min-width: 0;
   min-height: 0;
   height: 100%;
+}
+
+.editor-stack.has-lesson-breadcrumb {
+  grid-template-rows: 48px auto minmax(0, 1fr);
 }
 
 .lesson-highlight {

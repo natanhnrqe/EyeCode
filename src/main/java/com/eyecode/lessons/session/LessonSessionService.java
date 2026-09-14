@@ -84,7 +84,7 @@ public final class LessonSessionService {
         boolean canNext = session.phase() == LessonSessionPhase.PRACTICE ? session.practiceCompleted()
                 : index < total - 1 || presentationIndex < step.presentations().size() - 1 || step.practice() != null;
         return new LessonSessionSnapshot(session.sessionId(), session.content().id(), session.content().kind(), index, total, presentationIndex,
-                session.state(), step, step.presentations().get(presentationIndex), step.practice(), session.phase(),
+                session.state(), step, step.presentations().get(presentationIndex), session.content().workspace(), step.practice(), session.phase(),
                 session.practiceCompleted(), canPrevious, canNext);
     }
 }

@@ -39,6 +39,11 @@ public final class LessonMarkdownNormalizer {
         return List.copyOf(blocks);
     }
 
+    public List<LessonInlineContent> normalizeInline(String markdown) {
+        if (markdown == null || markdown.isBlank()) throw new IllegalArgumentException("Conteúdo inline vazio");
+        return inline(firstParagraph(parser.parse(markdown)));
+    }
+
     private static LessonContentBlock textBlock(LessonContentBlockType type, Node node) {
         List<LessonInlineContent> inline = inline(node);
         return new LessonContentBlock(type, plain(inline), null, null, null, List.of(), inline, false);

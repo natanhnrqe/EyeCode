@@ -24,7 +24,6 @@ export function LessonAnnotation({ service, lessonUri, annotation }: Props) {
 
   if (!annotation || !position) return null;
   return <aside className="lesson-annotation" style={position} aria-label={annotation.title}>
-    <strong>{annotation.title}</strong><span>{annotation.message}</span>
+    <strong>{annotation.title}</strong><p>{annotation.message}</p>
   </aside>;
 }
-

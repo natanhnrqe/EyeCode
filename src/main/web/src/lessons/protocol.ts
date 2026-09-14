@@ -14,6 +14,7 @@ export type LessonDescriptor = {
   kind: LessonKind;
   concepts: string[];
   executable: boolean;
+  practiceFiles?: LessonFile[];
 };
 export type LearningTopic = {
   id: string;
@@ -26,7 +27,9 @@ export type LearningTopic = {
 export type LearningCategory = { id: string; title: string; description: string; topics: LearningTopic[] };
 export type LessonsCatalog = { categories: LearningCategory[] };
 export type LessonEditorRange = { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number };
-export type LessonPractice = { id: string; instruction: string; starterCode: string };
+export type LessonFile = { id: string; name: string; language: string; starterCode: string; readOnly: boolean };
+export type LessonWorkspace = { files: LessonFile[]; entryFileId: string };
+export type LessonPractice = { id: string; instruction: LessonInlineContent[]; files: LessonFile[]; entryFileId: string };
 export type PracticeVerificationStatus = 'SUCCESS' | 'SYNTAX_ERROR' | 'INVALID_CONTEXT' | 'MISSING_DECLARATION' | 'WRONG_TYPE' | 'WRONG_NAME' | 'WRONG_INITIALIZER';
 export type PracticeVerificationResult = { status: PracticeVerificationStatus; message: string };
 export type LessonEditorCommand = {
@@ -51,6 +54,7 @@ export type LessonSession = {
   state: 'ACTIVE' | 'CLOSED';
   phase: 'PRESENTATION' | 'PRACTICE' | 'COMPLETED';
   practiceCompleted: boolean;
+  workspace?: LessonWorkspace;
   practice?: LessonPractice;
   title: string;
   message: string;

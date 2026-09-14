@@ -40,4 +40,21 @@ class LessonMarkdownNormalizerTest {
         assertFalse(blocks.stream().anyMatch(block -> (block.text() != null && block.text().contains("<script>"))
                 || (block.code() != null && block.code().contains("<script>"))));
     }
+
+    @Test void normalizesPracticeInstructionInlineContent() {
+        List<LessonInlineContent> content = normalizer.normalizeInline("Crie uma variável `int` chamada `score`.");
+
+        assertEquals(List.of(LessonInlineContentType.TEXT, LessonInlineContentType.CODE,
+                        LessonInlineContentType.TEXT, LessonInlineContentType.CODE, LessonInlineContentType.TEXT),
+                content.stream().map(LessonInlineContent::type).toList());
+        assertEquals(List.of("Crie uma variável ", "int", " chamada ", "score", "."),
+                content.stream().map(LessonInlineContent::text).toList());
+    }
+
+    @Test void normalizesPlainPracticeInstructionAsText() {
+        List<LessonInlineContent> content = normalizer.normalizeInline("Crie uma variável inteira.");
+
+        assertEquals(List.of(LessonInlineContentType.TEXT), content.stream().map(LessonInlineContent::type).toList());
+        assertEquals("Crie uma variável inteira.", content.getFirst().text());
+    }
 }

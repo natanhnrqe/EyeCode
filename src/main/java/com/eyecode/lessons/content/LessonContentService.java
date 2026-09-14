@@ -62,7 +62,7 @@ public final class LessonContentService {
         }
     }
 
-    private static LessonStep step(Map<?, ?> object) {
+    private LessonStep step(Map<?, ?> object) {
         LessonStepType type;
         try { type = LessonStepType.valueOf(required(object, "type")); }
         catch (IllegalArgumentException exception) { throw new IllegalArgumentException("Tipo de etapa inválido", exception); }
@@ -76,8 +76,23 @@ public final class LessonContentService {
         return new LessonStep(required(object, "id"), type, required(object, "title"), required(object, "message"), contentBlocks, presentations, practice);
     }
 
-    private static LessonPractice practice(Map<?, ?> object) {
-        return new LessonPractice(required(object, "id"), required(object, "instruction"), required(object, "starterCode"));
+    private LessonPractice practice(Map<?, ?> object) {
+        String id = required(object, "id");
+        List<LessonInlineContent> instruction = markdownNormalizer.normalizeInline(required(object, "instruction"));
+        if (object.get("files") instanceof List<?> values) {
+            List<LessonFile> files = values.stream().map(value -> file(object(value, "arquivo de prática"))).toList();
+            String entryFileId = object.get("entryFileId") instanceof String entry ? entry : files.getFirst().id();
+            return new LessonPractice(id, instruction, files, entryFileId);
+        }
+        if (!(object.get("file") instanceof Map<?, ?> value)) {
+            return new LessonPractice(id, instruction, required(object, "starterCode"));
+        }
+        return new LessonPractice(id, instruction, file(object(value, "arquivo de prática")));
+    }
+
+    private static LessonFile file(Map<?, ?> file) {
+        return new LessonFile(required(file, "id"), required(file, "name"), required(file, "language"),
+                file.get("starterCode") instanceof String code ? code : "", Boolean.TRUE.equals(file.get("readOnly")));
     }
 
     private static LessonPresentation presentation(Map<?, ?> object) {

@@ -12,7 +12,7 @@ import { LearnExplorer, LearnWorkspace, type LearnNavigationState } from '../les
 import { LessonAnnotation } from '../lessons/LessonAnnotation';
 import { LessonEditorController } from '../lessons/LessonEditorController';
 import { LessonPanel } from '../lessons/LessonPanel';
-import type { LessonDescriptor, LessonSession, LessonVerificationResponse, PracticeVerificationResult } from '../lessons/protocol';
+import type { LessonDescriptor, LessonFile, LessonSession, LessonVerificationResponse, PracticeVerificationResult } from '../lessons/protocol';
 import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
 import { BottomPanel } from './BottomPanel';
 import { DockLayout } from './DockLayout';
@@ -47,6 +47,7 @@ export function Workspace() {
   const acceptCompletion = useRef(() => service.acceptSelectedCompletion()).current;
   const [documents, setDocuments] = useState<DocumentTab[]>([]);
   const [activeUri, setActiveUri] = useState<string | null>(null);
+  const [activeLessonFileId, setActiveLessonFileId] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [bootstrap, setBootstrap] = useState<ShellBootstrap | null>(null);
   const [message, setMessage] = useState('');
@@ -343,6 +344,9 @@ export function Workspace() {
   }
 
   async function activate(uri: string): Promise<boolean> {
+    if (uri.startsWith('lesson://')) {
+      return activateLessonFile(uri);
+    }
     try { await bridge.request('document', 'activate', { uri }); return true; }
     catch (error) { setMessage(formatError(error)); return false; }
   }
@@ -407,8 +411,9 @@ export function Workspace() {
       const session = await bridge.request<LessonSession>('lessons', 'session/start', { lessonId: lesson.id });
       if (requestId !== lessonRequest.current) return;
       setLessonPresentationReady(false);
-      if (session.kind === 'THEORY') lessonEditor.exit();
-      else lessonEditor.enter(session);
+       if (session.kind === 'THEORY') lessonEditor.exit();
+       else if (session.workspace) openLessonWorkspace(session);
+      setActiveLessonFileId(lessonEditor.activeFileId());
       lessonSessionRef.current = session;
       setLessonSession(session);
       setLearnNavigation({ screen: 'LESSON' });
@@ -428,11 +433,12 @@ export function Workspace() {
     try {
       const session = await bridge.request<LessonSession>('lessons', `session/${action}`, { sessionId: current.sessionId });
       if (requestId !== lessonRequest.current || lessonSessionRef.current?.sessionId !== session.sessionId) return;
-      if (session.kind === 'THEORY') lessonEditor.exit();
-      else if (session.phase === 'PRACTICE') lessonEditor.enterPractice(session.practice!.starterCode);
-      else lessonEditor.apply(session.commands);
+       if (session.kind === 'THEORY') lessonEditor.exit();
+       else if (!lessonEditor.lessonUri() && session.workspace) openLessonWorkspace(session);
+       else lessonEditor.applySession(session);
       lessonSessionRef.current = session;
       setLessonSession(session);
+      setActiveLessonFileId(lessonEditor.activeFileId());
     } catch (error) { if (requestId === lessonRequest.current) setMessage(formatError(error)); }
     finally { if (requestId === lessonRequest.current) setLessonBusy(false); }
   }
@@ -470,7 +476,15 @@ export function Workspace() {
     setLessonBusy(false);
     try { await bridge.request('lessons', 'session/close', { sessionId: session.sessionId }); }
     catch (error) { setMessage(formatError(error)); }
-    finally { lessonEditor.exit(); lessonSessionRef.current = null; setLessonSession(null); }
+    finally {
+      const lessonUris = lessonEditor.documents().map(document => document.uri);
+      lessonEditor.exit();
+      setDocuments(items => items.filter(document => !lessonUris.includes(document.uri)));
+      setActiveUri(service.activeModelUri());
+      lessonSessionRef.current = null;
+      setLessonSession(null);
+      setActiveLessonFileId(null);
+    }
   }
 
   async function leaveLearn() {
@@ -481,6 +495,20 @@ export function Workspace() {
   async function returnToLearnTopic() {
     await closeLesson();
     setLearnNavigation(lessonOrigin.screen === 'LESSON' ? { screen: 'HOME' } : lessonOrigin);
+  }
+
+  function activateLessonFile(uri: string): boolean {
+    if (!lessonEditor.activateLessonFile(uri)) return false;
+    setActiveUri(uri);
+    setActiveLessonFileId(lessonEditor.activeFileId());
+    return true;
+  }
+
+  function openLessonWorkspace(session: LessonSession): void {
+    lessonEditor.openWorkspace(session).forEach(updateDocument);
+    const uri = lessonEditor.lessonUri();
+    if (!uri || !activateLessonFile(uri)) return;
+    lessonEditor.applySession(session);
   }
 
   async function returnToLearnRoadmap() {
@@ -513,6 +541,8 @@ export function Workspace() {
   }
 
   const activeDocument = documents.find(document => document.uri === activeUri);
+  const lessonDocuments = documents.filter(document => document.kind === 'lesson');
+  const activeLessonDocument = activeDocument?.kind === 'lesson' ? activeDocument : null;
   const activeEditorDocument = activeDocument?.kind === 'documentation' ? undefined : activeDocument;
   const projectMode = mode === 'PROJECT';
   const learnMode = mode === 'LEARN';
@@ -527,7 +557,9 @@ export function Workspace() {
     onWindowAction={action => void windowAction(action)} />;
   const renderPane = (paneId: WorkspacePaneId) => {
     if (paneId === 'explorer') return <aside className="side-panel">
-      {learnMode ? <LearnExplorer activeTrackId={activeLearnTrackId} selectedLessonId={lessonSession?.lessonId ?? selectedLearnLesson?.id ?? null} onOpenLesson={openLearnLesson} /> : sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
+      {learnMode ? <LearnExplorer activeTrackId={activeLearnTrackId} selectedLessonId={lessonSession?.lessonId ?? selectedLearnLesson?.id ?? null}
+        files={lessonSession?.kind === 'PRACTICE' ? lessonEditor.lessonFiles() : []} activeFileId={activeLessonFileId}
+        onOpenFile={fileId => { const uri = lessonEditor.lessonUriFor(fileId); if (uri) activateLessonFile(uri); }} onOpenLesson={openLearnLesson} /> : sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
         reveal={workspace.reveal} treeChangedPath={treeChangedPath} treeRefreshRevision={treeRefreshRevision} onLoadChildren={loadChildren} onOpenFile={openFile}
         onRefresh={refreshProject} onOperation={operateProject} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()} /> : <section className="auxiliary-panel">
         <header className="panel-heading"><span>{sideTitle(sidePanel)}</span></header>
@@ -536,8 +568,11 @@ export function Workspace() {
       </section>}
     </aside>;
     if (paneId === 'editor') return <section className="main-workspace" data-pane-id="editor">
-      <div className="editor-stack">
-        {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)} /> : <header className="document-tabs learn-editor-tabs" data-dock-handle>{learnPath.join(' / ')}</header>}
+      <div className={`editor-stack${lessonSession?.kind === 'PRACTICE' && lessonSession.workspace ? ' has-lesson-breadcrumb' : ''}`}>
+        {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)} /> : lessonSession?.kind === 'PRACTICE' && lessonSession.workspace ? <>
+          <EditorTabs documents={lessonDocuments} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={() => undefined} closable={false} />
+          <div className="lesson-file-breadcrumb">{[...learnPath, activeLessonDocument?.displayName ?? lessonSession.workspace.files.find(file => file.id === lessonSession.workspace!.entryFileId)?.name ?? ''].filter(Boolean).join(' / ')}</div>
+        </> : <header className="document-tabs learn-editor-tabs" data-dock-handle>{learnPath.join(' / ')}</header>}
         <section className="editor-region" data-editor-region-slot>
           {projectMode && activeDocument?.kind === 'documentation' && <DocumentationTab document={activeDocument} />}
           {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
@@ -560,9 +595,13 @@ export function Workspace() {
     if (layoutKind === 'LEARN') setLearnPracticeDockLayout(current => updateDockSplitRatio(current, splitId, ratio));
     if (layoutKind === 'PROJECT') setProjectDockLayout(current => updateDockSplitRatio(current, splitId, ratio));
   };
-  const editorSurfaceKey = `${mode}:${learnNavigation.screen}:${lessonSession?.kind ?? 'NONE'}:${layoutKind}:${activeDocument?.kind ?? 'NONE'}`;
-  const editorSurfaceVisible = editorVisible && editorSurfaceBounds?.key === editorSurfaceKey
-    && editorSurfaceBounds.width > 0 && editorSurfaceBounds.height > 0;
+ const editorSurfaceKey = `${mode}:${learnNavigation.screen}:${layoutKind}`;
+
+  const editorSurfaceVisible =
+   editorVisible &&
+   editorSurfaceBounds !== null &&
+   editorSurfaceBounds.width > 0 &&
+    editorSurfaceBounds.height > 0;
   const canDockDrop = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM') =>
     dockRules !== null && moveDockPane(dockTree, paneId, targetId, side, dockRules) !== null;
   const resolveDockPreview = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM', ratio: number) =>
@@ -661,6 +700,7 @@ export function Workspace() {
 function sideIcon(id: SidePanelId): string {
   return ({ project: 'project', search: 'search', documentation: 'markdown', settings: 'settings' })[id];
 }
+
 
 function sideTitle(id: SidePanelId): string {
   return ({ project: 'Project', search: 'Search', documentation: 'Documentation', settings: 'Settings' })[id];

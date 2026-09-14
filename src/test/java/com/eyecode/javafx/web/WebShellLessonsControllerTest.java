@@ -70,6 +70,16 @@ class WebShellLessonsControllerTest {
         assertEquals(18, animate.get("cadenceMillis"));
     }
 
+    @Test void serializesLessonWorkspaceBeforeTheStepPracticeBegins() {
+        var snapshot = new LessonSessionService(new LessonContentService()).start("java.fundamentals.variables.int");
+        Map<String, Object> payload = WebShellLessonsController.sessionPayload(snapshot);
+
+        assertFalse(payload.containsKey("practice"));
+        Map<String, Object> workspace = map(payload.get("workspace"));
+        assertEquals("tipos-primitivos", workspace.get("entryFileId"));
+        assertEquals("TiposPrimitivos.java", maps(workspace.get("files")).getFirst().get("name"));
+    }
+
     @Test void serializesTheorySessionPayloadWithoutCommandsOrPractice() {
         var sessions = new LessonSessionService(new LessonContentService());
         var snapshot = sessions.start("java.fundamentals.jvm-jre-jdk");
@@ -94,10 +104,17 @@ class WebShellLessonsControllerTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> practicePayload = (Map<String, Object>) payload.get("practice");
         assertEquals("integer-score", practicePayload.get("id"));
-        assertEquals("Crie uma variável `int` chamada `score` com valor `100` dentro do método `main`.",
-                practicePayload.get("instruction"));
-        assertEquals("public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n",
-                practicePayload.get("starterCode"));
+        List<Map<String, Object>> instruction = maps(practicePayload.get("instruction"));
+        assertEquals(List.of("TEXT", "CODE", "TEXT", "CODE", "TEXT", "CODE", "TEXT", "CODE", "TEXT"),
+                instruction.stream().map(part -> part.get("type")).toList());
+        assertEquals(List.of("int", "score", "100", "main"), List.of(instruction.get(1).get("text"),
+                instruction.get(3).get("text"), instruction.get(5).get("text"), instruction.get(7).get("text")));
+        Map<String, Object> file = maps(practicePayload.get("files")).getFirst();
+        assertEquals("tipos-primitivos", file.get("id"));
+        assertEquals("TiposPrimitivos.java", file.get("name"));
+        assertEquals("java", file.get("language"));
+        assertEquals("public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n", file.get("starterCode"));
+        assertEquals("tipos-primitivos", practicePayload.get("entryFileId"));
     }
 
     @Test void verifiesSubmittedPracticeSourceAndReturnsAuthoritativeSession() {
@@ -150,4 +167,7 @@ class WebShellLessonsControllerTest {
 
     @SuppressWarnings("unchecked")
     private static List<Map<String, Object>> maps(Object value) { return (List<Map<String, Object>>) value; }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> map(Object value) { return (Map<String, Object>) value; }
 }

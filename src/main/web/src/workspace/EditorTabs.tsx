@@ -8,9 +8,10 @@ type Props = {
   activeUri: string | null;
   onActivate(uri: string): void;
   onClose(uri: string): void;
+  closable?: boolean;
 };
 
-export function EditorTabs({ documents, activeUri, onActivate, onClose }: Props) {
+export function EditorTabs({ documents, activeUri, onActivate, onClose, closable = true }: Props) {
   return (
     <nav className="editor-tabs" data-dock-handle aria-label="Open documents">
       {documents.map(document => (
@@ -37,7 +38,7 @@ export function EditorTabs({ documents, activeUri, onActivate, onClose }: Props)
             />
           )}
 
-          <span
+          {closable && <span
             className="editor-tab-close"
             role="button"
             tabIndex={0}
@@ -55,7 +56,7 @@ export function EditorTabs({ documents, activeUri, onActivate, onClose }: Props)
             }}
           >
             ×
-          </span>
+          </span>}
         </button>
       ))}
     </nav>

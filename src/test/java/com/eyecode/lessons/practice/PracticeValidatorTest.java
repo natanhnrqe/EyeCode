@@ -1,14 +1,19 @@
 package com.eyecode.lessons.practice;
 
 import com.eyecode.lessons.content.LessonPractice;
+import com.eyecode.lessons.content.LessonInlineContent;
+import com.eyecode.lessons.content.LessonInlineContentType;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PracticeValidatorTest {
     private final PracticeValidator validator = new PracticeValidator();
-    private final LessonPractice practice = new LessonPractice("integer-score", "Instrucao", "class Main {}");
+    private final LessonPractice practice = new LessonPractice("integer-score",
+            List.of(new LessonInlineContent(LessonInlineContentType.TEXT, "Instrucao", null)), "class Main {}");
 
     @Test void acceptsTheRequiredDeclaration() {
         assertStatus(PracticeVerificationStatus.SUCCESS, source("int score = 100;"));

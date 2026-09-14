@@ -27,6 +27,7 @@ type LearningRequestTarget = Omit<PendingLearning, 'modelVersion'> & {
   endOffset?: number;
 };
 type PendingDiagnostics = { uri: string; model: MonacoModel; modelVersion: number };
+type PendingEphemeralModel = { content: string; language: string; readOnly: boolean };
 
 const LEARNING_CARD_OPEN_DELAY_MS = 200;
 const LEARNING_CARD_CLOSE_DELAY_MS = 10;
@@ -34,6 +35,9 @@ const LEARNING_CARD_CLOSE_DELAY_MS = 10;
 export class MonacoWorkspaceService {
   private readonly models = new Map<string, MonacoModel>();
   private readonly ephemeralModels = new Map<string, MonacoModel>();
+  private readonly ephemeralReadOnly = new Map<string, boolean>();
+  private readonly pendingEphemeralModels = new Map<string, PendingEphemeralModel>();
+  private pendingEphemeralActiveUri: string | null = null;
   private readonly lessonPracticeUris = new Set<string>();
   private readonly ephemeralDecorations = new Map<string, string[]>();
   private readonly viewStates = new Map<string, unknown>();
@@ -141,21 +145,61 @@ export class MonacoWorkspaceService {
     this.notifyViewportListeners();
   }
 
-  mountEphemeralModel(uri: string, content: string, language: string, readOnly: boolean): void {
+  mountEphemeralModel(uri: string, content: string, language: string, readOnly: boolean, activate = true): void {
+    if (!this.editor || !this.api) {
+      this.pendingEphemeralModels.set(uri, { content, language, readOnly });
+      if (activate) this.pendingEphemeralActiveUri = uri;
+      return;
+    }
+    this.installEphemeralModel(uri, content, language, readOnly, activate);
+  }
+
+  registerLessonFile(uri: string, content: string, language: string, readOnly: boolean): void {
+    this.mountEphemeralModel(uri, content, language, readOnly, false);
+  }
+
+  updateLessonFile(uri: string, content: string): void {
+    this.setEphemeralModelValue(uri, content);
+  }
+
+  activateLessonFile(uri: string): boolean {
+    if (!this.ephemeralModels.has(uri) && !this.pendingEphemeralModels.has(uri)) return false;
+    if (!this.editor) {
+      this.pendingEphemeralActiveUri = uri;
+      return true;
+    }
+    this.activateEphemeralModel(uri);
+    return this.activeModelUri() === uri;
+  }
+
+  disposeLessonWorkspace(uris: Iterable<string>): void {
+    for (const uri of uris) this.disposeEphemeralModel(uri);
+  }
+
+  private installEphemeralModel(uri: string, content: string, language: string, readOnly: boolean, activate: boolean): void {
     if (!this.editor || !this.api) return;
     this.hideCompletion();
     this.hideLearning();
     const model = this.ephemeralModels.get(uri) ?? this.api.editor.createModel(content, language, this.api.Uri.parse(uri));
     this.ephemeralModels.set(uri, model);
+    this.ephemeralReadOnly.set(uri, readOnly);
+    if (!activate) return;
     const current = this.editor.getModel();
     const currentUri = this.documentUri(current);
     if (current && currentUri && !this.ephemeralModels.has(currentUri)) this.viewStates.set(currentUri, this.editor.saveViewState());
     this.editor.setModel(model);
     this.editor.updateOptions({ readOnly });
+    const viewState = this.viewStates.get(uri);
+    if (viewState) this.editor.restoreViewState(viewState);
     this.publishDiagnosticsForActiveModel();
   }
 
   setEphemeralModelValue(uri: string, content: string): void {
+    const pending = this.pendingEphemeralModels.get(uri);
+    if (pending) {
+      pending.content = content;
+      return;
+    }
     const model = this.ephemeralModels.get(uri);
     if (!model || model.getValue() === content) return;
     this.suppressContentChange = true;
@@ -163,7 +207,13 @@ export class MonacoWorkspaceService {
   }
 
   setEphemeralReadOnly(uri: string, readOnly: boolean): void {
+    const pending = this.pendingEphemeralModels.get(uri);
+    if (pending) {
+      pending.readOnly = readOnly;
+      return;
+    }
     const model = this.ephemeralModels.get(uri);
+    this.ephemeralReadOnly.set(uri, readOnly);
     if (model && this.editor?.getModel() === model) {
       this.editor.updateOptions({ readOnly });
     }
@@ -172,6 +222,21 @@ export class MonacoWorkspaceService {
   setLessonPracticeIntelligence(uri: string, enabled: boolean): void {
     if (enabled) this.lessonPracticeUris.add(uri);
     else this.lessonPracticeUris.delete(uri);
+  }
+
+  activateEphemeralModel(uri: string): void {
+    const model = this.ephemeralModels.get(uri);
+    if (!model || !this.editor) return;
+    this.hideCompletion();
+    this.hideLearning();
+    const current = this.editor.getModel();
+    const currentUri = this.documentUri(current);
+    if (current && currentUri && currentUri !== uri) this.viewStates.set(currentUri, this.editor.saveViewState());
+    this.editor.setModel(model);
+    this.editor.updateOptions({ readOnly: this.ephemeralReadOnly.get(uri) ?? true });
+    const viewState = this.viewStates.get(uri);
+    if (viewState) this.editor.restoreViewState(viewState);
+    this.publishDiagnosticsForActiveModel();
   }
 
   focus(): void { this.editor?.focus(); }
@@ -301,12 +366,15 @@ export class MonacoWorkspaceService {
 
   disposeEphemeralModel(uri: string): void {
     if (this.lessonTyping?.uri === uri) this.cancelLessonTyping();
+    this.pendingEphemeralModels.delete(uri);
+    if (this.pendingEphemeralActiveUri === uri) this.pendingEphemeralActiveUri = null;
     const model = this.ephemeralModels.get(uri);
     if (!model) return;
     this.clearEphemeralDecorations(uri);
     if (this.editor?.getModel() === model) this.editor.setModel(null);
     model.dispose();
     this.ephemeralModels.delete(uri);
+    this.ephemeralReadOnly.delete(uri);
     this.lessonPracticeUris.delete(uri);
     this.ephemeralDecorations.delete(uri);
     this.publishDiagnosticsForActiveModel();
@@ -435,6 +503,12 @@ export class MonacoWorkspaceService {
     this.editor.addCommand(this.api.KeyMod.CtrlCmd | this.api.KeyCode.Space, () => this.requestCompletion(true, null));
     this.pending.forEach(document => this.open(document));
     this.pending.clear();
+    const pendingEphemeral = [...this.pendingEphemeralModels.entries()];
+    const activeEphemeralUri = this.pendingEphemeralActiveUri;
+    this.pendingEphemeralModels.clear();
+    this.pendingEphemeralActiveUri = null;
+    pendingEphemeral.forEach(([uri, pending]) => this.installEphemeralModel(uri, pending.content, pending.language,
+      pending.readOnly, uri === activeEphemeralUri));
   }
 
   private notifyViewportListeners(): void {
@@ -541,6 +615,9 @@ export class MonacoWorkspaceService {
     this.models.clear();
     this.ephemeralModels.forEach(model => model.dispose());
     this.ephemeralModels.clear();
+    this.ephemeralReadOnly.clear();
+    this.pendingEphemeralModels.clear();
+    this.pendingEphemeralActiveUri = null;
     this.ephemeralDecorations.clear();
     this.pending.clear();
     this.viewStates.clear();
@@ -600,6 +677,7 @@ export class MonacoWorkspaceService {
     this.models.clear();
     this.ephemeralModels.forEach(model => model.dispose());
     this.ephemeralModels.clear();
+    this.ephemeralReadOnly.clear();
     this.ephemeralDecorations.clear();
     this.pending.clear();
     this.viewStates.clear();

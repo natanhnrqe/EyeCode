@@ -2,6 +2,8 @@ package com.eyecode.lessons.content;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -59,6 +61,23 @@ class LessonContentServiceTest {
         assertTrue(content.steps().getFirst().contentBlocks().stream().anyMatch(block -> block.inlineContent().stream()
                 .anyMatch(inline -> inline.type() == LessonInlineContentType.CODE)));
         assertTrue(content.steps().getFirst().contentBlocks().stream().anyMatch(block -> "java".equals(block.language())));
+    }
+
+    @Test void parsesPracticeFileIdentityAndKeepsTheLegacyStarterCodeCompatible() {
+        LessonPractice implicit = service.load("java.fundamentals.variables.int").steps().get(1).practice();
+        assertEquals("TiposPrimitivos.java", implicit.file().name());
+
+        String lesson = "{\"id\":\"lesson\",\"version\":1,\"kind\":\"PRACTICE\",\"title\":\"Aula\",\"steps\":[{\"id\":\"one\",\"type\":\"DEMO\",\"title\":\"Passo\",\"message\":\"Texto\",\"presentations\":[{\"id\":\"one\",\"commands\":[]}],\"practice\":{\"id\":\"file\",\"instruction\":\"Edite `Main.java`\",\"file\":{\"id\":\"main\",\"name\":\"Main.java\",\"language\":\"java\",\"starterCode\":\"class Main {}\",\"readOnly\":false}}}]}";
+        LessonPractice practice = service.parse(lesson, "lesson").steps().getFirst().practice();
+        assertEquals("main", practice.file().id());
+        assertEquals("Main.java", practice.file().name());
+        assertTrue(!practice.file().readOnly());
+
+        String multiFileLesson = "{\"id\":\"lesson\",\"version\":1,\"kind\":\"PRACTICE\",\"title\":\"Aula\",\"steps\":[{\"id\":\"one\",\"type\":\"DEMO\",\"title\":\"Passo\",\"message\":\"Texto\",\"presentations\":[{\"id\":\"one\",\"commands\":[]}],\"practice\":{\"id\":\"files\",\"instruction\":\"Edite `Foo.java`\",\"files\":[{\"id\":\"foo\",\"name\":\"Foo.java\",\"language\":\"java\",\"starterCode\":\"class Foo {}\",\"readOnly\":false},{\"id\":\"bar\",\"name\":\"Bar.java\",\"language\":\"java\",\"starterCode\":\"class Bar {}\",\"readOnly\":false}],\"entryFileId\":\"bar\"}}]}";
+        LessonPractice multiFilePractice = service.parse(multiFileLesson, "lesson").steps().getFirst().practice();
+        assertEquals(List.of("Foo.java", "Bar.java"), multiFilePractice.files().stream().map(LessonFile::name).toList());
+        assertEquals("bar", multiFilePractice.entryFileId());
+        assertEquals("Bar.java", multiFilePractice.file().name());
     }
 
     @Test void rejectsUnknownMalformedAndInvalidRanges() {

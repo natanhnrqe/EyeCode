@@ -12,6 +12,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WebShellSharedShellSourceTest {
     @Test
+    void queuesEphemeralLessonModelsUntilMonacoIsMounted() throws IOException {
+        String monaco = Files.readString(Path.of("src/main/web/src/monaco/MonacoWorkspaceService.ts"));
+
+        assertTrue(monaco.contains("private readonly pendingEphemeralModels = new Map<string, PendingEphemeralModel>();"));
+        assertTrue(monaco.contains("this.pendingEphemeralModels.set(uri, { content, language, readOnly });"));
+        assertTrue(monaco.contains("this.pendingEphemeralActiveUri = uri;"));
+        assertTrue(monaco.contains("const pendingEphemeral = [...this.pendingEphemeralModels.entries()];"));
+        assertTrue(monaco.contains("uri === activeEphemeralUri"));
+        assertTrue(monaco.contains("pending.content = content;"));
+        assertTrue(monaco.contains("this.pendingEphemeralModels.delete(uri);"));
+    }
+
+    @Test
     void workspaceOwnsOnePersistentMonacoHostAcrossProjectAndLearnModes() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
@@ -46,7 +59,7 @@ class WebShellSharedShellSourceTest {
         assertFalse(styles.contains("lesson-animation-trace"));
         assertTrue(workspace.contains("lessonPresentationReady"));
         assertTrue(workspace.contains("lessonSession?.kind === 'PRACTICE' && lessonPresentationReady && <LessonAnnotation"));
-        assertTrue(styles.contains(".lesson-panel-content.learning-body pre code { font-size: 12px; }"));
+        assertTrue(styles.contains(".lesson-reading-article"));
     }
 
     @Test
@@ -58,12 +71,20 @@ class WebShellSharedShellSourceTest {
         assertTrue(monaco.contains("if ([...this.ephemeralModels.values()].includes(model)) return;"));
         assertTrue(monaco.indexOf("if ([...this.ephemeralModels.values()].includes(model)) return;")
                 < monaco.indexOf("bridge.request<{ document: DocumentSnapshot }>('document', 'change'"));
-        assertTrue(controller.contains("if (session.phase === 'PRACTICE') this.enterPractice(session.practice!.starterCode);\n    else this.apply(session.commands);"));
-        assertFalse(workspace.contains("lessonEditor.enter(session);\n      if (session.phase === 'PRACTICE')"));
-        assertTrue(workspace.contains("if (session.phase === 'PRACTICE') lessonEditor.enterPractice(session.practice!.starterCode);\n      else lessonEditor.apply(session.commands);"));
-        assertTrue(controller.contains("this.cancelAnimation();\n    this.service.clearEphemeralDecorations(this.activeUri);\n    this.service.setEphemeralModelValue(this.activeUri, starterCode);\n    this.service.setEphemeralReadOnly(this.activeUri, false);\n    this.service.setLessonPracticeIntelligence(this.activeUri, true);\n    this.service.focus();"));
-        assertTrue(controller.contains("this.service.setEphemeralReadOnly(uri, true);"));
+        assertTrue(controller.contains("if (session.phase === 'PRACTICE') this.enterPractice();\n    else this.apply(session.commands);"));
+        assertTrue(workspace.contains("else if (!lessonEditor.lessonUri() && session.workspace)"));
+        assertTrue(workspace.contains("lessonEditor.openWorkspace(session).forEach(updateDocument);"));
+        assertTrue(controller.contains("private readonly documentsByUri = new Map<string, LessonDocument>();"));
+        assertTrue(controller.contains("this.service.updateLessonFile(\n      this.activeUri,\n      active.file.starterCode"));
+        assertTrue(controller.contains("this.service.setEphemeralReadOnly(document.uri, true);"));
         assertTrue(monaco.contains("focus(): void { this.editor?.focus(); }"));
+        assertTrue(workspace.contains("const lessonDocuments = documents.filter(document => document.kind === 'lesson');"));
+        assertTrue(workspace.contains("<EditorTabs documents={lessonDocuments} activeUri={activeUri}"));
+        assertFalse(workspace.contains("documents={[lessonTab("));
+        assertTrue(controller.contains("for (const file of workspace.files)"));
+        assertTrue(controller.contains("this.service.registerLessonFile(\n        uri,\n        file.starterCode,"));
+        assertTrue(workspace.contains("function activateLessonFile(uri: string): boolean"));
+        assertTrue(controller.contains("return this.service.activateLessonFile(uri);"));
     }
 
     @Test
@@ -75,9 +96,10 @@ class WebShellSharedShellSourceTest {
         String learning = Files.readString(Path.of("src/main/java/com/eyecode/javafx/web/WebShellLearningController.java"));
 
         assertTrue(panel.contains("const practice = session.phase === 'PRACTICE' ? session.practice : undefined;"));
-        assertTrue(panel.contains("<h2>Sua vez</h2><p>{practice.instruction}</p>"));
-        assertTrue(controller.contains("this.service.setLessonPracticeIntelligence(uri, false);"));
-        assertTrue(controller.contains("this.service.setLessonPracticeIntelligence(this.activeUri, true);"));
+        assertTrue(panel.contains("lesson-practice-header"));
+        assertTrue(panel.contains("lesson-practice-lead\"><InlineContent content={practiceLead} /></p>"));
+        assertTrue(controller.contains("this.service.setLessonPracticeIntelligence(document.uri, false);"));
+        assertTrue(controller.contains("this.service.setLessonPracticeIntelligence(\n        document.uri,\n        true"));
         assertTrue(monaco.contains("private readonly lessonPracticeUris = new Set<string>();"));
         assertTrue(monaco.contains("uri.startsWith('lesson://') && !lessonPractice"));
         assertTrue(monaco.contains("lessonPractice,"));
@@ -137,7 +159,7 @@ class WebShellSharedShellSourceTest {
         assertTrue(bottomPanel.contains("<DockPane paneId=\"bottom\""));
         assertTrue(bottomPanel.contains("<TerminalPanel state={terminalState} />"));
         assertTrue(lessonPanel.contains("<DockPane paneId=\"lesson\""));
-        assertTrue(lessonPanel.contains("className={`lesson-panel${session.kind === 'THEORY' ? ' is-theory' : ''}`"));
+        assertTrue(lessonPanel.contains("const practiceLesson = session.kind === 'PRACTICE';"));
         assertFalse(lessonPanel.contains("bottom-panel lesson-panel"));
         assertTrue(projectExplorer.contains("<DockPane paneId=\"explorer\""));
         assertTrue(projectExplorer.contains("headerClassName=\"panel-heading\""));
@@ -230,15 +252,18 @@ class WebShellSharedShellSourceTest {
         assertEquals(1, occurrences(learnTree, "paneId: 'editor'"));
         assertEquals(1, occurrences(learnTree, "paneId: 'lesson'"));
         assertEquals(1, occurrences(workspace, "<MonacoHost"));
-        assertTrue(panel.contains("className={`lesson-panel${session.kind === 'THEORY' ? ' is-theory' : ''}`"));
+        assertTrue(panel.contains("const practiceLesson = session.kind === 'PRACTICE';"));
         assertTrue(panel.contains("bodyClassName=\"lesson-pane-content lesson-panel-content learning-body\""));
-        assertTrue(panel.contains("{session.contentBlocks.map"));
+        assertTrue(panel.contains("<LessonBlocks blocks={session.contentBlocks} theory={theory} />"));
         assertTrue(panel.contains("{practice && <section className=\"lesson-practice\""));
+        assertTrue(panel.contains("lesson-practice-header"));
+        assertTrue(panel.contains("lesson-practice-title"));
+        assertTrue(panel.contains("const practiceLead = practice?.instruction;"));
         assertTrue(panel.contains("onClick={onVerify}"));
         assertTrue(panel.contains("{verification.message}"));
-        assertTrue(controller.contains("this.service.setEphemeralReadOnly(this.activeUri, false);"));
-        assertTrue(controller.contains("this.service.setLessonPracticeIntelligence(this.activeUri, true);"));
-        assertTrue(styles.contains(".lesson-pane-content { min-height: 0; overflow: auto;"));
+        assertTrue(controller.contains("this.service.setEphemeralReadOnly(\n        document.uri,\n        document.file.readOnly"));
+        assertTrue(controller.contains("this.service.setLessonPracticeIntelligence(\n        document.uri,\n        true"));
+        assertTrue(styles.contains(".lesson-pane-content {"));
         assertFalse(styles.contains(".lesson-panel { grid-column: 2 / 4"));
         assertTrue(workspace.indexOf("<DockLayout") < workspace.indexOf("<div className=\"overlay-root\">"));
     }
@@ -271,7 +296,7 @@ class WebShellSharedShellSourceTest {
 
         assertFalse(openLessons.contains("clearActiveModel"));
         assertTrue(controller.contains("this.previousUri = this.service.activeModelUri();"));
-        assertTrue(controller.contains("this.service.disposeEphemeralModel(uri);"));
+        assertTrue(controller.contains("this.service.disposeLessonWorkspace(uris);"));
         assertTrue(controller.contains("if (previousUri) this.service.activate(previousUri);"));
     }
 
@@ -406,7 +431,7 @@ class WebShellSharedShellSourceTest {
         String monaco = Files.readString(Path.of("src/main/web/src/monaco/MonacoWorkspaceService.ts"));
 
         assertTrue(monaco.contains("const LEARNING_CARD_OPEN_DELAY_MS = 200"));
-        assertTrue(monaco.contains("const LEARNING_CARD_CLOSE_DELAY_MS = 60"));
+        assertTrue(monaco.contains("const LEARNING_CARD_CLOSE_DELAY_MS = 10"));
         assertTrue(monaco.contains("private learningOpenTimer: number | null = null"));
         assertTrue(monaco.contains("private scheduleLearningOpen"));
         assertTrue(monaco.contains("window.setTimeout(() =>"));
