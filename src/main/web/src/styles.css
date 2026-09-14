@@ -974,15 +974,9 @@ html, body, #root {
   padding: 12px 20px;
 }
 
-.lesson-file-breadcrumb {
-  padding: 5px 12px;
-  border-bottom: 1px solid var(--eyecode-border);
-  color: var(--eyecode-muted);
-  font: 11px var(--eyecode-font-ui);
-}
-
 .lesson-panel.is-practice {
   grid-template-rows: 42px minmax(0, 1fr) auto;
+  background: var(--surface-editor);
 }
 
 .lesson-panel.is-practice .lesson-pane-header {
@@ -996,6 +990,7 @@ html, body, #root {
 
 .lesson-panel.is-practice .lesson-panel-content {
   padding: 16px 18px 20px;
+  background: var(--surface-editor);
   color: var(--eyecode-text-secondary);
   font-family: var(--eyecode-font-ui);
   font-size: 15px;
@@ -1049,27 +1044,57 @@ html, body, #root {
   margin-bottom: 14px;
 }
 
-.lesson-panel.is-practice .lesson-practice {
-  gap: 12px;
-  width: 100%;
-  margin-top: 4px;
-}
-
-.lesson-panel.is-practice .lesson-practice-feedback {
-  margin: 0;
-  padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--eyecode-accent) 34%, var(--eyecode-border));
-  border-left: 4px solid var(--eyecode-accent);
-  border-radius: var(--eyecode-radius-sm);
-  background: color-mix(in srgb, var(--eyecode-accent-soft) 38%, transparent);
-}
-
-.lesson-panel.is-practice .lesson-practice-feedback strong {
-  font: 600 13px/1.35 var(--eyecode-font-ui);
-}
-
 .lesson-panel.is-practice .lesson-panel-actions {
   padding: 10px 14px;
+}
+
+.lesson-practice-support {
+  display: grid;
+  gap: 18px;
+}
+
+.lesson-practice-support h2 {
+  margin: 0 0 8px;
+  color: var(--eyecode-text);
+  font: 700 15px/1.35 var(--eyecode-font-ui);
+}
+
+.lesson-practice-support ol {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.lesson-practice-support li + li {
+  margin-top: 6px;
+}
+
+.lesson-practice-support .lesson-code-block {
+  margin: 0;
+}
+
+.lesson-practice-disclosure {
+  overflow: hidden;
+  border: 1px solid var(--eyecode-border);
+  border-radius: var(--eyecode-radius-sm);
+  background: color-mix(in srgb, var(--surface-raised) 42%, var(--surface-editor));
+}
+
+.lesson-practice-disclosure summary {
+  padding: 10px 12px;
+  color: var(--eyecode-text);
+  cursor: pointer;
+  font: 600 13px/1.3 var(--eyecode-font-ui);
+}
+
+.lesson-practice-disclosure > :not(summary) {
+  margin: 0 12px 12px;
+}
+
+.lesson-practice-disclosure .lesson-callout {
+  border: 0;
+  border-left: 3px solid var(--eyecode-accent);
+  border-radius: 0;
+  background: transparent;
 }
 
 .lesson-panel-content h2 {
@@ -1134,11 +1159,6 @@ html, body, #root {
 
 .lesson-callout p {
   margin: 4px 0 0;
-}
-
-.lesson-practice {
-  display: grid;
-  gap: 0;
 }
 
 
@@ -1827,6 +1847,126 @@ html, body, #root {
   pointer-events: none;
 }
 
+.lesson-task-card {
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  width: min(340px, calc(100% - 28px));
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--eyecode-border-strong);
+  border-bottom-width: 4px;
+  border-radius: var(--eyecode-radius-md);
+  background: var(--eyecode-surface-elevated);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, .26);
+  color: var(--eyecode-text);
+  font-family: var(--eyecode-font-ui);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.lesson-task-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 9px 18px rgba(0, 0, 0, .3);
+}
+
+.lesson-task-card:active {
+  transform: translateY(1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .22);
+}
+
+.lesson-task-card header,
+.lesson-task-card footer {
+  display: flex;
+  align-items: center;
+}
+
+.lesson-task-card header span {
+  color: var(--eyecode-accent-bright);
+  font: 700 11px/1.2 var(--eyecode-font-ui);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.lesson-task-close {
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--eyecode-radius-sm);
+  background: transparent;
+  color: var(--eyecode-muted);
+  cursor: pointer;
+  font: 18px/1 var(--eyecode-font-ui);
+}
+
+.lesson-task-close:hover,
+.lesson-task-close:focus-visible {
+  background: var(--eyecode-surface-hover);
+  color: var(--eyecode-text);
+}
+
+.lesson-task-instruction {
+  margin: 0;
+  color: var(--eyecode-text);
+  font: 600 14px/1.55 var(--eyecode-font-ui);
+}
+
+.lesson-task-instruction code {
+  padding: 1px 4px;
+  border-radius: var(--eyecode-radius-sm);
+  background: var(--eyecode-code-bg);
+  color: var(--eyecode-accent-bright);
+}
+
+.lesson-task-feedback {
+  padding: 10px 11px;
+  border-left: 3px solid var(--eyecode-accent);
+  background: color-mix(in srgb, var(--eyecode-accent-soft) 30%, transparent);
+  color: var(--eyecode-text-secondary);
+  font: 12px/1.45 var(--eyecode-font-ui);
+}
+
+.lesson-task-feedback strong,
+.lesson-task-feedback p {
+  margin: 0;
+}
+
+.lesson-task-feedback p {
+  margin-top: 4px;
+}
+
+.lesson-task-card footer {
+  justify-content: flex-end;
+}
+
+.lesson-task-card .primary-action {
+  min-height: 30px;
+}
+
+.lesson-task-reopen {
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  right: 14px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--eyecode-border-strong);
+  border-bottom-width: 3px;
+  border-radius: var(--eyecode-radius-sm);
+  background: var(--eyecode-surface-elevated);
+  color: var(--eyecode-text-secondary);
+  cursor: pointer;
+  font: 600 11px/1 var(--eyecode-font-ui);
+}
+
+.lesson-task-reopen:hover,
+.lesson-task-reopen:focus-visible {
+  color: var(--eyecode-text);
+}
+
 .workspace-empty {
   position: absolute;
   z-index: 2;
@@ -1859,10 +1999,6 @@ html, body, #root {
   min-width: 0;
   min-height: 0;
   height: 100%;
-}
-
-.editor-stack.has-lesson-breadcrumb {
-  grid-template-rows: 48px auto minmax(0, 1fr);
 }
 
 .lesson-highlight {
@@ -2308,6 +2444,21 @@ html, body, #root {
 .status-breadcrumbs span {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.status-breadcrumbs button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.status-breadcrumbs button:hover,
+.status-breadcrumbs button:focus-visible {
+  color: var(--eyecode-accent-bright);
+  text-decoration: underline;
 }
 
 .status-breadcrumbs i {

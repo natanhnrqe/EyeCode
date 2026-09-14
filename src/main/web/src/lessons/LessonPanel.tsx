@@ -1,21 +1,26 @@
 import { Fragment, useEffect, useState } from 'react';
 import { highlightLearningJavaSource } from '../learning/highlightJava';
-import type { LessonContentBlock, LessonInlineContent, LessonSession, PracticeVerificationResult } from './protocol';
+import type { LessonContentBlock, LessonInlineContent, LessonSession } from './protocol';
 import { DockPane } from '../workspace/DockPane';
 
 type Breadcrumb = { category: string; topic: string; onCategory?(): void; onTopic?(): void };
-type Props = { session: LessonSession; breadcrumb?: Breadcrumb; verification: PracticeVerificationResult | null; verifying: boolean; onVerify(): void; onPrevious(): void; onNext(): void; onExit(): void };
+type Props = { session: LessonSession; breadcrumb?: Breadcrumb; onPrevious(): void; onNext(): void; onExit(): void };
 
-export function LessonPanel({ session, breadcrumb, verification, verifying, onVerify, onPrevious, onNext, onExit }: Props) {
-  const practice = session.phase === 'PRACTICE' ? session.practice : undefined;
+export function LessonPanel({ session, breadcrumb, onPrevious, onNext, onExit }: Props) {
   const theory = session.kind === 'THEORY';
   const practiceLesson = session.kind === 'PRACTICE';
+  const practiceActive = practiceLesson && session.phase === 'PRACTICE' && session.practice !== undefined;
   const practicePhaseClass = session.phase === 'PRESENTATION' ? ' is-presentation' : session.phase === 'PRACTICE' ? ' is-practice-active' : ' is-completed';
-  const practiceLead = practice?.instruction;
   return <DockPane paneId="lesson" className={`lesson-panel${theory ? ' is-theory' : ''}${practiceLesson ? ` is-practice${practicePhaseClass}${session.practiceCompleted ? ' is-practice-completed' : ''}` : ''}`} label="Conteúdo da aula" headerClassName="bottom-tabs lesson-pane-header" header={<>{theory ? <LessonBreadcrumb breadcrumb={breadcrumb} /> : <span className="lesson-pane-kicker">{practiceLesson ? 'Prática' : 'Conteúdo da aula'}</span>}<span className="lesson-part-indicator">Parte {session.currentStep + 1} de {session.totalSteps}</span></>} bodyClassName="lesson-pane-content lesson-panel-content learning-body" footerClassName="lesson-panel-actions" footer={<><button type="button" onClick={onExit}>Voltar ao roteiro</button><div><button type="button" onClick={onPrevious} disabled={!session.canPrevious}>Anterior</button><button type="button" className="primary-action" onClick={onNext} disabled={!session.canNext}>Próximo</button></div></>}>
-      <article className="lesson-reading-article">{theory && <header className="lesson-chapter-header"><h1 className="lesson-chapter-title">{session.title}</h1>{session.message && <p className="lesson-chapter-lead">{session.message}</p>}</header>}{practiceLesson && <header className="lesson-practice-header"><p className="lesson-practice-kicker">Prática</p><h1 className="lesson-practice-title">{session.title}</h1>{practiceLead ? <p className="lesson-practice-lead"><InlineContent content={practiceLead} /></p> : session.message && <p className="lesson-practice-lead">{session.message}</p>}</header>}<LessonBlocks blocks={session.contentBlocks} theory={theory} /></article>
-      {practice && <section className="lesson-practice">{verification && <aside className="lesson-callout lesson-practice-feedback"><strong>{verification.status === 'SUCCESS' ? 'Correto' : 'Revise sua resposta'}</strong><p>{verification.message}</p></aside>}<button type="button" className="primary-action" onClick={onVerify} disabled={verifying}>{verifying ? 'Verificando...' : 'Verificar'}</button></section>}
+      <article className="lesson-reading-article">{theory && <header className="lesson-chapter-header"><h1 className="lesson-chapter-title">{session.title}</h1>{session.message && <p className="lesson-chapter-lead">{session.message}</p>}</header>}{practiceLesson && <header className="lesson-practice-header"><p className="lesson-practice-kicker">Prática</p><h1 className="lesson-practice-title">{session.title}</h1>{session.message && <p className="lesson-practice-lead">{session.message}</p>}</header>}{practiceActive ? <PracticeSupport blocks={session.contentBlocks} /> : <LessonBlocks blocks={session.contentBlocks} theory={theory} />}</article>
   </DockPane>;
+}
+
+function PracticeSupport({ blocks }: { blocks: LessonContentBlock[] }) {
+  const syntax = blocks.find(block => block.type === 'CODE');
+  const hints = blocks.filter(block => block.type === 'CALLOUT');
+  const concepts = blocks.filter(block => block.type === 'HEADING').slice(1).map(block => block.text).filter((text): text is string => Boolean(text));
+  return <section className="lesson-practice-support"><section><h2>O que fazer</h2><ol><li>Use o editor para realizar a tarefa indicada no card.</li><li>Monte a declaração dentro do método <code>main</code>.</li><li>Revise o tipo, nome e valor antes de verificar.</li></ol></section>{syntax && <section><h2>Exemplo de sintaxe</h2><LessonBlock block={syntax} theory={false} /></section>}{hints.length > 0 && <details className="lesson-practice-disclosure"><summary>Dicas</summary>{hints.map((hint, index) => <LessonBlock key={index} block={hint} theory={false} />)}</details>}{concepts.length > 0 && <details className="lesson-practice-disclosure"><summary>Conceitos relacionados</summary><ul>{concepts.map(concept => <li key={concept}>{concept}</li>)}</ul></details>}</section>;
 }
 
 function LessonBreadcrumb({ breadcrumb }: { breadcrumb?: Breadcrumb }) {

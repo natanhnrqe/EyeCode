@@ -90,14 +90,15 @@ class WebShellSharedShellSourceTest {
     @Test
     void practiceShowsItsInstructionAndEnablesOnlyEphemeralIntelligence() throws IOException {
         String panel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
+        String taskCard = Files.readString(Path.of("src/main/web/src/lessons/LessonTaskCard.tsx"));
         String controller = Files.readString(Path.of("src/main/web/src/lessons/LessonEditorController.ts"));
         String monaco = Files.readString(Path.of("src/main/web/src/monaco/MonacoWorkspaceService.ts"));
         String completion = Files.readString(Path.of("src/main/java/com/eyecode/javafx/web/WebShellCompletionController.java"));
         String learning = Files.readString(Path.of("src/main/java/com/eyecode/javafx/web/WebShellLearningController.java"));
 
-        assertTrue(panel.contains("const practice = session.phase === 'PRACTICE' ? session.practice : undefined;"));
+        assertTrue(taskCard.contains("const practice = session.practice;"));
         assertTrue(panel.contains("lesson-practice-header"));
-        assertTrue(panel.contains("lesson-practice-lead\"><InlineContent content={practiceLead} /></p>"));
+        assertTrue(taskCard.contains("lesson-task-instruction\"><InlineContent content={practice.instruction} /></p>"));
         assertTrue(controller.contains("this.service.setLessonPracticeIntelligence(document.uri, false);"));
         assertTrue(controller.contains("this.service.setLessonPracticeIntelligence(\n        document.uri,\n        true"));
         assertTrue(monaco.contains("private readonly lessonPracticeUris = new Set<string>();"));
@@ -117,7 +118,7 @@ class WebShellSharedShellSourceTest {
     void practiceVerificationUsesCurrentEphemeralSourceAndAuthoritativeSessionState() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String controller = Files.readString(Path.of("src/main/web/src/lessons/LessonEditorController.ts"));
-        String panel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
+        String taskCard = Files.readString(Path.of("src/main/web/src/lessons/LessonTaskCard.tsx"));
         String lessons = Files.readString(Path.of("src/main/java/com/eyecode/javafx/web/WebShellLessonsController.java"));
 
         assertTrue(controller.contains("practiceSource(): string | null"));
@@ -127,9 +128,9 @@ class WebShellSharedShellSourceTest {
         assertTrue(workspace.contains("sessionId, practiceId, source"));
         assertTrue(workspace.contains("lessonEditor.practiceSource() !== source"));
         assertTrue(workspace.contains("response.session.phase !== 'PRACTICE'"));
-        assertTrue(panel.contains("onClick={onVerify}"));
-        assertTrue(panel.contains("{verifying ? 'Verificando...' : 'Verificar'}"));
-        assertTrue(panel.contains("{verification.message}"));
+        assertTrue(taskCard.contains("onClick={onVerify}"));
+        assertTrue(taskCard.contains("{verifying ? 'Verificando...' : 'Verificar'}"));
+        assertTrue(taskCard.contains("{verification.message}"));
         assertTrue(lessons.contains("surface.registerHandler(\"lessons\", \"session/verify\", this::verify)"));
         assertTrue(lessons.contains("sessionService.verifyPractice(sessionId, practiceId, source, validator)"));
         assertTrue(lessons.contains("\"verification\", Map.of(\"status\""));
@@ -240,6 +241,7 @@ class WebShellSharedShellSourceTest {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String pane = Files.readString(Path.of("src/main/web/src/workspace/WorkspacePane.ts"));
         String panel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
+        String taskCard = Files.readString(Path.of("src/main/web/src/lessons/LessonTaskCard.tsx"));
         String controller = Files.readString(Path.of("src/main/web/src/lessons/LessonEditorController.ts"));
         String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
 
@@ -255,12 +257,11 @@ class WebShellSharedShellSourceTest {
         assertTrue(panel.contains("const practiceLesson = session.kind === 'PRACTICE';"));
         assertTrue(panel.contains("bodyClassName=\"lesson-pane-content lesson-panel-content learning-body\""));
         assertTrue(panel.contains("<LessonBlocks blocks={session.contentBlocks} theory={theory} />"));
-        assertTrue(panel.contains("{practice && <section className=\"lesson-practice\""));
         assertTrue(panel.contains("lesson-practice-header"));
         assertTrue(panel.contains("lesson-practice-title"));
-        assertTrue(panel.contains("const practiceLead = practice?.instruction;"));
-        assertTrue(panel.contains("onClick={onVerify}"));
-        assertTrue(panel.contains("{verification.message}"));
+        assertTrue(taskCard.contains("lesson-task-card"));
+        assertTrue(taskCard.contains("onClick={onVerify}"));
+        assertTrue(taskCard.contains("{verification.message}"));
         assertTrue(controller.contains("this.service.setEphemeralReadOnly(\n        document.uri,\n        document.file.readOnly"));
         assertTrue(controller.contains("this.service.setLessonPracticeIntelligence(\n        document.uri,\n        true"));
         assertTrue(styles.contains(".lesson-pane-content {"));

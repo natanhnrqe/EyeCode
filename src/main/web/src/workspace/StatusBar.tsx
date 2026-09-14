@@ -5,14 +5,17 @@ type Props = {
   projectName?: string;
   caret: { line: number; column: number };
   message?: string;
+  breadcrumbs?: StatusBreadcrumb[];
 };
 
-export function StatusBar({ activeUri, displayName, projectRoot, projectName, caret, message }: Props) {
-  const breadcrumbs = documentBreadcrumbs(activeUri, displayName, projectRoot, projectName);
+export type StatusBreadcrumb = { label: string; onClick?(): void };
+
+export function StatusBar({ activeUri, displayName, projectRoot, projectName, caret, message, breadcrumbs: suppliedBreadcrumbs }: Props) {
+  const breadcrumbs: StatusBreadcrumb[] = suppliedBreadcrumbs ?? documentBreadcrumbs(activeUri, displayName, projectRoot, projectName).map(label => ({ label }));
   return <footer className="status-bar">
     <div className="status-breadcrumbs" aria-label="Current document path">
-      {breadcrumbs.map((segment, index) => <span key={`${segment}-${index}`}>
-        {index > 0 && <i aria-hidden="true">›</i>}{segment}
+      {breadcrumbs.map((segment, index) => <span key={`${segment.label}-${index}`}>
+        {index > 0 && <i aria-hidden="true">›</i>}{segment.onClick ? <button type="button" onClick={segment.onClick}>{segment.label}</button> : segment.label}
       </span>)}
       {message && <em>{message}</em>}
     </div>

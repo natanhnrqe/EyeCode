@@ -12,6 +12,7 @@ import { LearnExplorer, LearnWorkspace, type LearnNavigationState } from '../les
 import { LessonAnnotation } from '../lessons/LessonAnnotation';
 import { LessonEditorController } from '../lessons/LessonEditorController';
 import { LessonPanel } from '../lessons/LessonPanel';
+import { LessonTaskCard } from '../lessons/LessonTaskCard';
 import type { LessonDescriptor, LessonFile, LessonSession, LessonVerificationResponse, PracticeVerificationResult } from '../lessons/protocol';
 import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
 import { BottomPanel } from './BottomPanel';
@@ -511,6 +512,12 @@ export function Workspace() {
     lessonEditor.applySession(session);
   }
 
+  async function returnToLearnHome() {
+    await closeLesson();
+    setActiveLearnTrackId(null);
+    setLearnNavigation({ screen: 'HOME' });
+  }
+
   async function returnToLearnRoadmap() {
     const lesson = selectedLearnLesson;
     await closeLesson();
@@ -568,10 +575,9 @@ export function Workspace() {
       </section>}
     </aside>;
     if (paneId === 'editor') return <section className="main-workspace" data-pane-id="editor">
-      <div className={`editor-stack${lessonSession?.kind === 'PRACTICE' && lessonSession.workspace ? ' has-lesson-breadcrumb' : ''}`}>
+      <div className="editor-stack">
         {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)} /> : lessonSession?.kind === 'PRACTICE' && lessonSession.workspace ? <>
           <EditorTabs documents={lessonDocuments} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={() => undefined} closable={false} />
-          <div className="lesson-file-breadcrumb">{[...learnPath, activeLessonDocument?.displayName ?? lessonSession.workspace.files.find(file => file.id === lessonSession.workspace!.entryFileId)?.name ?? ''].filter(Boolean).join(' / ')}</div>
         </> : <header className="document-tabs learn-editor-tabs" data-dock-handle>{learnPath.join(' / ')}</header>}
         <section className="editor-region" data-editor-region-slot>
           {projectMode && activeDocument?.kind === 'documentation' && <DocumentationTab document={activeDocument} />}
@@ -586,7 +592,7 @@ export function Workspace() {
       diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />;
     return lessonSession ? <LessonPanel session={lessonSession} breadcrumb={{ category: learnPath[0] ?? 'Aulas', topic: learnPath[1] ?? 'Aulas', onCategory: () => void returnToLearnRoadmap(), onTopic: () => void returnToLearnTopicFromBreadcrumb() }} onPrevious={() => void changeLessonStep('previous')}
-      onNext={() => void changeLessonStep('next')} onExit={() => void returnToLearnTopic()} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} /> : null;
+      onNext={() => void changeLessonStep('next')} onExit={() => void returnToLearnTopic()} /> : null;
   };
   const layoutKind = learnMode && lessonSession?.kind === 'THEORY' ? 'THEORY' : learnMode ? 'LEARN' : 'PROJECT';
   const dockTree = layoutKind === 'THEORY' ? theoryDockTree : layoutKind === 'LEARN' ? learnPracticeDockLayout : projectDockLayout;
@@ -602,6 +608,12 @@ export function Workspace() {
    editorSurfaceBounds !== null &&
    editorSurfaceBounds.width > 0 &&
     editorSurfaceBounds.height > 0;
+  const learnStatusBreadcrumbs = learnMode && lessonSession ? [
+    { label: learnPath[0] ?? 'Aulas', onClick: () => void returnToLearnHome() },
+    { label: learnPath[1] ?? 'Aulas', onClick: () => void returnToLearnRoadmap() },
+    { label: learnPath[2] ?? lessonSession.title, onClick: () => void returnToLearnTopicFromBreadcrumb() },
+    { label: activeLessonDocument?.displayName ?? lessonSession.workspace?.files.find(file => file.id === lessonSession.workspace!.entryFileId)?.name ?? lessonSession.title }
+  ] : undefined;
   const canDockDrop = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM') =>
     dockRules !== null && moveDockPane(dockTree, paneId, targetId, side, dockRules) !== null;
   const resolveDockPreview = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM', ratio: number) =>
@@ -679,11 +691,12 @@ export function Workspace() {
         height: editorSurfaceBounds.height
       } : undefined} aria-hidden={!editorSurfaceVisible}>
         <MonacoHost service={service} />
+        {learnMode && lessonSession?.phase === 'PRACTICE' && lessonSession.practice && <LessonTaskCard session={lessonSession} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} />}
       </section>
     </div>
     {projectMode ? <StatusBar activeUri={activeEditorDocument?.uri} displayName={activeEditorDocument?.displayName}
       projectRoot={workspace.project?.root.path} projectName={workspace.project?.name} caret={caret} message={message} />
-      : <div className="shell-status-spacer" />}
+      : learnMode && lessonSession ? <StatusBar breadcrumbs={learnStatusBreadcrumbs} caret={caret} message={message} /> : <div className="shell-status-spacer" />}
     {mode === 'WELCOME' && <section className="welcome-mode"><WelcomeScreen recentProjects={workspace.recentProjects} onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()}
       onOpenRecentProject={path => void openProject(path)} onLessons={openLessons} /></section>}
     <div className="overlay-root">
