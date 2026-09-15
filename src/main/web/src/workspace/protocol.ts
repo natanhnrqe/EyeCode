@@ -38,11 +38,22 @@ export type RunConfiguration = {
   kind: string;
 };
 
+export type RunPhase = 'IDLE' | 'PREPARING' | 'COMPILING' | 'RUNNING';
+
 export type RunState = {
   running: boolean;
+  phase: RunPhase;
+  finished: boolean;
+  exitCode: number | null;
+  stopped: boolean;
   rerunAvailable: boolean;
   configurations: RunConfiguration[];
   selectedConfigurationId: string;
+};
+
+export type RunOutputChunk = {
+  text: string;
+  error: boolean;
 };
 
 export type TerminalState = {

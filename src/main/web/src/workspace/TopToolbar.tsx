@@ -84,7 +84,8 @@ export function TopToolbar({ projectName, projectPath, recentProjects, runState,
         </option>)}
       </select>
       <button type="button" className="toolbar-run" onClick={onRun} disabled={runState.running || !runState.configurations.length}>
-        <EyeCodeIcon name="run" /> Run
+        {runState.running ? <span className="toolbar-run-spinner" aria-hidden="true" /> : <EyeCodeIcon name="run" />}
+        {runState.running ? 'Running...' : 'Run'}
       </button>
       <button type="button" className="toolbar-icon" onClick={onRerun} disabled={!runState.rerunAvailable} aria-label="Rerun"><EyeCodeIcon name="reload" /></button>
       <button type="button" className="toolbar-icon stop" onClick={onStop} disabled={!runState.running} aria-label="Stop"><EyeCodeIcon name="stop" /></button>

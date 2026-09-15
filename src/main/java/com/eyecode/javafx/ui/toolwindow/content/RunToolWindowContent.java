@@ -35,12 +35,12 @@ public final class RunToolWindowContent extends VBox implements RunService.Liste
     }
 
     @Override
-    public void onOutput(String line, boolean error) {
+    public void onOutput(String text, boolean error) {
         onFx(() -> {
-            if (line == null) {
+            if (text == null) {
                 output.clear();
             } else {
-                output.appendText((error ? "[stderr] " : "") + line + System.lineSeparator());
+                output.appendText(text);
             }
         });
     }

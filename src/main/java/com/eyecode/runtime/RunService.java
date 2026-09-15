@@ -6,19 +6,30 @@ import com.eyecode.project.model.ProjectModel;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 public final class RunService {
 
+    @FunctionalInterface
+    interface ExecutionResolver {
+        ResolvedExecution resolve(ProjectModel project, RunConfiguration configuration);
+    }
+
     public interface Listener {
+        default void onPhase(RunPhase phase) { }
         void onStarted(RunRequest request);
-        void onOutput(String line, boolean error);
+        void onOutput(String text, boolean error);
         void onFinished(int exitCode, boolean stopped);
     }
 
     private final ProjectLifecycleService lifecycleService;
     private final ProjectLifecycleService.Listener lifecycleListener;
-    private final ProjectExecutionResolver resolver;
+    private final ExecutionResolver resolver;
     private final RunConfigurationDiscoveryService discoveryService;
     private final RunConfigurationSelectionStore selectionStore;
     private volatile List<RunConfiguration> configurations = List.of();
@@ -28,25 +39,45 @@ public final class RunService {
     private volatile RunRequest lastRequest;
     private volatile boolean rerunAfterStop;
     private volatile boolean disposed;
-    private final List<String> outputHistory = new CopyOnWriteArrayList<>();
+    private final List<RunOutputChunk> outputHistory = new CopyOnWriteArrayList<>();
+    private final ExecutorService preparationExecutor = Executors.newSingleThreadExecutor(
+            task -> daemon("eyecode-run-preparation", task));
+    private final AtomicBoolean completionPublished = new AtomicBoolean(true);
     private volatile boolean hasCompletion;
     private volatile int lastExitCode;
     private volatile boolean lastStopped;
+    private volatile RunPhase phase = RunPhase.IDLE;
+    private volatile Future<?> preparationTask;
+    private volatile boolean preparationCancelled;
+    private volatile long attemptGeneration;
     private volatile BooleanSupplier beforeRunFlush = () -> true;
 
     public RunService(ProjectLifecycleService lifecycleService) {
-        this(lifecycleService, new ProjectExecutionResolver(), new RunConfigurationDiscoveryService(), new RunConfigurationSelectionStore());
+        this(lifecycleService, (ExecutionResolver) null,
+                new RunConfigurationDiscoveryService(), new RunConfigurationSelectionStore());
     }
 
     public RunService(ProjectLifecycleService lifecycleService, ProjectExecutionResolver resolver) {
-        this(lifecycleService, resolver, new RunConfigurationDiscoveryService(), new RunConfigurationSelectionStore());
+        this(lifecycleService, adapt(resolver),
+                new RunConfigurationDiscoveryService(), new RunConfigurationSelectionStore());
     }
 
     public RunService(ProjectLifecycleService lifecycleService, ProjectExecutionResolver resolver,
                       RunConfigurationDiscoveryService discoveryService,
                       RunConfigurationSelectionStore selectionStore) {
+        this(lifecycleService, adapt(resolver), discoveryService, selectionStore);
+    }
+
+    RunService(ProjectLifecycleService lifecycleService, ExecutionResolver resolver) {
+        this(lifecycleService, resolver,
+                new RunConfigurationDiscoveryService(), new RunConfigurationSelectionStore());
+    }
+
+    private RunService(ProjectLifecycleService lifecycleService, ExecutionResolver resolver,
+                       RunConfigurationDiscoveryService discoveryService,
+                       RunConfigurationSelectionStore selectionStore) {
         this.lifecycleService = lifecycleService;
-        this.resolver = resolver == null ? new ProjectExecutionResolver() : resolver;
+        this.resolver = resolver == null ? adapt(new ProjectExecutionResolver()) : resolver;
         this.discoveryService = discoveryService == null ? new RunConfigurationDiscoveryService() : discoveryService;
         this.selectionStore = selectionStore == null ? new RunConfigurationSelectionStore() : selectionStore;
         this.lifecycleListener = this::onProjectChanged;
@@ -82,24 +113,22 @@ public final class RunService {
             publishOutput("Could not save pending editor changes.", true);
             return false;
         }
-        ResolvedExecution execution;
-        try {
-            execution = request.configuration() == null
-                    ? resolver.resolve(request.project())
-                    : resolver.resolve(request.project(), request.configuration());
-        } catch (RuntimeException exception) {
-            publishOutput(exception.getMessage() == null ? exception.toString() : exception.getMessage(), true);
-            publishFinished(-1, false);
-            return false;
-        }
         lastRequest = request;
         clearOutput();
-        RunSession session = new RunSession(execution, request.project().getRootDir(), new SessionListener());
-        activeSession = session;
+        preparationCancelled = false;
+        completionPublished.set(false);
+        long attempt = ++attemptGeneration;
+        publishPhase(RunPhase.PREPARING);
         for (Listener listener : listeners) {
             listener.onStarted(request);
         }
-        session.start();
+        try {
+            preparationTask = preparationExecutor.submit(() -> prepareAndStart(request, attempt));
+        } catch (RejectedExecutionException exception) {
+            publishOutput("Run preparation is unavailable", true);
+            publishFinished(-1, false);
+            return false;
+        }
         return true;
     }
 
@@ -120,10 +149,20 @@ public final class RunService {
     }
 
     public synchronized void stop() {
+        if (!isRunning()) {
+            return;
+        }
+        preparationCancelled = true;
         RunSession session = activeSession;
         if (session != null) {
             session.stop();
+            return;
         }
+        Future<?> preparation = preparationTask;
+        if (preparation != null) {
+            preparation.cancel(true);
+        }
+        publishFinished(-1, true);
     }
 
     public synchronized void dispose() {
@@ -132,6 +171,12 @@ public final class RunService {
         }
         disposed = true;
         rerunAfterStop = false;
+        preparationCancelled = true;
+        attemptGeneration++;
+        Future<?> preparation = preparationTask;
+        if (preparation != null) {
+            preparation.cancel(true);
+        }
         if (lifecycleService != null) {
             lifecycleService.removeListener(lifecycleListener);
         }
@@ -140,15 +185,31 @@ public final class RunService {
             session.dispose();
         }
         activeSession = null;
+        preparationExecutor.shutdownNow();
     }
 
     public boolean isRunning() {
-        RunSession session = activeSession;
-        return session != null && session.isRunning();
+        return phase != RunPhase.IDLE;
+    }
+
+    public RunPhase phase() {
+        return phase;
     }
 
     public boolean hasLastRequest() {
         return lastRequest != null;
+    }
+
+    public boolean hasCompletion() {
+        return hasCompletion;
+    }
+
+    public Integer lastExitCode() {
+        return hasCompletion ? lastExitCode : null;
+    }
+
+    public boolean lastStopped() {
+        return hasCompletion && lastStopped;
     }
 
     public List<RunConfiguration> configurations() {
@@ -190,9 +251,10 @@ public final class RunService {
             listeners.add(listener);
             if (isRunning() && lastRequest != null) {
                 listener.onStarted(lastRequest);
+                listener.onPhase(phase);
             }
-            for (String line : outputHistory) {
-                listener.onOutput(line, false);
+            for (RunOutputChunk chunk : outputHistory) {
+                listener.onOutput(chunk.text(), chunk.error());
             }
             if (hasCompletion) {
                 listener.onFinished(lastExitCode, lastStopped);
@@ -212,22 +274,84 @@ public final class RunService {
         }
     }
 
-    private void publishOutput(String line, boolean error) {
-        if (line != null && !line.isEmpty()) {
-            outputHistory.add((error ? "[stderr] " : "") + line);
+    private void publishOutput(String text, boolean error) {
+        if (text != null) {
+            outputHistory.add(new RunOutputChunk(text, error));
         }
         for (Listener listener : listeners) {
-            listener.onOutput(line, error);
+            listener.onOutput(text, error);
         }
     }
 
     private void publishFinished(int exitCode, boolean stopped) {
+        if (!completionPublished.compareAndSet(false, true)) {
+            return;
+        }
+        publishPhase(RunPhase.IDLE);
         lastExitCode = exitCode;
         lastStopped = stopped;
         hasCompletion = true;
         for (Listener listener : listeners) {
             listener.onFinished(exitCode, stopped);
         }
+        if (rerunAfterStop && !disposed) {
+            rerunAfterStop = false;
+            RunRequest request = lastRequest;
+            if (request != null) {
+                run(request);
+            }
+        }
+    }
+
+    private void publishPhase(RunPhase next) {
+        phase = next;
+        for (Listener listener : listeners) {
+            listener.onPhase(next);
+        }
+    }
+
+    private void prepareAndStart(RunRequest request, long attempt) {
+        ResolvedExecution execution;
+        try {
+            execution = resolver.resolve(request.project(), request.configuration());
+        } catch (RuntimeException exception) {
+            if (attempt != attemptGeneration || disposed) {
+                return;
+            }
+            if (preparationCancelled) {
+                publishFinished(-1, true);
+            } else {
+                publishOutput(exception.getMessage() == null ? exception.toString() : exception.getMessage(), true);
+                publishFinished(-1, false);
+            }
+            return;
+        }
+
+        RunSession session;
+        synchronized (this) {
+            if (attempt != attemptGeneration || disposed) {
+                return;
+            }
+            if (preparationCancelled || completionPublished.get()) {
+                publishFinished(-1, true);
+                return;
+            }
+            session = new RunSession(execution, request.project().getRootDir(), new SessionListener());
+            activeSession = session;
+        }
+        session.start();
+    }
+
+    private static ExecutionResolver adapt(ProjectExecutionResolver resolver) {
+        if (resolver == null) return null;
+        return (project, configuration) -> configuration == null
+                ? resolver.resolve(project) : resolver.resolve(project, configuration);
+    }
+
+    private static Thread daemon(String name, Runnable task) {
+        Thread thread = new Thread(task, name);
+        thread.setDaemon(true);
+        return thread;
     }
 
     private synchronized void onProjectChanged(ProjectModel project) {
@@ -252,18 +376,19 @@ public final class RunService {
     }
     private final class SessionListener implements RunSession.Listener {
         @Override
-        public void onOutput(String line, boolean error) {
-            publishOutput(line, error);
+        public void onPhase(RunPhase next) {
+            publishPhase(next);
+        }
+
+        @Override
+        public void onOutput(String text, boolean error) {
+            publishOutput(text, error);
         }
 
         @Override
         public synchronized void onFinished(int exitCode, boolean stopped) {
             activeSession = null;
             publishFinished(exitCode, stopped);
-            if (rerunAfterStop && !disposed) {
-                rerunAfterStop = false;
-                run(lastRequest);
-            }
         }
     }
 }

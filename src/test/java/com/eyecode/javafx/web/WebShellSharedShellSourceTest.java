@@ -63,6 +63,21 @@ class WebShellSharedShellSourceTest {
     }
 
     @Test
+    void persistentEditorSurfaceIsTheRoundedMonacoClipBoundary() throws IOException {
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+
+        String surfaceRule = cssRule(styles, ".persistent-editor-surface");
+        assertTrue(workspace.contains("className={`persistent-editor-surface"));
+        assertTrue(workspace.contains("<MonacoHost service={service} />"));
+        assertTrue(surfaceRule.contains("border-radius: var(--eyecode-radius-md);"));
+        assertTrue(surfaceRule.contains("overflow: hidden;"));
+        assertEquals(1, occurrences(styles, ".persistent-editor-surface {"));
+        assertFalse(styles.contains(".monaco-editor {\n  border-radius"));
+        assertFalse(styles.contains(".overflow-guard {\n  border-radius"));
+    }
+
+    @Test
     void practiceUsesTheExistingLessonModelWithoutStartingProfessorCommands() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String controller = Files.readString(Path.of("src/main/web/src/lessons/LessonEditorController.ts"));
@@ -142,6 +157,7 @@ class WebShellSharedShellSourceTest {
         String pane = Files.readString(Path.of("src/main/web/src/workspace/WorkspacePane.ts"));
         String dockPane = Files.readString(Path.of("src/main/web/src/workspace/DockPane.tsx"));
         String bottomPanel = Files.readString(Path.of("src/main/web/src/workspace/BottomPanel.tsx"));
+        String controller = Files.readString(Path.of("src/main/java/com/eyecode/javafx/web/WebShellWorkspaceController.java"));
         String lessonPanel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
         String projectExplorer = Files.readString(Path.of("src/main/web/src/workspace/ProjectExplorer.tsx"));
         String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
@@ -159,6 +175,17 @@ class WebShellSharedShellSourceTest {
         assertFalse(workspace.contains("<DockPane paneId=\"editor\""));
         assertTrue(bottomPanel.contains("<DockPane paneId=\"bottom\""));
         assertTrue(bottomPanel.contains("<TerminalPanel state={terminalState} />"));
+        assertTrue(bottomPanel.contains("runState: RunState"));
+        assertTrue(bottomPanel.contains("chunk.text"));
+        assertFalse(bottomPanel.contains("label: 'Output'"));
+        assertFalse(bottomPanel.contains("active === 'output'"));
+        assertFalse(bottomPanel.contains("output.join('\\n')"));
+        assertTrue(controller.contains("\"text\", text"));
+        assertTrue(controller.contains("\"error\", error"));
+        assertTrue(controller.contains("payload.put(\"finished\", runService.hasCompletion())"));
+        assertTrue(controller.contains("payload.put(\"exitCode\", runService.lastExitCode())"));
+        assertTrue(controller.contains("payload.put(\"stopped\", runService.lastStopped())"));
+        assertFalse(controller.contains("\"line\", line"));
         assertTrue(lessonPanel.contains("<DockPane paneId=\"lesson\""));
         assertTrue(lessonPanel.contains("const practiceLesson = session.kind === 'PRACTICE';"));
         assertFalse(lessonPanel.contains("bottom-panel lesson-panel"));
@@ -443,7 +470,37 @@ class WebShellSharedShellSourceTest {
         assertTrue(monaco.contains("}, LEARNING_CARD_CLOSE_DELAY_MS)"));
     }
 
+    @Test
+    void runFeedbackConsumesStructuredPhaseWithoutParsingOutput() throws IOException {
+        String toolbar = Files.readString(Path.of("src/main/web/src/workspace/TopToolbar.tsx"));
+        String statusBar = Files.readString(Path.of("src/main/web/src/workspace/StatusBar.tsx"));
+        String protocol = Files.readString(Path.of("src/main/web/src/workspace/protocol.ts"));
+        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String controller = Files.readString(Path.of("src/main/java/com/eyecode/javafx/web/WebShellWorkspaceController.java"));
+
+        assertTrue(protocol.contains("export type RunPhase = 'IDLE' | 'PREPARING' | 'COMPILING' | 'RUNNING';"));
+        assertTrue(protocol.contains("phase: RunPhase;"));
+        assertTrue(toolbar.contains("runState.running ? <span className=\"toolbar-run-spinner\""));
+        assertTrue(statusBar.contains("runState.phase === 'COMPILING'"));
+        assertTrue(statusBar.contains("status-progress-track"));
+        assertTrue(styles.contains("@media (prefers-reduced-motion: reduce)"));
+        assertTrue(styles.contains(".status-progress-track span"));
+        assertTrue(controller.contains("payload.put(\"phase\", runService.phase().name())"));
+        assertTrue(controller.contains("onPhase(com.eyecode.runtime.RunPhase phase)"));
+        assertFalse(statusBar.contains("output"));
+    }
+
     private static int occurrences(String text, String target) {
         return text.split(java.util.regex.Pattern.quote(target), -1).length - 1;
+    }
+
+    private static String cssRule(String stylesheet, String selector) {
+        String marker = selector + " {";
+        int start = stylesheet.indexOf(marker);
+        assertTrue(start >= 0, "Missing CSS rule: " + selector);
+        int bodyStart = stylesheet.indexOf('{', start);
+        int end = stylesheet.indexOf('}', bodyStart);
+        assertTrue(end >= 0, "Unclosed CSS rule: " + selector);
+        return stylesheet.substring(start, end + 1);
     }
 }

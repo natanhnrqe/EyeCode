@@ -108,13 +108,14 @@ public final class WebShellWorkspaceController {
             @Override public void onFinished(int exitCode, boolean stopped) { sendTerminalState(); }
         });
         this.runService.addListener(new RunService.Listener() {
+            @Override public void onPhase(com.eyecode.runtime.RunPhase phase) { sendRunState(); }
             @Override public void onStarted(com.eyecode.runtime.RunRequest request) { sendRunState(); }
-            @Override public void onOutput(String line, boolean error) {
-                if (line == null) {
+            @Override public void onOutput(String text, boolean error) {
+                if (text == null) {
                     surface.send(WebShellEnvelope.event("run", "output", Map.of("clear", true)));
-                } else if (!line.isBlank()) {
+                } else {
                     surface.send(WebShellEnvelope.event("run", "output", Map.of(
-                            "line", line, "error", error)));
+                            "text", text, "error", error)));
                 }
             }
             @Override public void onFinished(int exitCode, boolean stopped) { sendRunState(); }
@@ -959,6 +960,10 @@ public final class WebShellWorkspaceController {
     private Map<String, Object> runPayload() {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("running", runService.isRunning());
+        payload.put("phase", runService.phase().name());
+        payload.put("finished", runService.hasCompletion());
+        payload.put("exitCode", runService.lastExitCode());
+        payload.put("stopped", runService.lastStopped());
         payload.put("rerunAvailable", runService.hasLastRequest());
         payload.put("configurations", runService.configurations().stream()
                 .map(this::runConfigurationPayload).toList());

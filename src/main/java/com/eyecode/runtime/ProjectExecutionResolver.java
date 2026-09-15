@@ -7,12 +7,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 public final class ProjectExecutionResolver {
 
     private final BuildToolExecutableResolver buildToolResolver;
+    private final MavenClasspathResolver mavenClasspathResolver;
 
     public ProjectExecutionResolver() {
         this(new BuildToolExecutableResolver());
@@ -20,6 +20,7 @@ public final class ProjectExecutionResolver {
 
     ProjectExecutionResolver(BuildToolExecutableResolver buildToolResolver) {
         this.buildToolResolver = buildToolResolver == null ? new BuildToolExecutableResolver() : buildToolResolver;
+        this.mavenClasspathResolver = new MavenClasspathResolver(this.buildToolResolver);
     }
 
     public ResolvedExecution resolve(ProjectModel project) {
@@ -67,9 +68,7 @@ public final class ProjectExecutionResolver {
                             "-Dspring-boot.run.main-class=" + configuration.mainClass())), configuration.mainClass());
         }
         if (pom.toFile().isFile()) {
-            return new ResolvedExecution(ResolvedExecution.Kind.MAVEN,
-                    List.of(buildToolResolver.mavenCommand(root, "compile", "exec:java",
-                            "-Dexec.mainClass=" + configuration.mainClass())), configuration.mainClass());
+            return mavenJavaApplication(root, configuration.mainClass());
         }
         if (gradle != null) {
             return new ResolvedExecution(ResolvedExecution.Kind.GRADLE,
@@ -86,28 +85,49 @@ public final class ProjectExecutionResolver {
             throw new IllegalArgumentException("No Java source root found");
         }
         Path output = root.resolve(".eyecode/out");
-        List<String> files = javaFiles(sourceRoot);
-        if (files.isEmpty()) {
-            throw new IllegalArgumentException("No Java source files found");
-        }
+        Path entrySource = entrySource(sourceRoot, mainClass);
         String classpath = classpath(output, root);
-        List<String> compile = new ArrayList<>(List.of("javac", "-cp", classpath, "-d", output.toString()));
-        compile.addAll(files);
+        List<String> compile = new ArrayList<>(List.of(
+                "javac",
+                "-cp", classpath,
+                "-sourcepath", sourceRoot.toString(),
+                "-Xprefer:source",
+                "-d", output.toString(),
+                entrySource.toString()));
         List<String> launch = List.of("java", "-cp", classpath, mainClass);
         return new ResolvedExecution(ResolvedExecution.Kind.STANDARD_JAVA,
                 List.of(compile, launch), mainClass);
     }
 
-    private List<String> javaFiles(Path sourceRoot) {
-        try (var stream = Files.walk(sourceRoot)) {
-            return stream.filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".java"))
-                    .sorted(Comparator.comparing(Path::toString))
-                    .map(Path::toString)
-                    .toList();
-        } catch (IOException exception) {
-            throw new IllegalArgumentException("Unable to scan Java source root", exception);
+    private ResolvedExecution mavenJavaApplication(Path root, String mainClass) {
+        Path sourceRoot = root.resolve("src/main/java");
+        if (!Files.isDirectory(sourceRoot)) {
+            throw new IllegalArgumentException("No Maven Java source root found");
         }
+        Path output = root.resolve(".eyecode/out");
+        Path resources = root.resolve("src/main/resources");
+        String dependencies = mavenClasspathResolver.resolve(root);
+        String classpath = classpath(output, resources, dependencies, root);
+        Path entrySource = entrySource(sourceRoot, mainClass);
+        List<String> compile = new ArrayList<>(List.of(
+                "javac",
+                "-cp", classpath,
+                "-sourcepath", sourceRoot.toString(),
+                "-Xprefer:source",
+                "-d", output.toString(),
+                entrySource.toString()));
+        List<String> launch = List.of("java", "-cp", classpath, mainClass);
+        return new ResolvedExecution(ResolvedExecution.Kind.MAVEN_JAVA_APPLICATION,
+                List.of(compile, launch), mainClass);
+    }
+
+    private Path entrySource(Path sourceRoot, String mainClass) {
+        String relative = mainClass.replace('.', sourceRoot.getFileSystem().getSeparator().charAt(0)) + ".java";
+        Path entry = sourceRoot.resolve(relative).normalize();
+        if (!entry.startsWith(sourceRoot) || !Files.isRegularFile(entry)) {
+            throw new IllegalArgumentException("Main source not found for " + mainClass);
+        }
+        return entry;
     }
 
     private String classpath(Path output, Path root) {
@@ -124,6 +144,31 @@ public final class ProjectExecutionResolver {
             }
         }
         return classpath.toString();
+    }
+
+    private String classpath(Path output, Path resources, String dependencies, Path root) {
+        StringBuilder classpath = new StringBuilder(output.toString());
+        if (Files.isDirectory(resources)) {
+            classpath.append(System.getProperty("path.separator")).append(resources);
+        }
+        if (dependencies != null && !dependencies.isBlank()) {
+            classpath.append(System.getProperty("path.separator")).append(dependencies);
+        }
+        appendLibraries(classpath, root);
+        return classpath.toString();
+    }
+
+    private void appendLibraries(StringBuilder classpath, Path root) {
+        Path libs = root.resolve("libs");
+        if (!Files.isDirectory(libs)) return;
+        try (var stream = Files.list(libs)) {
+            stream.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".jar"))
+                    .sorted()
+                    .forEach(path -> classpath.append(System.getProperty("path.separator")).append(path));
+        } catch (IOException exception) {
+            throw new IllegalArgumentException("Unable to scan project libraries", exception);
+        }
     }
 
     private boolean isSpringMaven(Path pom) {

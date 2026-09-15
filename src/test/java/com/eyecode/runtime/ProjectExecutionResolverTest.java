@@ -25,7 +25,11 @@ class ProjectExecutionResolverTest {
         assertEquals(ResolvedExecution.Kind.STANDARD_JAVA, execution.kind());
         assertEquals("Main", execution.mainClass());
         assertEquals(2, execution.commands().size());
-        assertTrue(execution.commands().getFirst().contains("-cp"));
+        List<String> compile = execution.commands().getFirst();
+        assertTrue(compile.contains("-cp"));
+        assertTrue(compile.contains("-sourcepath"));
+        assertTrue(compile.contains(source.toString() + "/Main.java")
+                || compile.contains(source.resolve("Main.java").toString()));
     }
 
     @Test
@@ -79,5 +83,41 @@ class ProjectExecutionResolverTest {
         ResolvedExecution springGradle = resolver.resolve(ProjectModel.fromDirectory(gradle.toFile()));
         assertEquals(List.of("cmd", "/c", gradle.resolve("gradlew.bat").toString(), "bootRun"),
                 springGradle.commands().getFirst());
+    }
+
+    @Test
+    void mavenJavaApplicationUsesMavenOnlyForClasspathAndRunsTheJvmDirectly() throws Exception {
+        Path root = Files.createTempDirectory("eyecode-maven-java-run");
+        Files.createDirectories(root.resolve("src/main/java"));
+        Files.createDirectories(root.resolve("src/main/resources"));
+        Files.writeString(root.resolve("pom.xml"), "<project/>");
+        Files.writeString(root.resolve("src/main/java/Main.java"),
+                "public class Main { public static void main(String[] args) {} }");
+        writeMavenClasspathWrapper(root, "");
+
+        ResolvedExecution execution = new ProjectExecutionResolver().resolve(ProjectModel.fromDirectory(root.toFile()));
+
+        assertEquals(ResolvedExecution.Kind.MAVEN_JAVA_APPLICATION, execution.kind());
+        assertEquals(List.of(RunPhase.COMPILING, RunPhase.RUNNING), execution.commandPhases());
+        assertEquals(2, execution.commands().size());
+        List<String> compile = execution.commands().getFirst();
+        List<String> launch = execution.commands().get(1);
+        assertEquals("javac", compile.getFirst());
+        assertEquals("java", launch.getFirst());
+        assertTrue(compile.contains("-sourcepath"));
+        assertTrue(compile.get(compile.indexOf("-cp") + 1).contains(root.resolve(".eyecode/out").toString()));
+        assertTrue(compile.get(compile.indexOf("-cp") + 1).contains(root.resolve("src/main/resources").toString()));
+        assertTrue(execution.commands().stream().flatMap(List::stream).noneMatch(value -> value.contains("exec:java")));
+        assertTrue(execution.commands().stream().flatMap(List::stream).noneMatch(value -> value.equals("mvn")));
+    }
+
+    private void writeMavenClasspathWrapper(Path root, String classpath) throws Exception {
+        boolean windows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        Path wrapper = root.resolve(windows ? "mvnw.cmd" : "mvnw");
+        String script = windows
+                ? "@echo off\r\nset \"OUTPUT=%~2\"\r\nset \"OUTPUT=%OUTPUT:~18%\"\r\n>\"%OUTPUT%\" echo " + classpath + "\r\nexit /b 0\r\n"
+                : "#!/bin/sh\nfor arg in \"$@\"; do case \"$arg\" in -Dmdep.outputFile=*) printf '%s\\n' '" + classpath + "' > \"${arg#-Dmdep.outputFile=}\" ;; esac; done\n";
+        Files.writeString(wrapper, script);
+        if (!windows) wrapper.toFile().setExecutable(true);
     }
 }

@@ -28,17 +28,17 @@ import { StatusBar } from './StatusBar';
 import { TopToolbar } from './TopToolbar';
 import { WelcomeScreen } from './WelcomeScreen';
 import { learnPracticeDockRules, learnPracticeDockTree, moveDockPane, projectDockRules, projectDockTree, theoryDockTree, updateDockSplitRatio, type DockNode, type DockRules, type WorkspacePaneId } from './WorkspacePane';
-import type { ProjectNode, RunState, TerminalState, WorkspaceSnapshot } from './protocol';
+import type { ProjectNode, RunOutputChunk, RunState, TerminalState, WorkspaceSnapshot } from './protocol';
 
 type DocumentTab = Omit<DocumentSnapshot, 'content'>;
-type BottomPanelId = 'run' | 'terminal' | 'output' | 'problems' | 'git';
+type BottomPanelId = 'run' | 'terminal' | 'problems' | 'git';
 type SidePanelId = 'project' | 'search' | 'documentation' | 'settings';
 type AppMode = 'WELCOME' | 'PROJECT' | 'LEARN';
 type ExplorerOperation = 'createFile' | 'createDirectory' | 'createJavaClass' | 'createPackage' | 'rename' | 'delete' | 'duplicate';
 type ExplorerOperationResult = { path?: string; parent?: string; openFile?: boolean; ancestors?: string[] };
 type EditorSurfaceBounds = { key: string; left: number; top: number; width: number; height: number };
 
-const emptyRunState: RunState = { running: false, rerunAvailable: false, configurations: [], selectedConfigurationId: '' };
+const emptyRunState: RunState = { running: false, phase: 'IDLE', finished: false, exitCode: null, stopped: false, rerunAvailable: false, configurations: [], selectedConfigurationId: '' };
 const emptyTerminalState: TerminalState = { requested: false, running: false, workingDirectory: '' };
 
 export function Workspace() {
@@ -62,7 +62,7 @@ export function Workspace() {
   const [treeChangedPath, setTreeChangedPath] = useState<string | undefined>(undefined);
   const [treeRefreshRevision, setTreeRefreshRevision] = useState(0);
   const [runState, setRunState] = useState<RunState>(emptyRunState);
-  const [runOutput, setRunOutput] = useState<string[]>([]);
+  const [runOutput, setRunOutput] = useState<RunOutputChunk[]>([]);
   const [terminalState, setTerminalState] = useState<TerminalState>(emptyTerminalState);
   const [bottomPanel, setBottomPanel] = useState<BottomPanelId>('terminal');
   const [sidePanel, setSidePanel] = useState<SidePanelId>('project');
@@ -193,15 +193,15 @@ export function Workspace() {
       }
       if (event.channel === 'run' && event.name === 'state') setRunState(event.payload as RunState);
       if (event.channel === 'run' && event.name === 'output') {
-        const payload = event.payload as { line?: string; error?: boolean; clear?: boolean };
+        const payload = event.payload as { text?: string; error?: boolean; clear?: boolean };
         if (payload.clear) {
           setRunOutput([]);
           setBottomPanel('run');
           return;
         }
-        const line = payload.line;
-        if (line) {
-          setRunOutput(lines => [...lines, payload.error ? `[stderr] ${line}` : line]);
+        const text = payload.text;
+        if (typeof text === 'string') {
+          setRunOutput(chunks => [...chunks, { text, error: payload.error === true }]);
           setBottomPanel('run');
         }
       }
@@ -361,7 +361,7 @@ export function Workspace() {
   }
 
   async function run(name: 'run' | 'rerun' | 'stop') {
-    try { if (name === 'run') setRunOutput([]); await bridge.request('run', name, {}); }
+    try { await bridge.request('run', name, {}); }
     catch (error) { setMessage(formatError(error)); }
   }
 
@@ -588,7 +588,7 @@ export function Workspace() {
         </section>
       </div>
     </section>;
-    if (paneId === 'bottom') return <BottomPanel active={bottomPanel} output={runOutput} terminalState={terminalState}
+    if (paneId === 'bottom') return <BottomPanel active={bottomPanel} output={runOutput} runState={runState} terminalState={terminalState}
       diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />;
     return lessonSession ? <LessonPanel session={lessonSession} breadcrumb={{ category: learnPath[0] ?? 'Aulas', topic: learnPath[1] ?? 'Aulas', onCategory: () => void returnToLearnRoadmap(), onTopic: () => void returnToLearnTopicFromBreadcrumb() }} onPrevious={() => void changeLessonStep('previous')}
@@ -695,8 +695,8 @@ export function Workspace() {
       </section>
     </div>
     {projectMode ? <StatusBar activeUri={activeEditorDocument?.uri} displayName={activeEditorDocument?.displayName}
-      projectRoot={workspace.project?.root.path} projectName={workspace.project?.name} caret={caret} message={message} />
-      : learnMode && lessonSession ? <StatusBar breadcrumbs={learnStatusBreadcrumbs} caret={caret} message={message} /> : <div className="shell-status-spacer" />}
+      projectRoot={workspace.project?.root.path} projectName={workspace.project?.name} caret={caret} message={message} runState={runState} />
+      : learnMode && lessonSession ? <StatusBar breadcrumbs={learnStatusBreadcrumbs} caret={caret} message={message} runState={runState} /> : <div className="shell-status-spacer" />}
     {mode === 'WELCOME' && <section className="welcome-mode"><WelcomeScreen recentProjects={workspace.recentProjects} onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()}
       onOpenRecentProject={path => void openProject(path)} onLessons={openLessons} /></section>}
     <div className="overlay-root">

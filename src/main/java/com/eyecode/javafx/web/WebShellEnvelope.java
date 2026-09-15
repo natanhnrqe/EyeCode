@@ -1,6 +1,8 @@
 package com.eyecode.javafx.web;
 
 import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.Collections;
 
 public record WebShellEnvelope(
         String protocol,
@@ -24,7 +26,7 @@ public record WebShellEnvelope(
         channel = channel == null ? "" : channel;
         name = name == null ? "" : name;
         requestId = requestId == null ? "" : requestId;
-        payload = payload == null ? Map.of() : Map.copyOf(payload);
+        payload = payload == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(payload));
     }
 
     public static WebShellEnvelope request(String channel, String name, String requestId,

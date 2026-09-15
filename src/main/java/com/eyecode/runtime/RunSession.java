@@ -1,9 +1,9 @@
 package com.eyecode.runtime;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
@@ -18,8 +18,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class RunSession {
 
+    private static final int OUTPUT_BUFFER_SIZE = 4096;
+
     public interface Listener {
-        void onOutput(String line, boolean error);
+        default void onPhase(RunPhase phase) { }
+        void onOutput(String text, boolean error);
         void onFinished(int exitCode, boolean stopped);
     }
 
@@ -70,14 +73,15 @@ public final class RunSession {
     private void execute() {
         int exitCode = -1;
         try {
-            for (List<String> command : execution.commands()) {
+            for (int index = 0; index < execution.commands().size(); index++) {
                 if (stopped.get()) {
                     break;
                 }
-                ProcessBuilder builder = new ProcessBuilder(command);
+                ProcessBuilder builder = new ProcessBuilder(execution.commands().get(index));
                 builder.directory(workingDirectory.toFile());
                 Process started = builder.start();
                 process = started;
+                listener.onPhase(execution.commandPhases().get(index));
                 Future<?> outputTask = executor.submit(() -> stream(started.getInputStream(), false));
                 Future<?> errorTask = executor.submit(() -> stream(started.getErrorStream(), true));
                 exitCode = started.waitFor();
@@ -106,10 +110,11 @@ public final class RunSession {
     }
 
     private void stream(InputStream stream, boolean error) {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                listener.onOutput(line, error);
+        try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+            char[] buffer = new char[OUTPUT_BUFFER_SIZE];
+            int count;
+            while ((count = reader.read(buffer)) != -1) {
+                listener.onOutput(new String(buffer, 0, count), error);
             }
         } catch (IOException ignored) {
         }
