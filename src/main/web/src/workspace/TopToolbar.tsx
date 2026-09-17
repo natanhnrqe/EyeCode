@@ -8,6 +8,7 @@ type Props = {
   projectPath?: string;
   recentProjects: RecentProject[];
   runState: RunState;
+  runAvailable: boolean;
   onNewProject(): void;
   onOpenProject(): void;
   onNewFile(): void;
@@ -22,7 +23,7 @@ type Props = {
   onWindowAction(action: 'windowMinimize' | 'windowToggleMaximize' | 'windowClose'): void;
 };
 
-export function TopToolbar({ projectName, projectPath, recentProjects, runState, onNewProject, onOpenProject, onNewFile, onOpenRecentProject, onWelcome, onRun, onRerun, onStop, onSelectConfiguration, onOpenSearch, onOpenSettings, onWindowAction }: Props) {
+export function TopToolbar({ projectName, projectPath, recentProjects, runState, runAvailable, onNewProject, onOpenProject, onNewFile, onOpenRecentProject, onWelcome, onRun, onRerun, onStop, onSelectConfiguration, onOpenSearch, onOpenSettings, onWindowAction }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const dragPointer = useRef<number | null>(null);
@@ -83,11 +84,11 @@ export function TopToolbar({ projectName, projectPath, recentProjects, runState,
           {configuration.name}
         </option>)}
       </select>
-      <button type="button" className="toolbar-run" onClick={onRun} disabled={runState.running || !runState.configurations.length}>
+      <button type="button" className="toolbar-run" onClick={onRun} disabled={runState.running || !runAvailable}>
         {runState.running ? <span className="toolbar-run-spinner" aria-hidden="true" /> : <EyeCodeIcon name="run" />}
         {runState.running ? 'Running...' : 'Run'}
       </button>
-      <button type="button" className="toolbar-icon" onClick={onRerun} disabled={!runState.rerunAvailable} aria-label="Rerun"><EyeCodeIcon name="reload" /></button>
+      <button type="button" className="toolbar-icon" onClick={onRerun} disabled={!runAvailable || !runState.rerunAvailable} aria-label="Rerun"><EyeCodeIcon name="reload" /></button>
       <button type="button" className="toolbar-icon stop" onClick={onStop} disabled={!runState.running} aria-label="Stop"><EyeCodeIcon name="stop" /></button>
     </div>
     <div className="toolbar-actions">

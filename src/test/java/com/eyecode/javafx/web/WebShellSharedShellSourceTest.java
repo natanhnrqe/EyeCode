@@ -90,7 +90,9 @@ class WebShellSharedShellSourceTest {
         assertTrue(workspace.contains("else if (!lessonEditor.lessonUri() && session.workspace)"));
         assertTrue(workspace.contains("lessonEditor.openWorkspace(session).forEach(updateDocument);"));
         assertTrue(controller.contains("private readonly documentsByUri = new Map<string, LessonDocument>();"));
-        assertTrue(controller.contains("this.service.updateLessonFile(\n      this.activeUri,\n      active.file.starterCode"));
+        assertTrue(controller.contains("if (!this.practiceStarted)"));
+        assertTrue(controller.contains("this.service.updateLessonFile("));
+        assertTrue(controller.contains("this.practiceStarted = true;"));
         assertTrue(controller.contains("this.service.setEphemeralReadOnly(document.uri, true);"));
         assertTrue(monaco.contains("focus(): void { this.editor?.focus(); }"));
         assertTrue(workspace.contains("const lessonDocuments = documents.filter(document => document.kind === 'lesson');"));
@@ -488,6 +490,35 @@ class WebShellSharedShellSourceTest {
         assertTrue(controller.contains("payload.put(\"phase\", runService.phase().name())"));
         assertTrue(controller.contains("onPhase(com.eyecode.runtime.RunPhase phase)"));
         assertFalse(statusBar.contains("output"));
+    }
+
+    @Test
+    void lessonPracticeRunUsesTheSharedRunTransportAndCurrentMonacoSources() throws IOException {
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+        String lessonEditor = Files.readString(Path.of("src/main/web/src/lessons/LessonEditorController.ts"));
+        String toolbar = Files.readString(Path.of("src/main/web/src/workspace/TopToolbar.tsx"));
+        String controller = Files.readString(Path.of("src/main/java/com/eyecode/javafx/web/WebShellWorkspaceController.java"));
+
+        assertTrue(workspace.contains("context: 'lesson'"));
+        assertTrue(workspace.contains("lessonSession?.phase === 'PRACTICE'"));
+        assertTrue(workspace.contains("lessonEditor.executionFiles()"));
+        assertTrue(lessonEditor.contains("executionFiles(): { name: string; source: string }[]"));
+        assertTrue(toolbar.contains("runAvailable"));
+        assertTrue(controller.contains("runService.runLesson(lessonRunRequest(message))"));
+    }
+
+    @Test
+    void practiceFeedbackIsResetAtLessonAndStepBoundaries() throws IOException {
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+        String taskCard = Files.readString(Path.of("src/main/web/src/lessons/LessonTaskCard.tsx"));
+
+        assertTrue(occurrences(workspace, "setPracticeVerification(null);") >= 4);
+        assertTrue(workspace.substring(workspace.indexOf("async function startLesson"), workspace.indexOf("async function changeLessonStep"))
+                .contains("setPracticeVerification(null);"));
+        assertTrue(workspace.substring(workspace.indexOf("async function changeLessonStep"), workspace.indexOf("async function verifyPractice"))
+                .contains("setPracticeVerification(null);"));
+        assertFalse(taskCard.contains("useState<PracticeVerificationResult"));
+        assertTrue(taskCard.contains("verification && <section className=\"lesson-task-feedback\""));
     }
 
     private static int occurrences(String text, String target) {

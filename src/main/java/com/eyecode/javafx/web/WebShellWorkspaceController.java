@@ -15,6 +15,7 @@ import com.eyecode.project.ProjectFileOperationService;
 import com.eyecode.project.MavenProjectCreationService;
 import com.eyecode.project.model.ProjectModel;
 import com.eyecode.runtime.RunConfiguration;
+import com.eyecode.runtime.LessonRunRequest;
 import com.eyecode.runtime.RunService;
 import com.eyecode.terminal.TerminalService;
 import com.eyecode.workbench.editor.EditorManager;
@@ -434,13 +435,13 @@ public final class WebShellWorkspaceController {
     }
 
     private WebShellEnvelope run(WebShellEnvelope message) {
-        boolean started = runService.runCurrent();
+        boolean started = lessonRun(message) ? runService.runLesson(lessonRunRequest(message)) : runService.runCurrent();
         sendRunState();
         return message.response(Map.of("started", started));
     }
 
     private WebShellEnvelope rerun(WebShellEnvelope message) {
-        boolean started = runService.rerun();
+        boolean started = lessonRun(message) ? runService.runLesson(lessonRunRequest(message)) : runService.rerun();
         sendRunState();
         return message.response(Map.of("started", started));
     }
@@ -449,6 +450,28 @@ public final class WebShellWorkspaceController {
         runService.stop();
         sendRunState();
         return message.response(Map.of("stopped", true));
+    }
+
+    private static boolean lessonRun(WebShellEnvelope message) {
+        return "lesson".equals(message.payload().get("context"));
+    }
+
+    private static LessonRunRequest lessonRunRequest(WebShellEnvelope message) {
+        Object workspace = message.payload().get("lessonWorkspace");
+        if (!(workspace instanceof Map<?, ?> values) || !(values.get("files") instanceof List<?> files)) {
+            throw new IllegalArgumentException("Lesson workspace is required");
+        }
+        List<LessonRunRequest.SourceFile> sources = files.stream().map(value -> {
+            if (!(value instanceof Map<?, ?> file) || !(file.get("name") instanceof String name)
+                    || !(file.get("source") instanceof String source)) {
+                throw new IllegalArgumentException("Invalid lesson source file");
+            }
+            return new LessonRunRequest.SourceFile(name, source);
+        }).toList();
+        if (!(values.get("mainClass") instanceof String mainClass)) {
+            throw new IllegalArgumentException("Lesson main class is required");
+        }
+        return new LessonRunRequest(sources, mainClass);
     }
 
     private WebShellEnvelope selectRunConfiguration(WebShellEnvelope message) {

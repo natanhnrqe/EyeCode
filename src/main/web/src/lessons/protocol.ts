@@ -28,9 +28,9 @@ export type LearningCategory = { id: string; title: string; description: string;
 export type LessonsCatalog = { categories: LearningCategory[] };
 export type LessonEditorRange = { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number };
 export type LessonFile = { id: string; name: string; language: string; starterCode: string; readOnly: boolean };
-export type LessonWorkspace = { files: LessonFile[]; entryFileId: string };
+export type LessonWorkspace = { files: LessonFile[]; entryFileId: string; mainClass: string };
 export type LessonPractice = { id: string; instruction: LessonInlineContent[]; files: LessonFile[]; entryFileId: string };
-export type PracticeVerificationStatus = 'SUCCESS' | 'SYNTAX_ERROR' | 'INVALID_CONTEXT' | 'MISSING_DECLARATION' | 'WRONG_TYPE' | 'WRONG_NAME' | 'WRONG_INITIALIZER';
+export type PracticeVerificationStatus = 'SUCCESS' | 'SYNTAX_ERROR' | 'INVALID_CONTEXT' | 'MISSING_DECLARATION' | 'WRONG_TYPE' | 'WRONG_NAME' | 'WRONG_INITIALIZER' | 'MISSING_OUTPUT' | 'WRONG_OUTPUT' | 'MISSING_SECOND_OUTPUT';
 export type PracticeVerificationResult = { status: PracticeVerificationStatus; message: string };
 export type LessonEditorCommand = {
   type: 'SET_CODE' | 'ANIMATE_EDIT' | 'HIGHLIGHT_RANGE' | 'REVEAL_RANGE' | 'CLEAR_HIGHLIGHTS';

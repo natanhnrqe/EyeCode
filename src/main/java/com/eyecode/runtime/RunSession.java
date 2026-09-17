@@ -102,6 +102,7 @@ public final class RunSession {
             listener.onOutput(exception.getMessage() == null ? exception.toString() : exception.getMessage(), true);
             exitCode = -1;
         } finally {
+            execution.cleanup().run();
             if (finished.compareAndSet(false, true)) {
                 listener.onFinished(exitCode, stopped.get());
             }

@@ -37,6 +37,7 @@ public final class RunService {
     private final List<Listener> listeners = new CopyOnWriteArrayList<>();
     private volatile RunSession activeSession;
     private volatile RunRequest lastRequest;
+    private volatile LessonRunRequest lastLessonRequest;
     private volatile boolean rerunAfterStop;
     private volatile boolean disposed;
     private final List<RunOutputChunk> outputHistory = new CopyOnWriteArrayList<>();
@@ -114,6 +115,7 @@ public final class RunService {
             return false;
         }
         lastRequest = request;
+        lastLessonRequest = null;
         clearOutput();
         preparationCancelled = false;
         completionPublished.set(false);
@@ -132,11 +134,31 @@ public final class RunService {
         return true;
     }
 
+    public synchronized boolean runLesson(LessonRunRequest request) {
+        if (disposed || request == null || isRunning()) return false;
+        lastLessonRequest = request;
+        lastRequest = null;
+        clearOutput();
+        preparationCancelled = false;
+        completionPublished.set(false);
+        long attempt = ++attemptGeneration;
+        publishPhase(RunPhase.PREPARING);
+        try {
+            preparationTask = preparationExecutor.submit(() -> prepareAndStartLesson(request, attempt));
+        } catch (RejectedExecutionException exception) {
+            publishOutput("Run preparation is unavailable", true);
+            publishFinished(-1, false);
+            return false;
+        }
+        return true;
+    }
+
     public void setBeforeRunFlush(BooleanSupplier beforeRunFlush) {
         this.beforeRunFlush = beforeRunFlush == null ? () -> true : beforeRunFlush;
     }
 
     public synchronized boolean rerun() {
+        if (lastLessonRequest != null) return runLesson(lastLessonRequest);
         if (lastRequest == null) {
             return false;
         }
@@ -197,7 +219,7 @@ public final class RunService {
     }
 
     public boolean hasLastRequest() {
-        return lastRequest != null;
+        return lastRequest != null || lastLessonRequest != null;
     }
 
     public boolean hasCompletion() {
@@ -340,6 +362,26 @@ public final class RunService {
             activeSession = session;
         }
         session.start();
+    }
+
+    private void prepareAndStartLesson(LessonRunRequest request, long attempt) {
+        ResolvedExecution execution;
+        try {
+            execution = new LessonExecutionResolver().resolve(request);
+        } catch (RuntimeException exception) {
+            if (!preparationCancelled) publishOutput(exception.getMessage() == null ? exception.toString() : exception.getMessage(), true);
+            publishFinished(-1, preparationCancelled);
+            return;
+        }
+        synchronized (this) {
+            if (attempt != attemptGeneration || disposed || preparationCancelled || completionPublished.get()) {
+                execution.cleanup().run();
+                if (!completionPublished.get()) publishFinished(-1, true);
+                return;
+            }
+            activeSession = new RunSession(execution, java.nio.file.Path.of(System.getProperty("java.io.tmpdir")), new SessionListener());
+        }
+        activeSession.start();
     }
 
     private static ExecutionResolver adapt(ProjectExecutionResolver resolver) {

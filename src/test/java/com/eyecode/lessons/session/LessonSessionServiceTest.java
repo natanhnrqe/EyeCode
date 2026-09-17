@@ -95,8 +95,36 @@ class LessonSessionServiceTest {
         assertFalse(theory.canNext());
     }
 
+    @Test void advancesTheFirstProgramFromPresentationThroughBothPractices() {
+        LessonSessionService service = new LessonSessionService(new LessonContentService());
+        LessonSessionSnapshot session = service.start("java.fundamentals.first-program");
+        assertEquals(LessonSessionPhase.PRESENTATION, session.phase());
+        assertEquals("program-overview", session.presentation().id());
+        for (int index = 0; index < 4; index++) session = service.next(session.sessionId());
+        session = service.next(session.sessionId());
+        assertEquals(LessonSessionPhase.PRACTICE, session.phase());
+        assertEquals("first-program-message", session.practice().id());
+        assertFalse(session.canNext());
+        session = service.verifyPractice(session.sessionId(), "first-program-message", firstProgramSource("Olá, EyeCode!"), new PracticeValidator()).session();
+        assertTrue(session.practiceCompleted());
+        session = service.next(session.sessionId());
+        assertEquals("second-instruction", session.presentation().id());
+        session = service.next(session.sessionId());
+        assertEquals(LessonSessionPhase.PRACTICE, session.phase());
+        assertEquals("first-program-second-line", session.practice().id());
+        session = service.verifyPractice(session.sessionId(), "first-program-second-line", firstProgramSource("Olá, EyeCode!", "Meu primeiro programa Java!"), new PracticeValidator()).session();
+        assertTrue(session.practiceCompleted());
+    }
+
     private static String source(String declaration) {
         return "public class Main {\n    public static void main(String[] args) {\n        "
                 + declaration + "\n    }\n}\n";
+    }
+
+    private static String firstProgramSource(String... lines) {
+        String body = java.util.Arrays.stream(lines)
+                .map(line -> "        System.out.println(\"" + line + "\");")
+                .collect(java.util.stream.Collectors.joining("\n"));
+        return "public class Main {\n    public static void main(String[] args) {\n" + body + "\n    }\n}\n";
     }
 }

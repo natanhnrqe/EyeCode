@@ -113,7 +113,7 @@
                 "endColumn": 45
               },
               "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int age = 20;\n    }\n}\n",
-              "cadenceMillis": 18
+              "cadenceMillis": 32
             },
             {
               "type": "HIGHLIGHT_RANGE",
@@ -171,7 +171,7 @@
                 "endColumn": 1
               },
               "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n",
-              "cadenceMillis": 8
+              "cadenceMillis": 32
             },
             {
               "type": "ANIMATE_EDIT",
@@ -184,7 +184,7 @@
                 "endColumn": 45
               },
               "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n        long population = 8_000_000_000L;\n    }\n}\n",
-              "cadenceMillis": 18
+              "cadenceMillis": 32
             },
             {
               "type": "HIGHLIGHT_RANGE",
@@ -288,7 +288,7 @@
                 "endColumn": 45
               },
               "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n        float temperature = 36.5F;\n    }\n}\n",
-              "cadenceMillis": 18
+              "cadenceMillis": 32
             },
             {
               "type": "HIGHLIGHT_RANGE",
@@ -346,7 +346,7 @@
                 "endColumn": 1
               },
               "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n",
-              "cadenceMillis": 8
+              "cadenceMillis": 32
             },
             {
               "type": "ANIMATE_EDIT",
@@ -359,7 +359,7 @@
                 "endColumn": 45
               },
               "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n        double price = 19.99;\n    }\n}\n",
-              "cadenceMillis": 18
+              "cadenceMillis": 32
             },
             {
               "type": "HIGHLIGHT_RANGE",
@@ -450,7 +450,7 @@
                 "endColumn": 45
               },
               "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n        char grade = 'A';\n    }\n}\n",
-              "cadenceMillis": 18
+              "cadenceMillis": 32
             },
             {
               "type": "HIGHLIGHT_RANGE",
@@ -542,7 +542,7 @@
                 "endColumn": 45
               },
               "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n        boolean active = true;\n    }\n}\n",
-              "cadenceMillis": 18
+              "cadenceMillis": 32
             },
             {
               "type": "HIGHLIGHT_RANGE",

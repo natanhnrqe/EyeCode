@@ -3,10 +3,8 @@ package com.eyecode.javafx.web;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,14 +41,16 @@ class WebShellDocumentEventResourceTest {
     }
 
     private String bundle() throws IOException {
-        String index;
-        try (InputStream stream = getClass().getResourceAsStream("/webshell/index.html")) {
-            index = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-        }
-        Matcher script = Pattern.compile("src=\"\\./(assets/index-[^\"]+\\.js)\"").matcher(index);
-        assertTrue(script.find());
-        try (InputStream stream = getClass().getResourceAsStream("/webshell/" + script.group(1))) {
-            return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+        try (var files = Files.list(Path.of("src/main/resources/webshell/assets"))) {
+            return files.filter(path -> path.getFileName().toString().endsWith(".js"))
+                    .map(path -> {
+                        try {
+                            return Files.readString(path);
+                        } catch (IOException exception) {
+                            throw new IllegalStateException(exception);
+                        }
+                    })
+                    .collect(java.util.stream.Collectors.joining("\n"));
         }
     }
 }

@@ -24,8 +24,16 @@ class ResourceLearningCatalogTest {
 
     @Test void exposesExplicitKindsForTheExecutableFundamentalsLessons() {
         ResourceLearningCatalog catalog = new ResourceLearningCatalog();
-        assertEquals(LessonKind.THEORY, catalog.lesson("java.fundamentals.jvm-jre-jdk").orElseThrow().kind());
+        assertEquals(LessonKind.THEORY, catalog.lesson("java.fundamentals.how-java-works").orElseThrow().kind());
+        assertEquals(LessonKind.PRACTICE, catalog.lesson("java.fundamentals.first-program").orElseThrow().kind());
         assertEquals(LessonKind.PRACTICE, catalog.lesson("java.fundamentals.variables.int").orElseThrow().kind());
+        assertTrue(catalog.lesson("java.fundamentals.variables").isPresent());
+        assertTrue(catalog.lesson("java.fundamentals.strings").isPresent());
+        assertTrue(catalog.lesson("java.fundamentals.arithmetic").isPresent());
+        assertTrue(catalog.lesson("java.fundamentals.assignment").isPresent());
+        assertTrue(catalog.lesson("java.fundamentals.comparison").isPresent());
+        assertEquals(java.util.List.of("Como um programa Java funciona", "Seu primeiro programa Java"),
+                catalog.lessonsForTopic("java.fundamentals").stream().limit(2).map(LessonDescriptor::title).toList());
     }
 
     @Test void rejectsDuplicateCategoryIds() {

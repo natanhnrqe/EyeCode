@@ -82,7 +82,8 @@ public final class LessonContentService {
         if (object.get("files") instanceof List<?> values) {
             List<LessonFile> files = values.stream().map(value -> file(object(value, "arquivo de prática"))).toList();
             String entryFileId = object.get("entryFileId") instanceof String entry ? entry : files.getFirst().id();
-            return new LessonPractice(id, instruction, files, entryFileId);
+            String mainClass = object.get("mainClass") instanceof String value ? value : null;
+            return new LessonPractice(id, instruction, files, entryFileId, mainClass);
         }
         if (!(object.get("file") instanceof Map<?, ?> value)) {
             return new LessonPractice(id, instruction, required(object, "starterCode"));

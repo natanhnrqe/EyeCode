@@ -14,8 +14,8 @@ class PracticeLessonVisualSourceTest {
         String panel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
         String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
 
-        assertTrue(panel.contains("const practice = session.phase === 'PRACTICE' ? session.practice : undefined;"));
         assertTrue(panel.contains("const practiceLesson = session.kind === 'PRACTICE';"));
+        assertTrue(panel.contains("const practiceActive = practiceLesson && session.phase === 'PRACTICE' && session.practice !== undefined;"));
         assertTrue(panel.contains("is-practice${practicePhaseClass}"));
         assertTrue(panel.contains("is-presentation"));
         assertTrue(panel.contains("is-practice-active"));
@@ -23,8 +23,8 @@ class PracticeLessonVisualSourceTest {
         assertTrue(panel.contains("is-practice-completed"));
         assertTrue(panel.contains("lesson-practice-header"));
         assertTrue(panel.contains("lesson-practice-title"));
-        assertTrue(panel.contains("const practiceLead = practice?.instruction;"));
-        assertTrue(panel.contains("lesson-practice-lead\"><InlineContent content={practiceLead} /></p>"));
+        assertTrue(panel.contains("lesson-practice-lead\">{session.message}</p>"));
+        assertTrue(panel.contains("practiceActive ? <PracticeSupport blocks={session.contentBlocks} />"));
         assertTrue(panel.contains("{theory && <header className=\"lesson-chapter-header\""));
         assertFalse(panel.contains("{practice && <header className=\"lesson-chapter-header\""));
         assertTrue(styles.contains(".lesson-panel.is-practice .lesson-reading-article"));

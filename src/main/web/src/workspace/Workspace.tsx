@@ -361,7 +361,13 @@ export function Workspace() {
   }
 
   async function run(name: 'run' | 'rerun' | 'stop') {
-    try { await bridge.request('run', name, {}); }
+    const lessonRunnable = mode === 'LEARN' && lessonSession?.phase === 'PRACTICE'
+      && lessonSession.workspace && lessonEditor.lessonUri() && lessonEditor.executionFiles().length > 0;
+    const payload = lessonRunnable ? {
+      context: 'lesson',
+      lessonWorkspace: { files: lessonEditor.executionFiles(), mainClass: lessonSession.workspace!.mainClass }
+    } : {};
+    try { await bridge.request('run', name, payload); }
     catch (error) { setMessage(formatError(error)); }
   }
 
@@ -469,6 +475,10 @@ export function Workspace() {
 
   async function closeLesson() {
     const session = lessonSessionRef.current;
+    if (runState.running) {
+      try { await bridge.request('run', 'stop', {}); }
+      catch (error) { setMessage(formatError(error)); }
+    }
     lessonEditor.cancelAnimation();
     setPracticeVerification(null);
     setPracticeVerifying(false);
@@ -556,7 +566,9 @@ export function Workspace() {
   const learnNavigationVisible = learnMode && learnNavigation.screen !== 'LESSON';
   const editorVisible = (projectMode && activeDocument?.kind !== 'documentation')
     || (learnMode && !learnNavigationVisible && lessonSession?.kind !== 'THEORY');
-  const toolbar = <TopToolbar projectName={projectMode ? workspace.project?.name : undefined} projectPath={projectMode ? workspace.project?.path : undefined} recentProjects={workspace.recentProjects} runState={runState}
+  const lessonRunAvailable = learnMode && lessonSession?.phase === 'PRACTICE' && !!lessonSession.workspace && !!lessonEditor.lessonUri();
+  const runAvailable = projectMode ? runState.configurations.length > 0 : lessonRunAvailable;
+  const toolbar = <TopToolbar projectName={projectMode ? workspace.project?.name : undefined} projectPath={projectMode ? workspace.project?.path : undefined} recentProjects={workspace.recentProjects} runState={runState} runAvailable={runAvailable}
     onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()}
     onOpenRecentProject={path => void openProject(path)} onWelcome={() => void leaveProject()} onRun={() => void run('run')} onRerun={() => void run('rerun')}
     onStop={() => void run('stop')} onSelectConfiguration={id => void selectConfiguration(id)}

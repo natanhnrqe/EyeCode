@@ -9,6 +9,7 @@ export class LessonEditorController {
   private previousUri: string | null = null;
   private readonly documentsByUri = new Map<string, LessonDocument>();
   private commandGeneration = 0;
+  private practiceStarted = false;
   private presentationReadyHandler: ((ready: boolean) => void) | null = null;
 
   constructor(private readonly service: MonacoWorkspaceService) {}
@@ -38,6 +39,13 @@ export class LessonEditorController {
 
   practiceSource(): string | null { return this.activeUri ? this.service.ephemeralModelValue(this.activeUri) : null; }
 
+  executionFiles(): { name: string; source: string }[] {
+    return [...this.documentsByUri.values()].map(({ file, uri }) => ({
+      name: file.name,
+      source: this.service.ephemeralModelValue(uri) ?? file.starterCode
+    }));
+  }
+
   setPresentationReadyHandler(handler: ((ready: boolean) => void) | null): void { this.presentationReadyHandler = handler; }
 
   cancelAnimation(): void {
@@ -48,6 +56,7 @@ export class LessonEditorController {
 
   openWorkspace(session: LessonSession): DocumentSnapshot[] {
     this.exit();
+    this.practiceStarted = false;
 
     const workspace = session.workspace;
     if (!workspace) return [];
@@ -102,10 +111,13 @@ export class LessonEditorController {
 
     this.service.clearEphemeralDecorations(this.activeUri);
 
-    this.service.updateLessonFile(
-      this.activeUri,
-      active.file.starterCode
-    );
+    if (!this.practiceStarted) {
+      this.service.updateLessonFile(
+        this.activeUri,
+        active.file.starterCode
+      );
+      this.practiceStarted = true;
+    }
 
     this.documentsByUri.forEach(document => {
       this.service.setEphemeralReadOnly(
@@ -142,6 +154,7 @@ export class LessonEditorController {
     const uris = [...this.documentsByUri.keys()];
     this.activeUri = null;
     this.previousUri = null;
+    this.practiceStarted = false;
     this.documentsByUri.clear();
     this.service.disposeLessonWorkspace(uris);
     if (previousUri) this.service.activate(previousUri);

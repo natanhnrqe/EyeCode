@@ -3,7 +3,10 @@ package com.eyecode.lessons.content;
 import java.util.List;
 import java.util.Objects;
 
-public record LessonPractice(String id, List<LessonInlineContent> instruction, List<LessonFile> files, String entryFileId) {
+public record LessonPractice(String id, List<LessonInlineContent> instruction, List<LessonFile> files, String entryFileId, String mainClass) {
+    public LessonPractice(String id, List<LessonInlineContent> instruction, List<LessonFile> files, String entryFileId) {
+        this(id, instruction, files, entryFileId, null);
+    }
     public LessonPractice {
         instruction = instruction == null ? List.of() : List.copyOf(instruction);
         files = files == null ? List.of() : List.copyOf(files);
@@ -13,6 +16,9 @@ public record LessonPractice(String id, List<LessonInlineContent> instruction, L
                 || files.stream().noneMatch(file -> file.id().equals(entryFileId))) {
             throw new IllegalArgumentException("Prática de aula inválida");
         }
+        mainClass = mainClass == null || mainClass.isBlank()
+                ? files.stream().filter(file -> file.id().equals(entryFileId)).findFirst().orElseThrow().name()
+                .replace('\\', '/').replaceAll("\\.java$", "").replace('/', '.') : mainClass;
     }
 
     public LessonPractice(String id, List<LessonInlineContent> instruction, LessonFile file) {

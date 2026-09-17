@@ -175,7 +175,7 @@ public final class WebShellLessonsController {
         payload.put("practiceCompleted", snapshot.practiceCompleted());
         if (snapshot.workspace() != null) payload.put("workspace", Map.of(
                 "files", snapshot.workspace().files().stream().map(WebShellLessonsController::filePayload).toList(),
-                "entryFileId", snapshot.workspace().entryFileId()));
+                "entryFileId", snapshot.workspace().entryFileId(), "mainClass", snapshot.workspace().mainClass()));
         if (snapshot.practice() != null) payload.put("practice", Map.of("id", snapshot.practice().id(),
                 "instruction", inlinePayload(snapshot.practice().instruction()), "files", snapshot.practice().files().stream().map(WebShellLessonsController::filePayload).toList(),
                 "entryFileId", snapshot.practice().entryFileId()));

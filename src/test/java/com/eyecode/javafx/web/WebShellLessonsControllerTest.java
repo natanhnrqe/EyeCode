@@ -43,10 +43,14 @@ class WebShellLessonsControllerTest {
         assertEquals("Tipos Primitivos", primitiveTypes.get("title"));
         assertEquals(true, primitiveTypes.get("executable"));
         assertEquals("PRACTICE", primitiveTypes.get("kind"));
-        Map<String, Object> jvm = maps(fundamentals.get("lessons")).stream()
-                .filter(lesson -> "java.fundamentals.jvm-jre-jdk".equals(lesson.get("id"))).findFirst().orElseThrow();
-        assertEquals("THEORY", jvm.get("kind"));
-        assertEquals(true, jvm.get("executable"));
+        Map<String, Object> howJavaWorks = maps(fundamentals.get("lessons")).stream()
+                .filter(lesson -> "java.fundamentals.how-java-works".equals(lesson.get("id"))).findFirst().orElseThrow();
+        assertEquals("THEORY", howJavaWorks.get("kind"));
+        assertEquals(true, howJavaWorks.get("executable"));
+        Map<String, Object> firstProgram = maps(fundamentals.get("lessons")).stream()
+                .filter(lesson -> "java.fundamentals.first-program".equals(lesson.get("id"))).findFirst().orElseThrow();
+        assertEquals("PRACTICE", firstProgram.get("kind"));
+        assertEquals("Main.java", maps(firstProgram.get("practiceFiles")).getFirst().get("name"));
     }
 
     @Test void preservesSessionStepAndCommandsInTheBridgePayload() {
@@ -67,7 +71,7 @@ class WebShellLessonsControllerTest {
         assertEquals("ANIMATE_EDIT", animate.get("type"));
         assertTrue(((String) animate.get("replacementText")).contains("int age = 20;"));
         assertTrue(((String) animate.get("finalCode")).contains("int age = 20;"));
-        assertEquals(18, animate.get("cadenceMillis"));
+        assertEquals(32, animate.get("cadenceMillis"));
     }
 
     @Test void serializesLessonWorkspaceBeforeTheStepPracticeBegins() {
