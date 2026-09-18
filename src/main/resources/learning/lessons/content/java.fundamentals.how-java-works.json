@@ -10,11 +10,25 @@
       "title": "Do código ao programa",
       "message": "Antes de um programa funcionar, o código escrito passa por algumas etapas.",
       "contentBlocks": [
-        {"type":"HEADING","text":"O que acontece quando você escreve Java?"},
-        {"type":"PARAGRAPH","text":"Ao apertar Run, o computador não executa diretamente o texto de Main.java. Existe um caminho entre o código que você escreve e o programa funcionando."},
-        {"type":"CALLOUT","title":"Ideia principal","text":"Você escreve código-fonte; ferramentas Java o preparam para a execução."}
+        {
+          "type": "HEADING",
+          "text": "O que acontece quando você escreve Java?"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "Ao apertar Run, o computador não executa diretamente o texto de Main.java. Existe um caminho entre o código que você escreve e o programa funcionando."
+        },
+        {
+          "type": "CALLOUT",
+          "title": "Ideia principal",
+          "text": "Você escreve código-fonte; ferramentas Java o preparam para a execução."
+        }
       ],
-      "presentations": [{"id":"path","commands":[]}]
+      "presentations": [
+        {
+          "id": "path"
+        }
+      ]
     },
     {
       "id": "source",
@@ -22,11 +36,25 @@
       "title": "Código-fonte",
       "message": "Arquivos .java guardam o código que o programador escreve.",
       "contentBlocks": [
-        {"type":"HEADING","text":"Código-fonte"},
-        {"type":"CODE","language":"java","code":"Main.java"},
-        {"type":"PARAGRAPH","text":"A extensão .java identifica um arquivo de código-fonte Java. Ele é feito para pessoas lerem e alterarem; a JVM ainda não o executa diretamente."}
+        {
+          "type": "HEADING",
+          "text": "Código-fonte"
+        },
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "Main.java"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "A extensão .java identifica um arquivo de código-fonte Java. Ele é feito para pessoas lerem e alterarem; a JVM ainda não o executa diretamente."
+        }
       ],
-      "presentations": [{"id":"source","commands":[]}]
+      "presentations": [
+        {
+          "id": "source"
+        }
+      ]
     },
     {
       "id": "compile",
@@ -34,11 +62,25 @@
       "title": "Compilação",
       "message": "O compilador javac verifica e traduz o código-fonte.",
       "contentBlocks": [
-        {"type":"HEADING","text":"Compilação"},
-        {"type":"CODE","language":"text","code":"Main.java\n    ↓\njavac\n    ↓\nMain.class"},
-        {"type":"PARAGRAPH","text":"javac é o compilador Java. Ele verifica o código e produz bytecode, normalmente armazenado em arquivos .class."}
+        {
+          "type": "HEADING",
+          "text": "Compilação"
+        },
+        {
+          "type": "CODE",
+          "language": "text",
+          "code": "Main.java\n    ↓\njavac\n    ↓\nMain.class"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "javac é o compilador Java. Ele verifica o código e produz bytecode, normalmente armazenado em arquivos .class."
+        }
       ],
-      "presentations": [{"id":"compile","commands":[]}]
+      "presentations": [
+        {
+          "id": "compile"
+        }
+      ]
     },
     {
       "id": "jvm",
@@ -46,12 +88,30 @@
       "title": "Bytecode e JVM",
       "message": "A JVM entende a representação produzida pelo compilador.",
       "contentBlocks": [
-        {"type":"HEADING","text":"A JVM executa o bytecode"},
-        {"type":"CODE","language":"text","code":"Main.class\n    ↓\nJVM\n    ↓\nPrograma executando"},
-        {"type":"PARAGRAPH","text":"O compilador gera uma representação que a JVM sabe executar. Nesse modelo, o código Java não precisa virar diretamente um executável nativo diferente para cada sistema operacional."},
-        {"type":"CALLOUT","title":"JDK, JVM e JRE","text":"O JDK reúne ferramentas para desenvolver, incluindo o compilador. A JVM executa bytecode. JRE é uma forma conceitual de falar do ambiente de execução, sem exigir que você procure uma instalação separada em Java moderno."}
+        {
+          "type": "HEADING",
+          "text": "A JVM executa o bytecode"
+        },
+        {
+          "type": "CODE",
+          "language": "text",
+          "code": "Main.class\n    ↓\nJVM\n    ↓\nPrograma executando"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "O compilador gera uma representação que a JVM sabe executar. Nesse modelo, o código Java não precisa virar diretamente um executável nativo diferente para cada sistema operacional."
+        },
+        {
+          "type": "CALLOUT",
+          "title": "JDK, JVM e JRE",
+          "text": "O JDK reúne ferramentas para desenvolver, incluindo o compilador. A JVM executa bytecode. JRE é uma forma conceitual de falar do ambiente de execução, sem exigir que você procure uma instalação separada em Java moderno."
+        }
       ],
-      "presentations": [{"id":"jvm","commands":[]}]
+      "presentations": [
+        {
+          "id": "jvm"
+        }
+      ]
     },
     {
       "id": "complete-flow",
@@ -59,11 +119,25 @@
       "title": "O fluxo completo",
       "message": "Agora falta descobrir por onde um programa Java começa.",
       "contentBlocks": [
-        {"type":"HEADING","text":"Do arquivo à execução"},
-        {"type":"CODE","language":"text","code":"Main.java\n   ↓\njavac\n   ↓\nMain.class\n   ↓\nJVM\n   ↓\nPrograma"},
-        {"type":"PARAGRAPH","text":"Agora sabemos como o código chega até a JVM. Mas, quando um programa começa, qual parte do código Java é executada primeiro?"}
+        {
+          "type": "HEADING",
+          "text": "Do arquivo à execução"
+        },
+        {
+          "type": "CODE",
+          "language": "text",
+          "code": "Main.java\n   ↓\njavac\n   ↓\nMain.class\n   ↓\nJVM\n   ↓\nPrograma"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "Agora sabemos como o código chega até a JVM. Mas, quando um programa começa, qual parte do código Java é executada primeiro?"
+        }
       ],
-      "presentations": [{"id":"complete-flow","commands":[]}]
+      "presentations": [
+        {
+          "id": "complete-flow"
+        }
+      ]
     }
   ]
 }

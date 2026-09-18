@@ -16,6 +16,8 @@ import com.eyecode.lessons.content.LessonInlineContent;
 import com.eyecode.lessons.session.LessonSessionService;
 import com.eyecode.lessons.session.LessonSessionSnapshot;
 import com.eyecode.lessons.practice.PracticeValidator;
+import com.eyecode.lessons.presentation.PresentationOperation;
+import com.eyecode.lessons.presentation.PresentationProgram;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -170,6 +172,10 @@ public final class WebShellLessonsController {
         payload.put("totalSteps", snapshot.totalSteps());
         payload.put("currentPresentation", snapshot.currentPresentationIndex());
         payload.put("presentationId", snapshot.presentation().id());
+        if (snapshot.presentation().canonicalCode() != null) payload.put("canonicalCode", snapshot.presentation().canonicalCode());
+        if (snapshot.transitionProgram() != null) payload.put("presentationProgram",
+                programPayload(snapshot.transitionProgram()));
+        payload.put("navigationDirection", snapshot.navigationDirection().name());
         payload.put("state", snapshot.state().name());
         payload.put("phase", snapshot.phase().name());
         payload.put("practiceCompleted", snapshot.practiceCompleted());
@@ -192,14 +198,29 @@ public final class WebShellLessonsController {
         return payload;
     }
 
+    private static Map<String, Object> programPayload(PresentationProgram program) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("sourceCode", program.sourceCode());
+        payload.put("targetCode", program.targetCode());
+        payload.put("operations", program.operations().stream().map(WebShellLessonsController::operationPayload).toList());
+        return payload;
+    }
+
+    private static Map<String, Object> operationPayload(PresentationOperation operation) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("type", operation.type().name());
+        payload.put("startOffset", operation.startOffset());
+        payload.put("endOffset", operation.endOffset());
+        payload.put("prefix", operation.prefix());
+        payload.put("text", operation.text());
+        payload.put("suffix", operation.suffix());
+        return payload;
+    }
+
     private static Map<String, Object> commandPayload(LessonEditorCommand command) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("type", command.type().name());
-        if (command.code() != null) payload.put("code", command.code());
-        if (command.replacementText() != null) payload.put("replacementText", command.replacementText());
         if (command.range() != null) payload.put("range", rangePayload(command.range()));
-        if (command.finalCode() != null) payload.put("finalCode", command.finalCode());
-        if (command.cadenceMillis() != null) payload.put("cadenceMillis", command.cadenceMillis());
         return payload;
     }
 

@@ -6,6 +6,7 @@ import com.eyecode.lessons.content.LessonInlineContentType;
 import com.eyecode.lessons.content.LessonKind;
 import com.eyecode.lessons.practice.PracticeValidator;
 import com.eyecode.lessons.practice.PracticeVerificationStatus;
+import com.eyecode.lessons.presentation.PresentationOperationType;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -114,6 +115,19 @@ class LessonSessionServiceTest {
         assertEquals("first-program-second-line", session.practice().id());
         session = service.verifyPractice(session.sessionId(), "first-program-second-line", firstProgramSource("Olá, EyeCode!", "Meu primeiro programa Java!"), new PracticeValidator()).session();
         assertTrue(session.practiceCompleted());
+    }
+
+    @Test void previousProvidesTheSameCompilerProgramInReverse() {
+        LessonSessionService service = new LessonSessionService(new LessonContentService());
+        LessonSessionSnapshot first = service.start("java.fundamentals.comparison");
+        LessonSessionSnapshot age = service.next(first.sessionId());
+        LessonSessionSnapshot booleanState = service.next(first.sessionId());
+        LessonSessionSnapshot back = service.previous(first.sessionId());
+
+        assertEquals(LessonNavigationDirection.BACKWARD, back.navigationDirection());
+        assertEquals(age.presentation().canonicalCode(), back.transitionProgram().targetCode());
+        assertEquals(booleanState.presentation().canonicalCode(), back.transitionProgram().sourceCode());
+        assertEquals(PresentationOperationType.DELETE_TEXT, back.transitionProgram().operations().getFirst().type());
     }
 
     private static String source(String declaration) {

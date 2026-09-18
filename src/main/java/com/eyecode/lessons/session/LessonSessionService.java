@@ -83,8 +83,11 @@ public final class LessonSessionService {
         boolean canPrevious = index > 0 || presentationIndex > 0 || session.phase() != LessonSessionPhase.PRESENTATION;
         boolean canNext = session.phase() == LessonSessionPhase.PRACTICE ? session.practiceCompleted()
                 : index < total - 1 || presentationIndex < step.presentations().size() - 1 || step.practice() != null;
+        var presentation = step.presentations().get(presentationIndex);
+        var transitionProgram = session.navigationDirection() == LessonNavigationDirection.BACKWARD
+                ? presentation.reverseProgram() : presentation.program();
         return new LessonSessionSnapshot(session.sessionId(), session.content().id(), session.content().kind(), index, total, presentationIndex,
-                session.state(), step, step.presentations().get(presentationIndex), session.content().workspace(), step.practice(), session.phase(),
-                session.practiceCompleted(), canPrevious, canNext);
+                session.state(), step, presentation, session.content().workspace(), step.practice(), session.phase(),
+                session.practiceCompleted(), canPrevious, canNext, session.navigationDirection(), transitionProgram);
     }
 }

@@ -10,14 +10,31 @@
       "title": "Seu primeiro programa",
       "message": "Vamos reconhecer a estrutura necessária para começar.",
       "contentBlocks": [
-        {"type":"HEADING","text":"Um programa Java pequeno"},
-        {"type":"CODE","language":"java","code":"public class Main {\n    public static void main(String[] args) {\n\n    }\n}"},
-        {"type":"PARAGRAPH","text":"A classe Main e o método main já estão preparados. Nas próximas partes, vamos observar as instruções que colocamos dentro de main."}
+        {
+          "type": "HEADING",
+          "text": "Um programa Java pequeno"
+        },
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "public class Main {\n    public static void main(String[] args) {\n\n    }\n}"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "A classe Main e o método main já estão preparados. Nas próximas partes, vamos observar as instruções que colocamos dentro de main."
+        }
       ],
-      "presentations": [{"id":"program-overview","commands":[
-        {"type":"SET_CODE","code":"public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n"},
-        {"type":"CLEAR_HIGHLIGHTS"}
-      ]}]
+      "presentations": [
+        {
+          "id": "program-overview",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n",
+          "commands": [
+            {
+              "type": "CLEAR_HIGHLIGHTS"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "class",
@@ -25,11 +42,26 @@
       "title": "A classe Main e o método main",
       "message": "A classe organiza o programa e main é o ponto por onde a aplicação começa.",
       "contentBlocks": [
-        {"type":"HEADING","text":"A estrutura pronta"},
-        {"type":"CODE","language":"java","code":"public class Main {\n\n    public static void main(String[] args) {\n    }\n}"},
-        {"type":"PARAGRAPH","text":"A classe Main contém o método main. O espaço dentro de main é onde adicionaremos as instruções deste programa."}
+        {
+          "type": "HEADING",
+          "text": "A estrutura pronta"
+        },
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "A classe Main contém o método main. O espaço dentro de main é onde adicionaremos as instruções deste programa."
+        }
       ],
-      "presentations": [{"id":"class","commands":[]}]
+      "presentations": [
+        {
+          "id": "class",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n"
+        }
+      ]
     },
     {
       "id": "main",
@@ -37,15 +69,31 @@
       "title": "Mostrar uma mensagem",
       "message": "System.out.println escreve uma mensagem no console.",
       "contentBlocks": [
-        {"type":"HEADING","text":"println"},
-        {"type":"CODE","language":"java","code":"System.out.println(\"Olá, mundo!\");"},
-        {"type":"PARAGRAPH","text":"Dentro de main, System.out.println escreve texto no console. As aspas delimitam a mensagem e o ponto e vírgula encerra a instrução."}
+        {
+          "type": "HEADING",
+          "text": "println"
+        },
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "System.out.println(\"Olá, mundo!\");"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "Dentro de main, System.out.println escreve texto no console. As aspas delimitam a mensagem e o ponto e vírgula encerra a instrução."
+        }
       ],
-      "presentations": [{"id":"main","commands":[
-        {"type":"SET_CODE","code":"public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n"},
-        {"type":"CLEAR_HIGHLIGHTS"},
-        {"type":"ANIMATE_EDIT","replacementText":"\n        System.out.println(\"Olá, mundo!\");","range":{"startLineNumber":3,"startColumn":45,"endLineNumber":3,"endColumn":45},"finalCode":"public class Main {\n\n    public static void main(String[] args) {\n        System.out.println(\"Olá, mundo!\");\n    }\n}\n","cadenceMillis":32}
-      ]}]
+      "presentations": [
+        {
+          "id": "main",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        System.out.println(\"Olá, mundo!\");\n    }\n}\n",
+          "commands": [
+            {
+              "type": "CLEAR_HIGHLIGHTS"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "blocks-and-output",
@@ -53,17 +101,40 @@
       "title": "Blocos e instruções",
       "message": "As chaves organizam blocos; as instruções dentro de main executam em sequência.",
       "contentBlocks": [
-        {"type":"HEADING","text":"Uma instrução depois da outra"},
-        {"type":"PARAGRAPH","text":"As instruções dentro de main executam de cima para baixo. Vamos adicionar uma segunda mensagem sem reescrever o que já conhecemos."},
-        {"type":"CODE","language":"java","code":"System.out.println(\"Olá, mundo!\");\nSystem.out.println(\"Segunda linha\");"},
-        {"type":"CODE","language":"text","code":"Olá, mundo!\nSegunda linha"},
-        {"type":"PARAGRAPH","text":"Neste exemplo, as instruções executam de cima para baixo."}
+        {
+          "type": "HEADING",
+          "text": "Uma instrução depois da outra"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "As instruções dentro de main executam de cima para baixo. Vamos adicionar uma segunda mensagem sem reescrever o que já conhecemos."
+        },
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "System.out.println(\"Olá, mundo!\");\nSystem.out.println(\"Segunda linha\");"
+        },
+        {
+          "type": "CODE",
+          "language": "text",
+          "code": "Olá, mundo!\nSegunda linha"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "Neste exemplo, as instruções executam de cima para baixo."
+        }
       ],
-      "presentations": [{"id":"blocks-and-output","commands":[
-        {"type":"SET_CODE","code":"public class Main {\n\n    public static void main(String[] args) {\n        System.out.println(\"Olá, mundo!\");\n    }\n}\n"},
-        {"type":"CLEAR_HIGHLIGHTS"},
-        {"type":"ANIMATE_EDIT","replacementText":"\n        System.out.println(\"Segunda linha\");","range":{"startLineNumber":4,"startColumn":43,"endLineNumber":4,"endColumn":43},"finalCode":"public class Main {\n\n    public static void main(String[] args) {\n        System.out.println(\"Olá, mundo!\");\n        System.out.println(\"Segunda linha\");\n    }\n}\n","cadenceMillis":32}
-      ]}]
+      "presentations": [
+        {
+          "id": "blocks-and-output",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        System.out.println(\"Olá, mundo!\");\n        System.out.println(\"Segunda linha\");\n    }\n}\n",
+          "commands": [
+            {
+              "type": "CLEAR_HIGHLIGHTS"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "change-message",
@@ -71,19 +142,53 @@
       "title": "Altere a mensagem",
       "message": "Agora é sua vez de editar um programa que já funciona.",
       "contentBlocks": [
-        {"type":"HEADING","text":"Edite e execute"},
-        {"type":"PARAGRAPH","text":"Use o editor para mudar o texto exibido. Depois execute o programa e observe o console."},
-        {"type":"CODE","language":"java","code":"System.out.println(\"Bom dia!\");"},
-        {"type":"CALLOUT","title":"Dica","text":"O texto exibido por println fica entre aspas. Altere somente o conteúdo necessário e execute para conferir o resultado."},
-        {"type":"HEADING","text":"Conceitos relacionados"},
-        {"type":"LIST","items":["main","console","println"]}
+        {
+          "type": "HEADING",
+          "text": "Edite e execute"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "Use o editor para mudar o texto exibido. Depois execute o programa e observe o console."
+        },
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "System.out.println(\"Bom dia!\");"
+        },
+        {
+          "type": "CALLOUT",
+          "title": "Dica",
+          "text": "O texto exibido por println fica entre aspas. Altere somente o conteúdo necessário e execute para conferir o resultado."
+        },
+        {
+          "type": "HEADING",
+          "text": "Conceitos relacionados"
+        },
+        {
+          "type": "LIST",
+          "items": [
+            "main",
+            "console",
+            "println"
+          ]
+        }
       ],
-      "presentations": [{"id":"change-message","commands":[]}],
+      "presentations": [
+        {
+          "id": "change-message"
+        }
+      ],
       "practice": {
         "id": "first-program-message",
         "mainClass": "Main",
         "instruction": "Altere a mensagem para que o programa mostre `Olá, EyeCode!`.",
-        "file": {"id":"main","name":"Main.java","language":"java","starterCode":"public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Olá, mundo!\");\n    }\n}\n","readOnly":false}
+        "file": {
+          "id": "main",
+          "name": "Main.java",
+          "language": "java",
+          "starterCode": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Olá, mundo!\");\n    }\n}\n",
+          "readOnly": false
+        }
       }
     },
     {
@@ -92,19 +197,53 @@
       "title": "Uma segunda instrução",
       "message": "Adicione outra linha para observar a execução sequencial.",
       "contentBlocks": [
-        {"type":"HEADING","text":"Duas mensagens em sequência"},
-        {"type":"PARAGRAPH","text":"Agora acrescente uma segunda instrução println dentro de main. A primeira deve continuar sendo exibida antes da segunda."},
-        {"type":"CODE","language":"java","code":"System.out.println(\"Mensagem um\");\nSystem.out.println(\"Mensagem dois\");"},
-        {"type":"CALLOUT","title":"Dica","text":"Cada println pode produzir uma nova linha. Mantenha as duas instruções dentro de main e na ordem desejada."},
-        {"type":"HEADING","text":"Conceitos relacionados"},
-        {"type":"LIST","items":["instruções","execução sequencial","println"]}
+        {
+          "type": "HEADING",
+          "text": "Duas mensagens em sequência"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "Agora acrescente uma segunda instrução println dentro de main. A primeira deve continuar sendo exibida antes da segunda."
+        },
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "System.out.println(\"Mensagem um\");\nSystem.out.println(\"Mensagem dois\");"
+        },
+        {
+          "type": "CALLOUT",
+          "title": "Dica",
+          "text": "Cada println pode produzir uma nova linha. Mantenha as duas instruções dentro de main e na ordem desejada."
+        },
+        {
+          "type": "HEADING",
+          "text": "Conceitos relacionados"
+        },
+        {
+          "type": "LIST",
+          "items": [
+            "instruções",
+            "execução sequencial",
+            "println"
+          ]
+        }
       ],
-      "presentations": [{"id":"second-instruction","commands":[]}],
+      "presentations": [
+        {
+          "id": "second-instruction"
+        }
+      ],
       "practice": {
         "id": "first-program-second-line",
         "mainClass": "Main",
         "instruction": "Adicione uma segunda instrução para que o console mostre, depois da saudação, `Meu primeiro programa Java!`.",
-        "file": {"id":"main","name":"Main.java","language":"java","starterCode":"public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Olá, mundo!\");\n    }\n}\n","readOnly":false}
+        "file": {
+          "id": "main",
+          "name": "Main.java",
+          "language": "java",
+          "starterCode": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Olá, mundo!\");\n    }\n}\n",
+          "readOnly": false
+        }
       }
     }
   ]

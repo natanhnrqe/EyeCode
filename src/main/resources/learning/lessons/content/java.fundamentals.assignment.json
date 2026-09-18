@@ -1,1 +1,113 @@
-{"id":"java.fundamentals.assignment","version":1,"kind":"PRACTICE","title":"Atribuição e atualização","steps":[{"id":"assignment","type":"DEMO","title":"Atualizar uma variável","message":"Atribuição e atualização mudam o valor guardado.","contentBlocks":[{"type":"HEADING","text":"Atalhos de atualização"},{"type":"PARAGRAPH","text":"pontos = pontos + 10; e pontos += 10; expressam a mesma ideia. contador++ soma 1; contador-- subtrai 1."},{"type":"CODE","language":"java","code":"int pontos = 0;\npontos += 10;\npontos++;"}],"presentations":[{"id":"assignment","commands":[{"type":"SET_CODE","code":"public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n"},{"type":"ANIMATE_EDIT","replacementText":"\n        int pontos = 0;\n        pontos += 10;\n        pontos++;","range":{"startLineNumber":3,"startColumn":45,"endLineNumber":3,"endColumn":45},"finalCode":"public class Main {\n\n    public static void main(String[] args) {\n        int pontos = 0;\n        pontos += 10;\n        pontos++;\n    }\n}\n","cadenceMillis":32}]}],"practice":{"id":"assignment-update","instruction":"Declare `int pontos = 10`, depois use `pontos += 10`, `pontos++`, `pontos -= 1` e `pontos--`.","file":{"id":"main","name":"Main.java","language":"java","starterCode":"public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n","readOnly":false}}}]}
+{
+  "id": "java.fundamentals.assignment",
+  "version": 1,
+  "kind": "PRACTICE",
+  "title": "Atribuição e atualização",
+  "steps": [
+    {
+      "id": "assignment",
+      "type": "DEMO",
+      "title": "Atribuir outro valor",
+      "message": "= substitui o valor guardado.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "int pontos = 10;\npontos = pontos + 5;"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "A expressão à direita é calculada e o resultado volta para pontos."
+        }
+      ],
+      "presentations": [
+        {
+          "id": "assignment",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int pontos = 10;\n        pontos = pontos + 5;\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "shortcut",
+      "type": "DEMO",
+      "title": "Atalho de atribuição",
+      "message": "+= escreve a mesma atualização de forma curta.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "pontos = pontos + 5;\npontos += 5;"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "As duas linhas somam 5 a pontos."
+        }
+      ],
+      "presentations": [
+        {
+          "id": "shortcut",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int pontos = 10;\n        pontos += 5;\n    }\n}\n",
+          "commands": [
+            {
+              "type": "CLEAR_HIGHLIGHTS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "counter",
+      "type": "DEMO",
+      "title": "Contar um por um",
+      "message": "++ soma 1 e -- subtrai 1.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "int contador = 0;\ncontador = contador + 1;\ncontador++;\ncontador -= 1;\ncontador--;"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "+= e -= atualizam por uma quantidade; ++ e -- atualizam somente um."
+        }
+      ],
+      "presentations": [
+        {
+          "id": "counter",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int contador = 0;\n        contador++;\n        contador--;\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "practice",
+      "type": "DEMO",
+      "title": "Sua vez",
+      "message": "Atualize pontos com cada forma apresentada.",
+      "contentBlocks": [
+        {
+          "type": "PARAGRAPH",
+          "text": "Primeiro declare pontos; depois aplique as quatro atualizações."
+        }
+      ],
+      "presentations": [
+        {
+          "id": "practice"
+        }
+      ],
+      "practice": {
+        "id": "assignment-update",
+        "instruction": "Declare `int pontos = 10`, depois use `pontos += 10`, `pontos++`, `pontos -= 1` e `pontos--`.",
+        "feedback": {
+          "success": "Correto. Você atualizou `pontos` com as formas de atribuição e incremento."
+        },
+        "file": {
+          "id": "main",
+          "name": "Main.java",
+          "language": "java",
+          "starterCode": "public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n",
+          "readOnly": false
+        }
+      }
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 package com.eyecode.lessons.content;
 
 import com.eyecode.lessons.catalog.Json;
+import com.eyecode.lessons.presentation.PresentationCompiler;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,6 +13,7 @@ import java.util.Map;
 public final class LessonContentService {
     private static final String RESOURCE_PREFIX = "/learning/lessons/content/";
     private final LessonMarkdownNormalizer markdownNormalizer = new LessonMarkdownNormalizer();
+    private final PresentationCompiler presentationCompiler = new PresentationCompiler();
 
     public LessonContent load(String lessonId) {
         if (lessonId == null || lessonId.isBlank()) throw new IllegalArgumentException("ID de aula inválido");
@@ -40,7 +42,36 @@ public final class LessonContentService {
         catch (IllegalArgumentException exception) { throw new IllegalArgumentException("Tipo de aula inválido", exception); }
         String markdownResource = optional(root, "markdownResource");
         if (markdownResource != null) applyMarkdown(steps, markdownResource);
-        return new LessonContent(id, version, kind, required(root, "title"), steps);
+        return new LessonContent(id, version, kind, required(root, "title"), compilePresentations(steps));
+    }
+
+    private List<LessonStep> compilePresentations(List<LessonStep> steps) {
+        List<String> canonicalStates = steps.stream().flatMap(step -> step.presentations().stream())
+                .map(LessonPresentation::canonicalCode).filter(java.util.Objects::nonNull).toList();
+        List<LessonStep> compiledSteps = new ArrayList<>();
+        String previousCanonical = "";
+        int canonicalIndex = 0;
+        for (LessonStep step : steps) {
+            List<LessonPresentation> presentations = new ArrayList<>();
+            for (LessonPresentation presentation : step.presentations()) {
+                if (presentation.canonicalCode() == null) {
+                    presentations.add(presentation);
+                    continue;
+                }
+                var program = presentationCompiler.compile(previousCanonical, presentation.canonicalCode(),
+                        presentation.transition() == LessonPresentationTransition.INSTANT);
+                var reverseProgram = canonicalIndex + 1 < canonicalStates.size()
+                        ? presentationCompiler.compile(canonicalStates.get(canonicalIndex + 1), presentation.canonicalCode(),
+                        presentation.transition() == LessonPresentationTransition.INSTANT)
+                        : null;
+                presentations.add(presentation.withPrograms(program, reverseProgram));
+                previousCanonical = presentation.canonicalCode();
+                canonicalIndex++;
+            }
+            compiledSteps.add(new LessonStep(step.id(), step.type(), step.title(), step.message(),
+                    step.contentBlocks(), presentations, step.practice()));
+        }
+        return compiledSteps;
     }
 
     private void applyMarkdown(List<LessonStep> steps, String markdownResource) {
@@ -83,12 +114,19 @@ public final class LessonContentService {
             List<LessonFile> files = values.stream().map(value -> file(object(value, "arquivo de prática"))).toList();
             String entryFileId = object.get("entryFileId") instanceof String entry ? entry : files.getFirst().id();
             String mainClass = object.get("mainClass") instanceof String value ? value : null;
-            return new LessonPractice(id, instruction, files, entryFileId, mainClass);
+            return new LessonPractice(id, instruction, files, entryFileId, mainClass, feedback(object));
         }
         if (!(object.get("file") instanceof Map<?, ?> value)) {
-            return new LessonPractice(id, instruction, required(object, "starterCode"));
+            LessonPractice parsed = new LessonPractice(id, instruction, required(object, "starterCode"));
+            return new LessonPractice(parsed.id(), parsed.instruction(), parsed.files(), parsed.entryFileId(), parsed.mainClass(), feedback(object));
         }
-        return new LessonPractice(id, instruction, file(object(value, "arquivo de prática")));
+        LessonPractice parsed = new LessonPractice(id, instruction, file(object(value, "arquivo de prática")));
+        return new LessonPractice(parsed.id(), parsed.instruction(), parsed.files(), parsed.entryFileId(), parsed.mainClass(), feedback(object));
+    }
+
+    private static PracticeFeedback feedback(Map<?, ?> object) {
+        return object.get("feedback") instanceof Map<?, ?> value
+                ? new PracticeFeedback(required(value, "success")) : null;
     }
 
     private static LessonFile file(Map<?, ?> file) {
@@ -98,9 +136,16 @@ public final class LessonContentService {
 
     private static LessonPresentation presentation(Map<?, ?> object) {
         List<LessonEditorCommand> commands = new ArrayList<>();
-        for (Object value : array(object, "commands")) commands.add(command(object(value, "comando")));
+        if (object.get("commands") instanceof List<?> values) {
+            for (Object value : values) commands.add(command(object(value, "comando")));
+        }
         LessonAnnotation annotation = object.get("annotation") == null ? null : annotation(object(object.get("annotation"), "anotação"));
-        return new LessonPresentation(required(object, "id"), commands, annotation);
+        String canonicalCode = object.get("canonicalCode") instanceof String value ? value : null;
+        LessonPresentationTransition transition;
+        try { transition = object.get("transition") instanceof String value
+                ? LessonPresentationTransition.valueOf(value) : LessonPresentationTransition.AUTO; }
+        catch (IllegalArgumentException exception) { throw new IllegalArgumentException("Transição de apresentação inválida", exception); }
+        return new LessonPresentation(required(object, "id"), commands, annotation, canonicalCode, transition, null, null);
     }
 
     private static LessonContentBlock block(Map<?, ?> object) {
@@ -125,12 +170,8 @@ public final class LessonContentService {
         LessonEditorCommandType type;
         try { type = LessonEditorCommandType.valueOf(required(object, "type")); }
         catch (IllegalArgumentException exception) { throw new IllegalArgumentException("Tipo de comando inválido", exception); }
-        String code = object.get("code") instanceof String value ? value : null;
-        String replacementText = object.get("replacementText") instanceof String value ? value : null;
         LessonEditorRange range = object.get("range") == null ? null : range(object(object.get("range"), "intervalo"));
-        String finalCode = object.get("finalCode") instanceof String value ? value : null;
-        Integer cadenceMillis = object.get("cadenceMillis") instanceof Number value ? value.intValue() : null;
-        return new LessonEditorCommand(type, code, replacementText, range, finalCode, cadenceMillis);
+        return new LessonEditorCommand(type, range);
     }
 
     private static LessonEditorRange range(Map<?, ?> object) {

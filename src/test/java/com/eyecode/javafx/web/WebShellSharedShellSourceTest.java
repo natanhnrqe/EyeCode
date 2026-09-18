@@ -49,6 +49,7 @@ class WebShellSharedShellSourceTest {
         assertTrue(monaco.contains("uri.startsWith('lesson://')"));
         assertTrue(monaco.contains("this.editor?.getModel() !== model || model.uri.toString() !== uri"));
         assertTrue(monaco.contains("model.getValue() !== finalCode"));
+        assertTrue(monaco.contains("resolve(false);"));
         assertTrue(monaco.contains("character === '\\n' && !establishIndentation()"));
         assertTrue(monaco.contains("replacementText.charAt(end) === ' ' || replacementText.charAt(end) === '\\t'"));
         assertEquals(1, occurrences(monaco, "establishIndentation()"));
@@ -60,6 +61,41 @@ class WebShellSharedShellSourceTest {
         assertTrue(workspace.contains("lessonPresentationReady"));
         assertTrue(workspace.contains("lessonSession?.kind === 'PRACTICE' && lessonPresentationReady && <LessonAnnotation"));
         assertTrue(styles.contains(".lesson-reading-article"));
+    }
+
+    @Test
+    void compiledLineInsertionPreparesStructureBeforeTypingTheStatement() throws IOException {
+        String monaco = Files.readString(Path.of("src/main/web/src/monaco/MonacoWorkspaceService.ts"));
+
+        assertTrue(monaco.contains("text: `${operation.prefix}${operation.suffix}`"));
+        assertTrue(monaco.contains("operation.startOffset + operation.prefix.length"));
+        assertTrue(monaco.contains("}, replacementText, program.targetCode, LESSON_TYPING_CADENCE_MS);"));
+        assertFalse(monaco.contains("mainClosingBraceOffset"));
+        assertFalse(monaco.contains("APPEND_TO_MAIN"));
+    }
+
+    @Test
+    void independentPresentationBasesAreNotMistakenForCumulativeTransitions() throws IOException {
+        String controller = Files.readString(Path.of("src/main/web/src/lessons/LessonEditorController.ts"));
+        String monaco = Files.readString(Path.of("src/main/web/src/monaco/MonacoWorkspaceService.ts"));
+
+        assertTrue(controller.contains("const currentCode = this.service.ephemeralModelValue(this.activeUri ?? '');"));
+        assertTrue(controller.contains("currentCode === program.sourceCode"));
+        assertTrue(controller.contains("session.navigationDirection !== 'NONE'"));
+        assertTrue(controller.contains("if (!sequential || !canonicalCode)"));
+        assertTrue(monaco.contains("for (const operation of program.operations)"));
+        assertTrue(monaco.contains("await this.animateEphemeralEdit(uri,"));
+    }
+
+    @Test
+    void reverseNavigationCancelsTheCurrentPlayerBeforeStartingTheNextProgram() throws IOException {
+        String controller = Files.readString(Path.of("src/main/web/src/lessons/LessonEditorController.ts"));
+        String monaco = Files.readString(Path.of("src/main/web/src/monaco/MonacoWorkspaceService.ts"));
+
+        assertTrue(controller.contains("this.cancelAnimation();"));
+        assertTrue(monaco.contains("async playPresentationProgram(uri: string, program: PresentationProgram)"));
+        assertTrue(monaco.contains("this.cancelLessonTyping();"));
+        assertTrue(monaco.contains("if (this.ephemeralModels.has(active.uri)) this.setEphemeralModelValue(active.uri, active.finalCode);"));
     }
 
     @Test
@@ -86,11 +122,11 @@ class WebShellSharedShellSourceTest {
         assertTrue(monaco.contains("if ([...this.ephemeralModels.values()].includes(model)) return;"));
         assertTrue(monaco.indexOf("if ([...this.ephemeralModels.values()].includes(model)) return;")
                 < monaco.indexOf("bridge.request<{ document: DocumentSnapshot }>('document', 'change'"));
-        assertTrue(controller.contains("if (session.phase === 'PRACTICE') this.enterPractice();\n    else this.apply(session.commands);"));
+        assertTrue(controller.contains("if (session.phase === 'PRACTICE') this.enterPractice();\n    else this.applyPresentation(session);"));
         assertTrue(workspace.contains("else if (!lessonEditor.lessonUri() && session.workspace)"));
         assertTrue(workspace.contains("lessonEditor.openWorkspace(session).forEach(updateDocument);"));
         assertTrue(controller.contains("private readonly documentsByUri = new Map<string, LessonDocument>();"));
-        assertTrue(controller.contains("if (!this.practiceStarted)"));
+        assertTrue(controller.contains("if (!this.practiceStarted || this.service.ephemeralModelValue(this.activeUri) !== active.file.starterCode)"));
         assertTrue(controller.contains("this.service.updateLessonFile("));
         assertTrue(controller.contains("this.practiceStarted = true;"));
         assertTrue(controller.contains("this.service.setEphemeralReadOnly(document.uri, true);"));

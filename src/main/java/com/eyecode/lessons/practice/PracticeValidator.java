@@ -47,7 +47,7 @@ public final class PracticeValidator {
             throw new IllegalArgumentException("Unsupported practice");
         }
 
-        return switch (practice.id()) {
+        PracticeVerificationResult verification = switch (practice.id()) {
             case INTEGER_SCORE -> verifyIntegerScore(source);
             case VARIABLES_DECLARE_SCORE -> verifyDeclaration(source, "score", "int", "10");
             case VARIABLES_CHANGE_SCORE -> verifyAssignment(source, "score", "25");
@@ -60,6 +60,8 @@ public final class PracticeValidator {
             case FIRST_PROGRAM_SECOND_LINE -> verifyProgramOutput(FIRST_PROGRAM_SECOND_LINE, source, List.of(EYE_CODE_GREETING, FIRST_PROGRAM_SECOND_MESSAGE));
             default -> throw new IllegalArgumentException("Unsupported practice");
         };
+        return verification.successful()
+                ? new PracticeVerificationResult(verification.status(), successMessage(practice)) : verification;
     }
 
     private PracticeVerificationResult verifyDeclaration(String source, String name, String type, String value) {
@@ -133,6 +135,12 @@ public final class PracticeValidator {
                 .anyMatch(n -> n.token() != null && expected.equals(n.token().text().replace("\"", "").replace("'", "")));
     }
     private static boolean tokenText(AstNode node, String text) { return node.token() != null && text.equals(node.token().text()); }
+
+    private static String successMessage(LessonPractice practice) {
+        if (practice.feedback() != null) return practice.feedback().successMessage();
+        String instruction = practice.instruction().stream().map(content -> content.text()).collect(java.util.stream.Collectors.joining());
+        return "Correto. Você concluiu a tarefa: " + instruction;
+    }
 
     private PracticeVerificationResult verifyIntegerScore(String source) {
         JavaFileModel model;
@@ -269,13 +277,13 @@ public final class PracticeValidator {
 
     private static PracticeVerificationResult result(PracticeVerificationStatus status) {
         return new PracticeVerificationResult(status, switch (status) {
-            case SUCCESS -> "Correto. Você declarou `score` como `int` e inicializou com `100`.";
+            case SUCCESS -> "Prática concluída corretamente.";
             case SYNTAX_ERROR -> "O código Java ainda está incompleto ou possui um erro de sintaxe.";
-            case INVALID_CONTEXT -> "Mantenha a declaração dentro do método `main`.";
-            case MISSING_DECLARATION -> "Não encontrei a variável pedida dentro de `main`.";
-            case WRONG_TYPE -> "Use o tipo `int` para esta variável.";
-            case WRONG_NAME -> "A variável precisa se chamar `score`.";
-            case WRONG_INITIALIZER -> "Inicialize `score` com o valor inteiro `100`.";
+            case INVALID_CONTEXT -> "Mantenha o código pedido dentro do método `main`.";
+            case MISSING_DECLARATION -> "Não encontrei a declaração pedida dentro de `main`.";
+            case WRONG_TYPE -> "Revise o tipo pedido para a variável.";
+            case WRONG_NAME -> "Revise o nome pedido para a variável.";
+            case WRONG_INITIALIZER -> "Revise o valor inicial pedido para a variável.";
             case MISSING_OUTPUT -> "Adicione uma instrução `System.out.println` dentro de `main`.";
             case WRONG_OUTPUT -> "Revise o texto exibido e a ordem das instruções `println`.";
             case MISSING_SECOND_OUTPUT -> "Adicione uma segunda instrução `System.out.println` dentro de `main`.";

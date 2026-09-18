@@ -36,18 +36,10 @@
       "presentations": [
         {
           "id": "intro",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n",
           "commands": [
             {
-              "type": "SET_CODE",
-              "code": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n",
-              "replacementText": "",
-              "finalCode": ""
-            },
-            {
-              "type": "CLEAR_HIGHLIGHTS",
-              "code": "",
-              "replacementText": "",
-              "finalCode": ""
+              "type": "CLEAR_HIGHLIGHTS"
             }
           ]
         }
@@ -89,57 +81,7 @@
       "presentations": [
         {
           "id": "int",
-          "commands": [
-            {
-              "type": "SET_CODE",
-              "code": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n",
-              "replacementText": "",
-              "finalCode": ""
-            },
-            {
-              "type": "CLEAR_HIGHLIGHTS",
-              "code": "",
-              "replacementText": "",
-              "finalCode": ""
-            },
-            {
-              "type": "ANIMATE_EDIT",
-              "code": "",
-              "replacementText": "\n        int age = 20;",
-              "range": {
-                "startLineNumber": 3,
-                "startColumn": 45,
-                "endLineNumber": 3,
-                "endColumn": 45
-              },
-              "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int age = 20;\n    }\n}\n",
-              "cadenceMillis": 32
-            },
-            {
-              "type": "HIGHLIGHT_RANGE",
-              "code": "",
-              "replacementText": "",
-              "range": {
-                "startLineNumber": 4,
-                "startColumn": 9,
-                "endLineNumber": 4,
-                "endColumn": 12
-              },
-              "finalCode": ""
-            },
-            {
-              "type": "REVEAL_RANGE",
-              "code": "",
-              "replacementText": "",
-              "range": {
-                "startLineNumber": 4,
-                "startColumn": 9,
-                "endLineNumber": 4,
-                "endColumn": 12
-              },
-              "finalCode": ""
-            }
-          ],
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int age = 20;\n    }\n}\n",
           "annotation": {
             "title": "int",
             "message": "Tipo inteiro mais usado no dia a dia em Java.",
@@ -149,68 +91,34 @@
               "endLineNumber": 4,
               "endColumn": 12
             }
-          }
-        },
-        {
-          "id": "long",
+          },
           "commands": [
             {
-              "type": "CLEAR_HIGHLIGHTS",
-              "code": "",
-              "replacementText": "",
-              "finalCode": ""
-            },
-            {
-              "type": "ANIMATE_EDIT",
-              "code": "",
-              "replacementText": "",
-              "range": {
-                "startLineNumber": 4,
-                "startColumn": 1,
-                "endLineNumber": 5,
-                "endColumn": 1
-              },
-              "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n",
-              "cadenceMillis": 32
-            },
-            {
-              "type": "ANIMATE_EDIT",
-              "code": "",
-              "replacementText": "\n        long population = 8_000_000_000L;",
-              "range": {
-                "startLineNumber": 3,
-                "startColumn": 45,
-                "endLineNumber": 3,
-                "endColumn": 45
-              },
-              "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n        long population = 8_000_000_000L;\n    }\n}\n",
-              "cadenceMillis": 32
+              "type": "CLEAR_HIGHLIGHTS"
             },
             {
               "type": "HIGHLIGHT_RANGE",
-              "code": "",
-              "replacementText": "",
               "range": {
                 "startLineNumber": 4,
                 "startColumn": 9,
                 "endLineNumber": 4,
-                "endColumn": 13
-              },
-              "finalCode": ""
+                "endColumn": 12
+              }
             },
             {
               "type": "REVEAL_RANGE",
-              "code": "",
-              "replacementText": "",
               "range": {
                 "startLineNumber": 4,
                 "startColumn": 9,
                 "endLineNumber": 4,
-                "endColumn": 13
-              },
-              "finalCode": ""
+                "endColumn": 12
+              }
             }
-          ],
+          ]
+        },
+        {
+          "id": "long",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        long population = 8_000_000_000L;\n    }\n}\n",
           "annotation": {
             "title": "long",
             "message": "Use long para inteiros grandes; o sufixo L identifica o literal.",
@@ -220,19 +128,44 @@
               "endLineNumber": 4,
               "endColumn": 13
             }
-          }
+          },
+          "commands": [
+            {
+              "type": "CLEAR_HIGHLIGHTS"
+            },
+            {
+              "type": "HIGHLIGHT_RANGE",
+              "range": {
+                "startLineNumber": 4,
+                "startColumn": 9,
+                "endLineNumber": 4,
+                "endColumn": 13
+              }
+            },
+            {
+              "type": "REVEAL_RANGE",
+              "range": {
+                "startLineNumber": 4,
+                "startColumn": 9,
+                "endLineNumber": 4,
+                "endColumn": 13
+              }
+            }
+          ]
         }
       ],
       "practice": {
         "id": "integer-score",
         "instruction": "Crie uma variável `int` chamada `score` com valor `100` dentro do método `main`.",
-        "files": [{
-          "id": "tipos-primitivos",
-          "name": "TiposPrimitivos.java",
-          "language": "java",
-          "starterCode": "public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n",
-          "readOnly": false
-        }],
+        "files": [
+          {
+            "id": "tipos-primitivos",
+            "name": "TiposPrimitivos.java",
+            "language": "java",
+            "starterCode": "public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n",
+            "readOnly": false
+          }
+        ],
         "entryFileId": "tipos-primitivos"
       }
     },
@@ -264,57 +197,7 @@
       "presentations": [
         {
           "id": "float",
-          "commands": [
-            {
-              "type": "SET_CODE",
-              "code": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n",
-              "replacementText": "",
-              "finalCode": ""
-            },
-            {
-              "type": "CLEAR_HIGHLIGHTS",
-              "code": "",
-              "replacementText": "",
-              "finalCode": ""
-            },
-            {
-              "type": "ANIMATE_EDIT",
-              "code": "",
-              "replacementText": "\n        float temperature = 36.5F;",
-              "range": {
-                "startLineNumber": 3,
-                "startColumn": 45,
-                "endLineNumber": 3,
-                "endColumn": 45
-              },
-              "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n        float temperature = 36.5F;\n    }\n}\n",
-              "cadenceMillis": 32
-            },
-            {
-              "type": "HIGHLIGHT_RANGE",
-              "code": "",
-              "replacementText": "",
-              "range": {
-                "startLineNumber": 4,
-                "startColumn": 9,
-                "endLineNumber": 4,
-                "endColumn": 14
-              },
-              "finalCode": ""
-            },
-            {
-              "type": "REVEAL_RANGE",
-              "code": "",
-              "replacementText": "",
-              "range": {
-                "startLineNumber": 4,
-                "startColumn": 9,
-                "endLineNumber": 4,
-                "endColumn": 14
-              },
-              "finalCode": ""
-            }
-          ],
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        float temperature = 36.5F;\n    }\n}\n",
           "annotation": {
             "title": "float",
             "message": "Use o sufixo F para indicar um literal float.",
@@ -324,68 +207,34 @@
               "endLineNumber": 4,
               "endColumn": 14
             }
-          }
-        },
-        {
-          "id": "double",
+          },
           "commands": [
             {
-              "type": "CLEAR_HIGHLIGHTS",
-              "code": "",
-              "replacementText": "",
-              "finalCode": ""
-            },
-            {
-              "type": "ANIMATE_EDIT",
-              "code": "",
-              "replacementText": "",
-              "range": {
-                "startLineNumber": 4,
-                "startColumn": 1,
-                "endLineNumber": 5,
-                "endColumn": 1
-              },
-              "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n",
-              "cadenceMillis": 32
-            },
-            {
-              "type": "ANIMATE_EDIT",
-              "code": "",
-              "replacementText": "\n        double price = 19.99;",
-              "range": {
-                "startLineNumber": 3,
-                "startColumn": 45,
-                "endLineNumber": 3,
-                "endColumn": 45
-              },
-              "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n        double price = 19.99;\n    }\n}\n",
-              "cadenceMillis": 32
+              "type": "CLEAR_HIGHLIGHTS"
             },
             {
               "type": "HIGHLIGHT_RANGE",
-              "code": "",
-              "replacementText": "",
               "range": {
                 "startLineNumber": 4,
                 "startColumn": 9,
                 "endLineNumber": 4,
-                "endColumn": 15
-              },
-              "finalCode": ""
+                "endColumn": 14
+              }
             },
             {
               "type": "REVEAL_RANGE",
-              "code": "",
-              "replacementText": "",
               "range": {
                 "startLineNumber": 4,
                 "startColumn": 9,
                 "endLineNumber": 4,
-                "endColumn": 15
-              },
-              "finalCode": ""
+                "endColumn": 14
+              }
             }
-          ],
+          ]
+        },
+        {
+          "id": "double",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        double price = 19.99;\n    }\n}\n",
           "annotation": {
             "title": "double",
             "message": "double é a escolha comum para valores decimais.",
@@ -395,7 +244,30 @@
               "endLineNumber": 4,
               "endColumn": 15
             }
-          }
+          },
+          "commands": [
+            {
+              "type": "CLEAR_HIGHLIGHTS"
+            },
+            {
+              "type": "HIGHLIGHT_RANGE",
+              "range": {
+                "startLineNumber": 4,
+                "startColumn": 9,
+                "endLineNumber": 4,
+                "endColumn": 15
+              }
+            },
+            {
+              "type": "REVEAL_RANGE",
+              "range": {
+                "startLineNumber": 4,
+                "startColumn": 9,
+                "endLineNumber": 4,
+                "endColumn": 15
+              }
+            }
+          ]
         }
       ]
     },
@@ -426,57 +298,7 @@
       "presentations": [
         {
           "id": "char",
-          "commands": [
-            {
-              "type": "SET_CODE",
-              "code": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n",
-              "replacementText": "",
-              "finalCode": ""
-            },
-            {
-              "type": "CLEAR_HIGHLIGHTS",
-              "code": "",
-              "replacementText": "",
-              "finalCode": ""
-            },
-            {
-              "type": "ANIMATE_EDIT",
-              "code": "",
-              "replacementText": "\n        char grade = 'A';",
-              "range": {
-                "startLineNumber": 3,
-                "startColumn": 45,
-                "endLineNumber": 3,
-                "endColumn": 45
-              },
-              "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n        char grade = 'A';\n    }\n}\n",
-              "cadenceMillis": 32
-            },
-            {
-              "type": "HIGHLIGHT_RANGE",
-              "code": "",
-              "replacementText": "",
-              "range": {
-                "startLineNumber": 4,
-                "startColumn": 9,
-                "endLineNumber": 4,
-                "endColumn": 13
-              },
-              "finalCode": ""
-            },
-            {
-              "type": "REVEAL_RANGE",
-              "code": "",
-              "replacementText": "",
-              "range": {
-                "startLineNumber": 4,
-                "startColumn": 9,
-                "endLineNumber": 4,
-                "endColumn": 13
-              },
-              "finalCode": ""
-            }
-          ],
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        char grade = 'A';\n    }\n}\n",
           "annotation": {
             "title": "char",
             "message": "Guarda um único caractere entre aspas simples.",
@@ -486,7 +308,30 @@
               "endLineNumber": 4,
               "endColumn": 13
             }
-          }
+          },
+          "commands": [
+            {
+              "type": "CLEAR_HIGHLIGHTS"
+            },
+            {
+              "type": "HIGHLIGHT_RANGE",
+              "range": {
+                "startLineNumber": 4,
+                "startColumn": 9,
+                "endLineNumber": 4,
+                "endColumn": 13
+              }
+            },
+            {
+              "type": "REVEAL_RANGE",
+              "range": {
+                "startLineNumber": 4,
+                "startColumn": 9,
+                "endLineNumber": 4,
+                "endColumn": 13
+              }
+            }
+          ]
         }
       ]
     },
@@ -518,57 +363,7 @@
       "presentations": [
         {
           "id": "boolean",
-          "commands": [
-            {
-              "type": "SET_CODE",
-              "code": "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n",
-              "replacementText": "",
-              "finalCode": ""
-            },
-            {
-              "type": "CLEAR_HIGHLIGHTS",
-              "code": "",
-              "replacementText": "",
-              "finalCode": ""
-            },
-            {
-              "type": "ANIMATE_EDIT",
-              "code": "",
-              "replacementText": "\n        boolean active = true;",
-              "range": {
-                "startLineNumber": 3,
-                "startColumn": 45,
-                "endLineNumber": 3,
-                "endColumn": 45
-              },
-              "finalCode": "public class Main {\n\n    public static void main(String[] args) {\n        boolean active = true;\n    }\n}\n",
-              "cadenceMillis": 32
-            },
-            {
-              "type": "HIGHLIGHT_RANGE",
-              "code": "",
-              "replacementText": "",
-              "range": {
-                "startLineNumber": 4,
-                "startColumn": 9,
-                "endLineNumber": 4,
-                "endColumn": 16
-              },
-              "finalCode": ""
-            },
-            {
-              "type": "REVEAL_RANGE",
-              "code": "",
-              "replacementText": "",
-              "range": {
-                "startLineNumber": 4,
-                "startColumn": 9,
-                "endLineNumber": 4,
-                "endColumn": 16
-              },
-              "finalCode": ""
-            }
-          ],
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        boolean active = true;\n    }\n}\n",
           "annotation": {
             "title": "boolean",
             "message": "Expressa uma condição que pode ser verdadeira ou falsa.",
@@ -578,7 +373,30 @@
               "endLineNumber": 4,
               "endColumn": 16
             }
-          }
+          },
+          "commands": [
+            {
+              "type": "CLEAR_HIGHLIGHTS"
+            },
+            {
+              "type": "HIGHLIGHT_RANGE",
+              "range": {
+                "startLineNumber": 4,
+                "startColumn": 9,
+                "endLineNumber": 4,
+                "endColumn": 16
+              }
+            },
+            {
+              "type": "REVEAL_RANGE",
+              "range": {
+                "startLineNumber": 4,
+                "startColumn": 9,
+                "endLineNumber": 4,
+                "endColumn": 16
+              }
+            }
+          ]
         }
       ]
     },
@@ -614,18 +432,10 @@
       "presentations": [
         {
           "id": "summary",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        byte smallNumber = 100;\n        short mediumNumber = 30_000;\n        int age = 20;\n        long population = 8_000_000_000L;\n        float temperature = 36.5F;\n        double price = 19.99;\n        char grade = 'A';\n        boolean active = true;\n    }\n}\n",
           "commands": [
             {
-              "type": "SET_CODE",
-              "code": "public class Main {\n\n    public static void main(String[] args) {\n        byte smallNumber = 100;\n        short mediumNumber = 30_000;\n        int age = 20;\n        long population = 8_000_000_000L;\n        float temperature = 36.5F;\n        double price = 19.99;\n        char grade = 'A';\n        boolean active = true;\n    }\n}\n",
-              "replacementText": "",
-              "finalCode": ""
-            },
-            {
-              "type": "CLEAR_HIGHLIGHTS",
-              "code": "",
-              "replacementText": "",
-              "finalCode": ""
+              "type": "CLEAR_HIGHLIGHTS"
             }
           ]
         }

@@ -36,6 +36,16 @@ class ResourceLearningCatalogTest {
                 catalog.lessonsForTopic("java.fundamentals").stream().limit(2).map(LessonDescriptor::title).toList());
     }
 
+    @Test void keepsTheExistingPrimitiveTypesLessonAsTheSingleRoadmapEntry() {
+        ResourceLearningCatalog catalog = new ResourceLearningCatalog();
+        LearningTopic fundamentals = catalog.topic("java.fundamentals").orElseThrow();
+        assertEquals(java.util.List.of("Primeiros passos", "Variáveis e tipos", "Operadores"),
+                fundamentals.roadmapSections().stream().map(LearningRoadmapSection::title).toList());
+        assertEquals(1, fundamentals.roadmapSections().stream().flatMap(section -> section.items().stream())
+                .filter(item -> "Tipos primitivos".equals(item.title())).count());
+        assertTrue(catalog.lesson("java.fundamentals.variables.int").isPresent());
+    }
+
     @Test void rejectsDuplicateCategoryIds() {
         assertThrows(IllegalArgumentException.class, () -> new ResourceLearningCatalog(catalog("[" + category("java") + "," + category("java") + "]", "[]", "[]")));
     }

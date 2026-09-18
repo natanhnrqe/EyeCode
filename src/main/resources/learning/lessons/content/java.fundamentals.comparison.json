@@ -1,1 +1,119 @@
-{"id":"java.fundamentals.comparison","version":1,"kind":"PRACTICE","title":"Comparação e lógica","steps":[{"id":"comparison","type":"DEMO","title":"Produzir boolean","message":"Comparações produzem um valor boolean que pode ser combinado com lógica.","contentBlocks":[{"type":"HEADING","text":"Comparar e combinar"},{"type":"PARAGRAPH","text":"Use ==, !=, >, <, >= e <= para comparar. Depois combine resultados com &&, || e !. Não é necessário decorar uma tabela verdade agora: leia a condição como uma frase."},{"type":"CODE","language":"java","code":"boolean aprovado = nota >= 60 && ativo;"}],"presentations":[{"id":"comparison","commands":[{"type":"SET_CODE","code":"public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n"},{"type":"ANIMATE_EDIT","replacementText":"\n        int nota = 70;\n        boolean ativo = true;\n        boolean aprovado = nota >= 60 && ativo;","range":{"startLineNumber":3,"startColumn":45,"endLineNumber":3,"endColumn":45},"finalCode":"public class Main {\n\n    public static void main(String[] args) {\n        int nota = 70;\n        boolean ativo = true;\n        boolean aprovado = nota >= 60 && ativo;\n    }\n}\n","cadenceMillis":32}]}],"practice":{"id":"comparison-logic","instruction":"Crie uma expressão `boolean` que use `nota >= 60 && ativo` dentro de `main`.","file":{"id":"main","name":"Main.java","language":"java","starterCode":"public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n","readOnly":false}}}]}
+{
+  "id": "java.fundamentals.comparison",
+  "version": 1,
+  "kind": "PRACTICE",
+  "title": "Comparação e lógica",
+  "steps": [
+    {
+      "id": "age",
+      "type": "DEMO",
+      "title": "Comparar produz boolean",
+      "message": "Uma comparação resulta em true ou false.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "int idade = 20;"
+        }
+      ],
+      "presentations": [
+        {
+          "id": "age",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int idade = 20;\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "boolean",
+      "type": "DEMO",
+      "title": "Guardar o resultado",
+      "message": "A comparação pode ser guardada em uma variável boolean.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "boolean maiorDeIdade = idade >= 18;"
+        }
+      ],
+      "presentations": [
+        {
+          "id": "boolean",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int idade = 20;\n        boolean maiorDeIdade = idade >= 18;\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "ticket",
+      "type": "DEMO",
+      "title": "Outra condição",
+      "message": "Uma segunda condição também produz boolean.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "boolean possuiIngresso = true;"
+        }
+      ],
+      "presentations": [
+        {
+          "id": "ticket",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int idade = 20;\n        boolean maiorDeIdade = idade >= 18;\n        boolean possuiIngresso = true;\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "and",
+      "type": "DEMO",
+      "title": "Combinar condições",
+      "message": "&& exige que as duas condições sejam verdadeiras.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "boolean podeEntrar = maiorDeIdade && possuiIngresso;"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "|| aceita uma condição ou outra. ! inverte um boolean."
+        }
+      ],
+      "presentations": [
+        {
+          "id": "and",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int idade = 20;\n        boolean maiorDeIdade = idade >= 18;\n        boolean possuiIngresso = true;\n        boolean podeEntrar = maiorDeIdade && possuiIngresso;\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "practice",
+      "type": "DEMO",
+      "title": "Sua vez",
+      "message": "Crie uma expressão boolean com uma comparação e &&.",
+      "contentBlocks": [
+        {
+          "type": "PARAGRAPH",
+          "text": "Declare os valores necessários e depois combine as condições."
+        }
+      ],
+      "presentations": [
+        {
+          "id": "practice"
+        }
+      ],
+      "practice": {
+        "id": "comparison-logic",
+        "instruction": "Crie uma expressão `boolean` que use `nota >= 60 && ativo` dentro de `main`.",
+        "feedback": {
+          "success": "Correto. Sua comparação produz um `boolean` e combina as duas condições."
+        },
+        "file": {
+          "id": "main",
+          "name": "Main.java",
+          "language": "java",
+          "starterCode": "public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n",
+          "readOnly": false
+        }
+      }
+    }
+  ]
+}

@@ -10,6 +10,7 @@ public final class LessonSession {
     private int currentStepIndex;
     private int currentPresentationIndex;
     private LessonSessionPhase phase = LessonSessionPhase.PRESENTATION;
+    private LessonNavigationDirection navigationDirection = LessonNavigationDirection.NONE;
     private boolean practiceCompleted;
     private LessonSessionState state = LessonSessionState.ACTIVE;
 
@@ -20,8 +21,12 @@ public final class LessonSession {
     public int currentPresentationIndex() { return currentPresentationIndex; }
     public LessonSessionState state() { return state; }
     public LessonSessionPhase phase() { return phase; }
+    public LessonNavigationDirection navigationDirection() { return navigationDirection; }
     public boolean practiceCompleted() { return practiceCompleted; }
     void next() {
+        int previousStep = currentStepIndex;
+        int previousPresentation = currentPresentationIndex;
+        LessonSessionPhase previousPhase = phase;
         if (currentPresentationIndex < content.steps().get(currentStepIndex).presentations().size() - 1) {
             currentPresentationIndex++;
         } else if (content.steps().get(currentStepIndex).practice() != null && phase == LessonSessionPhase.PRESENTATION) {
@@ -33,8 +38,13 @@ public final class LessonSession {
             currentPresentationIndex = 0;
             phase = LessonSessionPhase.PRESENTATION;
         }
+        navigationDirection = previousStep != currentStepIndex || previousPresentation != currentPresentationIndex || previousPhase != phase
+                ? LessonNavigationDirection.FORWARD : LessonNavigationDirection.NONE;
     }
     void previous() {
+        int previousStep = currentStepIndex;
+        int previousPresentation = currentPresentationIndex;
+        LessonSessionPhase previousPhase = phase;
         if (phase == LessonSessionPhase.PRACTICE) {
             phase = LessonSessionPhase.PRESENTATION;
             practiceCompleted = false;
@@ -44,7 +54,9 @@ public final class LessonSession {
             currentStepIndex--;
             currentPresentationIndex = content.steps().get(currentStepIndex).presentations().size() - 1;
         }
+        navigationDirection = previousStep != currentStepIndex || previousPresentation != currentPresentationIndex || previousPhase != phase
+                ? LessonNavigationDirection.BACKWARD : LessonNavigationDirection.NONE;
     }
-    void completePractice() { if (phase != LessonSessionPhase.PRACTICE) throw new IllegalStateException("Prática não está ativa"); practiceCompleted = true; }
+    void completePractice() { if (phase != LessonSessionPhase.PRACTICE) throw new IllegalStateException("Prática não está ativa"); practiceCompleted = true; navigationDirection = LessonNavigationDirection.NONE; }
     void close() { state = LessonSessionState.CLOSED; }
 }

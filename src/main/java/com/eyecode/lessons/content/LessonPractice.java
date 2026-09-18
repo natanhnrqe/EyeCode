@@ -3,9 +3,10 @@ package com.eyecode.lessons.content;
 import java.util.List;
 import java.util.Objects;
 
-public record LessonPractice(String id, List<LessonInlineContent> instruction, List<LessonFile> files, String entryFileId, String mainClass) {
+public record LessonPractice(String id, List<LessonInlineContent> instruction, List<LessonFile> files, String entryFileId,
+                             String mainClass, PracticeFeedback feedback) {
     public LessonPractice(String id, List<LessonInlineContent> instruction, List<LessonFile> files, String entryFileId) {
-        this(id, instruction, files, entryFileId, null);
+        this(id, instruction, files, entryFileId, null, null);
     }
     public LessonPractice {
         instruction = instruction == null ? List.of() : List.copyOf(instruction);
@@ -22,7 +23,7 @@ public record LessonPractice(String id, List<LessonInlineContent> instruction, L
     }
 
     public LessonPractice(String id, List<LessonInlineContent> instruction, LessonFile file) {
-        this(id, instruction, List.of(Objects.requireNonNull(file)), file.id());
+        this(id, instruction, List.of(Objects.requireNonNull(file)), file.id(), null, null);
     }
 
     public LessonPractice(String id, List<LessonInlineContent> instruction, String starterCode) {

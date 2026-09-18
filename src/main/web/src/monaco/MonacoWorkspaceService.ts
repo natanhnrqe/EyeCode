@@ -5,7 +5,7 @@ import type { CompletionPopupState, CompletionResponse } from '../completion/pro
 import type { LearningPopupState, LearningResponse } from '../learning/protocol';
 import type { DiagnosticsViewState, DiagnosticsPublish, WebDiagnostic } from '../diagnostics/protocol';
 import type { Disposable, MonacoApi, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoKeyEvent, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoSnippetController } from './api';
-import type { LessonEditorRange } from '../lessons/protocol';
+import type { LessonEditorRange, PresentationProgram } from '../lessons/protocol';
 
 type DocumentChangeHandler = (document: DocumentSnapshot) => void;
 type CaretPositionHandler = (position: { line: number; column: number }) => void;
@@ -31,6 +31,7 @@ type PendingEphemeralModel = { content: string; language: string; readOnly: bool
 
 const LEARNING_CARD_OPEN_DELAY_MS = 200;
 const LEARNING_CARD_CLOSE_DELAY_MS = 10;
+const LESSON_TYPING_CADENCE_MS = 32;
 
 export class MonacoWorkspaceService {
   private readonly models = new Map<string, MonacoModel>();
@@ -243,11 +244,44 @@ export class MonacoWorkspaceService {
 
   ephemeralModelValue(uri: string): string | null { return this.ephemeralModels.get(uri)?.getValue() ?? null; }
 
+  async playPresentationProgram(uri: string, program: PresentationProgram): Promise<boolean> {
+    this.cancelLessonTyping();
+    const model = this.ephemeralModels.get(uri);
+    if (!model || this.activeModelUri() !== uri || model.getValue() !== program.sourceCode) return false;
+    if (program.operations.length === 0) return model.getValue() === program.targetCode;
+    for (const operation of program.operations) {
+      if (operation.type === 'MATERIALIZE') {
+        this.setEphemeralModelValue(uri, program.targetCode);
+        continue;
+      }
+      const start = model.getPositionAt(operation.startOffset);
+      const end = model.getPositionAt(operation.endOffset);
+      let replacementText = operation.text;
+      let editStart = start;
+      if (operation.prefix || operation.suffix) {
+        if (!this.applyLessonModelEdit(uri, model, {
+          range: { startLineNumber: start.lineNumber, startColumn: start.column, endLineNumber: end.lineNumber, endColumn: end.column },
+          text: `${operation.prefix}${operation.suffix}`,
+          forceMoveMarkers: true
+        })) return false;
+        editStart = model.getPositionAt(operation.startOffset + operation.prefix.length);
+      }
+      const finished = await this.animateEphemeralEdit(uri, {
+        startLineNumber: editStart.lineNumber,
+        startColumn: editStart.column,
+        endLineNumber: operation.prefix || operation.suffix ? editStart.lineNumber : end.lineNumber,
+        endColumn: operation.prefix || operation.suffix ? editStart.column : end.column
+      }, replacementText, program.targetCode, LESSON_TYPING_CADENCE_MS);
+      if (!finished) return false;
+    }
+    return model.getValue() === program.targetCode;
+  }
+
   animateEphemeralEdit(uri: string, range: LessonEditorRange, replacementText: string, finalCode: string,
                        cadenceMillis: number): Promise<boolean> {
     this.cancelLessonTyping();
     const model = this.ephemeralModels.get(uri);
-    if (!uri.startsWith('lesson://') || !model || this.activeModelUri() !== uri || !this.editor || !finalCode || cadenceMillis < 1) {
+    if (!uri.startsWith('lesson://') || !model || this.activeModelUri() !== uri || !this.editor || cadenceMillis < 1) {
       return Promise.resolve(false);
     }
     const startOffset = model.getOffsetAt({ lineNumber: range.startLineNumber, column: range.startColumn });
@@ -323,6 +357,7 @@ export class MonacoWorkspaceService {
           return;
         }
         if (model.getValue() !== finalCode) {
+          console.warn('[lesson-presentation] animation diverged from canonical state', { uri, range, replacementText, finalCode, actual: model.getValue() });
           this.lessonTyping = null;
           resolve(false);
           return;

@@ -1,6 +1,6 @@
 import type { DocumentSnapshot } from '../document/protocol';
 import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
-import type { LessonEditorCommand, LessonEditorRange, LessonFile, LessonSession } from './protocol';
+import type { LessonEditorCommand, LessonFile, LessonSession, PresentationProgram } from './protocol';
 
 type LessonDocument = { file: LessonFile; uri: string };
 
@@ -10,6 +10,7 @@ export class LessonEditorController {
   private readonly documentsByUri = new Map<string, LessonDocument>();
   private commandGeneration = 0;
   private practiceStarted = false;
+  private presentation: { step: number; index: number; canonicalCode: string } | null = null;
   private presentationReadyHandler: ((ready: boolean) => void) | null = null;
 
   constructor(private readonly service: MonacoWorkspaceService) {}
@@ -86,10 +87,40 @@ export class LessonEditorController {
 
   applySession(session: LessonSession): void {
     if (session.phase === 'PRACTICE') this.enterPractice();
-    else this.apply(session.commands);
+    else this.applyPresentation(session);
   }
 
-  apply(commands: LessonEditorCommand[]): void {
+  private applyPresentation(session: LessonSession): void {
+    const canonicalCode = session.canonicalCode;
+    const program = session.presentationProgram;
+    const previous = this.presentation;
+    const currentCode = this.service.ephemeralModelValue(this.activeUri ?? '');
+    const sequential = canonicalCode !== undefined && program !== undefined && currentCode === program.sourceCode
+      && previous !== null && session.navigationDirection !== 'NONE';
+    this.presentation = canonicalCode === undefined ? null : {
+      step: session.currentStep, index: session.currentPresentation, canonicalCode
+    };
+    if (!sequential || !canonicalCode) {
+      if (canonicalCode) this.materializeCanonical(canonicalCode, session.commands);
+      else this.apply(session.commands);
+      return;
+    }
+    this.play(program, session.commands);
+  }
+
+  private materializeCanonical(canonicalCode: string, commands: LessonEditorCommand[]): void {
+    if (!this.activeUri) return;
+    this.cancelAnimation();
+    this.documentsByUri.forEach(document => {
+      this.service.setLessonPracticeIntelligence(document.uri, false);
+      this.service.setEphemeralReadOnly(document.uri, true);
+    });
+    this.service.setEphemeralModelValue(this.activeUri, canonicalCode);
+    this.applyFocusCommands(this.activeUri, commands);
+    this.presentationReadyHandler?.(true);
+  }
+
+  private play(program: PresentationProgram, commands: LessonEditorCommand[]): void {
     if (!this.activeUri) return;
     this.cancelAnimation();
     const uri = this.activeUri;
@@ -98,7 +129,34 @@ export class LessonEditorController {
       this.service.setEphemeralReadOnly(document.uri, true);
     });
     const generation = this.commandGeneration;
-    void this.executeCommands(uri, commands, generation);
+    void this.service.playPresentationProgram(uri, program).then(finished => {
+      if (!finished || generation !== this.commandGeneration || this.activeUri !== uri) return;
+      this.applyFocusCommands(uri, commands);
+      this.presentationReadyHandler?.(true);
+    });
+  }
+
+  private applyFocusCommands(uri: string, commands: LessonEditorCommand[]): void {
+    for (const command of commands) {
+      if (command.type === 'HIGHLIGHT_RANGE' && command.range) this.service.setEphemeralDecorations(uri, [command.range]);
+      if (command.type === 'REVEAL_RANGE' && command.range) this.service.revealEphemeralRange(uri, command.range);
+      if (command.type === 'CLEAR_HIGHLIGHTS') this.service.clearEphemeralDecorations(uri);
+    }
+  }
+
+  apply(commands: LessonEditorCommand[], canonicalCode?: string): void {
+    if (!this.activeUri) return;
+    this.cancelAnimation();
+    const uri = this.activeUri;
+    this.documentsByUri.forEach(document => {
+      this.service.setLessonPracticeIntelligence(document.uri, false);
+      this.service.setEphemeralReadOnly(document.uri, true);
+    });
+    this.applyFocusCommands(uri, commands);
+    if (canonicalCode && this.service.ephemeralModelValue(uri) !== canonicalCode) {
+      this.service.setEphemeralModelValue(uri, canonicalCode);
+    }
+    this.presentationReadyHandler?.(true);
   }
 
   enterPractice(): void {
@@ -111,7 +169,7 @@ export class LessonEditorController {
 
     this.service.clearEphemeralDecorations(this.activeUri);
 
-    if (!this.practiceStarted) {
+    if (!this.practiceStarted || this.service.ephemeralModelValue(this.activeUri) !== active.file.starterCode) {
       this.service.updateLessonFile(
         this.activeUri,
         active.file.starterCode
@@ -164,18 +222,4 @@ export class LessonEditorController {
     return `lesson://${encodeURIComponent(session.lessonId)}/${encodeURIComponent(session.sessionId)}/${encodeURIComponent(file.id)}`;
   }
 
-  private async executeCommands(uri: string, commands: LessonEditorCommand[], generation: number): Promise<void> {
-    for (const command of commands) {
-      if (generation !== this.commandGeneration || this.activeUri !== uri) return;
-      if (command.type === 'SET_CODE') this.service.setEphemeralModelValue(uri, command.code ?? '');
-      if (command.type === 'ANIMATE_EDIT') {
-        const finished = await this.service.animateEphemeralEdit(uri, command.range!, command.replacementText!, command.finalCode!, command.cadenceMillis!);
-        if (!finished) return;
-      }
-      if (command.type === 'HIGHLIGHT_RANGE' && command.range) this.service.setEphemeralDecorations(uri, [command.range]);
-      if (command.type === 'REVEAL_RANGE') this.service.revealEphemeralRange(uri, command.range as LessonEditorRange);
-      if (command.type === 'CLEAR_HIGHLIGHTS') this.service.clearEphemeralDecorations(uri);
-    }
-    if (generation === this.commandGeneration && this.activeUri === uri) this.presentationReadyHandler?.(true);
-  }
 }

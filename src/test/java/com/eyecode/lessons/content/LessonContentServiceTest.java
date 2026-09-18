@@ -1,6 +1,8 @@
 package com.eyecode.lessons.content;
 
 import org.junit.jupiter.api.Test;
+import com.eyecode.lessons.presentation.PresentationOperationType;
+import com.eyecode.lessons.presentation.PresentationProgramExecutor;
 
 import java.util.List;
 
@@ -22,35 +24,15 @@ class LessonContentServiceTest {
         LessonStep integers = content.steps().get(1);
         assertEquals("int", integers.presentations().getFirst().annotation().title());
         assertEquals("long", integers.presentations().get(1).annotation().title());
-        LessonEditorCommand skeleton = integers.presentations().getFirst().commands().getFirst();
-        LessonEditorCommand animate = integers.presentations().getFirst().commands().get(2);
-        LessonEditorCommand eraseForLong = integers.presentations().get(1).commands().get(1);
-        LessonEditorCommand longInsert = integers.presentations().get(1).commands().get(2);
-        LessonEditorCommand floatInsert = content.steps().get(2).presentations().getFirst().commands().get(2);
-        LessonEditorCommand eraseForDouble = content.steps().get(2).presentations().get(1).commands().get(1);
-        LessonEditorCommand doubleInsert = content.steps().get(2).presentations().get(1).commands().get(2);
-        LessonEditorCommand charInsert = content.steps().get(3).presentations().getFirst().commands().get(2);
-        LessonEditorCommand booleanInsert = content.steps().get(4).presentations().getFirst().commands().get(2);
-        assertTrue(skeleton.code().contains("{\n    }"));
-        assertEquals(LessonEditorCommandType.ANIMATE_EDIT, animate.type());
-        assertFirstLineInsertion(animate, "int age = 20;");
-        assertFirstLineInsertion(longInsert, "long population = 8_000_000_000L;");
-        assertFirstLineInsertion(floatInsert, "float temperature = 36.5F;");
-        assertFirstLineInsertion(doubleInsert, "double price = 19.99;");
-        assertFirstLineInsertion(charInsert, "char grade = 'A';");
-        assertFirstLineInsertion(booleanInsert, "boolean active = true;");
-        assertEquals("", eraseForLong.replacementText());
-        assertEquals(4, eraseForLong.range().startLineNumber());
-        assertEquals(5, eraseForLong.range().endLineNumber());
-        assertTrue(eraseForLong.finalCode().contains("{\n    }"));
-        assertEquals(32, eraseForLong.cadenceMillis());
-        assertEquals("", eraseForDouble.replacementText());
-        assertEquals(4, eraseForDouble.range().startLineNumber());
-        assertEquals(5, eraseForDouble.range().endLineNumber());
-        assertEquals(32, eraseForDouble.cadenceMillis());
-        assertEquals("public class Main {\n\n    public static void main(String[] args) {\n        int age = 20;\n    }\n}\n", animate.finalCode());
-        assertEquals("public class Main {\n\n    public static void main(String[] args) {\n        long population = 8_000_000_000L;\n    }\n}\n", longInsert.finalCode());
-        assertEquals(32, animate.cadenceMillis());
+        assertTrue(integers.presentations().stream().allMatch(presentation -> presentation.program() != null));
+        assertEquals(PresentationOperationType.TYPE_TEXT,
+                integers.presentations().getFirst().program().operations().getFirst().type());
+        assertEquals(PresentationOperationType.REPLACE_TEXT,
+                integers.presentations().get(1).program().operations().getFirst().type());
+        assertTrue(integers.presentations().stream().flatMap(presentation -> presentation.commands().stream())
+                .allMatch(command -> command.type() == LessonEditorCommandType.HIGHLIGHT_RANGE
+                        || command.type() == LessonEditorCommandType.REVEAL_RANGE
+                        || command.type() == LessonEditorCommandType.CLEAR_HIGHLIGHTS));
     }
 
     @Test void loadsTheTheoryLessonWithoutProfessorCommands() {
@@ -81,10 +63,50 @@ class LessonContentServiceTest {
     @Test void loadsTheVariablesAndOperatorsBlockLessons() {
         assertEquals("Variáveis", service.load("java.fundamentals.variables").title());
         assertEquals(3, service.load("java.fundamentals.variables").steps().size());
-        assertEquals("strings-text", service.load("java.fundamentals.strings").steps().getFirst().practice().id());
-        assertEquals(32, service.load("java.fundamentals.arithmetic").steps().getFirst().presentations().getFirst().commands().get(1).cadenceMillis());
-        assertEquals("assignment-update", service.load("java.fundamentals.assignment").steps().getFirst().practice().id());
-        assertEquals("comparison-logic", service.load("java.fundamentals.comparison").steps().getFirst().practice().id());
+        assertEquals("strings-text", service.load("java.fundamentals.strings").steps().getLast().practice().id());
+        assertTrue(service.load("java.fundamentals.arithmetic").steps().getFirst().presentations().getFirst().program() != null);
+        assertEquals("assignment-update", service.load("java.fundamentals.assignment").steps().getLast().practice().id());
+        assertEquals("comparison-logic", service.load("java.fundamentals.comparison").steps().getLast().practice().id());
+    }
+
+    @Test void fundamentalsCodePresentationsUseCanonicalV2Transitions() {
+        List<String> lessonIds = List.of("java.fundamentals.first-program", "java.fundamentals.variables",
+                "java.fundamentals.variables.int", "java.fundamentals.strings", "java.fundamentals.arithmetic",
+                "java.fundamentals.assignment", "java.fundamentals.comparison");
+        for (String lessonId : lessonIds) {
+            String previousCanonical = "";
+            for (LessonStep step : service.load(lessonId).steps()) {
+                for (LessonPresentation presentation : step.presentations()) {
+                    assertTrue(presentation.commands().stream().allMatch(command ->
+                            command.type() == LessonEditorCommandType.HIGHLIGHT_RANGE
+                                    || command.type() == LessonEditorCommandType.REVEAL_RANGE
+                                    || command.type() == LessonEditorCommandType.CLEAR_HIGHLIGHTS));
+                    if (presentation.canonicalCode() == null) continue;
+                    assertTrue(presentation.program() != null);
+                    assertEquals(previousCanonical, presentation.program().sourceCode());
+                    assertEquals(presentation.canonicalCode(), new PresentationProgramExecutor().apply(
+                            presentation.program(), presentation.program().sourceCode()));
+                    if (!previousCanonical.isEmpty() && !previousCanonical.equals(presentation.canonicalCode())) {
+                        assertTrue(presentation.program().isAnimated(), lessonId + " contém uma transição canônica sem animação");
+                    }
+                    previousCanonical = presentation.canonicalCode();
+                }
+            }
+        }
+    }
+
+    @Test void comparisonPresentationDeclaresCanonicalStatesAndStructuralAppends() {
+        LessonContent content = service.load("java.fundamentals.comparison");
+        assertEquals(5, content.steps().size());
+        for (int index = 0; index < 4; index++) {
+            LessonPresentation presentation = content.steps().get(index).presentations().getFirst();
+            assertTrue(presentation.canonicalCode() != null);
+            assertEquals(index == 0 ? PresentationOperationType.MATERIALIZE : PresentationOperationType.TYPE_TEXT,
+                    presentation.program().operations().getFirst().type());
+            assertEquals(presentation.canonicalCode(), presentation.program().targetCode());
+        }
+        assertTrue(content.steps().get(3).presentations().getFirst().canonicalCode()
+                .contains("boolean podeEntrar = maiorDeIdade && possuiIngresso;\n    }"));
     }
 
     @Test void loadsTheFirstProgramWithTwoSequentialPractices() {
@@ -92,22 +114,13 @@ class LessonContentServiceTest {
         assertEquals(LessonKind.PRACTICE, content.kind());
         assertEquals(6, content.steps().size());
         String boilerplate = "public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n";
-        LessonEditorCommand initialCode = content.steps().get(0).presentations().getFirst().commands().getFirst();
-        LessonEditorCommand printlnInsert = content.steps().get(2).presentations().getFirst().commands().get(2);
-        LessonEditorCommand secondLineInsert = content.steps().get(3).presentations().getFirst().commands().get(2);
-        assertEquals(boilerplate, initialCode.code());
-        assertTrue(initialCode.code().contains("public static void main(String[] args)"));
-        assertFalse(initialCode.code().contains("System.out.println"));
-        assertEquals("\n        System.out.println(\"Olá, mundo!\");", printlnInsert.replacementText());
-        assertEquals(3, printlnInsert.range().startLineNumber());
-        assertEquals(45, printlnInsert.range().startColumn());
-        assertEquals(printlnInsert.range().startLineNumber(), printlnInsert.range().endLineNumber());
-        assertEquals(printlnInsert.range().startColumn(), printlnInsert.range().endColumn());
-        assertTrue(printlnInsert.finalCode().contains("System.out.println(\"Olá, mundo!\");"));
-        assertEquals("\n        System.out.println(\"Segunda linha\");", secondLineInsert.replacementText());
-        assertTrue(secondLineInsert.finalCode().contains("System.out.println(\"Olá, mundo!\");\n        System.out.println(\"Segunda linha\");"));
-        assertEquals(32, printlnInsert.cadenceMillis());
-        assertEquals(32, secondLineInsert.cadenceMillis());
+        var initial = content.steps().get(0).presentations().getFirst();
+        var printlnInsert = content.steps().get(2).presentations().getFirst();
+        var secondLineInsert = content.steps().get(3).presentations().getFirst();
+        assertEquals(boilerplate, initial.canonicalCode());
+        assertEquals(PresentationOperationType.MATERIALIZE, initial.program().operations().getFirst().type());
+        assertEquals(PresentationOperationType.TYPE_TEXT, printlnInsert.program().operations().getFirst().type());
+        assertEquals(PresentationOperationType.TYPE_TEXT, secondLineInsert.program().operations().getFirst().type());
         assertEquals("first-program-message", content.steps().get(4).practice().id());
         assertEquals("first-program-second-line", content.steps().get(5).practice().id());
         assertTrue(content.workspace().files().getFirst().starterCode().contains("Olá, mundo!"));
@@ -115,9 +128,8 @@ class LessonContentServiceTest {
                 .anyMatch(block -> (block.code() == null ? "" : block.code()).contains("Olá, EyeCode!")));
         assertFalse(content.steps().get(5).contentBlocks().stream().filter(block -> block.type() == LessonContentBlockType.CODE)
                 .anyMatch(block -> (block.code() == null ? "" : block.code()).contains("Meu primeiro programa Java!")));
-        assertEquals(boilerplate, content.steps().get(2).presentations().getFirst().commands().getFirst().code());
         assertEquals(boilerplate.replace("    }\n}\n", "        System.out.println(\"Olá, mundo!\");\n    }\n}\n"),
-                printlnInsert.finalCode());
+                printlnInsert.canonicalCode());
     }
 
     @Test void parsesPracticeFileIdentityAndKeepsTheLegacyStarterCodeCompatible() {
@@ -155,11 +167,4 @@ class LessonContentServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.parse(duplicate, "lesson"));
     }
 
-    private static void assertFirstLineInsertion(LessonEditorCommand command, String source) {
-        assertEquals("\n        " + source, command.replacementText());
-        assertEquals(3, command.range().startLineNumber());
-        assertEquals(45, command.range().startColumn());
-        assertEquals(3, command.range().endLineNumber());
-        assertEquals(45, command.range().endColumn());
-    }
 }

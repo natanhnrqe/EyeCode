@@ -1,1 +1,160 @@
-{"id":"java.fundamentals.strings","version":1,"kind":"PRACTICE","title":"Strings e texto","steps":[{"id":"text","type":"DEMO","title":"Caracteres e textos","message":"char guarda um caractere; String guarda uma sequência de texto e não é primitivo.","contentBlocks":[{"type":"HEADING","text":"Aspas simples e duplas"},{"type":"PARAGRAPH","text":"char usa aspas simples, como 'A'. String usa aspas duplas, como \"Ana\". String é um objeto, não um tipo primitivo."},{"type":"CODE","language":"java","code":"char letra = 'A';\nString nome = \"Ana\";\nSystem.out.println(\"Olá, \" + nome);"},{"type":"PARAGRAPH","text":"O operador + também concatena textos. Uma variável pode ser usada diretamente no println."}],"presentations":[{"id":"text","commands":[{"type":"SET_CODE","code":"public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n"},{"type":"CLEAR_HIGHLIGHTS"},{"type":"ANIMATE_EDIT","replacementText":"\n        char letra = 'A';\n        String nome = \"Ana\";\n        System.out.println(\"Olá, \" + nome);","range":{"startLineNumber":3,"startColumn":45,"endLineNumber":3,"endColumn":45},"finalCode":"public class Main {\n\n    public static void main(String[] args) {\n        char letra = 'A';\n        String nome = \"Ana\";\n        System.out.println(\"Olá, \" + nome);\n    }\n}\n","cadenceMillis":32}]}],"practice":{"id":"strings-text","instruction":"Declare `char letra = 'B'`, declare `String nome = \"Bia\"` e imprima `nome` usando `System.out.println`.","file":{"id":"main","name":"Main.java","language":"java","starterCode":"public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n","readOnly":false}}}]}
+{
+  "id": "java.fundamentals.strings",
+  "version": 1,
+  "kind": "PRACTICE",
+  "title": "Strings e texto",
+  "steps": [
+    {
+      "id": "character",
+      "type": "DEMO",
+      "title": "Um caractere",
+      "message": "char guarda exatamente um caractere.",
+      "contentBlocks": [
+        {
+          "type": "HEADING",
+          "text": "char e aspas simples"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "Use char para uma letra, número ou símbolo. O valor fica entre aspas simples."
+        },
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "char letra = 'A';\nchar simbolo = '#';"
+        }
+      ],
+      "presentations": [
+        {
+          "id": "character",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        char letra = 'A';\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "text",
+      "type": "DEMO",
+      "title": "Texto com String",
+      "message": "String guarda uma sequência de caracteres.",
+      "contentBlocks": [
+        {
+          "type": "HEADING",
+          "text": "String não é primitivo"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "String representa texto e é um objeto, não um tipo primitivo. Ela usa aspas duplas."
+        },
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "'A'   // char\n\"Ana\" // String"
+        }
+      ],
+      "presentations": [
+        {
+          "id": "text",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        String nome = \"Ana\";\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "use",
+      "type": "DEMO",
+      "title": "Usar uma String",
+      "message": "Depois de criar uma variável, podemos usá-la mais tarde.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "String nome = \"Ana\";\nSystem.out.println(nome);"
+        },
+        {
+          "type": "CALLOUT",
+          "title": "Resultado",
+          "text": "Ana"
+        }
+      ],
+      "presentations": [
+        {
+          "id": "use",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        String nome = \"Ana\";\n        System.out.println(nome);\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "concatenation",
+      "type": "DEMO",
+      "title": "Juntar textos",
+      "message": "O operador + junta textos neste contexto.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "String nome = \"Ana\";\nSystem.out.println(\"Olá, \" + nome);"
+        },
+        {
+          "type": "CALLOUT",
+          "title": "Resultado",
+          "text": "Olá, Ana"
+        }
+      ],
+      "presentations": [
+        {
+          "id": "concatenation",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        String nome = \"Ana\";\n        System.out.println(\"Olá, \" + nome);\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "variation",
+      "type": "DEMO",
+      "title": "Outro exemplo",
+      "message": "Os mesmos tipos funcionam com outros valores.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "char nivel = 'A';\nString curso = \"Java\";\nSystem.out.println(\"Curso: \" + curso);"
+        }
+      ],
+      "presentations": [
+        {
+          "id": "variation",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        char nivel = 'A';\n        String curso = \"Java\";\n        System.out.println(\"Curso: \" + curso);\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "practice",
+      "type": "DEMO",
+      "title": "Sua vez",
+      "message": "Use char, String e println com valores novos.",
+      "contentBlocks": [
+        {
+          "type": "PARAGRAPH",
+          "text": "Agora monte as três instruções solicitadas no editor."
+        }
+      ],
+      "presentations": [
+        {
+          "id": "practice"
+        }
+      ],
+      "practice": {
+        "id": "strings-text",
+        "instruction": "Declare `char letra = 'B'`, declare `String nome = \"Bia\"` e imprima `nome` usando `System.out.println`.",
+        "feedback": {
+          "success": "Correto. Você declarou `letra` como `char`, criou o texto em `nome` e o imprimiu."
+        },
+        "file": {
+          "id": "main",
+          "name": "Main.java",
+          "language": "java",
+          "starterCode": "public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n",
+          "readOnly": false
+        }
+      }
+    }
+  ]
+}

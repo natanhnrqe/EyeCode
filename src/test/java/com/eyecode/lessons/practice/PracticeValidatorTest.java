@@ -3,6 +3,7 @@ package com.eyecode.lessons.practice;
 import com.eyecode.lessons.content.LessonPractice;
 import com.eyecode.lessons.content.LessonInlineContent;
 import com.eyecode.lessons.content.LessonInlineContentType;
+import com.eyecode.lessons.content.LessonContentService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -73,7 +74,7 @@ class PracticeValidatorTest {
     @Test void reportsSuccessThroughTheStructuredResult() {
         PracticeVerificationResult result = validator.verify(practice, source("int score = 100;"));
         assertTrue(result.successful());
-        assertEquals("Correto. Você declarou `score` como `int` e inicializou com `100`.", result.message());
+        assertEquals("Correto. Você concluiu a tarefa: Instrucao", result.message());
     }
 
     @Test void verifiesTheFirstProgramMessageStructurallyInsideMain() {
@@ -81,7 +82,7 @@ class PracticeValidatorTest {
                 List.of(new LessonInlineContent(LessonInlineContentType.TEXT, "Instrucao", null)), "class Main {}");
         PracticeVerificationResult success = validator.verify(message, firstProgram("Olá, EyeCode!"));
         assertEquals(PracticeVerificationStatus.SUCCESS, success.status());
-        assertTrue(success.message().contains("Olá, EyeCode!"));
+        assertTrue(success.message().contains("Instrucao"));
         assertTrue(!success.message().contains("score") && !success.message().contains("100"));
         assertEquals(PracticeVerificationStatus.WRONG_OUTPUT, validator.verify(message, firstProgram("Olá, mundo!")).status());
         assertEquals(PracticeVerificationStatus.MISSING_OUTPUT, validator.verify(message, source("int count = 1;")).status());
@@ -93,7 +94,7 @@ class PracticeValidatorTest {
         PracticeVerificationResult success = validator.verify(secondLine,
                 firstProgram("Olá, EyeCode!", "Meu primeiro programa Java!"));
         assertEquals(PracticeVerificationStatus.SUCCESS, success.status());
-        assertTrue(success.message().contains("segunda mensagem"));
+        assertTrue(success.message().contains("Instrucao"));
         assertEquals(PracticeVerificationStatus.MISSING_SECOND_OUTPUT, validator.verify(secondLine,
                 firstProgram("Olá, EyeCode!")).status());
         assertEquals(PracticeVerificationStatus.WRONG_OUTPUT, validator.verify(secondLine,
@@ -127,6 +128,23 @@ class PracticeValidatorTest {
         assertEquals(PracticeVerificationStatus.SUCCESS, validator.verify(practice("arithmetic-calculation"), source("int total = 8 + 2 - 3 * 4 / 2 % 3;")).status());
         assertEquals(PracticeVerificationStatus.SUCCESS, validator.verify(practice("assignment-update"), source("int pontos = 10; pontos += 10; pontos++; pontos -= 1; pontos--;")).status());
         assertEquals(PracticeVerificationStatus.SUCCESS, validator.verify(practice("comparison-logic"), source("int nota = 70; boolean ativo = true; boolean aprovado = nota >= 60 && ativo;")).status());
+    }
+
+    @Test void keepsFeedbackBoundToThePracticeThatWasValidated() {
+        LessonContentService content = new LessonContentService();
+        LessonPractice score = content.load("java.fundamentals.variables").steps().getFirst().practice();
+        LessonPractice strings = content.load("java.fundamentals.strings").steps().getLast().practice();
+        LessonPractice firstProgram = content.load("java.fundamentals.first-program").steps().get(4).practice();
+
+        PracticeVerificationResult scoreResult = validator.verify(score, source("int score = 10;"));
+        PracticeVerificationResult stringsResult = validator.verify(strings, source("char letra = 'B'; String nome = \"Bia\"; System.out.println(nome);"));
+        PracticeVerificationResult firstProgramResult = validator.verify(firstProgram, firstProgram("Olá, EyeCode!"));
+
+        assertTrue(scoreResult.message().contains("score"));
+        assertTrue(stringsResult.successful());
+        assertTrue(stringsResult.message().contains("letra"));
+        assertTrue(!stringsResult.message().contains("score") && !stringsResult.message().contains("100"));
+        assertTrue(!firstProgramResult.message().contains("score") && !firstProgramResult.message().contains("100"));
     }
 
     private static LessonPractice practice(String id) {

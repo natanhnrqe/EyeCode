@@ -33,13 +33,19 @@ export type LessonPractice = { id: string; instruction: LessonInlineContent[]; f
 export type PracticeVerificationStatus = 'SUCCESS' | 'SYNTAX_ERROR' | 'INVALID_CONTEXT' | 'MISSING_DECLARATION' | 'WRONG_TYPE' | 'WRONG_NAME' | 'WRONG_INITIALIZER' | 'MISSING_OUTPUT' | 'WRONG_OUTPUT' | 'MISSING_SECOND_OUTPUT';
 export type PracticeVerificationResult = { status: PracticeVerificationStatus; message: string };
 export type LessonEditorCommand = {
-  type: 'SET_CODE' | 'ANIMATE_EDIT' | 'HIGHLIGHT_RANGE' | 'REVEAL_RANGE' | 'CLEAR_HIGHLIGHTS';
-  code?: string;
-  replacementText?: string;
+  type: 'HIGHLIGHT_RANGE' | 'REVEAL_RANGE' | 'CLEAR_HIGHLIGHTS';
   range?: LessonEditorRange;
-  finalCode?: string;
-  cadenceMillis?: number;
 };
+export type PresentationOperation = {
+  type: 'TYPE_TEXT' | 'DELETE_TEXT' | 'REPLACE_TEXT' | 'MATERIALIZE';
+  startOffset: number;
+  endOffset: number;
+  prefix: string;
+  text: string;
+  suffix: string;
+};
+export type PresentationProgram = { sourceCode: string; targetCode: string; operations: PresentationOperation[] };
+export type LessonNavigationDirection = 'NONE' | 'FORWARD' | 'BACKWARD';
 export type LessonInlineContent = { type: 'TEXT' | 'CODE' | 'EMPHASIS' | 'STRONG' | 'LINK'; text: string; url?: string };
 export type LessonContentBlock = { type: 'HEADING' | 'PARAGRAPH' | 'CODE' | 'LIST' | 'CALLOUT'; text?: string; title?: string; language?: string; code?: string; items?: string[]; inlineContent?: LessonInlineContent[]; ordered?: boolean };
 export type LessonAnnotation = { title: string; message: string; range: LessonEditorRange };
@@ -50,6 +56,9 @@ export type LessonSession = {
   currentStep: number;
   currentPresentation: number;
   presentationId: string;
+  canonicalCode?: string;
+  presentationProgram?: PresentationProgram;
+  navigationDirection: LessonNavigationDirection;
   totalSteps: number;
   state: 'ACTIVE' | 'CLOSED';
   phase: 'PRESENTATION' | 'PRACTICE' | 'COMPLETED';

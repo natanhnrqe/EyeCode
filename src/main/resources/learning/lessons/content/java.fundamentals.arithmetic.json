@@ -1,1 +1,109 @@
-{"id":"java.fundamentals.arithmetic","version":1,"kind":"PRACTICE","title":"Operadores aritméticos","steps":[{"id":"arithmetic","type":"DEMO","title":"Calcular com variáveis","message":"Use +, -, *, / e % para calcular valores.","contentBlocks":[{"type":"HEADING","text":"Operações básicas"},{"type":"PARAGRAPH","text":"Os operadores +, -, *, / e % calculam com variáveis. Quando os dois valores são inteiros, / faz divisão inteira e descarta a parte decimal."},{"type":"CODE","language":"java","code":"int total = 10 + 3;\nint resto = 10 % 3;"}],"presentations":[{"id":"arithmetic","commands":[{"type":"SET_CODE","code":"public class Main {\n\n    public static void main(String[] args) {\n    }\n}\n"},{"type":"ANIMATE_EDIT","replacementText":"\n        int total = 10 + 3;\n        int resto = 10 % 3;","range":{"startLineNumber":3,"startColumn":45,"endLineNumber":3,"endColumn":45},"finalCode":"public class Main {\n\n    public static void main(String[] args) {\n        int total = 10 + 3;\n        int resto = 10 % 3;\n    }\n}\n","cadenceMillis":32}]}],"practice":{"id":"arithmetic-calculation","instruction":"Crie `int total = 8 + 2 - 3 * 4 / 2 % 3` dentro de `main`.","file":{"id":"main","name":"Main.java","language":"java","starterCode":"public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n","readOnly":false}}}]}
+{
+  "id": "java.fundamentals.arithmetic",
+  "version": 1,
+  "kind": "PRACTICE",
+  "title": "Operadores aritméticos",
+  "steps": [
+    {
+      "id": "multiply",
+      "type": "DEMO",
+      "title": "Calcular um total",
+      "message": "Variáveis deixam um cálculo mais legível.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "int preco = 10;\nint quantidade = 3;\nint total = preco * quantidade;"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "* multiplica preço por quantidade."
+        }
+      ],
+      "presentations": [
+        {
+          "id": "multiply",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int preco = 10;\n        int quantidade = 3;\n        int total = preco * quantidade;\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "sum",
+      "type": "DEMO",
+      "title": "Somar e subtrair",
+      "message": "+ soma e - subtrai valores.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "int saldo = 20 + 5 - 3;"
+        },
+        {
+          "type": "PARAGRAPH",
+          "text": "A expressão é calculada antes de ser guardada em saldo."
+        }
+      ],
+      "presentations": [
+        {
+          "id": "sum",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int saldo = 20 + 5 - 3;\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "division",
+      "type": "DEMO",
+      "title": "Divisão e resto",
+      "message": "/ divide; % mostra o resto.",
+      "contentBlocks": [
+        {
+          "type": "CODE",
+          "language": "java",
+          "code": "int resultado = 5 / 2;\nint resto = 7 % 2;"
+        },
+        {
+          "type": "CALLOUT",
+          "title": "Divisão inteira",
+          "text": "Como os dois valores são int, 5 / 2 resulta em 2. O resto de 7 por 2 é 1."
+        }
+      ],
+      "presentations": [
+        {
+          "id": "division",
+          "canonicalCode": "public class Main {\n\n    public static void main(String[] args) {\n        int resultado = 5 / 2;\n        int resto = 7 % 2;\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "practice",
+      "type": "DEMO",
+      "title": "Sua vez",
+      "message": "Combine os cinco operadores em uma expressão.",
+      "contentBlocks": [
+        {
+          "type": "PARAGRAPH",
+          "text": "Use uma variável chamada total e os operadores apresentados."
+        }
+      ],
+      "presentations": [
+        {
+          "id": "practice"
+        }
+      ],
+      "practice": {
+        "id": "arithmetic-calculation",
+        "instruction": "Crie `int total = 8 + 2 - 3 * 4 / 2 % 3` dentro de `main`.",
+        "feedback": {
+          "success": "Correto. Sua expressão usa todos os operadores aritméticos pedidos."
+        },
+        "file": {
+          "id": "main",
+          "name": "Main.java",
+          "language": "java",
+          "starterCode": "public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n",
+          "readOnly": false
+        }
+      }
+    }
+  ]
+}

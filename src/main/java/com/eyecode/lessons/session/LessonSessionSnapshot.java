@@ -5,9 +5,11 @@ import com.eyecode.lessons.content.LessonPresentation;
 import com.eyecode.lessons.content.LessonPractice;
 import com.eyecode.lessons.content.LessonKind;
 import com.eyecode.lessons.content.LessonWorkspace;
+import com.eyecode.lessons.presentation.PresentationProgram;
 
 public record LessonSessionSnapshot(String sessionId, String lessonId, LessonKind kind, int currentStepIndex, int totalSteps,
                                     int currentPresentationIndex, LessonSessionState state, LessonStep step,
                                     LessonPresentation presentation, LessonWorkspace workspace, LessonPractice practice, LessonSessionPhase phase,
-                                    boolean practiceCompleted, boolean canPrevious, boolean canNext) {
+                                    boolean practiceCompleted, boolean canPrevious, boolean canNext,
+                                    LessonNavigationDirection navigationDirection, PresentationProgram transitionProgram) {
 }

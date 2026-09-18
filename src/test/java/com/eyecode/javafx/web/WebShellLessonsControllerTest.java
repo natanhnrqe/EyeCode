@@ -53,7 +53,7 @@ class WebShellLessonsControllerTest {
         assertEquals("Main.java", maps(firstProgram.get("practiceFiles")).getFirst().get("name"));
     }
 
-    @Test void preservesSessionStepAndCommandsInTheBridgePayload() {
+    @Test void preservesSessionStepAndCompiledProgramInTheBridgePayload() {
         var sessions = new LessonSessionService(new LessonContentService());
         var started = sessions.start("java.fundamentals.variables.int");
         var snapshot = sessions.next(started.sessionId());
@@ -67,11 +67,39 @@ class WebShellLessonsControllerTest {
         Map<?, ?> annotation = (Map<?, ?>) payload.get("annotation");
         assertEquals("int", annotation.get("title"));
         assertEquals(4, ((Map<?, ?>) annotation.get("range")).get("startLineNumber"));
-        Map<?, ?> animate = (Map<?, ?>) ((List<?>) payload.get("commands")).get(2);
-        assertEquals("ANIMATE_EDIT", animate.get("type"));
-        assertTrue(((String) animate.get("replacementText")).contains("int age = 20;"));
-        assertTrue(((String) animate.get("finalCode")).contains("int age = 20;"));
-        assertEquals(32, animate.get("cadenceMillis"));
+        Map<?, ?> program = (Map<?, ?>) payload.get("presentationProgram");
+        assertTrue(((String) program.get("sourceCode")).contains("public static void main"));
+        assertTrue(((String) program.get("targetCode")).contains("int age = 20;"));
+        Map<?, ?> operation = (Map<?, ?>) ((List<?>) program.get("operations")).getFirst();
+        assertEquals("TYPE_TEXT", operation.get("type"));
+        assertEquals("int age = 20;", operation.get("text"));
+        assertEquals("        ", operation.get("prefix"));
+        assertEquals("\n    ", operation.get("suffix"));
+        assertEquals("FORWARD", payload.get("navigationDirection"));
+    }
+
+    @Test void serializesTheReverseProgramForBackNavigation() {
+        var sessions = new LessonSessionService(new LessonContentService());
+        var started = sessions.start("java.fundamentals.comparison");
+        sessions.next(started.sessionId());
+        sessions.next(started.sessionId());
+        Map<String, Object> payload = WebShellLessonsController.sessionPayload(sessions.previous(started.sessionId()));
+
+        assertEquals("BACKWARD", payload.get("navigationDirection"));
+        Map<?, ?> program = (Map<?, ?>) payload.get("presentationProgram");
+        assertTrue(((String) program.get("sourceCode")).contains("boolean possuiIngresso"));
+        assertTrue(!((String) program.get("targetCode")).contains("boolean possuiIngresso"));
+        assertEquals("DELETE_TEXT", ((Map<?, ?>) ((List<?>) program.get("operations")).getFirst()).get("type"));
+    }
+
+    @Test void serializesAnAnimatedGenericReplacementForIndependentExamples() {
+        var sessions = new LessonSessionService(new LessonContentService());
+        var started = sessions.start("java.fundamentals.arithmetic");
+        Map<String, Object> payload = WebShellLessonsController.sessionPayload(sessions.next(started.sessionId()));
+
+        Map<?, ?> program = (Map<?, ?>) payload.get("presentationProgram");
+        assertEquals("FORWARD", payload.get("navigationDirection"));
+        assertEquals("REPLACE_TEXT", ((Map<?, ?>) ((List<?>) program.get("operations")).getFirst()).get("type"));
     }
 
     @Test void serializesLessonWorkspaceBeforeTheStepPracticeBegins() {
@@ -128,7 +156,7 @@ class WebShellLessonsControllerTest {
         Map<?, ?> failure = (Map<?, ?>) failed.get("verification");
         Map<?, ?> failedSession = (Map<?, ?>) failed.get("session");
         assertEquals("WRONG_INITIALIZER", failure.get("status"));
-        assertEquals("Inicialize `score` com o valor inteiro `100`.", failure.get("message"));
+        assertEquals("Revise o valor inicial pedido para a variável.", failure.get("message"));
         assertEquals(false, failedSession.get("practiceCompleted"));
 
         Map<String, Object> succeeded = WebShellLessonsController.verifyPayload(practice.service(), new PracticeValidator(),
