@@ -1,9 +1,10 @@
 package com.eyecode.javafx.learning;
 
 import com.eyecode.javafx.monaco.JavaFxMonacoEditorSurface;
-import com.eyecode.javafx.monaco.MonacoOverlayAction;
-import com.eyecode.javafx.monaco.MonacoOverlayEvent;
-import com.eyecode.javafx.monaco.MonacoOverlayType;
+import com.eyecode.ui.web.learning.MonacoLearningOverlayPayload;
+import com.eyecode.ui.web.monaco.MonacoOverlayAction;
+import com.eyecode.ui.web.monaco.MonacoOverlayEvent;
+import com.eyecode.ui.web.monaco.MonacoOverlayType;
 import com.eyecode.language.documentation.JdkSourceResolver;
 import com.eyecode.language.documentation.JavaJdkTypeCatalog;
 import com.eyecode.language.documentation.JdkSourceTarget;

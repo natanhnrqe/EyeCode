@@ -8,6 +8,12 @@ import com.eyecode.ui.core.UIViewFactory;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
 
+/**
+ * Legacy Swing/JCEF learning document composition retained while compatibility
+ * code remains available.
+ *
+ * @deprecated New learning UI belongs in the active Web Shell/JavaFX composition.
+ */
 @Deprecated(forRemoval = true)
 public final class LearningDocumentView extends JPanel {
 

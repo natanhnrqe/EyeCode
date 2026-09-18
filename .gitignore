@@ -48,7 +48,9 @@ out/
 
 .docs/
 docs/*
-docs/
+!docs/
+!docs/ARCHITECTURE.md
+!docs/DEVELOPMENT_GUIDE.md
 
 AGENTS.md
 

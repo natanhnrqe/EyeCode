@@ -19,8 +19,10 @@ public final class JavaPresentationChangeAnalyzer {
         if (previousCode.isEmpty()) return new CodeChange(CodeChangeKind.UNSAFE, start, end, inserted);
         if (change.isInsert() && isCompleteLineInsertion(previousCode, start, inserted)) {
             int lineStart = previousCode.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
-            String normalizedInsertion = previousCode.substring(lineStart, start) + inserted;
-            return new CodeChange(classifyLineInsertion(previousCode, canonicalCode), lineStart, start, normalizedInsertion);
+            String anchorIndentation = previousCode.substring(lineStart, start);
+            String normalizedInsertion = anchorIndentation + inserted;
+            String insertionBeforeAnchor = normalizedInsertion.substring(0, normalizedInsertion.length() - anchorIndentation.length());
+            return new CodeChange(classifyLineInsertion(previousCode, canonicalCode), lineStart, lineStart, insertionBeforeAnchor);
         }
         if (change.isInsert() && hasLineBreak(inserted)
                 && classifyLineInsertion(previousCode, canonicalCode) == CodeChangeKind.BLOCK_INSERTION) {

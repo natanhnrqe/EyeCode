@@ -2,6 +2,9 @@ package com.eyecode.lessons.presentation;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -56,6 +59,7 @@ class PresentationCompilerTest {
         String after = "class Main {\n    void run() {\n        int idade = 20;\n        System.out.println(idade);\n    }\n}\n";
         PresentationProgram reverse = compiler.compile(after, before, false);
         assertEquals(PresentationOperationType.DELETE_TEXT, reverse.operations().getFirst().type());
+        assertEquals(2, reverse.operations().size());
         assertExact(reverse);
     }
 
@@ -77,9 +81,11 @@ class PresentationCompilerTest {
         PresentationProgram program = compiler.compile(before, after, false);
         PresentationOperation operation = program.operations().getFirst();
         assertEquals(PresentationOperationType.TYPE_TEXT, operation.type());
+        assertEquals(before.indexOf("    }\n"), operation.startOffset());
+        assertEquals(operation.startOffset(), operation.endOffset());
         assertEquals("        ", operation.prefix());
         assertEquals("int age = 20;", operation.text());
-        assertEquals("\n    ", operation.suffix());
+        assertEquals("\n", operation.suffix());
         assertExact(program);
     }
 
@@ -87,8 +93,38 @@ class PresentationCompilerTest {
         String before = "class Main {\r\n    void run() {\r\n    }\r\n}\r\n";
         String after = "class Main {\r\n    void run() {\r\n        int age = 20;\r\n    }\r\n}\r\n";
         PresentationProgram program = compiler.compile(before, after, false);
-        assertEquals("\r\n    ", program.operations().getFirst().suffix());
+        assertEquals("\r\n", program.operations().getFirst().suffix());
         assertExact(program);
+    }
+
+    @Test void statementInsertionKeepsTheExistingClosingBraceLineUntouchedInEveryIntermediateState() {
+        String before = "public class Main {\n\n    public static void main(String[] args) {\n        int idade = 20;\n    }\n}\n";
+        String after = "public class Main {\n\n    public static void main(String[] args) {\n        int idade = 20;\n        boolean maiorDeIdade = idade >= 18;\n    }\n}\n";
+        PresentationProgram program = compiler.compile(before, after, false);
+        PresentationOperation operation = program.operations().getFirst();
+        List<String> states = typingStates(program);
+
+        assertEquals(before.indexOf("    }\n"), operation.startOffset());
+        assertEquals(operation.startOffset(), operation.endOffset());
+        assertEquals(before, states.getFirst());
+        assertEquals("public class Main {\n\n    public static void main(String[] args) {\n        int idade = 20;\n        b\n    }\n}\n", states.get(1));
+        assertTrue(states.stream().allMatch(state -> state.contains("\n    }\n}")), states.toString());
+        assertTrue(states.stream().noneMatch(PresentationCompilerTest::hasBlankIndentedLine));
+        assertEquals(after, states.getLast());
+    }
+
+    @Test void reverseStatementDeletionNeverConsumesTheExistingClosingBraceLine() {
+        String before = "public class Main {\n\n    public static void main(String[] args) {\n        int idade = 20;\n    }\n}\n";
+        String after = "public class Main {\n\n    public static void main(String[] args) {\n        int idade = 20;\n        boolean maiorDeIdade = idade >= 18;\n    }\n}\n";
+        PresentationProgram reverse = compiler.compile(after, before, false);
+        PresentationOperation operation = reverse.operations().getFirst();
+        List<String> states = deletionStates(reverse);
+
+        assertEquals(PresentationOperationType.DELETE_TEXT, operation.type());
+        assertEquals(after.indexOf("        boolean"), operation.startOffset());
+        assertEquals(after.indexOf("\n    }\n"), operation.endOffset());
+        assertTrue(states.stream().allMatch(state -> state.contains("\n    }\n}")), states.toString());
+        assertEquals(before, states.getLast());
     }
 
     @Test void blockInsertionUsesAnAnimatedRegionReplacement() {
@@ -149,5 +185,38 @@ class PresentationCompilerTest {
     private void assertAnimated(PresentationProgram program) {
         assertTrue(program.isAnimated());
         assertExact(program);
+    }
+
+    private static List<String> typingStates(PresentationProgram program) {
+        PresentationOperation operation = program.operations().getFirst();
+        StringBuilder state = new StringBuilder(program.sourceCode());
+        List<String> states = new ArrayList<>();
+        states.add(state.toString());
+        String first = operation.text().substring(0, 1);
+        state.replace(operation.startOffset(), operation.endOffset(), operation.prefix() + first + operation.suffix());
+        states.add(state.toString());
+        int offset = operation.startOffset() + operation.prefix().length() + first.length();
+        for (int index = 1; index < operation.text().length(); index++) {
+            state.insert(offset++, operation.text().charAt(index));
+            states.add(state.toString());
+        }
+        return states;
+    }
+
+    private static List<String> deletionStates(PresentationProgram program) {
+        StringBuilder state = new StringBuilder(program.sourceCode());
+        List<String> states = new ArrayList<>();
+        states.add(state.toString());
+        for (PresentationOperation operation : program.operations()) {
+            for (int offset = operation.endOffset(); offset > operation.startOffset(); offset--) {
+                state.deleteCharAt(offset - 1);
+                states.add(state.toString());
+            }
+        }
+        return states;
+    }
+
+    private static boolean hasBlankIndentedLine(String source) {
+        return source.lines().anyMatch(line -> !line.isEmpty() && line.isBlank());
     }
 }

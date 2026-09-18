@@ -1,10 +1,10 @@
 package com.eyecode.spike;
 
-import com.eyecode.javafx.web.SwingWebShellNativeUi;
-import com.eyecode.javafx.web.SwingWebShellSurface;
-import com.eyecode.javafx.web.WebShellAssetServer;
-import com.eyecode.javafx.web.WebShellNativeController;
-import com.eyecode.javafx.web.WebShellWorkspaceController;
+import com.eyecode.ui.web.SwingWebShellNativeUi;
+import com.eyecode.ui.web.SwingWebShellSurface;
+import com.eyecode.ui.web.WebShellAssetServer;
+import com.eyecode.ui.web.WebShellNativeController;
+import com.eyecode.ui.web.WebShellWorkspaceController;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;

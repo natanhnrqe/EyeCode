@@ -1,5 +1,9 @@
 package com.eyecode.javafx.monaco;
 
+import com.eyecode.ui.web.monaco.MonacoBridge;
+import com.eyecode.ui.web.monaco.MonacoCommand;
+import com.eyecode.ui.web.monaco.MonacoCompletionRequest;
+import com.eyecode.ui.web.monaco.MonacoEvent;
 import javafx.application.Platform;
 import javafx.scene.control.Label;
 import org.junit.jupiter.api.BeforeAll;

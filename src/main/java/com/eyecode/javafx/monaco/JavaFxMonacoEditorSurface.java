@@ -1,6 +1,14 @@
 package com.eyecode.javafx.monaco;
 
 import com.eyecode.javafx.ceffx.CeffxRuntime;
+import com.eyecode.ui.web.monaco.MonacoBridge;
+import com.eyecode.ui.web.monaco.MonacoCommand;
+import com.eyecode.ui.web.monaco.MonacoCompletionItem;
+import com.eyecode.ui.web.monaco.MonacoCompletionRequest;
+import com.eyecode.ui.web.monaco.MonacoEvent;
+import com.eyecode.ui.web.monaco.MonacoOverlayAction;
+import com.eyecode.ui.web.monaco.MonacoOverlayEvent;
+import com.eyecode.ui.web.monaco.MonacoOverlayType;
 import com.techsenger.ceffx.core.CefClient;
 import com.techsenger.ceffx.core.browser.CefBrowser;
 import com.techsenger.ceffx.core.browser.CefFrame;

@@ -41,9 +41,12 @@
 
 > *"Software architecture is not learned by reading — it is learned by building systems that evolve."*
 
-**EyeCode** is a Java-based desktop IDE project designed not as a product, but as an **engineering exploration platform**.
-
+**EyeCode** is a Java-based web IDE project designed not as a product, but as an **engineering exploration platform**.
 The objective is to understand how professional IDEs are structured internally by building one from scratch and evolving its architecture over time.
+
+EyeCode uses Java 21, Maven and a React/TypeScript Monaco workspace. Start the Web backend with `mvn exec:java`, then open the printed loopback URL in a browser. JavaFX/CEFFX and Swing/JCEF remain legacy desktop adapters. Validate Java with `mvn test` and the frontend from `src/main/web` with `npm run typecheck` and `npm run build`.
+
+For the current system map, UI boundaries, protocol and EventBus contracts, see [Architecture](docs/ARCHITECTURE.md). For the workflow to extend the project, see the [Development Guide](docs/DEVELOPMENT_GUIDE.md).
 
 Instead of focusing only on features, EyeCode focuses on:
 

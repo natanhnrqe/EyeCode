@@ -1,0 +1,40 @@
+package com.eyecode.ui.web.learning;
+
+import com.eyecode.learning.content.LearningDepth;
+import com.eyecode.learning.content.LearningMetadata;
+import com.eyecode.learning.content.LearningKind;
+
+public record LearningCardSizingPolicy(
+        double width,
+        double minHeight,
+        double preferredHeight,
+        double maxHeight
+) {
+
+    private static final LearningCardSizingPolicy QUICK =
+            new LearningCardSizingPolicy(600, 220, 300, 360);
+    private static final LearningCardSizingPolicy FULL =
+            new LearningCardSizingPolicy(600, 360, 500, 620);
+    private static final LearningCardSizingPolicy MEMBER =
+            new LearningCardSizingPolicy(600, 300, 420, 540);
+
+    public static LearningCardSizingPolicy forDepth(LearningDepth depth) {
+        return depth == LearningDepth.QUICK ? QUICK : FULL;
+    }
+
+    public static LearningCardSizingPolicy forMetadata(LearningMetadata metadata) {
+        if (classFor(metadata) == LearningCardSizeClass.MEDIUM) {
+            return MEMBER;
+        }
+        return forDepth(metadata == null ? LearningDepth.FULL : metadata.depth());
+    }
+
+    public static LearningCardSizeClass classFor(LearningMetadata metadata) {
+        if (metadata != null && metadata.kind() == LearningKind.MEMBER) {
+            return LearningCardSizeClass.MEDIUM;
+        }
+        return metadata != null && metadata.depth() == LearningDepth.QUICK
+                ? LearningCardSizeClass.QUICK
+                : LearningCardSizeClass.FULL;
+    }
+}

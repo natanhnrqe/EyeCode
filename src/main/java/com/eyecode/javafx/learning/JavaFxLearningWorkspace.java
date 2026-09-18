@@ -99,7 +99,7 @@ public final class JavaFxLearningWorkspace {
         }
     }
 
-    public void handleMonacoOverlayEvent(com.eyecode.javafx.monaco.MonacoOverlayEvent event) {
+    public void handleMonacoOverlayEvent(com.eyecode.ui.web.monaco.MonacoOverlayEvent event) {
         if (renderer instanceof MonacoLearningCardRenderer monaco) {
             monaco.onOverlayEvent(event);
         }

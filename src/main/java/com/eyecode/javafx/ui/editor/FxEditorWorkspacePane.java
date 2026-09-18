@@ -12,9 +12,9 @@ import com.eyecode.language.documentation.JdkSourceTarget;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.javafx.monaco.JavaFxMonacoEditorSurface;
-import com.eyecode.javafx.monaco.MonacoEvent;
-import com.eyecode.javafx.monaco.MonacoModelId;
-import com.eyecode.javafx.monaco.MonacoPositionAdapter;
+import com.eyecode.ui.web.monaco.MonacoEvent;
+import com.eyecode.ui.web.monaco.MonacoModelId;
+import com.eyecode.ui.web.monaco.MonacoPositionAdapter;
 import com.eyecode.javafx.learning.JavaFxLearningWorkspace;
 import com.eyecode.javafx.learning.MonacoLearningHoverPipeline;
 import com.eyecode.javafx.learning.MonacoLearningTarget;
@@ -34,9 +34,9 @@ import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
 import com.eyecode.editor.v2.project.ProjectSymbolIndex;
 import com.eyecode.editor.v2.language.LanguageContext;
 import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
-import com.eyecode.javafx.monaco.EyeCodeCompletionService;
-import com.eyecode.javafx.monaco.MonacoCompletionItem;
-import com.eyecode.javafx.monaco.MonacoCompletionRequest;
+import com.eyecode.ui.web.monaco.EyeCodeCompletionService;
+import com.eyecode.ui.web.monaco.MonacoCompletionItem;
+import com.eyecode.ui.web.monaco.MonacoCompletionRequest;
 import com.eyecode.language.symbol.DocumentSemanticModelBuilder;
 import com.eyecode.project.ProjectInfo;
 import javafx.scene.Node;
@@ -153,11 +153,11 @@ public final class FxEditorWorkspacePane extends VBox {
             monacoSurface.setOverlayEventListener(event -> {
                 if (learningWorkspace != null) learningWorkspace.handleMonacoOverlayEvent(event);
                 if (monacoLearningPipeline != null) {
-                    if (event.type() == com.eyecode.javafx.monaco.MonacoOverlayEvent.Type.POINTER_ENTER) {
+                    if (event.type() == com.eyecode.ui.web.monaco.MonacoOverlayEvent.Type.POINTER_ENTER) {
                         monacoLearningPipeline.setOverlayHovered(true);
-                    } else if (event.type() == com.eyecode.javafx.monaco.MonacoOverlayEvent.Type.POINTER_LEAVE) {
+                    } else if (event.type() == com.eyecode.ui.web.monaco.MonacoOverlayEvent.Type.POINTER_LEAVE) {
                         monacoLearningPipeline.setOverlayHovered(false);
-                    } else if (event.type() == com.eyecode.javafx.monaco.MonacoOverlayEvent.Type.HIDDEN) {
+                    } else if (event.type() == com.eyecode.ui.web.monaco.MonacoOverlayEvent.Type.HIDDEN) {
                         monacoLearningPipeline.onOverlayHidden();
                     }
                 }

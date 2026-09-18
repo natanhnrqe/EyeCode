@@ -2,6 +2,9 @@ package com.eyecode.javafx.monaco;
 
 import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.CompletionItemKind;
+import com.eyecode.ui.web.monaco.MonacoCommand;
+import com.eyecode.ui.web.monaco.MonacoCompletionItem;
+import com.eyecode.ui.web.monaco.MonacoCompletionRequest;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

@@ -14,7 +14,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>26</javafx.version>
 
-        <eyecode.mainClass>com.eyecode.javafx.FxApplication</eyecode.mainClass>
+        <eyecode.mainClass>com.eyecode.ui.web.LocalWebShellLauncher</eyecode.mainClass>
 
         <eyecode.ui>LEGACY_JAVAFX</eyecode.ui>
         <eyecode.webshell.devUrl></eyecode.webshell.devUrl>
@@ -186,7 +186,7 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>${eyecode.mainClass}</mainClass>
+                    <mainClass>com.eyecode.javafx.FxApplication</mainClass>
 
                     <options>
                         <option>-Deyecode.ui=${eyecode.ui}</option>
@@ -222,6 +222,16 @@
                         <option>javafx.graphics/javafx.stage=ALL-UNNAMED</option>
 
                     </options>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.6.1</version>
+                <configuration>
+                    <mainClass>${eyecode.mainClass}</mainClass>
+                    <classpathScope>runtime</classpathScope>
+                    <cleanupDaemonThreads>false</cleanupDaemonThreads>
                 </configuration>
             </plugin>
         </plugins>

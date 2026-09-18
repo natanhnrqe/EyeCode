@@ -24,6 +24,11 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Legacy Swing/JCEF browser surface for the deprecated learning document view.
+ *
+ * @deprecated New learning UI belongs in the active Web Shell/JavaFX composition.
+ */
 @Deprecated(forRemoval = true)
 public final class LearningChromiumView extends JPanel {
 

@@ -1,0 +1,223 @@
+package com.eyecode.ui.web;
+
+import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.editor.v2.EditorPosition;
+import com.eyecode.editor.v2.EditorSelection;
+import com.eyecode.editor.v2.completion.CompletionEngine;
+import com.eyecode.editor.v2.completion.CompletionItem;
+import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
+import com.eyecode.editor.v2.completion.JavaSnippetProvider;
+import com.eyecode.editor.v2.completion.JavaStandardLibraryProvider;
+import com.eyecode.editor.v2.completion.knowledge.JavaKnowledgeBaseProvider;
+import com.eyecode.editor.v2.completion.semantic.JavaSemanticMemberCompletionProvider;
+import com.eyecode.editor.v2.completion.semantic.SemanticCompletionProvider;
+import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
+import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
+import com.eyecode.editor.v2.language.LanguageContext;
+import com.eyecode.editor.v2.syntax.JavaSyntaxAnalyzer;
+import com.eyecode.ui.web.monaco.EyeCodeCompletionService;
+import com.eyecode.ui.web.monaco.MonacoCompletionItem;
+import com.eyecode.ui.web.monaco.MonacoCompletionRequest;
+import com.eyecode.ui.web.monaco.MonacoModelId;
+import com.eyecode.workbench.editor.EditorManager;
+import com.eyecode.workbench.editor.EditorSession;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ConcurrentHashMap;
+
+public final class WebShellCompletionController {
+    private final WebShellSurface surface;
+    private final EditorManager manager;
+    private final ExecutorService executor;
+    private final Map<String, String> latestRequestByUri = new ConcurrentHashMap<>();
+    private final JavaSyntaxAnalyzer syntaxAnalyzer = new JavaSyntaxAnalyzer();
+    private final EyeCodeCompletionService completionService = new EyeCodeCompletionService(
+            new CompletionEngine(List.of(
+                    new JavaKeywordCompletionProvider(),
+                    new JavaSemanticMemberCompletionProvider(),
+                    new JavaKnowledgeBaseProvider(),
+                    new JavaStandardLibraryProvider(),
+                    new JavaSnippetProvider(),
+                    new SemanticCompletionProvider(new SemanticSymbolRegistry())
+            )));
+    private volatile boolean disposed;
+
+    public WebShellCompletionController(WebShellSurface surface, EditorManager manager) {
+        this.surface = surface;
+        this.manager = manager;
+        this.executor = Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "eyecode-web-completion");
+            thread.setDaemon(true);
+            return thread;
+        });
+        surface.registerHandler("completion", "request", this::request);
+    }
+
+    public void dispose() {
+        if (disposed) return;
+        disposed = true;
+        latestRequestByUri.clear();
+        executor.shutdownNow();
+    }
+
+    private WebShellEnvelope request(WebShellEnvelope message) {
+        String modelId = text(message.payload(), "uri");
+        if (modelId.isBlank()) modelId = text(message.payload(), "modelId");
+        String requestModelId = modelId;
+        latestRequestByUri.put(requestModelId, message.requestId());
+        executor.execute(() -> compute(message, requestModelId));
+        return acknowledgment(message, true);
+    }
+
+    private void compute(WebShellEnvelope message, String modelId) {
+        if (disposed || !isLatest(modelId, message.requestId())) return;
+        try {
+            EditorSession session = sessionForModel(modelId);
+            boolean lessonPractice = isLessonPracticeRequest(message.payload(), modelId);
+            if (session == null && !lessonPractice) {
+                publish(message, responsePayload(message, modelId, List.of()));
+                return;
+            }
+            String content = text(message.payload(), "content");
+            if (content.isEmpty() && !lessonPractice) {
+                content = manager.getBuffer(session.getSessionId())
+                        .map(buffer -> buffer.getDocument().snapshot().getText()).orElse("");
+            }
+            EditorDocument document = new EditorDocument(session == null ? null : session.getFile(), content);
+            int offset = number(message.payload(), "offset", -1);
+            if (offset < 0) {
+                int line = number(message.payload(), "line", 1);
+                int column = number(message.payload(), "column", 1);
+                offset = document.offsetOf(new EditorPosition(Math.max(1, line), Math.max(1, column)));
+            }
+            offset = Math.max(0, Math.min(offset, content.length()));
+            EditorPosition caret = document.positionOf(offset);
+            LanguageContext context = new LanguageContext(
+                    document,
+                    caret,
+                    new EditorSelection(caret, caret),
+                    syntaxAnalyzer.analyze(document),
+                    DiagnosticSnapshot.empty());
+            MonacoCompletionRequest completionRequest = toRequest(message, modelId, content, offset);
+            List<MonacoCompletionItem> items = completionService.complete(completionRequest, context);
+            if (isLatest(modelId, message.requestId())) {
+                publish(message, responsePayload(message, modelId, items));
+            }
+        } catch (RuntimeException exception) {
+            if (!isLatest(modelId, message.requestId())) return;
+            WebShellEnvelope error = message.error(new WebShellError("COMPLETION_FAILED",
+                    exception.getMessage() == null ? "Completion failed" : exception.getMessage(), true));
+            surface.send(error);
+        }
+    }
+
+    private boolean isLatest(String modelId, String requestId) {
+        return requestId.equals(latestRequestByUri.get(modelId));
+    }
+
+    private WebShellEnvelope publish(WebShellEnvelope message, Map<String, Object> response) {
+        surface.send(message.response(response));
+        return acknowledgment(message, true);
+    }
+
+    private WebShellEnvelope acknowledgment(WebShellEnvelope message, boolean accepted) {
+        return message.response(Map.of("accepted", accepted, "requestId", message.requestId()));
+    }
+
+    private MonacoCompletionRequest toRequest(WebShellEnvelope message, String modelId,
+                                              String content, int offset) {
+        Map<String, Object> payload = message.payload();
+        MonacoCompletionRequest.TriggerKind trigger = switch (text(payload, "triggerKind")) {
+            case "triggerCharacter" -> MonacoCompletionRequest.TriggerKind.TRIGGER_CHARACTER;
+            case "incomplete" -> MonacoCompletionRequest.TriggerKind.INCOMPLETE;
+            default -> MonacoCompletionRequest.TriggerKind.INVOKED;
+        };
+        return new MonacoCompletionRequest(
+                modelId,
+                numberLong(payload, "version", 0),
+                number(payload, "line", 1),
+                number(payload, "column", 1),
+                trigger,
+                text(payload, "triggerCharacter"),
+                numberLong(message.requestId(), 0),
+                Boolean.TRUE.equals(payload.get("explicit")),
+                offset,
+                number(payload, "replaceStart", -1),
+                number(payload, "replaceEnd", -1),
+                content);
+    }
+
+    private Map<String, Object> responsePayload(WebShellEnvelope message, String modelId,
+                                                  List<MonacoCompletionItem> items) {
+        List<Map<String, Object>> serialized = new ArrayList<>();
+        for (MonacoCompletionItem item : items) {
+            Map<String, Object> value = new LinkedHashMap<>();
+            value.put("label", item.label());
+            value.put("kind", item.kind().name());
+            value.put("detail", item.detail());
+            value.put("documentation", item.documentation());
+            value.put("insertText", item.insertText());
+            value.put("filterText", item.filterText());
+            value.put("snippet", item.snippet());
+            value.put("replaceStart", item.replaceStart());
+            value.put("replaceEnd", item.replaceEnd());
+            value.put("sortKey", item.sortKey());
+            value.put("signature", item.signature());
+            value.put("returnType", item.returnType());
+            value.put("owner", item.owner());
+            value.put("example", item.example());
+            value.put("category", item.category());
+            value.put("matchIndices", item.matchIndices());
+            serialized.add(value);
+        }
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("requestId", message.requestId());
+        response.put("uri", modelId);
+        response.put("version", numberLong(message.payload(), "version", 0));
+        response.put("items", serialized);
+        return response;
+    }
+
+    private EditorSession sessionForModel(String modelId) {
+        for (EditorSession session : manager.getSessions()) {
+            if (MonacoModelId.matches(modelId, session.getFile())
+                    || MonacoModelId.forSession(session).equals(modelId)) {
+                return session;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isLessonPracticeRequest(Map<String, Object> payload, String uri) {
+        return uri.startsWith("lesson://") && Boolean.TRUE.equals(payload.get("lessonPractice"))
+                && payload.get("content") instanceof String;
+    }
+
+    private static String text(Map<String, Object> payload, String key) {
+        Object value = payload == null ? null : payload.get(key);
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private static int number(Map<String, Object> payload, String key, int fallback) {
+        Object value = payload == null ? null : payload.get(key);
+        return value instanceof Number number ? number.intValue() : fallback;
+    }
+
+    private static long numberLong(Map<String, Object> payload, String key, long fallback) {
+        Object value = payload == null ? null : payload.get(key);
+        return value instanceof Number number ? number.longValue() : fallback;
+    }
+
+    private static long numberLong(String value, long fallback) {
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException exception) {
+            return fallback;
+        }
+    }
+}

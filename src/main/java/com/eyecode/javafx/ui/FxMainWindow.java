@@ -1,12 +1,12 @@
 package com.eyecode.javafx.ui;
 
 import com.eyecode.javafx.ceffx.CeffxRuntime;
-import com.eyecode.javafx.web.JavaFxWebShellSurface;
-import com.eyecode.javafx.web.JavaFxWebDocumentationHost;
-import com.eyecode.javafx.web.WebShellNativeController;
-import com.eyecode.javafx.web.JavaFxWebShellNativeUi;
-import com.eyecode.javafx.web.WebShellMode;
-import com.eyecode.javafx.web.WebShellWorkspaceController;
+import com.eyecode.ui.web.JavaFxWebShellSurface;
+import com.eyecode.ui.web.JavaFxWebDocumentationHost;
+import com.eyecode.ui.web.WebShellNativeController;
+import com.eyecode.ui.web.JavaFxWebShellNativeUi;
+import com.eyecode.ui.web.WebShellMode;
+import com.eyecode.ui.web.WebShellWorkspaceController;
 import javafx.application.Platform;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;

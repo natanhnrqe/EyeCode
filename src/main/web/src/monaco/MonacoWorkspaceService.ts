@@ -249,7 +249,8 @@ export class MonacoWorkspaceService {
     const model = this.ephemeralModels.get(uri);
     if (!model || this.activeModelUri() !== uri || model.getValue() !== program.sourceCode) return false;
     if (program.operations.length === 0) return model.getValue() === program.targetCode;
-    for (const operation of program.operations) {
+    for (let index = 0; index < program.operations.length; index++) {
+      const operation = program.operations[index];
       if (operation.type === 'MATERIALIZE') {
         this.setEphemeralModelValue(uri, program.targetCode);
         continue;
@@ -259,26 +260,29 @@ export class MonacoWorkspaceService {
       let replacementText = operation.text;
       let editStart = start;
       if (operation.prefix || operation.suffix) {
+        const firstCharacter = replacementText.charAt(0);
+        if (!firstCharacter) return false;
         if (!this.applyLessonModelEdit(uri, model, {
           range: { startLineNumber: start.lineNumber, startColumn: start.column, endLineNumber: end.lineNumber, endColumn: end.column },
-          text: `${operation.prefix}${operation.suffix}`,
+          text: `${operation.prefix}${firstCharacter}${operation.suffix}`,
           forceMoveMarkers: true
         })) return false;
-        editStart = model.getPositionAt(operation.startOffset + operation.prefix.length);
+        replacementText = replacementText.slice(firstCharacter.length);
+        editStart = model.getPositionAt(operation.startOffset + operation.prefix.length + firstCharacter.length);
       }
       const finished = await this.animateEphemeralEdit(uri, {
         startLineNumber: editStart.lineNumber,
         startColumn: editStart.column,
         endLineNumber: operation.prefix || operation.suffix ? editStart.lineNumber : end.lineNumber,
         endColumn: operation.prefix || operation.suffix ? editStart.column : end.column
-      }, replacementText, program.targetCode, LESSON_TYPING_CADENCE_MS);
+      }, replacementText, program.targetCode, LESSON_TYPING_CADENCE_MS, index === program.operations.length - 1);
       if (!finished) return false;
     }
     return model.getValue() === program.targetCode;
   }
 
   animateEphemeralEdit(uri: string, range: LessonEditorRange, replacementText: string, finalCode: string,
-                       cadenceMillis: number): Promise<boolean> {
+                       cadenceMillis: number, validateFinalCode = true): Promise<boolean> {
     this.cancelLessonTyping();
     const model = this.ephemeralModels.get(uri);
     if (!uri.startsWith('lesson://') || !model || this.activeModelUri() !== uri || !this.editor || cadenceMillis < 1) {
@@ -356,7 +360,7 @@ export class MonacoWorkspaceService {
           active.frame = requestAnimationFrame(write);
           return;
         }
-        if (model.getValue() !== finalCode) {
+        if (validateFinalCode && model.getValue() !== finalCode) {
           console.warn('[lesson-presentation] animation diverged from canonical state', { uri, range, replacementText, finalCode, actual: model.getValue() });
           this.lessonTyping = null;
           resolve(false);

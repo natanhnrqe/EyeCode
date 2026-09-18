@@ -2,9 +2,9 @@ package com.eyecode.javafx.ui;
 
 import com.eyecode.javafx.designsystem.JavaFxIconManager;
 import com.eyecode.javafx.monaco.JavaFxMonacoEditorSurface;
-import com.eyecode.javafx.monaco.MonacoCommand;
-import com.eyecode.javafx.monaco.MonacoCompletionItem;
-import com.eyecode.javafx.monaco.MonacoCompletionRequest;
+import com.eyecode.ui.web.monaco.MonacoCommand;
+import com.eyecode.ui.web.monaco.MonacoCompletionItem;
+import com.eyecode.ui.web.monaco.MonacoCompletionRequest;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.control.Label;

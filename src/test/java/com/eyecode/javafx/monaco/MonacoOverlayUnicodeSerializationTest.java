@@ -1,5 +1,7 @@
 package com.eyecode.javafx.monaco;
 
+import com.eyecode.ui.web.monaco.MonacoCommand;
+import com.eyecode.ui.web.monaco.MonacoOverlayType;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;

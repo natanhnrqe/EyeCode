@@ -51,6 +51,12 @@ public final class BrowserManager {
         return cefApp.createClient();
     }
 
+    /**
+     * Returns the historical shared browser client.
+     *
+     * @deprecated Use {@link #createClient()} so each owner controls its own
+     * client lifecycle.
+     */
     @Deprecated(forRemoval = true)
     public CefClient getClient() {
         return cefClient;

@@ -3,7 +3,6 @@ package com.eyecode.javafx;
 import com.eyecode.javafx.explorer.ExplorerTreeView;
 import com.eyecode.javafx.explorer.JavaFxExplorer;
 import com.eyecode.javafx.explorer.ProjectNode;
-import com.eyecode.javafx.explorer.ProjectNodeType;
 import com.eyecode.javafx.ui.FxRootLayout;
 import com.eyecode.javafx.ui.toolwindow.content.DependenciesToolWindowContent;
 import com.eyecode.javafx.ui.toolwindow.content.DocumentationToolWindowContent;
@@ -15,15 +14,19 @@ import com.eyecode.javafx.ui.toolwindow.content.RoadmapToolWindowContent;
 import com.eyecode.javafx.ui.toolwindow.content.SearchToolWindowContent;
 import com.eyecode.javafx.ui.toolwindow.content.SettingsToolWindowContent;
 import com.eyecode.javafx.ui.toolwindow.content.WorkspaceContentFactory;
+import com.eyecode.project.ProjectLifecycleService;
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.TreeItem;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +36,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Sprint33IntegrationTest {
+
+    @TempDir
+    Path tempDir;
 
     @BeforeAll
     static void startToolkit() {
@@ -107,6 +113,12 @@ class Sprint33IntegrationTest {
 
     @Test
     void rootLayoutSwitchesWithoutRecreatingContent() throws Exception {
+        Path projectRoot = tempDir.resolve("tempProject");
+        Path sourceDirectory = Files.createDirectories(projectRoot.resolve("src"));
+        Files.writeString(sourceDirectory.resolve("Main.java"), "class Main {}\n");
+        ProjectLifecycleService lifecycle = new ProjectLifecycleService();
+        lifecycle.open(projectRoot);
+
         CountDownLatch done = new CountDownLatch(1);
         final Throwable[] error = new Throwable[1];
         final StringBuilder report = new StringBuilder();
@@ -117,7 +129,7 @@ class Sprint33IntegrationTest {
 
         Platform.runLater(() -> {
             try {
-                FxRootLayout root = new FxRootLayout(() -> {});
+                FxRootLayout root = new FxRootLayout(() -> {}, lifecycle);
                 Scene scene = new Scene(root, 1200, 800);
                 scene.getStylesheets().add(
                         getClass().getResource("/javafx/style/eyecode.css").toExternalForm());
@@ -130,18 +142,17 @@ class Sprint33IntegrationTest {
                         "Project ToolWindow deve usar o Explorer JavaFX nativo");
 
                 ExplorerTreeView treeView = nativeTreeView((ProjectToolWindowContent) project1);
-                TreeItem<ProjectNode> directory = firstDirectory(treeView.getRoot());
-                if (directory != null) {
-                    TreeItem<ProjectNode> before = directory.getChildren().isEmpty()
-                            ? null : directory.getChildren().get(0);
-                    directory.setExpanded(true);
-                    assertTrue(directory.getChildren().size() > 0,
-                            "expansão lazy deve carregar os filhos da pasta");
-                    if (before == null || before.getValue() == null) {
-                        assertNotNull(directory.getChildren().get(0).getValue(),
-                                "expansão lazy deve substituir o placeholder por nós reais");
-                    }
-                }
+                TreeItem<ProjectNode> source = treeView.getRoot().getChildren().stream()
+                        .filter(item -> item.getValue() != null && item.getValue().name().equals("src"))
+                        .findFirst()
+                        .orElseThrow(() -> new AssertionError("src ausente na fixture"));
+                assertTrue(source.getChildren().size() == 1 && source.getChildren().get(0).getValue() == null,
+                        "pasta carregável deve iniciar com placeholder lazy");
+                source.setExpanded(true);
+                assertTrue(source.getChildren().size() > 0,
+                        "expansão lazy deve carregar os filhos da pasta");
+                assertNotNull(source.getChildren().get(0).getValue(),
+                        "expansão lazy deve substituir o placeholder por nós reais");
 
                 root.getToolWindowManager().activate("learn");
                 Node learn1 = root.getLeftToolWindow().getCurrentContent();
@@ -188,11 +199,4 @@ class Sprint33IntegrationTest {
                 .orElse(null);
     }
 
-    private TreeItem<ProjectNode> firstDirectory(TreeItem<ProjectNode> parent) {
-        return parent.getChildren().stream()
-                .filter(item -> item.getValue() != null
-                        && item.getValue().type() == ProjectNodeType.DIRECTORY)
-                .findFirst()
-                .orElse(null);
-    }
 }

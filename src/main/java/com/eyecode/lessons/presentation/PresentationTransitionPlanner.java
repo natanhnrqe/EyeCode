@@ -16,8 +16,7 @@ public final class PresentationTransitionPlanner {
             case LINE_REPLACE -> List.of(PresentationOperation.edit(PresentationOperationType.REPLACE_TEXT,
                     change.startOffset(), change.endOffset(), change.insertedText()));
             case STATEMENT_INSERTION -> List.of(lineTyping(change));
-            case STATEMENT_DELETION -> List.of(PresentationOperation.edit(PresentationOperationType.DELETE_TEXT,
-                    change.startOffset(), change.endOffset(), ""));
+            case STATEMENT_DELETION -> anchoredLineDeletion(source, change);
             case BLOCK_INSERTION, UNSAFE -> List.of(genericReplacement(source, target));
         };
     }
@@ -72,5 +71,24 @@ public final class PresentationTransitionPlanner {
         while (contentStart < line.length() && (line.charAt(contentStart) == ' ' || line.charAt(contentStart) == '\t')) contentStart++;
         return PresentationOperation.typeLine(change.startOffset(), change.endOffset(), line.substring(0, contentStart),
                 line.substring(contentStart), suffix);
+    }
+
+    private static List<PresentationOperation> anchoredLineDeletion(String source, CodeChange change) {
+        int separatorLength = lineSeparatorLengthBefore(source, change.endOffset());
+        if (separatorLength == 0) {
+            return List.of(PresentationOperation.edit(PresentationOperationType.DELETE_TEXT,
+                    change.startOffset(), change.endOffset(), ""));
+        }
+        int contentEnd = change.endOffset() - separatorLength;
+        return List.of(
+                PresentationOperation.edit(PresentationOperationType.DELETE_TEXT, change.startOffset(), contentEnd, ""),
+                PresentationOperation.edit(PresentationOperationType.DELETE_TEXT, change.startOffset(),
+                        change.startOffset() + separatorLength, "")
+        );
+    }
+
+    private static int lineSeparatorLengthBefore(String source, int offset) {
+        if (offset == 0 || source.charAt(offset - 1) != '\n') return 0;
+        return offset > 1 && source.charAt(offset - 2) == '\r' ? 2 : 1;
     }
 }

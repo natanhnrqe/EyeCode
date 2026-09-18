@@ -3,6 +3,12 @@ package com.eyecode.learning.html;
 import com.eyecode.learning.markdown.*;
 import java.util.List;
 
+/**
+ * Legacy custom Markdown renderer retained for compatibility with the old
+ * Markdown AST.
+ *
+ * @deprecated Use {@link FlexmarkConverter} for the maintained HTML pipeline.
+ */
 @Deprecated(forRemoval = true)
 public final class MarkdownToHtmlConverter {
 

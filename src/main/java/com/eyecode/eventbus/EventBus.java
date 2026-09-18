@@ -6,11 +6,18 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
- * Application-scoped event bus for IDE communication.
+ * Application-scoped, synchronous event bus for IDE communication.
  * <p>
- * Subscribers receive events only for the exact subscribed type.
- * Event inheritance dispatch is NOT supported.
- * This is intentional for simplicity and predictability.
+ * A composition root creates the bus and passes that instance to participating
+ * application services. Subscribers receive events only for the exact runtime
+ * type; event inheritance dispatch is intentionally unsupported. Publication
+ * invokes handlers in subscription order on the caller's thread. A handler
+ * exception propagates to the publisher and prevents later handlers from
+ * running, so publishers must choose an execution boundary appropriate to
+ * their caller.
+ * <p>
+ * Subscriptions remain registered until {@link #unsubscribe(SubscriptionToken)}
+ * is called. Long-lived owners must release their tokens during disposal.
  */
 public class EventBus {
 
@@ -22,6 +29,11 @@ public class EventBus {
         this.tokenIndex = new ConcurrentHashMap<>();
     }
 
+    /**
+     * Registers a handler for one exact event type.
+     *
+     * @return a token owned by the subscriber and required for unregistration
+     */
     public <T> SubscriptionToken subscribe(Class<T> eventType, Consumer<T> handler) {
         SubscriptionToken token = new SubscriptionToken();
         SubscriberEntry<T> entry = new SubscriberEntry<>(token, eventType, handler);
@@ -32,6 +44,10 @@ public class EventBus {
         return token;
     }
 
+    /**
+     * Delivers an event synchronously to the current snapshot of subscribers.
+     * No scheduling, error isolation, or polymorphic routing is applied.
+     */
     @SuppressWarnings("unchecked")
     public <T extends Event> void publish(T event) {
         Class<?> eventType = event.getClass();
@@ -42,6 +58,10 @@ public class EventBus {
         }
     }
 
+    /**
+     * Removes the subscription identified by {@code token}. Unknown tokens are
+     * harmless, which makes repeated lifecycle cleanup safe.
+     */
     public void unsubscribe(SubscriptionToken token) {
         SubscriberEntry<?> entry = tokenIndex.remove(token);
         if (entry == null) return;

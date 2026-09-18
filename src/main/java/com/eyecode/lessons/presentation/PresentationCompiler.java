@@ -1,5 +1,11 @@
 package com.eyecode.lessons.presentation;
 
+/**
+ * Compiles consecutive canonical lesson-code states into a presentation
+ * program. Resources declare only canonical code and transition intent; the
+ * compiler chooses operations and falls back to materialization whenever a
+ * planned program cannot reproduce the exact canonical target.
+ */
 public final class PresentationCompiler {
     private final JavaPresentationChangeAnalyzer analyzer = new JavaPresentationChangeAnalyzer();
     private final PresentationTransitionPlanner planner = new PresentationTransitionPlanner();

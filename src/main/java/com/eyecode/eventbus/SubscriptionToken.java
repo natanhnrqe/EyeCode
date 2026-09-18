@@ -3,6 +3,11 @@ package com.eyecode.eventbus;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * Opaque ownership handle returned by {@link EventBus#subscribe(Class, java.util.function.Consumer)}.
+ * Keep it with the subscriber that owns the lifecycle and pass it back to
+ * {@link EventBus#unsubscribe(SubscriptionToken)} when that owner is disposed.
+ */
 public class SubscriptionToken {
 
     private final UUID id;

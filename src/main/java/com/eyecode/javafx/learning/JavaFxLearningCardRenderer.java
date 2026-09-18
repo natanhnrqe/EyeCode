@@ -1,6 +1,7 @@
 package com.eyecode.javafx.learning;
 
 import com.eyecode.javafx.ui.toolwindow.content.JavaFxCeffxLearningSurface;
+import com.eyecode.ui.web.learning.LearningCardSizingPolicy;
 import com.eyecode.learning.content.LearningContentEngine;
 import com.eyecode.learning.content.LearningDocument;
 import com.eyecode.learning.model.LearningConcept;
