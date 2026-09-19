@@ -184,7 +184,6 @@ public final class RunService {
         if (preparation != null) {
             preparation.cancel(true);
         }
-        publishFinished(-1, true);
     }
 
     public synchronized void dispose() {

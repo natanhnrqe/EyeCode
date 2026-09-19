@@ -17,9 +17,13 @@ import com.eyecode.terminal.TerminalService;
 import com.eyecode.workbench.editor.EditorManager;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -69,15 +73,62 @@ class WebShellEventBusIntegrationTest {
         }
     }
 
+    @Test
+    void webRunProtocolReportsStateOutputAndSuccessfulCompletion() throws Exception {
+        Path root = Files.createTempDirectory("eyecode-web-run");
+        Path source = root.resolve("src/main/java");
+        Files.createDirectories(source);
+        Files.writeString(source.resolve("Main.java"),
+                "public class Main { public static void main(String[] args) { System.out.println(\"WEB_RUN_OK\"); } }");
+        ProjectLifecycleService lifecycle = new ProjectLifecycleService();
+        RunService runService = new RunService(lifecycle);
+        TerminalService terminalService = new TerminalService();
+        CapturingSurface surface = new CapturingSurface();
+        WebShellExecutionController execution = new WebShellExecutionController(surface, lifecycle, runService, terminalService);
+        lifecycle.open(root);
+
+        try {
+            WebShellEnvelope response = surface.handler("run", "run").handle(
+                    WebShellEnvelope.request("run", "run", "run-1", Map.of()));
+
+            assertEquals(true, response.payload().get("started"));
+            assertTrue(await(() -> surface.events().stream().anyMatch(event -> event.channel().equals("run")
+                    && event.name().equals("state") && Boolean.FALSE.equals(event.payload().get("running"))
+                    && Boolean.TRUE.equals(event.payload().get("finished"))
+                    && Integer.valueOf(0).equals(event.payload().get("exitCode"))), 20, TimeUnit.SECONDS));
+            assertTrue(surface.events().stream().anyMatch(event -> event.channel().equals("run")
+                    && event.name().equals("state") && Boolean.TRUE.equals(event.payload().get("running"))));
+            assertTrue(surface.events().stream().anyMatch(event -> event.channel().equals("run")
+                    && event.name().equals("state") && "RUNNING".equals(event.payload().get("phase"))));
+            assertTrue(surface.events().stream().anyMatch(event -> event.channel().equals("run")
+                    && event.name().equals("output") && String.valueOf(event.payload().get("text")).contains("WEB_RUN_OK")));
+        } finally {
+            execution.close();
+            runService.dispose();
+            terminalService.dispose();
+        }
+    }
+
     private static DocumentLanguageResolver languageResolver() {
         return new ExtensionDocumentLanguageResolver(Map.of(LanguageId.JAVA, java.util.Set.of("java")));
     }
 
+    private static boolean await(BooleanSupplier condition, long timeout, TimeUnit unit) throws InterruptedException {
+        long deadline = System.nanoTime() + unit.toNanos(timeout);
+        while (System.nanoTime() < deadline) {
+            if (condition.getAsBoolean()) return true;
+            Thread.sleep(20);
+        }
+        return condition.getAsBoolean();
+    }
+
     private static final class CapturingSurface implements WebShellSurface {
         private final Map<String, WebShellMessageHandler> handlers = new java.util.concurrent.ConcurrentHashMap<>();
+        private final List<WebShellEnvelope> events = new CopyOnWriteArrayList<>();
 
         @Override
         public void send(WebShellEnvelope message) {
+            events.add(message);
         }
 
         @Override
@@ -87,6 +138,10 @@ class WebShellEventBusIntegrationTest {
 
         private WebShellMessageHandler handler(String channel, String name) {
             return handlers.get(channel + "/" + name);
+        }
+
+        private List<WebShellEnvelope> events() {
+            return events;
         }
     }
 }

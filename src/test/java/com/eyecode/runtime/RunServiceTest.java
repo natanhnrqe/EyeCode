@@ -374,6 +374,41 @@ class RunServiceTest {
     }
 
     @Test
+    void stoppingMavenPreparationTerminatesClasspathResolverProcess() throws Exception {
+        Path root = Files.createTempDirectory("eyecode-maven-preparation-stop");
+        Files.createDirectories(root.resolve("src/main/java"));
+        Files.writeString(root.resolve("pom.xml"), "<project/>");
+        Files.writeString(root.resolve("src/main/java/Main.java"),
+                "public class Main { public static void main(String[] args) { } }");
+        Path started = root.resolve("classpath-started");
+        Path release = root.resolve("classpath-release");
+        Path completed = root.resolve("classpath-completed");
+        writeBlockingMavenClasspathWrapper(root, started, release, completed);
+
+        ProjectLifecycleService lifecycle = new ProjectLifecycleService();
+        lifecycle.open(root);
+        RunService service = new RunService(lifecycle);
+        CountDownLatch finished = new CountDownLatch(1);
+        service.addListener(new RunService.Listener() {
+            @Override public void onStarted(RunRequest request) { }
+            @Override public void onOutput(String text, boolean error) { }
+            @Override public void onFinished(int exitCode, boolean stopped) { finished.countDown(); }
+        });
+
+        try {
+            assertTrue(service.runCurrent());
+            assertTrue(awaitFile(started, 5, TimeUnit.SECONDS));
+            service.stop();
+            assertTrue(finished.await(5, TimeUnit.SECONDS));
+            Files.writeString(release, "release");
+            assertFalse(awaitFile(completed, 1, TimeUnit.SECONDS));
+        } finally {
+            Files.writeString(release, "release");
+            service.dispose();
+        }
+    }
+
+    @Test
     void preservesOutputChunksBlankLinesAndMissingFinalNewline() throws Exception {
         Path root = Files.createTempDirectory("eyecode-run-chunks");
         Path source = root.resolve("src/main/java");
@@ -656,6 +691,28 @@ class RunServiceTest {
                 : "#!/bin/sh\nfor arg in \"$@\"; do case \"$arg\" in -Dmdep.outputFile=*) printf '%s\\n' '" + classpath + "' > \"${arg#-Dmdep.outputFile=}\" ;; esac; done\nexit " + exitCode + "\n";
         Files.writeString(wrapper, script);
         if (!windows) wrapper.toFile().setExecutable(true);
+    }
+
+    private void writeBlockingMavenClasspathWrapper(Path root, Path started, Path release, Path completed) throws Exception {
+        boolean windows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        Path wrapper = root.resolve(windows ? "mvnw.cmd" : "mvnw");
+        String script = windows
+                ? "@echo off\r\n>\"" + started + "\" echo started\r\n:wait\r\nif exist \"" + release
+                + "\" goto complete\r\nping -n 2 127.0.0.1 > nul\r\ngoto wait\r\n:complete\r\n>\"" + completed
+                + "\" echo completed\r\nset \"OUTPUT=%~2\"\r\nset \"OUTPUT=%OUTPUT:~18%\"\r\n>\"%OUTPUT%\" echo\r\nexit /b 0\r\n"
+                : "#!/bin/sh\ntouch '" + started + "'\nwhile [ ! -f '" + release + "' ]; do sleep 0.1; done\ntouch '"
+                + completed + "'\nfor arg in \"$@\"; do case \"$arg\" in -Dmdep.outputFile=*) printf '\\n' > \"${arg#-Dmdep.outputFile=}\" ;; esac; done\n";
+        Files.writeString(wrapper, script);
+        if (!windows) wrapper.toFile().setExecutable(true);
+    }
+
+    private boolean awaitFile(Path file, long timeout, TimeUnit unit) throws InterruptedException {
+        long deadline = System.nanoTime() + unit.toNanos(timeout);
+        while (System.nanoTime() < deadline) {
+            if (Files.exists(file)) return true;
+            Thread.sleep(20);
+        }
+        return Files.exists(file);
     }
 
     private Path createJavaProject() throws IOException {

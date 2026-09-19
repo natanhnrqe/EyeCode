@@ -1,12 +1,12 @@
 package com.eyecode.runtime;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 final class MavenClasspathResolver {
     private final BuildToolExecutableResolver buildToolResolver;
@@ -17,8 +17,11 @@ final class MavenClasspathResolver {
 
     String resolve(Path projectRoot) {
         Path outputFile = null;
+        Path logFile = null;
+        Process process = null;
         try {
             outputFile = Files.createTempFile("eyecode-maven-classpath-", ".txt");
+            logFile = Files.createTempFile("eyecode-maven-classpath-", ".log");
         } catch (IOException exception) {
             throw new IllegalArgumentException("Unable to prepare Maven classpath resolution", exception);
         }
@@ -31,10 +34,16 @@ final class MavenClasspathResolver {
             quoteOutputFileArgumentForWindowsCmd(command);
             ProcessBuilder builder = new ProcessBuilder(command)
                     .directory(projectRoot.toFile())
-                    .redirectErrorStream(true);
-            Process process = builder.start();
-            String output = read(process.getInputStream());
-            int exitCode = process.waitFor();
+                    .redirectErrorStream(true)
+                    .redirectOutput(logFile.toFile());
+            process = builder.start();
+            while (!process.waitFor(100, TimeUnit.MILLISECONDS)) {
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new InterruptedException();
+                }
+            }
+            int exitCode = process.exitValue();
+            String output = Files.readString(logFile, StandardCharsets.UTF_8);
             if (exitCode != 0) {
                 throw new IllegalArgumentException("Unable to resolve Maven runtime classpath (exit code "
                         + exitCode + "): " + summarize(output));
@@ -46,18 +55,17 @@ final class MavenClasspathResolver {
         } catch (IOException exception) {
             throw new IllegalArgumentException("Unable to resolve Maven runtime classpath", exception);
         } catch (InterruptedException exception) {
+            ProcessTree.destroy(process, true);
             Thread.currentThread().interrupt();
             throw new IllegalArgumentException("Maven classpath resolution was interrupted", exception);
         } finally {
+            ProcessTree.destroy(process, true);
             try {
                 if (outputFile != null) Files.deleteIfExists(outputFile);
+                if (logFile != null) Files.deleteIfExists(logFile);
             } catch (IOException ignored) {
             }
         }
-    }
-
-    private String read(InputStream stream) throws IOException {
-        return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
     }
 
     private String summarize(String output) {
