@@ -222,10 +222,10 @@ Quando uma operação precisa de informação estrutural, melhore analisador/pla
 
 Monaco é renderização/frontend. O backend decide modelos, conteúdo, transitions, completion e semântica; o frontend aplica essas decisões.
 
-- `ui.web.monaco`: DTOs e utilitários Java ↔ Monaco.
+- `ui.web.monaco`: DTOs e utilitários Web ↔ Monaco.
 - `javafx.monaco.JavaFxMonacoEditorSurface`: surface visual CEFFX.
 - `MonacoWorkspaceService`: modelos, animações, decorations e recuperação visual React.
-- `EyeCodeCompletionService`: adapta o motor de completion aos itens Monaco.
+- `EyeCodeCompletionService`: adapter legado de completion para itens Monaco; o fluxo Web ativo usa `CompletionService` e resultados neutros.
 
 Não crie parser Java paralelo nem replique Presentation Compiler no player Monaco.
 
@@ -235,7 +235,21 @@ Não crie parser Java paralelo nem replique Presentation Compiler no player Mona
 
 `FileSystemService` já é o port de persistência do editor. `Path` continua sendo um valor JDK válido; não o esconda. `ProjectFileOperationService` ainda é uma implementação NIO coesa e não deve receber um wrapper apenas por consistência visual.
 
-Uma nova linguagem entra em `language` através dos contratos de lexer/parser/semântica que ela realmente utiliza. Editor e frontend adaptam resultados; não crie uma linguagem paralela em Monaco ou no protocolo Web.
+### Adding a language
+
+Não existe um “language service” universal: cada capacidade é registrada e usada separadamente. A implementação atual é Java; `JavaLexerService`, parser, AST, semântica, indentação e seleção continuam contratos Java porque não há um segundo consumidor real que justifique generalizá-los.
+
+Para adicionar uma linguagem que precise de completion ou diagnósticos:
+
+1. Declare o `LanguageId` e registre suas extensões em `WebShellWorkspaceComposition` através de `ExtensionDocumentLanguageResolver`.
+2. Para documentos sem path, como `lesson://`, envie o `language` declarado ao criar o modelo Monaco. O frontend envia o ID atual do modelo em cada request; a identidade declarada tem precedência sobre extensão.
+3. Implemente tokenização, parser ou semântica somente para as capacidades que a linguagem realmente oferecer. Não force essas APIs Java existentes a se tornarem universais antes de haver outra implementação e consumidor.
+4. Para diagnósticos, implemente `DiagnosticsProvider` e registre-o no `DiagnosticsService` da composição.
+5. Para completion, implemente `CompletionProvider` e registre-o no `CompletionService` da composição.
+6. Para navegação, edição inteligente ou outra capacidade, crie um contrato pequeno quando houver consumidor real; `EditorManager` recebe `EditorIntelligence` para lifecycle/definição, e a composição escolhe o adapter.
+7. Cubra resolução de identidade, roteamento da capability, documento sem extensão e resultado desconhecido. Cubra também stale-result se a nova capability for assíncrona no Web Shell.
+
+Não altere `WebShellCompletionController`, `WebShellDiagnosticsController`, envelopes, DTOs Monaco ou `MonacoWorkspaceService` para introduzir decisões específicas de uma linguagem. Eles transportam `LanguageDocument` e resultados neutros. Não crie ServiceLoader, plugin framework ou um parser paralelo em TypeScript.
 
 ## Como adicionar protocolo sem quebrar outras UIs
 

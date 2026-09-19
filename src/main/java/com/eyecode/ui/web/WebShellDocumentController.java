@@ -5,6 +5,8 @@ import com.eyecode.autosave.ExternalFileState;
 import com.eyecode.autosave.SavedEvent;
 import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.editor.intelligence.events.DocumentChangeListener;
+import com.eyecode.language.DocumentLanguageResolver;
+import com.eyecode.language.LanguageDocument;
 import com.eyecode.ui.web.monaco.MonacoModelId;
 import com.eyecode.language.documentation.JdkSourceDeclarationLocator;
 import com.eyecode.language.documentation.JdkSourceLoader;
@@ -28,6 +30,7 @@ public final class WebShellDocumentController {
     private final WebShellNativeFileSelection nativeUi;
     private final EditorManager manager;
     private final WebShellDiagnosticsController diagnosticsController;
+    private final DocumentLanguageResolver languageResolver;
     private final JdkSourceLoader jdkSourceLoader = new JdkSourceLoader();
     private final JdkSourceDeclarationLocator jdkSourceDeclarationLocator = new JdkSourceDeclarationLocator();
     private final Map<String, WebJdkSourceDocument> jdkSourceDocuments = new LinkedHashMap<>();
@@ -44,11 +47,13 @@ public final class WebShellDocumentController {
 
     WebShellDocumentController(WebShellSurface surface, Consumer<DocumentationTarget> documentationOpener,
                                WebShellDocumentationHost documentationHost, WebShellNativeFileSelection nativeUi,
-                               EditorManager manager, WebShellDiagnosticsController diagnosticsController) {
+                               EditorManager manager, WebShellDiagnosticsController diagnosticsController,
+                               DocumentLanguageResolver languageResolver) {
         this.surface = Objects.requireNonNull(surface);
         this.nativeUi = Objects.requireNonNull(nativeUi);
         this.manager = Objects.requireNonNull(manager);
         this.diagnosticsController = Objects.requireNonNull(diagnosticsController);
+        this.languageResolver = Objects.requireNonNull(languageResolver);
         this.documentationOpener = documentationOpener == null ? target -> { } : documentationOpener;
         this.documentationHost = documentationHost;
         this.saveListener = this::onSaved;
@@ -407,9 +412,12 @@ public final class WebShellDocumentController {
 
     WebDocumentSnapshot snapshot(EditorSession session) {
         String displayName = untitledNames.get(session.getSessionId());
+        String name = displayName == null ? session.getDisplayName() : displayName;
+        String language = languageResolver.resolve(new LanguageDocument(MonacoModelId.forSession(session),
+                session.getFile(), name, null)).map(value -> value.value()).orElse("plaintext");
         return displayName == null
-                ? WebDocumentSnapshot.file(session, documentFor(session))
-                : WebDocumentSnapshot.untitled(session, documentFor(session), displayName);
+                ? WebDocumentSnapshot.file(session, documentFor(session), language)
+                : WebDocumentSnapshot.untitled(session, documentFor(session), displayName, language);
     }
 
     private WebShellEnvelope nativeUiUnavailable(WebShellEnvelope message, String detail) {

@@ -8,6 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import com.eyecode.diagnostics.JavaDiagnosticsProvider;
+import com.eyecode.language.DocumentLanguageResolver;
+import com.eyecode.language.ExtensionDocumentLanguageResolver;
+import com.eyecode.language.LanguageId;
+import com.eyecode.language.diagnostics.DiagnosticsService;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WebShellWorkspaceDocumentsTest {
@@ -82,9 +87,10 @@ class WebShellWorkspaceDocumentsTest {
         var manager = new com.eyecode.workbench.editor.EditorManager(new com.eyecode.eventbus.EventBus(),
                 new com.eyecode.filesystem.DefaultFileSystemService(), new WebShellEditorViewFactory());
         Surface surface = new Surface();
-        var diagnostics = new WebShellDiagnosticsController(surface);
+        DocumentLanguageResolver languageResolver = languageResolver();
+        var diagnostics = new WebShellDiagnosticsController(surface, diagnostics(languageResolver));
         var documents = new WebShellDocumentController(surface, target -> {}, null,
-                WebShellNativeUi.unavailable(), manager, diagnostics);
+                WebShellNativeUi.unavailable(), manager, diagnostics, languageResolver);
         try {
             var first = document(surface.call("document", "new", Map.of()));
             var firstModel = manager.getBuffer(manager.getCurrentSession().getSessionId()).orElseThrow().getDocument();
@@ -105,6 +111,14 @@ class WebShellWorkspaceDocumentsTest {
             diagnostics.dispose();
             manager.dispose();
         }
+    }
+
+    private static DocumentLanguageResolver languageResolver() {
+        return new ExtensionDocumentLanguageResolver(Map.of(LanguageId.JAVA, java.util.Set.of("java")));
+    }
+
+    private static DiagnosticsService diagnostics(DocumentLanguageResolver languageResolver) {
+        return new DiagnosticsService(languageResolver, List.of(new JavaDiagnosticsProvider()));
     }
 
     @SuppressWarnings("unchecked")

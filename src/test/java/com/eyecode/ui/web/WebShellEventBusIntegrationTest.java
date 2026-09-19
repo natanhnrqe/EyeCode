@@ -3,6 +3,11 @@ package com.eyecode.ui.web;
 import com.eyecode.application.WorkspaceApplication;
 import com.eyecode.eventbus.EventBus;
 import com.eyecode.filesystem.DefaultFileSystemService;
+import com.eyecode.diagnostics.JavaDiagnosticsProvider;
+import com.eyecode.language.DocumentLanguageResolver;
+import com.eyecode.language.ExtensionDocumentLanguageResolver;
+import com.eyecode.language.LanguageId;
+import com.eyecode.language.diagnostics.DiagnosticsService;
 import com.eyecode.language.java.event.TokensUpdatedEvent;
 import com.eyecode.project.MavenProjectCreationService;
 import com.eyecode.project.ProjectFileOperationService;
@@ -32,10 +37,12 @@ class WebShellEventBusIntegrationTest {
         TerminalService terminalService = new TerminalService();
         WorkspaceApplication application = new WorkspaceApplication(manager, lifecycle, runService, terminalService);
         CapturingSurface surface = new CapturingSurface();
-        WebShellDiagnosticsController diagnostics = new WebShellDiagnosticsController(surface);
+        DocumentLanguageResolver languageResolver = languageResolver();
+        WebShellDiagnosticsController diagnostics = new WebShellDiagnosticsController(surface,
+                new DiagnosticsService(languageResolver, List.of(new JavaDiagnosticsProvider())));
         WebShellExecutionController execution = new WebShellExecutionController(surface, lifecycle, runService, terminalService);
         WebShellDocumentController documents = new WebShellDocumentController(surface, target -> { },
-                null, WebShellNativeUi.unavailable(), manager, diagnostics);
+                null, WebShellNativeUi.unavailable(), manager, diagnostics, languageResolver);
         List<TokensUpdatedEvent> updates = new CopyOnWriteArrayList<>();
         eventBus.subscribe(TokensUpdatedEvent.class, updates::add);
         try {
@@ -60,6 +67,10 @@ class WebShellEventBusIntegrationTest {
             execution.close();
             application.close();
         }
+    }
+
+    private static DocumentLanguageResolver languageResolver() {
+        return new ExtensionDocumentLanguageResolver(Map.of(LanguageId.JAVA, java.util.Set.of("java")));
     }
 
     private static final class CapturingSurface implements WebShellSurface {

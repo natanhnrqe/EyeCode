@@ -5,6 +5,14 @@ import com.eyecode.application.WorkspaceProjects;
 import com.eyecode.application.ProjectExplorerQuery;
 import com.eyecode.eventbus.EventBus;
 import com.eyecode.filesystem.DefaultFileSystemService;
+import com.eyecode.language.DocumentLanguageResolver;
+import com.eyecode.language.ExtensionDocumentLanguageResolver;
+import com.eyecode.language.LanguageId;
+import com.eyecode.language.completion.CompletionService;
+import com.eyecode.language.diagnostics.DiagnosticsService;
+import com.eyecode.diagnostics.JavaDiagnosticsProvider;
+import com.eyecode.language.java.completion.JavaCompletionProvider;
+import com.eyecode.language.java.JavaEditorIntelligence;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.project.MavenProjectCreationService;
 import com.eyecode.project.ProjectFileOperationService;
@@ -14,6 +22,9 @@ import com.eyecode.terminal.TerminalService;
 import com.eyecode.workbench.editor.EditorManager;
 
 import java.util.function.Consumer;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public final class WebShellWorkspaceComposition {
     private WebShellWorkspaceComposition() {
@@ -44,7 +55,7 @@ public final class WebShellWorkspaceComposition {
         EventBus eventBus = new EventBus();
         ProjectFileOperationService fileOperations = new ProjectFileOperationService();
         EditorManager editorManager = new EditorManager(eventBus, new DefaultFileSystemService(),
-                new WebShellEditorViewFactory(), fileOperations);
+                new WebShellEditorViewFactory(), Runnable::run, fileOperations, new JavaEditorIntelligence(eventBus));
         ProjectLifecycleService projectLifecycleService = new ProjectLifecycleService();
         RunService runService = new RunService(projectLifecycleService);
         runService.setBeforeRunFlush(editorManager::flushAutosave);
@@ -53,7 +64,11 @@ public final class WebShellWorkspaceComposition {
         WorkspaceApplication application = new WorkspaceApplication(editorManager, projectLifecycleService,
                 runService, terminalService);
 
-        WebShellDiagnosticsController diagnosticsController = new WebShellDiagnosticsController(surface);
+        DocumentLanguageResolver languageResolver = new ExtensionDocumentLanguageResolver(
+                Map.of(LanguageId.JAVA, Set.of("java")));
+        DiagnosticsService diagnostics = new DiagnosticsService(languageResolver, List.of(new JavaDiagnosticsProvider()));
+        CompletionService completion = new CompletionService(languageResolver, List.of(new JavaCompletionProvider()));
+        WebShellDiagnosticsController diagnosticsController = new WebShellDiagnosticsController(surface, diagnostics);
         WebShellExecutionController executionController = new WebShellExecutionController(surface,
                 projectLifecycleService, runService, terminalService);
         WorkspaceProjects projects = new WorkspaceProjects(projectLifecycleService, editorManager,
@@ -61,10 +76,11 @@ public final class WebShellWorkspaceComposition {
         ProjectExplorerQuery explorer = new ProjectExplorerQuery();
         WebShellNativeFileSelection selection = nativeUi == null ? WebShellNativeUi.unavailable() : nativeUi;
         WebShellDocumentController documentController = new WebShellDocumentController(surface,
-                documentationOpener, documentationHost, selection, editorManager, diagnosticsController);
+                documentationOpener, documentationHost, selection, editorManager, diagnosticsController, languageResolver);
         WebShellWorkspaceController workspaceController = new WebShellWorkspaceController(surface,
                 selection, editorManager, projects, explorer, fileOperations, documentController, executionController);
-        WebShellCompletionController completionController = new WebShellCompletionController(surface, editorManager);
+        WebShellCompletionController completionController = new WebShellCompletionController(surface, editorManager,
+                completion);
         WebShellLearningController learningController = new WebShellLearningController(surface, editorManager,
                 documentController::openDocumentationTarget, documentController::openJdkSource);
         WebShellLessonsController lessonsController = new WebShellLessonsController(surface);

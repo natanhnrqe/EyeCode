@@ -6,6 +6,7 @@ export type MonacoModel = {
   setValue: (value: string) => void;
   applyEdits: (edits: Array<{ range: Record<string, number>; text: string; forceMoveMarkers?: boolean }>) => unknown;
   getAlternativeVersionId: () => number;
+  getLanguageId?: () => string;
   getPositionAt: (offset: number) => { lineNumber: number; column: number };
   getOffsetAt: (position: { lineNumber: number; column: number }) => number;
   getWordUntilPosition: (position: { lineNumber: number; column: number }) => { startColumn: number; endColumn: number };

@@ -1,26 +1,14 @@
 package com.eyecode.ui.web;
 
-import com.eyecode.editor.v2.EditorDocument;
-import com.eyecode.editor.v2.EditorPosition;
-import com.eyecode.editor.v2.EditorSelection;
-import com.eyecode.editor.v2.completion.CompletionEngine;
-import com.eyecode.editor.v2.completion.CompletionItem;
-import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
-import com.eyecode.editor.v2.completion.JavaSnippetProvider;
-import com.eyecode.editor.v2.completion.JavaStandardLibraryProvider;
-import com.eyecode.editor.v2.completion.knowledge.JavaKnowledgeBaseProvider;
-import com.eyecode.editor.v2.completion.semantic.JavaSemanticMemberCompletionProvider;
-import com.eyecode.editor.v2.completion.semantic.SemanticCompletionProvider;
-import com.eyecode.editor.v2.completion.semantic.SemanticSymbolRegistry;
-import com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot;
-import com.eyecode.editor.v2.language.LanguageContext;
-import com.eyecode.editor.v2.syntax.JavaSyntaxAnalyzer;
-import com.eyecode.ui.web.monaco.EyeCodeCompletionService;
-import com.eyecode.ui.web.monaco.MonacoCompletionItem;
-import com.eyecode.ui.web.monaco.MonacoCompletionRequest;
 import com.eyecode.ui.web.monaco.MonacoModelId;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorSession;
+import com.eyecode.language.LanguageDocument;
+import com.eyecode.language.LanguageId;
+import com.eyecode.language.completion.CompletionCandidate;
+import com.eyecode.language.completion.CompletionRequest;
+import com.eyecode.language.completion.CompletionResult;
+import com.eyecode.language.completion.CompletionService;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -35,21 +23,13 @@ public final class WebShellCompletionController {
     private final EditorManager manager;
     private final ExecutorService executor;
     private final Map<String, String> latestRequestByUri = new ConcurrentHashMap<>();
-    private final JavaSyntaxAnalyzer syntaxAnalyzer = new JavaSyntaxAnalyzer();
-    private final EyeCodeCompletionService completionService = new EyeCodeCompletionService(
-            new CompletionEngine(List.of(
-                    new JavaKeywordCompletionProvider(),
-                    new JavaSemanticMemberCompletionProvider(),
-                    new JavaKnowledgeBaseProvider(),
-                    new JavaStandardLibraryProvider(),
-                    new JavaSnippetProvider(),
-                    new SemanticCompletionProvider(new SemanticSymbolRegistry())
-            )));
+    private final CompletionService completionService;
     private volatile boolean disposed;
 
-    public WebShellCompletionController(WebShellSurface surface, EditorManager manager) {
+    WebShellCompletionController(WebShellSurface surface, EditorManager manager, CompletionService completionService) {
         this.surface = surface;
         this.manager = manager;
+        this.completionService = completionService;
         this.executor = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable, "eyecode-web-completion");
             thread.setDaemon(true);
@@ -88,25 +68,23 @@ public final class WebShellCompletionController {
                 content = manager.getBuffer(session.getSessionId())
                         .map(buffer -> buffer.getDocument().snapshot().getText()).orElse("");
             }
-            EditorDocument document = new EditorDocument(session == null ? null : session.getFile(), content);
             int offset = number(message.payload(), "offset", -1);
             if (offset < 0) {
                 int line = number(message.payload(), "line", 1);
                 int column = number(message.payload(), "column", 1);
-                offset = document.offsetOf(new EditorPosition(Math.max(1, line), Math.max(1, column)));
+                offset = com.eyecode.editor.intelligence.document.LineMap.of(content)
+                        .offsetOf(Math.max(1, line), Math.max(1, column));
             }
             offset = Math.max(0, Math.min(offset, content.length()));
-            EditorPosition caret = document.positionOf(offset);
-            LanguageContext context = new LanguageContext(
-                    document,
-                    caret,
-                    new EditorSelection(caret, caret),
-                    syntaxAnalyzer.analyze(document),
-                    DiagnosticSnapshot.empty());
-            MonacoCompletionRequest completionRequest = toRequest(message, modelId, content, offset);
-            List<MonacoCompletionItem> items = completionService.complete(completionRequest, context);
+            LanguageDocument document = new LanguageDocument(modelId, session == null ? null : session.getFile(),
+                    session == null ? text(message.payload(), "displayName") : session.getDisplayName(),
+                    LanguageId.parse(text(message.payload(), "language")).orElse(null));
+            CompletionResult result = completionService.complete(new CompletionRequest(document,
+                    numberLong(message.payload(), "version", 0), content, offset,
+                    Boolean.TRUE.equals(message.payload().get("explicit")),
+                    number(message.payload(), "replaceStart", -1), number(message.payload(), "replaceEnd", -1)));
             if (isLatest(modelId, message.requestId())) {
-                publish(message, responsePayload(message, modelId, items));
+                publish(message, responsePayload(message, modelId, result.candidates()));
             }
         } catch (RuntimeException exception) {
             if (!isLatest(modelId, message.requestId())) return;
@@ -129,36 +107,13 @@ public final class WebShellCompletionController {
         return message.response(Map.of("accepted", accepted, "requestId", message.requestId()));
     }
 
-    private MonacoCompletionRequest toRequest(WebShellEnvelope message, String modelId,
-                                              String content, int offset) {
-        Map<String, Object> payload = message.payload();
-        MonacoCompletionRequest.TriggerKind trigger = switch (text(payload, "triggerKind")) {
-            case "triggerCharacter" -> MonacoCompletionRequest.TriggerKind.TRIGGER_CHARACTER;
-            case "incomplete" -> MonacoCompletionRequest.TriggerKind.INCOMPLETE;
-            default -> MonacoCompletionRequest.TriggerKind.INVOKED;
-        };
-        return new MonacoCompletionRequest(
-                modelId,
-                numberLong(payload, "version", 0),
-                number(payload, "line", 1),
-                number(payload, "column", 1),
-                trigger,
-                text(payload, "triggerCharacter"),
-                numberLong(message.requestId(), 0),
-                Boolean.TRUE.equals(payload.get("explicit")),
-                offset,
-                number(payload, "replaceStart", -1),
-                number(payload, "replaceEnd", -1),
-                content);
-    }
-
     private Map<String, Object> responsePayload(WebShellEnvelope message, String modelId,
-                                                  List<MonacoCompletionItem> items) {
+                                                  List<CompletionCandidate> items) {
         List<Map<String, Object>> serialized = new ArrayList<>();
-        for (MonacoCompletionItem item : items) {
+        for (CompletionCandidate item : items) {
             Map<String, Object> value = new LinkedHashMap<>();
             value.put("label", item.label());
-            value.put("kind", item.kind().name());
+            value.put("kind", item.kind());
             value.put("detail", item.detail());
             value.put("documentation", item.documentation());
             value.put("insertText", item.insertText());
@@ -213,11 +168,4 @@ public final class WebShellCompletionController {
         return value instanceof Number number ? number.longValue() : fallback;
     }
 
-    private static long numberLong(String value, long fallback) {
-        try {
-            return Long.parseLong(value);
-        } catch (NumberFormatException exception) {
-            return fallback;
-        }
-    }
 }

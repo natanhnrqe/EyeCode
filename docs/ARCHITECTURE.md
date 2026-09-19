@@ -45,13 +45,13 @@ flowchart TB
 | Área | Responsabilidade | Principais pontos de entrada | Classificação |
 | --- | --- | --- | --- |
 | `editor.intelligence` | Documento, caret, seleção, indentação e Smart Editing sem toolkit | `DocumentSnapshot`, `TypingPipeline`, `JavaIndentPolicy` | Core |
-| `language` | Lexer, parser, AST, CFG, semântica e JDK source resolution | `JavaLexerService`, `JavaParserService`, `DefinitionAtCaretResolver` | Core |
+| `language` | Identidade de linguagem, capacidades de completion/diagnóstico e o stack Java de lexer, parser, AST, CFG, semântica e JDK source resolution | `LanguageId`, `CompletionService`, `DiagnosticsService`, `JavaLexerService`, `JavaParserService` | Core |
 | `lessons` | Catálogo, conteúdo, sessão, prática e programas de apresentação | `LessonContentService`, `LessonSession`, `PresentationCompiler` | Domain |
 | `application` | Boundary e lifecycle compartilhado de uma workspace | `WorkspaceApplication` | Application/composition support |
 | `workbench`, `project`, `runtime`, `filesystem` | Ciclo do editor, workspace, execução e I/O | `EditorManager`, `ProjectLifecycleService`, `RunService`, `FileSystemService` | Application/infrastructure |
 | `eventbus` | Eventos internos em processo | `EventBus`, `Event`, `SubscriptionToken` | Shared infrastructure |
 | `ui.web` | Contratos, controllers, surfaces, asset server e bridge do Web Shell | `WebShellWorkspaceController`, `WebShellExecutionController`, `WebShellSurface`, `WebShellEnvelope` | Web adapter |
-| `ui.web.monaco` | DTOs e serviços sem toolkit para a conversa Java ↔ Monaco | `MonacoCommand`, `MonacoEvent`, `MonacoModelId`, `EyeCodeCompletionService` | Web contract |
+| `ui.web.monaco` | DTOs e serviços sem toolkit para a conversa Web ↔ Monaco | `MonacoCommand`, `MonacoEvent`, `MonacoModelId` | Web contract |
 | `ui.web.learning` | Payload Web de Learn e classificação compartilhada de tamanho | `MonacoLearningOverlayPayload`, `LearningCardSizingPolicy` | Web contract |
 | `javafx` | Composição desktop JavaFX/CEFFX preservada | `FxApplication`, `FxMainWindow`, `JavaFxMonacoEditorSurface` | Legacy-but-required adapter |
 | `swing`, `ui`, `editor.v2.ui` | Aplicação e componentes Swing preservados | `SwingMainWindow`, `MainWindow`, `RichEditorView` | Legacy UI |
@@ -117,7 +117,7 @@ O antigo package `com.eyecode.javafx.web` misturava Web Shell, Swing e JavaFX so
 | Subárea | Ownership |
 | --- | --- |
 | `ui.web` | controllers, `WebShellSurface`, dispatcher, envelope, codecs, assets e transports |
-| `ui.web.monaco` | contrato Java ↔ Monaco/React e transformação de completion |
+| `ui.web.monaco` | contrato Web ↔ Monaco/React; não escolhe implementação de linguagem |
 | `ui.web.learning` | payload de Learn consumido por overlay Web e classificação de tamanho |
 | `javafx.monaco` | implementação visual `JavaFxMonacoEditorSurface` e parser interno CEFFX |
 | `swing` / JavaFX | adapters nativos que implementam `WebShellSurface` ou `WebShellNativeUi` |
@@ -147,7 +147,7 @@ Contratos reais:
 - `subscribe` retorna `SubscriptionToken`; o dono do subscriber deve chamar `unsubscribe` durante seu ciclo de vida.
 - Implementação usa coleções concorrentes, mas não introduz agendamento, isolamento de falhas nem EventBus global adicional.
 
-No runtime Web, o fluxo ativo é `DocumentTextChangeEvent` → `LexerEventBridge` → `TokensUpdatedEvent`. `ParserEventBridge` e `ProjectRefreshService` permanecem fluxos independentes de infraestrutura/legado; eles não são criados nem assinam o barramento da composição Web atual. Eventos de UI históricos continuam em `eventbus.events`.
+No runtime Web, o fluxo ativo Java é `DocumentTextChangeEvent` → `JavaEditorIntelligence` → `LexerEventBridge` → `TokensUpdatedEvent`. `EditorManager` conhece apenas a capability `EditorIntelligence`; a composição injeta o adapter Java atual. `ParserEventBridge` e `ProjectRefreshService` permanecem fluxos independentes de infraestrutura/legado; eles não são criados nem assinam o barramento da composição Web atual. Eventos de UI históricos continuam em `eventbus.events`.
 
 ## 8. Learn e Presentation Architecture
 
@@ -169,7 +169,7 @@ Practice remains owned by `LessonSession`/lesson models and is reached through `
 
 ## 9. Project and runtime architecture
 
-`WorkspaceApplication` owns only the shared lifecycle of `EditorManager`, `ProjectLifecycleService`, `RunService` and `TerminalService`; it has no factory and no service getters. `EditorManager` owns editor sessions, autosave wiring, the external-file watcher and the `LexerEventBridge` subscription. `ProjectLifecycleService` owns the active project and listener lifecycle. `RunService` owns run state; `TerminalService` owns terminal sessions and their dedicated WebSocket endpoint. `ProjectFileOperationService` and `MavenProjectCreationService` are stateless concrete collaborators owned by the Web composition rather than lifecycle services.
+`WorkspaceApplication` owns only the shared lifecycle of `EditorManager`, `ProjectLifecycleService`, `RunService` and `TerminalService`; it has no factory and no service getters. `EditorManager` owns editor sessions, autosave wiring, the external-file watcher and delegates language lifecycle/definition work to the injected `EditorIntelligence`. `JavaEditorIntelligence` is the current Java adapter and owns its `LexerEventBridge`. `ProjectLifecycleService` owns the active project and listener lifecycle. `RunService` owns run state; `TerminalService` owns terminal sessions and their dedicated WebSocket endpoint. `ProjectFileOperationService` and `MavenProjectCreationService` are stateless concrete collaborators owned by the Web composition rather than lifecycle services.
 
 `WebShellWorkspaceRuntime` owns every controller and closes them before `WorkspaceApplication`. `WebShellWorkspaceController` adapts the 14 `workspace` requests. `WebShellDocumentController` owns the seven `document` handlers, tab payloads and document observations, including read-only documentation/JDK tabs. It detaches document and dirty listeners on close/reset/disposal. Both are constructed in `WebShellWorkspaceComposition`, never inside each other. Workspace coordinates document reset/reidentification and execution-state publication through these explicitly injected sibling adapters. `WebShellExecutionController` receives project lifecycle, run and terminal services and owns their UI listeners. Completion, learning, lessons and diagnostics remain sibling controllers. The terminal's dedicated WebSocket is terminal infrastructure, not the definition of Project Run semantics.
 
@@ -223,6 +223,7 @@ Practice remains owned by `LessonSession`/lesson models and is reached through `
 | New window capability | add it to `WebShellWindowControls`, not to file-selection consumers |
 | New build system | add discovery/execution capability behind the current runtime seam only when a second real implementation exists; do not make a generic build API speculatively |
 | New EventBus event | immutable `Event` plus publisher and explicit subscriber lifecycle |
+| New optional language capability | register `LanguageId` and extension mapping in composition, then add a focused provider such as `CompletionProvider` or `DiagnosticsProvider` |
 
 ## 12. Deprecated and legacy architecture
 
@@ -277,7 +278,7 @@ Maven execution remains concrete inside `ProjectExecutionResolver`/`MavenClasspa
 - Web composition selects concrete implementations; Web controllers receive their direct services and narrow native capabilities, never `WorkspaceApplication`.
 - Canonical lesson code is authoritative; presentation programs must end at the exact canonical target.
 - Web protocol version is `eyecode.web/1` until a deliberate compatible migration is made.
-- The Web composition creates one `EventBus` and passes it to `EditorManager`. Its `EditorBuffer` instances publish `DocumentTextChangeEvent`; `LexerEventBridge` synchronously derives `TokensUpdatedEvent`. Parser, diagnostics, autosave, project lifecycle and lessons do not subscribe to this Web runtime bus today, and it is never bridged to WebSocket.
+- The Web composition creates one `EventBus` and injects `JavaEditorIntelligence` into `EditorManager`. Its `EditorBuffer` instances publish `DocumentTextChangeEvent`; the Java adapter's `LexerEventBridge` synchronously derives `TokensUpdatedEvent`. Parser, diagnostics, autosave, project lifecycle and lessons do not subscribe to this Web runtime bus today, and it is never bridged to WebSocket.
 - `WebShellWorkspaceRuntime` and `WebShellSurface` share one lifetime: the runtime is closed first, then the surface. Registered handlers therefore remain valid until the surface closes; controller replacement on a live surface is unsupported and no unregister API is required.
 - Swing and JavaFX may use shared Web contracts but do not directly import one another.
 - React renders state and sends bridge messages; it does not own Java parsing, project lifecycle or lesson transition decisions.
@@ -306,7 +307,7 @@ com.eyecode
 ├── eventbus                  synchronous in-process event infrastructure
 ├── workbench/project/runtime application and infrastructure services
 ├── ui.web                    Web Shell adapter and transport contracts
-│   ├── monaco                Java ↔ Monaco contract and completion adapter
+│   ├── monaco                Web ↔ Monaco contract; legacy completion DTO adapter
 │   └── learning              Learn payload contract for Web overlays
 ├── javafx                    legacy-but-required JavaFX / CEFFX adapter
 │   └── monaco                JavaFX Monaco visual surface only
@@ -320,3 +321,4 @@ The remaining top-level packages (`autosave`, `browser`, `chromium`, `command`, 
 
 - [ADR 0001 — Web-first runtime](adr/0001-web-first-runtime.md)
 - [ADR 0002 — Composition and dependency direction](adr/0002-dependency-direction.md)
+- [ADR 0003 — Language identity and optional capabilities](adr/0003-language-identity-and-capabilities.md)

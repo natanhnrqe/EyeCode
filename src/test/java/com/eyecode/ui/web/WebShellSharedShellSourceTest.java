@@ -164,7 +164,8 @@ class WebShellSharedShellSourceTest {
         assertTrue(monaco.contains("lessonPractice: this.lessonPracticeUris.has(target.uri),"));
         assertTrue(monaco.contains("if ([...this.ephemeralModels.values()].includes(model)) return;"));
         assertTrue(completion.contains("boolean lessonPractice = isLessonPracticeRequest(message.payload(), modelId);"));
-        assertTrue(completion.contains("new EditorDocument(session == null ? null : session.getFile(), content)"));
+        assertTrue(completion.contains("new LanguageDocument(modelId, session == null ? null : session.getFile(),"));
+        assertTrue(completion.contains("new CompletionRequest(document,"));
         assertTrue(completion.contains("uri.startsWith(\"lesson://\") && Boolean.TRUE.equals(payload.get(\"lessonPractice\"))"));
         assertTrue(learning.contains("boolean lessonPractice = isLessonPracticeRequest(message.payload(), uri);"));
         assertTrue(learning.contains("new EditorDocument(session == null ? null : session.getFile(), content)"));

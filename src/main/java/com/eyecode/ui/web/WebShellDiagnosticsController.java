@@ -1,9 +1,11 @@
 package com.eyecode.ui.web;
 
-import com.eyecode.diagnostics.JavaDiagnostic;
-import com.eyecode.diagnostics.JavaDiagnosticRequest;
-import com.eyecode.diagnostics.JavaDiagnosticsResult;
-import com.eyecode.diagnostics.JavaSyntaxDiagnosticAnalyzer;
+import com.eyecode.language.LanguageDocument;
+import com.eyecode.language.LanguageId;
+import com.eyecode.language.diagnostics.Diagnostic;
+import com.eyecode.language.diagnostics.DiagnosticsRequest;
+import com.eyecode.language.diagnostics.DiagnosticsResult;
+import com.eyecode.language.diagnostics.DiagnosticsService;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -16,18 +18,14 @@ import java.util.concurrent.TimeUnit;
 public final class WebShellDiagnosticsController {
 
     private final WebShellSurface surface;
-    private final JavaSyntaxDiagnosticAnalyzer analyzer;
+    private final DiagnosticsService diagnostics;
     private final ThreadPoolExecutor executor;
     private final Map<String, String> latestRequestByUri = new java.util.concurrent.ConcurrentHashMap<>();
     private volatile boolean disposed;
 
-    public WebShellDiagnosticsController(WebShellSurface surface) {
-        this(surface, new JavaSyntaxDiagnosticAnalyzer());
-    }
-
-    WebShellDiagnosticsController(WebShellSurface surface, JavaSyntaxDiagnosticAnalyzer analyzer) {
+    WebShellDiagnosticsController(WebShellSurface surface, DiagnosticsService diagnostics) {
         this.surface = surface;
-        this.analyzer = analyzer == null ? new JavaSyntaxDiagnosticAnalyzer() : analyzer;
+        this.diagnostics = diagnostics;
         this.executor = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1),
                 runnable -> {
                     Thread thread = new Thread(runnable, "eyecode-java-diagnostics");
@@ -56,41 +54,43 @@ public final class WebShellDiagnosticsController {
     }
 
     private WebShellEnvelope request(WebShellEnvelope message) {
-        JavaDiagnosticRequest request = new JavaDiagnosticRequest(text(message.payload(), "uri"), message.requestId(),
-                number(message.payload(), "modelVersion"), text(message.payload(), "content"));
-        if (request.uri().isBlank() || request.requestId().isBlank()) {
+        String uri = text(message.payload(), "uri");
+        if (uri.isBlank() || message.requestId().isBlank()) {
             return message.error(new WebShellError("INVALID_DIAGNOSTICS_REQUEST",
                     "Diagnostics require a document URI and request id", true));
         }
-        latestRequestByUri.put(request.uri(), request.requestId());
-        executor.execute(() -> publish(request));
-        return message.response(Map.of("accepted", true, "requestId", request.requestId()));
+        LanguageDocument document = document(uri, text(message.payload(), "displayName"),
+                text(message.payload(), "language"));
+        DiagnosticsRequest request = new DiagnosticsRequest(document, number(message.payload(), "modelVersion"),
+                text(message.payload(), "content"));
+        latestRequestByUri.put(uri, message.requestId());
+        executor.execute(() -> publish(message.requestId(), request));
+        return message.response(Map.of("accepted", true, "requestId", message.requestId()));
     }
 
-    private void publish(JavaDiagnosticRequest request) {
-        if (disposed || !request.requestId().equals(latestRequestByUri.get(request.uri()))) return;
-        JavaDiagnosticsResult result = analyzer.analyze(request);
-        if (disposed || !request.requestId().equals(latestRequestByUri.get(request.uri()))) return;
+    private void publish(String requestId, DiagnosticsRequest request) {
+        if (disposed || !requestId.equals(latestRequestByUri.get(request.document().uri()))) return;
+        DiagnosticsResult result = diagnostics.analyze(request);
+        if (disposed || !requestId.equals(latestRequestByUri.get(request.document().uri()))) return;
         if (result.hasInfrastructureError()) {
             surface.send(WebShellEnvelope.event("diagnostics", "failure", Map.of(
-                    "uri", request.uri(), "requestId", request.requestId(), "modelVersion", request.modelVersion(),
+                    "uri", request.document().uri(), "requestId", requestId, "modelVersion", request.version(),
                     "message", result.infrastructureError())));
             return;
         }
-        surface.send(WebShellEnvelope.event("diagnostics", "publish", payload(result)));
+        surface.send(WebShellEnvelope.event("diagnostics", "publish", payload(requestId, request, result)));
     }
 
-    private Map<String, Object> payload(JavaDiagnosticsResult result) {
-        JavaDiagnosticRequest request = result.request();
+    private Map<String, Object> payload(String requestId, DiagnosticsRequest request, DiagnosticsResult result) {
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("uri", request.uri());
-        payload.put("requestId", request.requestId());
-        payload.put("modelVersion", request.modelVersion());
+        payload.put("uri", request.document().uri());
+        payload.put("requestId", requestId);
+        payload.put("modelVersion", request.version());
         payload.put("diagnostics", result.diagnostics().stream().map(this::payload).toList());
         return payload;
     }
 
-    private Map<String, Object> payload(JavaDiagnostic diagnostic) {
+    private Map<String, Object> payload(Diagnostic diagnostic) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("severity", diagnostic.severity().name());
         payload.put("code", diagnostic.code());
@@ -110,5 +110,10 @@ public final class WebShellDiagnosticsController {
     private static long number(Map<String, Object> payload, String key) {
         Object value = payload == null ? null : payload.get(key);
         return value instanceof Number number ? number.longValue() : 0;
+    }
+
+    private LanguageDocument document(String uri, String displayName, String language) {
+        LanguageId declared = LanguageId.parse(language).orElse(null);
+        return new LanguageDocument(uri, null, displayName, declared);
     }
 }

@@ -3,6 +3,7 @@ package com.eyecode.architecture;
 import com.eyecode.application.WorkspaceApplication;
 import com.eyecode.language.java.LexerEventBridge;
 import com.eyecode.project.ProjectFileOperationService;
+import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.ui.web.LocalWebShellLauncher;
 import com.eyecode.ui.web.LocalWebShellSurface;
 import com.eyecode.ui.web.WebShellCompletionController;
@@ -77,7 +78,8 @@ class ArchitectureBoundaryTest {
                 "com.eyecode.ui.web.WebShellExecutionController");
         assertConstructorDependencies(webClass("WebShellDocumentController"),
                 "com.eyecode.workbench.editor.EditorManager",
-                "com.eyecode.ui.web.WebShellDiagnosticsController");
+                "com.eyecode.ui.web.WebShellDiagnosticsController",
+                "com.eyecode.language.DocumentLanguageResolver");
         assertConstructorDependencies(webClass("WebShellExecutionController"),
                 "com.eyecode.project.ProjectLifecycleService",
                 "com.eyecode.runtime.RunService",
@@ -107,6 +109,24 @@ class ArchitectureBoundaryTest {
                 WebShellLessonsController.class, WebShellDiagnosticsController.class)) {
             assertNoClassReferences(controller, TOOLKIT_REFERENCES);
         }
+    }
+
+    @Test
+    void languageCapabilitiesStayIndependentFromWebAndJavaIsComposedOutsideConsumers() {
+        for (Class<?> type : List.of(com.eyecode.language.LanguageId.class,
+                com.eyecode.language.LanguageDocument.class,
+                com.eyecode.language.DocumentLanguageResolver.class,
+                com.eyecode.language.completion.CompletionProvider.class,
+                com.eyecode.language.completion.CompletionRequest.class,
+                com.eyecode.language.diagnostics.DiagnosticsProvider.class,
+                com.eyecode.language.diagnostics.DiagnosticsRequest.class)) {
+            assertNoClassReferences(type, TOOLKIT_REFERENCES);
+            assertNoClassReferences(type, List.of("com/eyecode/ui/web/", "com/eyecode/ui/web/monaco/"));
+        }
+        assertNoClassReferences(EditorManager.class, List.of("com/eyecode/language/java/"));
+        assertNoClassReferences(WebShellCompletionController.class, List.of(
+                "com/eyecode/editor/v2/completion/Java", "com/eyecode/ui/web/monaco/MonacoCompletion"));
+        assertNoClassReferences(WebShellDiagnosticsController.class, List.of("com/eyecode/diagnostics/Java"));
     }
 
     @Test

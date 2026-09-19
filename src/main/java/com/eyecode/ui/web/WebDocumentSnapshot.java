@@ -30,11 +30,11 @@ public record WebDocumentSnapshot(
         return value;
     }
 
-    public static WebDocumentSnapshot file(EditorSession session, EditorDocument document) {
+    public static WebDocumentSnapshot file(EditorSession session, EditorDocument document, String language) {
         return new WebDocumentSnapshot(
                 MonacoModelId.forSession(session),
                 session.getDisplayName(),
-                "java",
+                language,
                 document.snapshot().getText(),
                 document.currentVersion(),
                 document.isDirty(),
@@ -43,11 +43,11 @@ public record WebDocumentSnapshot(
     }
 
     public static WebDocumentSnapshot untitled(EditorSession session, EditorDocument document,
-                                               String displayName) {
+                                               String displayName, String language) {
         return new WebDocumentSnapshot(
                 MonacoModelId.forSession(session),
                 displayName,
-                "java",
+                language,
                 document.snapshot().getText(),
                 document.currentVersion(),
                 document.isDirty(),

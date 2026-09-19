@@ -748,6 +748,7 @@ export class MonacoWorkspaceService {
     const uri = this.documentUri(model);
     if (!uri) return;
     const content = model.getValue();
+    const language = model.getLanguageId?.() ?? 'plaintext';
     const previous = this.changeQueues.get(uri) ?? Promise.resolve();
     const next = previous.catch(() => undefined).then(async () => {
       const response = await bridge.request<{ document: DocumentSnapshot }>('document', 'change', {
@@ -763,7 +764,7 @@ export class MonacoWorkspaceService {
     void next.catch(error => this.onDocumentChange?.({
       uri,
       displayName: uri.split('/').pop() || uri,
-      language: 'java',
+      language,
       content,
       version: this.confirmedVersions.get(uri) ?? 0,
       dirty: true,
@@ -802,7 +803,9 @@ export class MonacoWorkspaceService {
       const modelVersion = model.getAlternativeVersionId();
       this.pendingDiagnostics.set(requestId, { uri, model, modelVersion });
       this.latestDiagnosticsRequestIds.set(uri, requestId);
-      void bridge.request('diagnostics', 'request', { uri, modelVersion, content: model.getValue() }, { requestId })
+      void bridge.request('diagnostics', 'request', {
+        uri, modelVersion, language: model.getLanguageId?.() ?? 'plaintext', content: model.getValue()
+      }, { requestId })
         .catch(error => {
           if (this.latestDiagnosticsRequestIds.get(uri) === requestId) {
             this.pendingDiagnostics.delete(requestId);
@@ -921,6 +924,7 @@ export class MonacoWorkspaceService {
       replaceStart: model.getOffsetAt({ lineNumber: position.lineNumber, column: word.startColumn }),
       replaceEnd: model.getOffsetAt({ lineNumber: position.lineNumber, column: word.endColumn }),
       lessonPractice,
+      language: model.getLanguageId?.() ?? 'plaintext',
       content: model.getValue()
     };
     void bridge.request<{ accepted: boolean }>('completion', 'request', payload, { requestId })

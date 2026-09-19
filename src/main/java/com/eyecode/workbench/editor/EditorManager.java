@@ -16,13 +16,7 @@ import com.eyecode.filesystem.ExternalFileWatcher;
 import com.eyecode.project.ProjectFileOperationService;
 import com.eyecode.project.model.ProjectModel;
 import com.eyecode.eventbus.events.ProjectRefreshEvent;
-import com.eyecode.language.java.JavaLexerService;
-import com.eyecode.language.java.LexerEventBridge;
-import com.eyecode.language.semantic.DefinitionAtCaretResolver;
 import com.eyecode.language.semantic.DefinitionLocation;
-import com.eyecode.language.symbol.DocumentSemanticModelBuilder;
-import com.eyecode.language.symbol.SemanticModelSnapshot;
-import com.eyecode.language.symbol.SymbolTable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -41,10 +35,7 @@ public final class EditorManager {
     private final EventBus eventBus;
     private final FileSystemService fileSystemService;
     private final EditorViewFactory viewFactory;
-    private final JavaLexerService lexerService = new JavaLexerService();
-    private final DocumentSemanticModelBuilder semanticModelBuilder = new DocumentSemanticModelBuilder(lexerService);
-    private final DefinitionAtCaretResolver definitionAtCaretResolver = new DefinitionAtCaretResolver();
-    private final LexerEventBridge lexerEventBridge;
+    private final EditorIntelligence intelligence;
     private final AutoSaveManager autoSaveManager;
     private final Consumer<Runnable> stateDispatcher;
     private final ExternalFileWatcher externalFileWatcher;
@@ -64,21 +55,24 @@ public final class EditorManager {
     public EditorManager(EventBus eventBus,
                          FileSystemService fileSystemService,
                          EditorViewFactory viewFactory) {
-        this(eventBus, fileSystemService, viewFactory, Runnable::run, new ProjectFileOperationService());
+        this(eventBus, fileSystemService, viewFactory, Runnable::run, new ProjectFileOperationService(),
+                EditorIntelligenceDefaults.create(eventBus));
     }
 
     public EditorManager(EventBus eventBus,
                          FileSystemService fileSystemService,
                          EditorViewFactory viewFactory,
                          Consumer<Runnable> stateDispatcher) {
-        this(eventBus, fileSystemService, viewFactory, stateDispatcher, new ProjectFileOperationService());
+        this(eventBus, fileSystemService, viewFactory, stateDispatcher, new ProjectFileOperationService(),
+                EditorIntelligenceDefaults.create(eventBus));
     }
 
     public EditorManager(EventBus eventBus,
                          FileSystemService fileSystemService,
                          EditorViewFactory viewFactory,
                          ProjectFileOperationService fileOperationService) {
-        this(eventBus, fileSystemService, viewFactory, Runnable::run, fileOperationService);
+        this(eventBus, fileSystemService, viewFactory, Runnable::run, fileOperationService,
+                EditorIntelligenceDefaults.create(eventBus));
     }
 
     public EditorManager(EventBus eventBus,
@@ -86,14 +80,22 @@ public final class EditorManager {
                          EditorViewFactory viewFactory,
                          Consumer<Runnable> stateDispatcher,
                          ProjectFileOperationService fileOperationService) {
+        this(eventBus, fileSystemService, viewFactory, stateDispatcher, fileOperationService,
+                EditorIntelligenceDefaults.create(eventBus));
+    }
+
+    public EditorManager(EventBus eventBus,
+                         FileSystemService fileSystemService,
+                         EditorViewFactory viewFactory,
+                         Consumer<Runnable> stateDispatcher,
+                         ProjectFileOperationService fileOperationService,
+                         EditorIntelligence intelligence) {
         this.eventBus = eventBus;
         this.fileSystemService = Objects.requireNonNull(fileSystemService, "fileSystemService");
         this.viewFactory = Objects.requireNonNull(viewFactory, "viewFactory");
         this.fileOperationService = Objects.requireNonNull(fileOperationService, "fileOperationService");
+        this.intelligence = Objects.requireNonNull(intelligence, "intelligence");
         this.stateDispatcher = stateDispatcher == null ? Runnable::run : stateDispatcher;
-        this.lexerEventBridge = eventBus != null
-                ? new LexerEventBridge(lexerService, eventBus)
-                : null;
         this.autoSaveManager = new AutoSaveManager(fileSystemService, stateDispatcher);
         ExternalFileWatcher watcher = new ExternalFileWatcher();
         watcher.addListener(this::onExternalPathChanged);
@@ -162,7 +164,7 @@ public final class EditorManager {
         documentsBySession.remove(sessionId);
 
         if (document != null) {
-            lexerService.invalidateSession(document.sessionId());
+            intelligence.closed(document.snapshot());
         }
 
         session.setState(SessionState.DISPOSED);
@@ -344,9 +346,7 @@ public final class EditorManager {
         disposed = true;
         closeAllSessions();
         shutdownAutosave();
-        if (lexerEventBridge != null) {
-            lexerEventBridge.dispose();
-        }
+        intelligence.close();
         externalFileListeners.clear();
     }
 
@@ -369,7 +369,7 @@ public final class EditorManager {
             previous.setState(SessionState.INACTIVE);
             EditorDocument previousDocument = documentsBySession.get(previous.getSessionId());
             if (previousDocument != null) {
-                lexerService.deactivateSession(previousDocument.sessionId());
+                intelligence.deactivated(previousDocument.snapshot());
             }
         }
         session.setState(SessionState.ACTIVE);
@@ -377,7 +377,7 @@ public final class EditorManager {
         history.recordActivation(EditorViewport.initial(session.getFile()));
         EditorDocument document = documentsBySession.get(sessionId);
         if (document != null) {
-            lexerService.activateSession(document.sessionId());
+            intelligence.activated(document.snapshot());
         }
 
         if (eventBus != null) {
@@ -448,11 +448,7 @@ public final class EditorManager {
         if (caretOffset < 0 || caretOffset > source.length()) {
             return Optional.empty();
         }
-        Optional<SemanticModelSnapshot> model = semanticModelBuilder.build(snapshot);
-        if (model.isEmpty()) {
-            return Optional.empty();
-        }
-        return definitionAtCaretResolver.resolve(source, caretOffset, model.get().symbolTable());
+        return intelligence.resolveDefinition(snapshot, caretOffset);
     }
 
     private EditorSession createSession(Path file, EditorDocument document, EditorBuffer buffer) {
@@ -490,11 +486,6 @@ public final class EditorManager {
     private java.io.File fileOf(EditorSession session) {
         Path file = session.getFile();
         return file != null ? file.toFile() : null;
-    }
-
-    private Optional<SymbolTable> buildSymbolTable(EditorDocument document) {
-        Optional<SemanticModelSnapshot> semantic = semanticModelBuilder.build(document);
-        return semantic.map(SemanticModelSnapshot::symbolTable);
     }
 
     private void onExternalPathChanged(Path path) {
