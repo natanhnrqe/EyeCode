@@ -4,7 +4,8 @@ import com.eyecode.ui.web.SwingWebShellNativeUi;
 import com.eyecode.ui.web.SwingWebShellSurface;
 import com.eyecode.ui.web.WebShellAssetServer;
 import com.eyecode.ui.web.WebShellNativeController;
-import com.eyecode.ui.web.WebShellWorkspaceController;
+import com.eyecode.ui.web.WebShellWorkspaceComposition;
+import com.eyecode.ui.web.WebShellWorkspaceRuntime;
 
 import javax.swing.JFrame;
 import javax.swing.WindowConstants;
@@ -19,7 +20,7 @@ public final class SwingMainWindow {
     private JFrame frame;
     private WebShellAssetServer assetServer;
     private SwingWebShellSurface surface;
-    private WebShellWorkspaceController workspaceController;
+    private WebShellWorkspaceRuntime workspaceController;
     private boolean disposed;
 
     public void show() {
@@ -31,7 +32,7 @@ public final class SwingMainWindow {
         assetServer = WebShellAssetServer.start();
         surface = new SwingWebShellSurface(assetServer.entryUrl());
         SwingWebShellNativeUi nativeUi = new SwingWebShellNativeUi(frame);
-        workspaceController = new WebShellWorkspaceController(surface, target -> { }, nativeUi);
+        workspaceController = WebShellWorkspaceComposition.create(surface, target -> { }, nativeUi);
         new WebShellNativeController(surface, nativeUi);
         surface.start();
         frame.add(surface.component(), BorderLayout.CENTER);
@@ -52,9 +53,9 @@ public final class SwingMainWindow {
         JFrame currentFrame = frame;
         frame = null;
         if (currentFrame != null && currentFrame.isDisplayable()) currentFrame.dispose();
-        WebShellWorkspaceController currentWorkspace = workspaceController;
+        WebShellWorkspaceRuntime currentWorkspace = workspaceController;
         workspaceController = null;
-        if (currentWorkspace != null) currentWorkspace.dispose();
+        if (currentWorkspace != null) currentWorkspace.close();
         SwingWebShellSurface currentSurface = surface;
         surface = null;
         if (currentSurface != null) currentSurface.dispose();

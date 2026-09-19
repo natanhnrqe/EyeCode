@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -47,7 +48,7 @@ public final class EditorManager {
     private final AutoSaveManager autoSaveManager;
     private final Consumer<Runnable> stateDispatcher;
     private final ExternalFileWatcher externalFileWatcher;
-    private final ProjectFileOperationService fileOperationService = new ProjectFileOperationService();
+    private final ProjectFileOperationService fileOperationService;
     private final List<Consumer<ExternalFileEvent>> externalFileListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     private final WorkspaceState workspaceState = new WorkspaceState();
@@ -58,20 +59,37 @@ public final class EditorManager {
     private final Map<String, EditorBuffer> buffersBySession = new HashMap<>();
     private final Map<String, EditorView> viewsBySession = new HashMap<>();
     private final Map<String, EditorDocument> documentsBySession = new HashMap<>();
+    private boolean disposed;
 
     public EditorManager(EventBus eventBus,
                          FileSystemService fileSystemService,
                          EditorViewFactory viewFactory) {
-        this(eventBus, fileSystemService, viewFactory, Runnable::run);
+        this(eventBus, fileSystemService, viewFactory, Runnable::run, new ProjectFileOperationService());
     }
 
     public EditorManager(EventBus eventBus,
                          FileSystemService fileSystemService,
                          EditorViewFactory viewFactory,
                          Consumer<Runnable> stateDispatcher) {
+        this(eventBus, fileSystemService, viewFactory, stateDispatcher, new ProjectFileOperationService());
+    }
+
+    public EditorManager(EventBus eventBus,
+                         FileSystemService fileSystemService,
+                         EditorViewFactory viewFactory,
+                         ProjectFileOperationService fileOperationService) {
+        this(eventBus, fileSystemService, viewFactory, Runnable::run, fileOperationService);
+    }
+
+    public EditorManager(EventBus eventBus,
+                         FileSystemService fileSystemService,
+                         EditorViewFactory viewFactory,
+                         Consumer<Runnable> stateDispatcher,
+                         ProjectFileOperationService fileOperationService) {
         this.eventBus = eventBus;
-        this.fileSystemService = fileSystemService;
-        this.viewFactory = viewFactory;
+        this.fileSystemService = Objects.requireNonNull(fileSystemService, "fileSystemService");
+        this.viewFactory = Objects.requireNonNull(viewFactory, "viewFactory");
+        this.fileOperationService = Objects.requireNonNull(fileOperationService, "fileOperationService");
         this.stateDispatcher = stateDispatcher == null ? Runnable::run : stateDispatcher;
         this.lexerEventBridge = eventBus != null
                 ? new LexerEventBridge(lexerService, eventBus)
@@ -162,6 +180,44 @@ public final class EditorManager {
             }
         }
         return true;
+    }
+
+    public enum PathMutationResult { SUCCESS, SAVE_FAILED, DIRTY_DOCUMENTS, FAILED }
+
+    public List<EditorSession> sessionsUnder(Path target) {
+        Path safe = target.toAbsolutePath().normalize();
+        return getSessions().stream().filter(session -> session.getFile() != null
+                && session.getFile().toAbsolutePath().normalize().startsWith(safe)).toList();
+    }
+
+    public PathMutationResult renamePathSafely(ProjectModel project, Path target, String newName) {
+        Path safe = fileOperationService.requireTarget(project, target);
+        for (EditorSession session : sessionsUnder(safe)) {
+            EditorDocument document = documentsBySession.get(session.getSessionId());
+            if (document != null && document.isDirty() && !flushSession(session.getSessionId())) {
+                return PathMutationResult.SAVE_FAILED;
+            }
+        }
+        return renamePath(project, safe, newName) ? PathMutationResult.SUCCESS : PathMutationResult.FAILED;
+    }
+
+    public PathMutationResult deletePathSafely(ProjectModel project, Path target) {
+        Path safe = fileOperationService.requireTarget(project, target);
+        if (sessionsUnder(safe).stream().map(session -> documentsBySession.get(session.getSessionId()))
+                .filter(Objects::nonNull).anyMatch(EditorDocument::isDirty)) {
+            return PathMutationResult.DIRTY_DOCUMENTS;
+        }
+        return deletePath(project, safe) ? PathMutationResult.SUCCESS : PathMutationResult.FAILED;
+    }
+
+    public boolean isExistingFile(Path path) {
+        return path != null && java.nio.file.Files.isRegularFile(path);
+    }
+
+    public boolean isOpenInAnotherSession(EditorSession session, Path destination) {
+        Path normalized = destination.toAbsolutePath().normalize();
+        return getSessions().stream().anyMatch(other -> other != session && other.getFile() != null
+                && normalized.equals(other.getFile().toAbsolutePath().normalize()));
     }
 
     public boolean deletePath(ProjectModel project, Path target) {
@@ -281,6 +337,17 @@ public final class EditorManager {
         if (externalFileWatcher != null) {
             externalFileWatcher.close();
         }
+    }
+
+    public void dispose() {
+        if (disposed) return;
+        disposed = true;
+        closeAllSessions();
+        shutdownAutosave();
+        if (lexerEventBridge != null) {
+            lexerEventBridge.dispose();
+        }
+        externalFileListeners.clear();
     }
 
     public void addExternalFileListener(Consumer<ExternalFileEvent> listener) {

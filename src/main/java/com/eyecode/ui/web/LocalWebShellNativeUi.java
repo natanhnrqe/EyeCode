@@ -30,10 +30,6 @@ public final class LocalWebShellNativeUi implements WebShellNativeUi {
     }
 
     @Override
-    public Path chooseDirectory(String title) {
-        return chooseDirectoryAsync(title).join();
-    }
-
     public CompletableFuture<Path> chooseDirectoryAsync(String title) {
         if (Platform.isWindows()) {
             return CompletableFuture.supplyAsync(() -> WindowsFolderPicker.choose(title));

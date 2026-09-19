@@ -51,6 +51,9 @@ docs/*
 !docs/
 !docs/ARCHITECTURE.md
 !docs/DEVELOPMENT_GUIDE.md
+!docs/WORKSPACE_DECOMPOSITION_REPORT.md
+!docs/adr/
+!docs/adr/*.md
 
 AGENTS.md
 

@@ -24,8 +24,8 @@ public final class JavaFxWebShellNativeUi implements WebShellNativeUi {
     }
 
     @Override
-    public Path chooseDirectory(String title) {
-        return callOnFxThread(() -> {
+    public CompletableFuture<Path> chooseDirectoryAsync(String title) {
+        return runOnFxThread(() -> {
             DirectoryChooser chooser = new DirectoryChooser();
             chooser.setTitle(title);
             File selected = chooser.showDialog(stage);
@@ -78,6 +78,23 @@ public final class JavaFxWebShellNativeUi implements WebShellNativeUi {
         } catch (ExecutionException | IllegalStateException exception) {
             return null;
         }
+    }
+
+    private static <T> CompletableFuture<T> runOnFxThread(Callable<T> task) {
+        CompletableFuture<T> result = new CompletableFuture<>();
+        Runnable run = () -> {
+            try {
+                result.complete(task.call());
+            } catch (Exception exception) {
+                result.completeExceptionally(exception);
+            }
+        };
+        if (Platform.isFxApplicationThread()) {
+            run.run();
+        } else {
+            Platform.runLater(run);
+        }
+        return result;
     }
 
     private static <T> T call(Callable<T> task) {

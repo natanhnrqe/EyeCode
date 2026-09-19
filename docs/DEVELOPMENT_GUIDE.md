@@ -13,11 +13,13 @@ npm run build
 Pop-Location
 ~~~
 
-`mvn exec:java` starts `com.eyecode.ui.web.LocalWebShellLauncher`, the primary Web composition root. It starts loopback HTTP and WebSocket servers and prints the browser URL; opening the browser is intentionally optional and can be enabled with `-Deyecode.web.openBrowser=true` when `java.awt.Desktop` is supported. JavaFX/CEFFX and Swing/JCEF remain compile-time legacy adapters, not requirements of this runtime.
+`mvn exec:java` starts `com.eyecode.ui.web.LocalWebShellLauncher`, the primary Web entrypoint. `LocalWebShellRuntime` creates the HTTP/WebSocket surface and `WebShellWorkspaceComposition` visibly assembles services, the lifecycle owner and Web controllers. Opening the browser is intentionally optional and can be enabled with `-Deyecode.web.openBrowser=true` when `java.awt.Desktop` is supported. JavaFX/CEFFX and Swing/JCEF remain compile-time legacy adapters, not requirements of this runtime.
 
 The Web runtime has no browser-native file or directory picker yet. `workspace/openProject` without a path, `workspace/chooseDirectory`, and Save As return the recoverable `NATIVE_UI_UNAVAILABLE` protocol error. Supplying a path for opening a project remains supported.
 
 Read [Architecture](ARCHITECTURE.md) before choosing a package. Package names communicate ownership; do not place a class in `javafx` or `swing` merely because its first caller is there.
+
+Read the [architecture decisions](adr/) when a change affects runtime ownership or dependency direction.
 
 ## Onde colocar código novo
 
@@ -26,6 +28,7 @@ Read [Architecture](ARCHITECTURE.md) before choosing a package. Package names co
 | Documento, caret, seleção ou indentação | `editor.intelligence` | `TypingPipeline`, `JavaIndentPolicy` |
 | Lexer, parser, AST, semântica | `language` | `JavaLexerService`, `DefinitionAtCaretResolver` |
 | Catálogo, sessão, prática ou apresentação de lesson | `lessons` | `LessonContentService`, `PresentationCompiler` |
+| Serviço que compartilha lifecycle de uma workspace | `application` + serviço dono | `WorkspaceApplication` |
 | Workspace, projeto, execução ou arquivo | `workbench`, `project`, `runtime`, `filesystem` | `EditorManager`, `RunService` |
 | Evento interno em processo | `eventbus` e domínio dono | `DocumentTextChangeEvent` |
 | Contrato Java ↔ React/Monaco | `ui.web`, `ui.web.monaco`, `ui.web.learning` | `WebShellEnvelope`, `MonacoCommand` |
@@ -42,6 +45,18 @@ Read [Architecture](ARCHITECTURE.md) before choosing a package. Package names co
 
 Por exemplo, Smart Editing lê `DocumentSnapshot` e grava por `EditorCommandContext`; ele nunca acessa um componente Swing ou JavaFX.
 
+## Como compor uma feature de workspace
+
+`WorkspaceApplication` é owner de lifecycle compartilhado, não factory nem service locator. A composição escolhe implementações concretas; controllers recebem serviços e capabilities que realmente usam.
+
+1. Coloque a regra no serviço dono (`project`, `runtime`, `workbench`, `filesystem` ou domínio), com teste focado.
+2. Se a regra precisa encerrar junto da workspace, passe seu serviço ao construtor de `WorkspaceApplication`; não acrescente getter para pescá-lo depois.
+3. Faça `WebShellWorkspaceComposition` escolher o filesystem, `EventBus`, serviços concretos e adapters, como `WebShellEditorViewFactory`.
+4. Faça o controller Web adaptar envelope → serviço; não construa `EditorManager`, `RunService`, `TerminalService` ou filesystem no controller, nem receba `WorkspaceApplication`.
+5. `WebShellWorkspaceRuntime` possui controllers e os encerra antes de `WorkspaceApplication.close()`. Todo listener deve ser removido pelo controller que o registrou.
+
+Não use container DI, singleton global ou uma interface nova caso não exista uma implementação substituível e um consumidor que precise deixar de conhecê-la.
+
 ## Como adicionar uma funcionalidade Swing
 
 Swing é compatibilidade. Primeiro confirme que a regra não pertence ao Core ou ao Web Shell compartilhado.
@@ -57,10 +72,10 @@ Swing é compatibilidade. Primeiro confirme que a regra não pertence ao Core ou
 
 1. Deixe layout, `Node`, `Region`, `Platform.runLater` e CEFFX em `com.eyecode.javafx`.
 2. Para falar com React, use `WebShellSurface` e DTOs de `ui.web`; não crie uma cópia JavaFX do protocolo.
-3. Uma nova capacidade de janela entra em `WebShellNativeUi` ou `WebShellDocumentationHost` somente se o boundary for real.
+3. Uma nova capacidade de seleção entra em `WebShellNativeFileSelection`; uma capacidade de janela entra em `WebShellWindowControls`; documentação usa `WebShellDocumentationHost`. Só crie uma capability quando houver consumidor e adapter reais.
 4. Não importe `com.eyecode.swing.*`.
 
-`JavaFxWebDocumentationHost` é o modelo: ele contém layout JavaFX, enquanto `WebShellWorkspaceController` conhece apenas o contrato `WebShellDocumentationHost`.
+`JavaFxWebDocumentationHost` é o modelo: ele contém layout JavaFX, enquanto `WebShellDocumentController` conhece apenas o contrato `WebShellDocumentationHost`.
 
 ## Como adicionar uma funcionalidade React
 
@@ -71,6 +86,14 @@ Swing é compatibilidade. Primeiro confirme que a regra não pertence ao Core ou
 5. Execute `npm run typecheck` e `npm run build`.
 
 Não use `window.cefQuery` em componente React. `EyeCodeBridge` seleciona CEFFX ou WebSocket local e preserva request IDs, timeout e tratamento de erro.
+
+React é organizado por responsabilidade natural, não como um espelho dos packages Java:
+
+- `bridge/`: protocolo e transporte;
+- `workspace/`, `document/`, `diagnostics/`, `learning/`, `lessons/`, `completion/`: features e componentes;
+- `monaco/MonacoWorkspaceService.ts`: boundary de editor, modelos, decorations e presentation.
+
+Trocar React afetaria esses adapters/frontend e o contrato `eyecode.web/1`, não os motores Java de linguagem, editor ou lessons. Trocar Monaco afeta principalmente `MonacoWorkspaceService` e seus componentes consumidores; não mova parsing ou `PresentationCompiler` para TypeScript.
 
 ## Como adicionar um evento
 
@@ -142,14 +165,31 @@ Prefira o controller atual do agregado:
 
 | Canal | Controller atual |
 | --- | --- |
-| `workspace`, `document`, `run`, `terminal` | `WebShellWorkspaceController` |
+| `workspace` | `WebShellWorkspaceController` |
+| `document` | `WebShellDocumentController` |
+| `run`, `terminal` | `WebShellExecutionController` |
 | `lessons` | `WebShellLessonsController` |
 | `learning` | `WebShellLearningController` |
 | `completion` | `WebShellCompletionController` |
 | `diagnostics` | `WebShellDiagnosticsController` |
 | `shell` | surface/dispatcher bootstrap |
 
-Crie controller novo apenas para um agregado e ciclo de vida novos, não para dividir uma classe arbitrariamente. Receba `WebShellSurface` e contratos de aplicação, nunca `JavaFxWebShellSurface` ou `SwingWebShellSurface`.
+Crie controller novo apenas para um agregado e ciclo de vida novos, não para dividir uma classe arbitrariamente. Receba `WebShellSurface` e contratos de aplicação, nunca `JavaFxWebShellSurface` ou `SwingWebShellSurface`. `WebShellExecutionController` é o exemplo: possui o cluster coeso de listeners e projeções dos canais `run`/`terminal`.
+
+## Boundaries de workspace, documentos e explorer
+
+Antes de acrescentar uma regra de workspace ao Web adapter, identifique o dono:
+
+- Estado/salvamento/sessões: `EditorManager`. Para rename/delete com proteção de documentos abertos, use `renamePathSafely`/`deletePathSafely`; o resultado neutro é traduzido para os códigos Web existentes.
+- Abrir/criar workspace: `WorkspaceProjects`, que coordena lifecycle, editor, execução e a criação Maven concreta.
+- Consulta do explorer: `ProjectExplorerQuery`, que retorna `Entry`/`Path`, nunca `Map` Web. Filtros, ordenação, ancestrais e escolha do arquivo inicial são reutilizáveis.
+- Criar arquivo/diretório/classe/package e duplicar: use diretamente o `ProjectFileOperationService` compartilhado.
+- Parsing, URIs Monaco, envelopes, erros de protocolo e payloads: controllers Web e `WebShellPayload`.
+- Abas de documentação/JDK: `WebShellDocumentController`, compartilhando o lifecycle de abas sem transformá-las em arquivos editáveis.
+
+Monte capabilities/controllers em `WebShellWorkspaceComposition`. Controllers com listeners são possuídos e encerrados por `WebShellWorkspaceRuntime`; capabilities sem recursos próprios não precisam de `close` artificial. Não crie context/service bags nem um use case por handler.
+
+Teste regras de aplicação sem `WebShellSurface`, usando `@TempDir` e serviços reais. Teste adaptação com uma surface capturadora, preservando nomes/códigos de `eyecode.web/1`. Exemplos: `ProjectExplorerQueryTest`, `WorkspaceProjectsTest` e `WebShellWorkspaceDocumentsTest`. A guarda arquitetural cobre dependência application → Web, criação indevida de serviços/siblings nos adapters e ausência de traversal NIO nos controllers.
 
 ## Como adicionar uma lesson
 
@@ -189,11 +229,19 @@ Monaco é renderização/frontend. O backend decide modelos, conteúdo, transiti
 
 Não crie parser Java paralelo nem replique Presentation Compiler no player Monaco.
 
+## Como evoluir build, execução e linguagens
+
+`RunService` é o lifecycle de execução consumido pela UI. A resolução atual em `ProjectExecutionResolver` e `MavenClasspathResolver` é Maven-concreta; não introduza uma “BuildSystem” genérica enquanto não houver um segundo executor real (por exemplo, Gradle) e um consumidor que possa depender do contrato comum. Ao adicionar Gradle de verdade, extraia a capability de descoberta/resolução a partir das operações que os dois executores compartilham e mantenha Maven como adapter.
+
+`FileSystemService` já é o port de persistência do editor. `Path` continua sendo um valor JDK válido; não o esconda. `ProjectFileOperationService` ainda é uma implementação NIO coesa e não deve receber um wrapper apenas por consistência visual.
+
+Uma nova linguagem entra em `language` através dos contratos de lexer/parser/semântica que ela realmente utiliza. Editor e frontend adaptam resultados; não crie uma linguagem paralela em Monaco ou no protocolo Web.
+
 ## Como adicionar protocolo sem quebrar outras UIs
 
 1. Prefira novo `channel/name` a mudar semântica de mensagem existente.
 2. Preserve envelope e campos de correlação.
-3. Faça controllers dependerem de `WebShellSurface` e contratos como `WebShellNativeUi`.
+3. Faça controllers dependerem de `WebShellSurface` e da menor capability necessária (`WebShellNativeFileSelection`, `WebShellWindowControls` ou `WebShellDocumentationHost`), não do adapter desktop completo.
 4. Atualize React e testes do transporte relevante.
 5. Execute `ArchitectureBoundaryTest` para garantir que contratos compartilhados não importam toolkit.
 

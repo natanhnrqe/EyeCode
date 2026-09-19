@@ -27,7 +27,7 @@ class WebShellRunOutputIntegrationTest {
         Files.writeString(source, "public class Main { public static void main(String[] args) { System.out.print(\"Hello \"); System.out.print(\"World!\\n\"); } }");
 
         CapturingSurface surface = new CapturingSurface();
-        WebShellWorkspaceController controller = new WebShellWorkspaceController(
+        WebShellWorkspaceRuntime controller = WebShellWorkspaceComposition.create(
                 surface, target -> { }, WebShellNativeUi.unavailable());
         try {
             WebShellEnvelope opened = surface.handler("workspace", "openProject").handle(
@@ -54,7 +54,7 @@ class WebShellRunOutputIntegrationTest {
                     .anyMatch(event -> event.payload().get("text") instanceof String
                             && event.payload().containsKey("error")));
         } finally {
-            controller.dispose();
+            controller.close();
         }
     }
 
@@ -78,7 +78,7 @@ class WebShellRunOutputIntegrationTest {
                 + "exit /b 0\r\n");
 
         CapturingSurface surface = new CapturingSurface();
-        WebShellWorkspaceController controller = new WebShellWorkspaceController(
+        WebShellWorkspaceRuntime controller = WebShellWorkspaceComposition.create(
                 surface, target -> { }, WebShellNativeUi.unavailable());
         try {
             WebShellEnvelope opened = surface.handler("workspace", "openProject").handle(
@@ -106,7 +106,7 @@ class WebShellRunOutputIntegrationTest {
             assertTrue(surface.finishedState.await(10, TimeUnit.SECONDS));
         } finally {
             if (!Files.exists(release)) Files.createFile(release);
-            controller.dispose();
+            controller.close();
         }
     }
 

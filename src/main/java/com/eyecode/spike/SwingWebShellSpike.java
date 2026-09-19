@@ -4,7 +4,8 @@ import com.eyecode.ui.web.SwingWebShellNativeUi;
 import com.eyecode.ui.web.SwingWebShellSurface;
 import com.eyecode.ui.web.WebShellAssetServer;
 import com.eyecode.ui.web.WebShellNativeController;
-import com.eyecode.ui.web.WebShellWorkspaceController;
+import com.eyecode.ui.web.WebShellWorkspaceComposition;
+import com.eyecode.ui.web.WebShellWorkspaceRuntime;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -16,7 +17,7 @@ import java.awt.event.WindowEvent;
 public final class SwingWebShellSpike {
     private SwingWebShellSurface surface;
     private WebShellAssetServer assetServer;
-    private WebShellWorkspaceController workspaceController;
+    private WebShellWorkspaceRuntime workspaceController;
     private JFrame frame;
 
     public static void main(String[] args) {
@@ -35,7 +36,7 @@ public final class SwingWebShellSpike {
             assetServer = WebShellAssetServer.start();
             surface = new SwingWebShellSurface(assetServer.entryUrl());
             SwingWebShellNativeUi nativeUi = new SwingWebShellNativeUi(frame);
-            workspaceController = new WebShellWorkspaceController(surface, target -> { }, nativeUi);
+            workspaceController = WebShellWorkspaceComposition.create(surface, target -> { }, nativeUi);
             new WebShellNativeController(surface, nativeUi);
             surface.start();
             frame.add(surface.component(), BorderLayout.CENTER);
@@ -65,9 +66,9 @@ public final class SwingWebShellSpike {
         JFrame currentFrame = frame;
         frame = null;
         if (currentFrame != null) currentFrame.dispose();
-        WebShellWorkspaceController currentWorkspaceController = workspaceController;
+        WebShellWorkspaceRuntime currentWorkspaceController = workspaceController;
         workspaceController = null;
-        if (currentWorkspaceController != null) currentWorkspaceController.dispose();
+        if (currentWorkspaceController != null) currentWorkspaceController.close();
         SwingWebShellSurface currentSurface = surface;
         surface = null;
         if (currentSurface != null) currentSurface.dispose();

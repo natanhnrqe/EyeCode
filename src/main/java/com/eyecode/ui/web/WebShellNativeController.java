@@ -3,10 +3,10 @@ package com.eyecode.ui.web;
 import java.util.Map;
 
 public final class WebShellNativeController {
-    private final WebShellNativeUi nativeUi;
+    private final WebShellWindowControls windowControls;
 
-    public WebShellNativeController(WebShellSurface surface, WebShellNativeUi nativeUi) {
-        this.nativeUi = nativeUi == null ? WebShellNativeUi.unavailable() : nativeUi;
+    public WebShellNativeController(WebShellSurface surface, WebShellWindowControls windowControls) {
+        this.windowControls = windowControls == null ? WebShellNativeUi.unavailable() : windowControls;
         surface.registerHandler("native", "windowMinimize", this::minimize);
         surface.registerHandler("native", "windowToggleMaximize", this::toggleMaximize);
         surface.registerHandler("native", "windowClose", this::close);
@@ -16,32 +16,32 @@ public final class WebShellNativeController {
     }
 
     private WebShellEnvelope minimize(WebShellEnvelope message) {
-        nativeUi.minimizeWindow();
+        windowControls.minimizeWindow();
         return message.response(Map.of("accepted", true));
     }
 
     private WebShellEnvelope toggleMaximize(WebShellEnvelope message) {
-        nativeUi.toggleMaximizeWindow();
+        windowControls.toggleMaximizeWindow();
         return message.response(Map.of("accepted", true));
     }
 
     private WebShellEnvelope close(WebShellEnvelope message) {
-        nativeUi.closeWindow();
+        windowControls.closeWindow();
         return message.response(Map.of("accepted", true));
     }
 
     private WebShellEnvelope startDrag(WebShellEnvelope message) {
-        nativeUi.beginWindowDrag(coordinate(message, "screenX"), coordinate(message, "screenY"));
+        windowControls.beginWindowDrag(coordinate(message, "screenX"), coordinate(message, "screenY"));
         return message.response(Map.of("accepted", true));
     }
 
     private WebShellEnvelope moveDrag(WebShellEnvelope message) {
-        nativeUi.moveWindow(coordinate(message, "screenX"), coordinate(message, "screenY"));
+        windowControls.moveWindow(coordinate(message, "screenX"), coordinate(message, "screenY"));
         return message.response(Map.of("accepted", true));
     }
 
     private WebShellEnvelope endDrag(WebShellEnvelope message) {
-        nativeUi.endWindowDrag();
+        windowControls.endWindowDrag();
         return message.response(Map.of("accepted", true));
     }
 

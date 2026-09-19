@@ -3,13 +3,19 @@ package com.eyecode.ui.web;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -17,15 +23,59 @@ import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LocalWebShellRuntimeTest {
     private static final Pattern SOCKET_URL = Pattern.compile("webSocketUrl:\"([^\"]+)\"");
 
+    @TempDir
+    Path tempDir;
+
+    @Test
+    void surfaceClosesSocketOutsideConnectionLock() throws Exception {
+        ExecutorService callbacks = Executors.newSingleThreadExecutor();
+        try (LocalWebShellSurface surface = new LocalWebShellSurface()) {
+            var lockField = LocalWebShellSurface.class.getDeclaredField("connectionLock");
+            lockField.setAccessible(true);
+            Object lock = lockField.get(surface);
+            var connectionField = LocalWebShellSurface.class.getDeclaredField("connection");
+            connectionField.setAccessible(true);
+            java.util.concurrent.atomic.AtomicBoolean closeCalled = new java.util.concurrent.atomic.AtomicBoolean();
+            CountDownLatch callbackStarted = new CountDownLatch(1);
+            CountDownLatch callbackAcquiredConnectionLock = new CountDownLatch(1);
+            Object socket = java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),
+                    new Class<?>[]{org.java_websocket.WebSocket.class}, (proxy, method, args) -> {
+                        if (method.getName().equals("close")) {
+                            closeCalled.set(true);
+                            var callback = callbacks.submit(() -> {
+                                callbackStarted.countDown();
+                                synchronized (lock) {
+                                    callbackAcquiredConnectionLock.countDown();
+                                }
+                            });
+                            assertTrue(callbackStarted.await(1, TimeUnit.SECONDS));
+                            assertTrue(callbackAcquiredConnectionLock.await(1, TimeUnit.SECONDS),
+                                    "Socket close callbacks must be able to acquire connectionLock");
+                            callback.get(1, TimeUnit.SECONDS);
+                            org.junit.jupiter.api.Assertions.assertFalse(Thread.holdsLock(lock),
+                                    "Socket close callbacks must be able to acquire connectionLock");
+                            assertNull(connectionField.get(surface));
+                        }
+                        return null;
+                    });
+            connectionField.set(surface, socket);
+            surface.close();
+            assertTrue(closeCalled.get());
+        } finally {
+            callbacks.shutdownNow();
+        }
+    }
+
     @Test
     void bundledRuntimeServesBootstrapAndDispatchesTheSharedWebProtocol() throws Exception {
         try (LocalWebShellSurface surface = new LocalWebShellSurface()) {
-            WebShellWorkspaceController workspace = new WebShellWorkspaceController(surface);
+            WebShellWorkspaceRuntime workspace = WebShellWorkspaceComposition.create(surface);
             try {
                 HttpResponse<String> entry = HttpClient.newHttpClient().send(HttpRequest.newBuilder(
                         URI.create(surface.entryUrl())).build(), HttpResponse.BodyHandlers.ofString());
@@ -58,7 +108,7 @@ class LocalWebShellRuntimeTest {
                     client.closeBlocking();
                 }
             } finally {
-                workspace.dispose();
+                workspace.close();
             }
         }
     }
@@ -66,7 +116,7 @@ class LocalWebShellRuntimeTest {
     @Test
     void webRuntimeReportsNativePickerOperationsAsUnavailable() {
         CapturingSurface surface = new CapturingSurface();
-        WebShellWorkspaceController workspace = new WebShellWorkspaceController(surface);
+        WebShellWorkspaceRuntime workspace = WebShellWorkspaceComposition.create(surface);
         try {
             WebShellEnvelope openProject = surface.handler("workspace", "openProject").handle(
                     WebShellEnvelope.request("workspace", "openProject", "project-1", Map.of()));
@@ -83,7 +133,33 @@ class LocalWebShellRuntimeTest {
             assertNativeUiUnavailable(chooseDirectory);
             assertNativeUiUnavailable(save);
         } finally {
-            workspace.dispose();
+            workspace.close();
+        }
+    }
+
+    @Test
+    void workspaceUsesTheFileSelectionPortWithoutKnowingTheNativeAdapter() throws Exception {
+        Path projectRoot = Files.createDirectories(tempDir.resolve("project/src"));
+        Files.writeString(projectRoot.resolve("Main.java"), "class Main {}\n");
+        CapturingSurface surface = new CapturingSurface();
+        WebShellNativeUi selection = new WebShellNativeUi() {
+            @Override public boolean isAvailable() { return true; }
+            @Override public CompletableFuture<Path> chooseDirectoryAsync(String title) {
+                return CompletableFuture.completedFuture(projectRoot.getParent());
+            }
+            @Override public Path chooseJavaSaveTarget(String suggestedName) { return null; }
+        };
+        WebShellWorkspaceRuntime workspace = WebShellWorkspaceComposition.create(surface, target -> { }, selection);
+        try {
+            WebShellEnvelope immediate = surface.handler("workspace", "openProject").handle(
+                    WebShellEnvelope.request("workspace", "openProject", "project-1", Map.of()));
+
+            assertNull(immediate);
+            assertTrue(surface.response.await(2, TimeUnit.SECONDS));
+            assertTrue(surface.sent.stream().anyMatch(message -> message.kind() == WebShellEnvelope.Kind.RESPONSE
+                    && "project-1".equals(message.requestId()) && message.error() == null));
+        } finally {
+            workspace.close();
         }
     }
 
@@ -96,8 +172,16 @@ class LocalWebShellRuntimeTest {
 
     private static final class CapturingSurface implements WebShellSurface {
         private final Map<String, WebShellMessageHandler> handlers = new java.util.concurrent.ConcurrentHashMap<>();
+        private final java.util.List<WebShellEnvelope> sent = new java.util.concurrent.CopyOnWriteArrayList<>();
+        private final CountDownLatch response = new CountDownLatch(1);
 
-        @Override public void send(WebShellEnvelope message) { }
+        @Override
+        public void send(WebShellEnvelope message) {
+            sent.add(message);
+            if (message != null && message.kind() == WebShellEnvelope.Kind.RESPONSE) {
+                response.countDown();
+            }
+        }
 
         @Override
         public void registerHandler(String channel, String name, WebShellMessageHandler handler) {

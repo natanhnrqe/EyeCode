@@ -6,7 +6,8 @@ import com.eyecode.ui.web.JavaFxWebDocumentationHost;
 import com.eyecode.ui.web.WebShellNativeController;
 import com.eyecode.ui.web.JavaFxWebShellNativeUi;
 import com.eyecode.ui.web.WebShellMode;
-import com.eyecode.ui.web.WebShellWorkspaceController;
+import com.eyecode.ui.web.WebShellWorkspaceComposition;
+import com.eyecode.ui.web.WebShellWorkspaceRuntime;
 import javafx.application.Platform;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
@@ -22,7 +23,7 @@ public final class FxMainWindow {
     private static final double MIN_HEIGHT = 600;
     private final Stage stage;
     private final Region root;
-    private final WebShellWorkspaceController webShellWorkspace;
+    private final WebShellWorkspaceRuntime webShellWorkspace;
     private final JavaFxWebShellSurface webShellSurface;
     private final JavaFxWebDocumentationHost webDocumentationHost;
 
@@ -32,7 +33,7 @@ public final class FxMainWindow {
             webShellSurface = new JavaFxWebShellSurface();
             webDocumentationHost = new JavaFxWebDocumentationHost(webShellSurface);
             JavaFxWebShellNativeUi nativeUi = new JavaFxWebShellNativeUi(stage);
-            webShellWorkspace = new WebShellWorkspaceController(webShellSurface, webDocumentationHost::open, nativeUi);
+            webShellWorkspace = WebShellWorkspaceComposition.create(webShellSurface, webDocumentationHost, nativeUi);
             new WebShellNativeController(webShellSurface, nativeUi);
             root = new StackPane(webShellSurface, webDocumentationHost);
         } else {
@@ -60,7 +61,7 @@ public final class FxMainWindow {
 
     private void shutdown() {
         if (root instanceof FxRootLayout legacyRoot) legacyRoot.dispose();
-        if (webShellWorkspace != null) webShellWorkspace.dispose();
+        if (webShellWorkspace != null) webShellWorkspace.close();
         if (webDocumentationHost != null) webDocumentationHost.dispose();
         if (webShellSurface != null) webShellSurface.dispose();
         CeffxRuntime.dispose();
@@ -68,4 +69,3 @@ public final class FxMainWindow {
         System.exit(0);
     }
 }
-

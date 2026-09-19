@@ -1,142 +1,51 @@
 package com.eyecode.ui.web;
 
+import com.eyecode.application.ProjectExplorerQuery;
+import com.eyecode.application.WorkspaceProjects;
 import com.eyecode.autosave.ExternalFileEvent;
-import com.eyecode.autosave.ExternalFileState;
-import com.eyecode.autosave.SavedEvent;
-import com.eyecode.editor.v2.EditorDocument;
-import com.eyecode.filesystem.DefaultFileSystemService;
-import com.eyecode.ui.web.monaco.MonacoModelId;
-import com.eyecode.language.documentation.JdkSourceDeclarationLocator;
-import com.eyecode.language.documentation.JdkSourceLoader;
-import com.eyecode.language.documentation.JdkSourceTarget;
-import com.eyecode.learning.content.DocumentationTarget;
-import com.eyecode.project.ProjectLifecycleService;
 import com.eyecode.project.ProjectFileOperationService;
 import com.eyecode.project.MavenProjectCreationService;
 import com.eyecode.project.model.ProjectModel;
-import com.eyecode.runtime.RunConfiguration;
-import com.eyecode.runtime.LessonRunRequest;
-import com.eyecode.runtime.RunService;
-import com.eyecode.terminal.TerminalService;
+import com.eyecode.ui.web.monaco.MonacoModelId;
 import com.eyecode.workbench.editor.EditorManager;
 import com.eyecode.workbench.editor.EditorSession;
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.Files;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Optional;
-import java.util.Set;
+import java.util.Objects;
+import java.util.function.Consumer;
+import static com.eyecode.ui.web.WebShellPayload.*;
 
-/**
- * Web adapter that translates workspace, document, run, terminal, and lesson
- * envelopes into existing application services. It depends on Web contracts,
- * not a specific JavaFX or Swing surface; toolkit-specific documentation is
- * supplied through {@link WebShellDocumentationHost}.
- */
 public final class WebShellWorkspaceController {
     private final WebShellSurface surface;
-    private final WebShellNativeUi nativeUi;
+    private final WebShellNativeFileSelection nativeUi;
     private final EditorManager manager;
-    private final WebShellCompletionController completionController;
-    private final WebShellLearningController learningController;
-    private final WebShellLessonsController lessonsController;
-    private final WebShellDiagnosticsController diagnosticsController;
-    private final ProjectLifecycleService projectLifecycleService;
-    private final ProjectLifecycleService.Listener terminalWorkspaceListener;
-    private final RunService runService;
-    private final TerminalService terminalService;
-    private final ProjectFileOperationService fileOperations = new ProjectFileOperationService();
-    private final MavenProjectCreationService projectCreationService = new MavenProjectCreationService();
-    private final JdkSourceLoader jdkSourceLoader = new JdkSourceLoader();
-    private final JdkSourceDeclarationLocator jdkSourceDeclarationLocator = new JdkSourceDeclarationLocator();
-    private final Map<String, WebJdkSourceDocument> jdkSourceDocuments = new LinkedHashMap<>();
-    private final Map<String, WebDocumentationDocument> documentationDocuments = new LinkedHashMap<>();
-    private final WebShellDocumentationHost documentationHost;
-    private final java.util.function.Consumer<DocumentationTarget> documentationOpener;
-    private final Map<String, EditorDocument> observedDocuments = new LinkedHashMap<>();
-    private final Map<String, String> untitledNames = new LinkedHashMap<>();
-    private final Set<String> reidentifyingSessions = new java.util.HashSet<>();
-    private int nextUntitledNumber = 1;
+    private final WorkspaceProjects projects;
+    private final ProjectExplorerQuery explorer;
+    private final ProjectFileOperationService fileOperations;
+    private final WebShellDocumentController documents;
+    private final WebShellExecutionController executionController;
+    private final Consumer<ExternalFileEvent> externalFileListener;
     private boolean disposed;
 
-    public WebShellWorkspaceController(WebShellSurface surface) {
-        this(surface, target -> { }, null, WebShellNativeUi.unavailable());
-    }
-
-    public WebShellWorkspaceController(WebShellSurface surface,
-                                       java.util.function.Consumer<DocumentationTarget> documentationOpener) {
-        this(surface, documentationOpener, null, WebShellNativeUi.unavailable());
-    }
-
-    public WebShellWorkspaceController(WebShellSurface surface,
-                                       WebShellDocumentationHost documentationHost) {
-        this(surface, documentationHost == null ? target -> { } : documentationHost::open,
-                documentationHost, WebShellNativeUi.unavailable());
-    }
-
-    public WebShellWorkspaceController(WebShellSurface surface,
-                                        java.util.function.Consumer<DocumentationTarget> documentationOpener,
-                                        WebShellNativeUi nativeUi) {
-        this(surface, documentationOpener, null, nativeUi);
-    }
-
-    private WebShellWorkspaceController(WebShellSurface surface,
-                                        java.util.function.Consumer<DocumentationTarget> documentationOpener,
-                                        WebShellDocumentationHost documentationHost,
-                                        WebShellNativeUi nativeUi) {
-        this.surface = surface;
-        this.nativeUi = nativeUi == null ? WebShellNativeUi.unavailable() : nativeUi;
-        this.documentationOpener = documentationOpener == null ? target -> { } : documentationOpener;
-        this.documentationHost = documentationHost;
-        this.manager = new EditorManager(null, new DefaultFileSystemService(),
-                new WebShellEditorViewFactory());
-        this.completionController = new WebShellCompletionController(surface, manager);
-        this.learningController = new WebShellLearningController(surface, manager, this::openDocumentationTarget, this::openJdkSource);
-        this.lessonsController = new WebShellLessonsController(surface);
-        this.diagnosticsController = new WebShellDiagnosticsController(surface);
-        this.projectLifecycleService = new ProjectLifecycleService();
-        this.runService = new RunService(projectLifecycleService);
-        this.runService.setBeforeRunFlush(manager::flushAutosave);
-        this.terminalService = new TerminalService();
-        this.terminalWorkspaceListener = project -> {
-            terminalService.setWorkspaceDirectory(project == null ? null : project.getRootDir());
-            sendTerminalState();
+    WebShellWorkspaceController(WebShellSurface surface, WebShellNativeFileSelection nativeUi,
+                                EditorManager manager, WorkspaceProjects projects, ProjectExplorerQuery explorer,
+                                ProjectFileOperationService fileOperations, WebShellDocumentController documents,
+                                WebShellExecutionController executionController) {
+        this.surface = Objects.requireNonNull(surface);
+        this.nativeUi = Objects.requireNonNull(nativeUi);
+        this.manager = Objects.requireNonNull(manager);
+        this.projects = Objects.requireNonNull(projects);
+        this.explorer = Objects.requireNonNull(explorer);
+        this.fileOperations = Objects.requireNonNull(fileOperations);
+        this.documents = Objects.requireNonNull(documents);
+        this.executionController = Objects.requireNonNull(executionController);
+        this.externalFileListener = event -> {
+            if (!disposed && event != null) sendTreeChanged(event.path());
         };
-        this.projectLifecycleService.addListener(terminalWorkspaceListener);
-        this.terminalService.addListener(new TerminalService.Listener() {
-            @Override public void onStarted(Path workingDirectory) { sendTerminalState(); }
-            @Override public void onOutput(String text, boolean error) { }
-            @Override public void onFinished(int exitCode, boolean stopped) { sendTerminalState(); }
-        });
-        this.runService.addListener(new RunService.Listener() {
-            @Override public void onPhase(com.eyecode.runtime.RunPhase phase) { sendRunState(); }
-            @Override public void onStarted(com.eyecode.runtime.RunRequest request) { sendRunState(); }
-            @Override public void onOutput(String text, boolean error) {
-                if (text == null) {
-                    surface.send(WebShellEnvelope.event("run", "output", Map.of("clear", true)));
-                } else {
-                    surface.send(WebShellEnvelope.event("run", "output", Map.of(
-                            "text", text, "error", error)));
-                }
-            }
-            @Override public void onFinished(int exitCode, boolean stopped) { sendRunState(); }
-        });
-        manager.addSaveListener(this::onSaved);
-        manager.addExternalFileListener(this::onExternalChanged);
-        surface.registerHandler("document", "open", this::open);
-        surface.registerHandler("document", "new", this::newDocument);
-        surface.registerHandler("document", "activate", this::activate);
-        surface.registerHandler("document", "change", this::change);
-        surface.registerHandler("document", "save", this::save);
-        surface.registerHandler("document", "close", this::close);
-        surface.registerHandler("document", "layout", this::documentationLayout);
+        manager.addExternalFileListener(externalFileListener);
         surface.registerHandler("workspace", "snapshot", this::workspaceSnapshot);
         surface.registerHandler("workspace", "openProject", this::openProject);
         surface.registerHandler("workspace", "createProject", this::createProject);
@@ -151,64 +60,12 @@ public final class WebShellWorkspaceController {
         surface.registerHandler("workspace", "rename", this::renamePath);
         surface.registerHandler("workspace", "delete", this::deletePath);
         surface.registerHandler("workspace", "duplicate", this::duplicatePath);
-        surface.registerHandler("run", "state", this::runState);
-        surface.registerHandler("run", "run", this::run);
-        surface.registerHandler("run", "rerun", this::rerun);
-        surface.registerHandler("run", "stop", this::stop);
-        surface.registerHandler("run", "selectConfiguration", this::selectRunConfiguration);
-        surface.registerHandler("terminal", "show", this::showTerminal);
-        surface.registerHandler("terminal", "hide", this::hideTerminal);
-        surface.registerHandler("terminal", "restart", this::restartTerminal);
-        surface.registerHandler("terminal", "resize", this::resizeTerminal);
-        surface.registerHandler("terminal", "state", this::terminalState);
-        surface.registerHandler("terminal", "status", this::terminalState);
-        surface.registerHandler("terminal", "stop", this::stopTerminal);
-    }
-
-    public EditorManager editorManager() {
-        return manager;
     }
 
     public void dispose() {
         if (disposed) return;
         disposed = true;
-        lessonsController.closeActiveSession();
-        completionController.dispose();
-        learningController.dispose();
-        diagnosticsController.dispose();
-        manager.closeAllSessions();
-        manager.shutdownAutosave();
-        runService.dispose();
-        terminalService.dispose();
-        projectLifecycleService.close();
-        projectLifecycleService.removeListener(terminalWorkspaceListener);
-        observedDocuments.clear();
-        untitledNames.clear();
-        jdkSourceDocuments.clear();
-        documentationDocuments.clear();
-        if (documentationHost != null) documentationHost.hide();
-    }
-
-    private WebShellEnvelope open(WebShellEnvelope message) {
-        String rawPath = text(message.payload(), "path");
-        if (rawPath.isBlank()) rawPath = text(message.payload(), "uri");
-        if (rawPath.isBlank()) return message.error(new WebShellError(
-                "INVALID_DOCUMENT", "A file path or file URI is required", true));
-        try {
-            Path path = rawPath.startsWith("file:")
-                    ? MonacoModelId.pathForModel(rawPath).orElseThrow()
-                    : Path.of(rawPath);
-            path = path.toAbsolutePath().normalize();
-            if (!java.nio.file.Files.isRegularFile(path)) {
-                return message.error(new WebShellError("DOCUMENT_NOT_FOUND", path.toString(), true));
-            }
-            EditorSession session = openPath(path);
-            WebDocumentSnapshot responseSnapshot = snapshot(session);
-            return message.response(Map.of("document", responseSnapshot.payload()));
-        } catch (RuntimeException exception) {
-            return message.error(new WebShellError("INVALID_DOCUMENT",
-                    exception.getMessage() == null ? "Unable to open document" : exception.getMessage(), true));
-        }
+        manager.removeExternalFileListener(externalFileListener);
     }
 
     private WebShellEnvelope workspaceSnapshot(WebShellEnvelope message) {
@@ -217,17 +74,17 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope openProject(WebShellEnvelope message) {
         String rawPath = text(message.payload(), "path");
-        if (rawPath.isBlank() && nativeUi instanceof LocalWebShellNativeUi localNativeUi) {
-            localNativeUi.chooseDirectoryAsync("Open Project")
+        if (rawPath.isBlank() && nativeUi.isAvailable()) {
+            nativeUi.chooseDirectoryAsync("Open Project")
                     .thenApplyAsync(root -> openProjectResult(message, root))
                     .exceptionally(exception -> message.error(new WebShellError("NATIVE_UI_FAILED", exception.getMessage(), true)))
                     .thenAccept(surface::send);
             return null;
         }
-        if (rawPath.isBlank() && !nativeUi.isAvailable()) {
+        if (rawPath.isBlank()) {
             return nativeUiUnavailable(message, "Project directory selection is unavailable in the web runtime");
         }
-        return openProjectResult(message, rawPath.isBlank() ? chooseDirectory("Open Project") : Path.of(rawPath));
+        return openProjectResult(message, Path.of(rawPath));
     }
 
     private WebShellEnvelope openProjectResult(WebShellEnvelope message, Path root) {
@@ -241,12 +98,12 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope createProject(WebShellEnvelope message) {
         try {
-            MavenProjectCreationService.CreationResult created = projectCreationService.create(
+            ProjectModel created = projects.create(
                     new MavenProjectCreationService.CreationRequest(
                             text(message.payload(), "name"),
                             text(message.payload(), "location"),
                             text(message.payload(), "groupId")));
-            return message.response(openWorkspace(created.projectRoot()));
+            return message.response(workspaceOpened(created));
         } catch (IllegalArgumentException exception) {
             return message.error(new WebShellError("INVALID_PROJECT", exception.getMessage(), true));
         } catch (IOException exception) {
@@ -255,17 +112,14 @@ public final class WebShellWorkspaceController {
     }
 
     private WebShellEnvelope chooseDirectory(WebShellEnvelope message) {
-        if (nativeUi instanceof LocalWebShellNativeUi localNativeUi) {
-            localNativeUi.chooseDirectoryAsync("Choose Project Location")
+        if (nativeUi.isAvailable()) {
+            nativeUi.chooseDirectoryAsync("Choose Project Location")
                     .thenApplyAsync(directory -> chooseDirectoryResult(message, directory))
                     .exceptionally(exception -> message.error(new WebShellError("NATIVE_UI_FAILED", exception.getMessage(), true)))
                     .thenAccept(surface::send);
             return null;
         }
-        if (!nativeUi.isAvailable()) {
-            return nativeUiUnavailable(message, "Directory selection is unavailable in the web runtime");
-        }
-        return chooseDirectoryResult(message, chooseDirectory("Choose Project Location"));
+        return nativeUiUnavailable(message, "Directory selection is unavailable in the web runtime");
     }
 
     private WebShellEnvelope chooseDirectoryResult(WebShellEnvelope message, Path directory) {
@@ -273,51 +127,42 @@ public final class WebShellWorkspaceController {
     }
 
     private Map<String, Object> openWorkspace(Path root) {
-        runService.stop();
-        diagnosticsController.clear();
-        ProjectModel project = projectLifecycleService.open(root);
-        projectLifecycleService.recordRecent(project);
-        manager.closeAllSessions();
-        observedDocuments.clear();
-        untitledNames.clear();
-        jdkSourceDocuments.clear();
-        documentationDocuments.clear();
-        if (documentationHost != null) documentationHost.hide();
+        return workspaceOpened(projects.open(root));
+    }
+
+    private Map<String, Object> workspaceOpened(ProjectModel project) {
+        documents.reset();
         surface.send(WebShellEnvelope.event("workspace", "reset", Map.of()));
-        manager.watchProject(project.getRootDir());
-        runService.refreshConfigurations();
         Map<String, Object> payload = workspacePayload();
-        preferredEntryPoint(project).ifPresent(path -> payload.put("reveal", revealPayload(project, path)));
+        explorer.preferredEntryPoint(project, projects.selectedMainClass(project))
+                .ifPresent(path -> payload.put("reveal", revealPayload(project, path)));
         surface.send(WebShellEnvelope.event("workspace", "changed", payload));
-        sendRunState();
+        executionController.publishWorkspaceState();
         return payload;
     }
 
     private WebShellEnvelope workspaceChildren(WebShellEnvelope message) {
-        ProjectModel project = projectLifecycleService.currentProject();
+        ProjectModel project = projects.current();
         if (project == null) return message.response(Map.of("children", List.of()));
         String rawPath = text(message.payload(), "path");
         Path directory = rawPath.isBlank() ? project.getRootDir() : Path.of(rawPath);
-        Path root = project.getRootDir().toAbsolutePath().normalize();
-        directory = directory.toAbsolutePath().normalize();
-        if (!directory.startsWith(root) || !Files.isDirectory(directory)) {
-            return message.error(new WebShellError("INVALID_TREE_PATH", "The requested folder is not in the project", true));
+        try {
+            directory = explorer.requireDirectory(project, directory);
+            return message.response(Map.of("parent", directory.toString(), "children",
+                    explorer.children(project, directory).stream().map(entry -> treePayload(entry, false)).toList()));
+        } catch (IllegalArgumentException exception) {
+            return message.error(new WebShellError("INVALID_TREE_PATH", safeMessage(exception), true));
         }
-        return message.response(Map.of("parent", directory.toString(), "children", treeChildren(directory)));
     }
 
     private WebShellEnvelope refreshWorkspace(WebShellEnvelope message) {
-        ProjectModel project = projectLifecycleService.currentProject();
+        ProjectModel project = projects.current();
         if (project == null) return message.response(workspacePayload());
-        Path root = project.getRootDir().toAbsolutePath().normalize();
-        List<String> validPaths = paths(message.payload(), "paths").stream()
-                .map(Path::of)
-                .map(path -> path.toAbsolutePath().normalize())
-                .filter(path -> path.startsWith(root) && Files.isDirectory(path))
-                .map(Path::toString)
-                .toList();
+        List<String> validPaths = explorer.validExpandedDirectories(project,
+                paths(message.payload(), "paths").stream().map(Path::of).toList())
+                .stream().map(Path::toString).toList();
         Map<String, Object> payload = workspacePayload();
-        payload.put("validPaths", validPaths.isEmpty() ? List.of(root.toString()) : validPaths);
+        payload.put("validPaths", validPaths);
         return message.response(payload);
     }
 
@@ -327,12 +172,12 @@ public final class WebShellWorkspaceController {
                 "INVALID_DOCUMENT", "A project file path is required", true));
         try {
             Path path = Path.of(rawPath).toAbsolutePath().normalize();
-            ProjectModel project = projectLifecycleService.currentProject();
-            if (project == null || !path.startsWith(project.getRootDir()) || !Files.isRegularFile(path)) {
+            ProjectModel project = projects.current();
+            if (!explorer.isProjectFile(project, path)) {
                 return message.error(new WebShellError("DOCUMENT_NOT_FOUND", path.toString(), true));
             }
-            EditorSession session = openPath(path);
-            return message.response(Map.of("document", snapshot(session).payload()));
+            EditorSession session = documents.openPath(path);
+            return message.response(Map.of("document", documents.snapshot(session).payload()));
         } catch (RuntimeException exception) {
             return message.error(new WebShellError("INVALID_DOCUMENT", exception.getMessage(), true));
         }
@@ -357,7 +202,7 @@ public final class WebShellWorkspaceController {
     private WebShellEnvelope createInDirectory(WebShellEnvelope message, String errorCode,
                                                 DirectoryMutation mutation, boolean openFile) {
         try {
-            ProjectModel project = requireProject();
+            ProjectModel project = projects.requireCurrent();
             Path directory = Path.of(text(message.payload(), "target")).toAbsolutePath().normalize();
             Path created = mutation.apply(project, directory, text(message.payload(), "name"));
             Path parent = created.getParent();
@@ -371,7 +216,7 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope duplicatePath(WebShellEnvelope message) {
         try {
-            ProjectModel project = requireProject();
+            ProjectModel project = projects.requireCurrent();
             Path duplicate = fileOperations.duplicate(project, Path.of(text(message.payload(), "target")));
             sendTreeChanged(duplicate);
             return message.response(mutationPayload(duplicate, duplicate.getParent(), false));
@@ -382,28 +227,26 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope renamePath(WebShellEnvelope message) {
         try {
-            ProjectModel project = requireProject();
+            ProjectModel project = projects.requireCurrent();
             Path target = fileOperations.requireTarget(project, Path.of(text(message.payload(), "target")));
-            List<EditorSession> affected = sessionsUnder(target);
-            for (EditorSession session : affected) {
-                EditorDocument document = documentFor(session);
-                if (document != null && document.isDirty() && !manager.flushSession(session.getSessionId())) {
-                    return message.error(new WebShellError("RENAME_SAVE_FAILED", "Unable to save an open document before rename", true));
-                }
-            }
+            List<EditorSession> affected = manager.sessionsUnder(target);
             Map<String, String> previousUris = new LinkedHashMap<>();
             for (EditorSession session : affected) previousUris.put(session.getSessionId(), MonacoModelId.forSession(session));
-            for (EditorSession session : affected) reidentifyingSessions.add(session.getSessionId());
+            documents.reidentifying(affected, true);
             try {
-                if (!manager.renamePath(project, target, text(message.payload(), "name"))) {
+                EditorManager.PathMutationResult result = manager.renamePathSafely(project, target, text(message.payload(), "name"));
+                if (result == EditorManager.PathMutationResult.SAVE_FAILED) {
+                    return message.error(new WebShellError("RENAME_SAVE_FAILED", "Unable to save an open document before rename", true));
+                }
+                if (result != EditorManager.PathMutationResult.SUCCESS) {
                     return message.error(new WebShellError("RENAME_FAILED", "Unable to rename the selected path", true));
                 }
             } finally {
-                for (EditorSession session : affected) reidentifyingSessions.remove(session.getSessionId());
+                documents.reidentifying(affected, false);
             }
             for (EditorSession session : affected) {
                 String previousUri = previousUris.get(session.getSessionId());
-                WebDocumentSnapshot document = snapshot(session);
+                WebDocumentSnapshot document = documents.snapshot(session);
                 surface.send(WebShellEnvelope.event("document", "reidentified", Map.of(
                         "previousUri", previousUri, "document", document.payload())));
             }
@@ -418,427 +261,35 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope deletePath(WebShellEnvelope message) {
         try {
-            ProjectModel project = requireProject();
+            ProjectModel project = projects.requireCurrent();
             Path target = fileOperations.requireTarget(project, Path.of(text(message.payload(), "target")));
-            List<EditorSession> affected = sessionsUnder(target);
-            if (affected.stream().map(this::documentFor).filter(java.util.Objects::nonNull).anyMatch(EditorDocument::isDirty)) {
-                return message.error(new WebShellError("DIRTY_DOCUMENTS", "Save or discard changes before deleting an open document", true));
-            }
+            List<EditorSession> affected = manager.sessionsUnder(target);
             Map<String, String> closedUris = new LinkedHashMap<>();
             for (EditorSession session : affected) closedUris.put(session.getSessionId(), MonacoModelId.forSession(session));
-            if (!manager.deletePath(project, target)) {
+            EditorManager.PathMutationResult result = manager.deletePathSafely(project, target);
+            if (result == EditorManager.PathMutationResult.DIRTY_DOCUMENTS) {
+                return message.error(new WebShellError("DIRTY_DOCUMENTS", "Save or discard changes before deleting an open document", true));
+            }
+            if (result != EditorManager.PathMutationResult.SUCCESS) {
                 return message.error(new WebShellError("DELETE_FAILED", "Unable to delete the selected path", true));
             }
             for (EditorSession session : affected) {
-                observedDocuments.remove(session.getSessionId());
-                untitledNames.remove(session.getSessionId());
+                documents.forgetSession(session.getSessionId());
                 surface.send(WebShellEnvelope.event("document", "closed", Map.of("uri", closedUris.get(session.getSessionId()))));
             }
             Path parent = target.getParent();
             if (parent != null) sendTreeChanged(target);
             EditorSession active = manager.getCurrentSession();
-            if (active != null) sendActiveChanged(active);
+            if (active != null) documents.sendActiveChanged(active);
             return message.response(Map.of("parent", parent == null ? "" : parent.toString()));
         } catch (IllegalArgumentException exception) {
             return message.error(new WebShellError("DELETE_FAILED", safeMessage(exception), true));
         }
     }
-    private WebShellEnvelope runState(WebShellEnvelope message) {
-        return message.response(runPayload());
-    }
-
-    private WebShellEnvelope run(WebShellEnvelope message) {
-        boolean started = lessonRun(message) ? runService.runLesson(lessonRunRequest(message)) : runService.runCurrent();
-        sendRunState();
-        return message.response(Map.of("started", started));
-    }
-
-    private WebShellEnvelope rerun(WebShellEnvelope message) {
-        boolean started = lessonRun(message) ? runService.runLesson(lessonRunRequest(message)) : runService.rerun();
-        sendRunState();
-        return message.response(Map.of("started", started));
-    }
-
-    private WebShellEnvelope stop(WebShellEnvelope message) {
-        runService.stop();
-        sendRunState();
-        return message.response(Map.of("stopped", true));
-    }
-
-    private static boolean lessonRun(WebShellEnvelope message) {
-        return "lesson".equals(message.payload().get("context"));
-    }
-
-    private static LessonRunRequest lessonRunRequest(WebShellEnvelope message) {
-        Object workspace = message.payload().get("lessonWorkspace");
-        if (!(workspace instanceof Map<?, ?> values) || !(values.get("files") instanceof List<?> files)) {
-            throw new IllegalArgumentException("Lesson workspace is required");
-        }
-        List<LessonRunRequest.SourceFile> sources = files.stream().map(value -> {
-            if (!(value instanceof Map<?, ?> file) || !(file.get("name") instanceof String name)
-                    || !(file.get("source") instanceof String source)) {
-                throw new IllegalArgumentException("Invalid lesson source file");
-            }
-            return new LessonRunRequest.SourceFile(name, source);
-        }).toList();
-        if (!(values.get("mainClass") instanceof String mainClass)) {
-            throw new IllegalArgumentException("Lesson main class is required");
-        }
-        return new LessonRunRequest(sources, mainClass);
-    }
-
-    private WebShellEnvelope selectRunConfiguration(WebShellEnvelope message) {
-        boolean selected = runService.selectConfiguration(text(message.payload(), "id"));
-        sendRunState();
-        return message.response(Map.of("selected", selected));
-    }
-
-    private WebShellEnvelope showTerminal(WebShellEnvelope message) {
-        TerminalService.Status status = terminalService.show();
-        sendTerminalState();
-        return message.response(terminalStatusPayload(status));
-    }
-
-    private WebShellEnvelope hideTerminal(WebShellEnvelope message) {
-        terminalService.hide();
-        sendTerminalState();
-        return message.response(terminalStatusPayload(terminalService.status()));
-    }
-
-    private WebShellEnvelope resizeTerminal(WebShellEnvelope message) {
-        terminalService.resize((int) number(message.payload(), "cols", 0),
-                (int) number(message.payload(), "rows", 0));
-        return message.response(Map.of("updated", true));
-    }
-
-    private WebShellEnvelope terminalState(WebShellEnvelope message) {
-        return message.response(terminalStatusPayload(terminalService.status()));
-    }
-
-    private WebShellEnvelope restartTerminal(WebShellEnvelope message) {
-        boolean restarted = terminalService.restart();
-        sendTerminalState();
-        return message.response(Map.of("restarted", restarted));
-    }
-
-    private WebShellEnvelope stopTerminal(WebShellEnvelope message) {
-        boolean stopped = terminalService.stop();
-        sendTerminalState();
-        return message.response(Map.of("stopped", stopped));
-    }
-
-    private void sendTerminalState() {
-        surface.send(WebShellEnvelope.event("terminal", "state", terminalStatusPayload(terminalService.status())));
-    }
-
-    private Map<String, Object> terminalStatusPayload(TerminalService.Status status) {
-        return Map.of(
-                "requested", status.requested(),
-                "running", status.running(),
-                "workingDirectory", status.workingDirectory(),
-                "endpoint", status.endpoint());
-    }
-    private WebShellEnvelope activate(WebShellEnvelope message) {
-        WebDocumentationDocument documentation = documentationFor(message.payload());
-        if (documentation != null) {
-            if (documentationHost != null) documentationHost.open(documentation.target());
-            sendActiveChanged(documentation);
-            return message.response(Map.of("document", documentation.payload()));
-        }
-        WebJdkSourceDocument source = sourceFor(message.payload());
-        if (source != null) {
-            sendActiveChanged(source);
-            return message.response(Map.of("document", source.payload()));
-        }
-        EditorSession session = sessionFor(message.payload());
-        if (session == null) return message.error(new WebShellError(
-                "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
-        if (documentationHost != null) documentationHost.hide();
-        manager.activateSession(session.getSessionId());
-        sendActiveChanged(session);
-        return message.response(Map.of("document", snapshot(session).payload()));
-    }
-
-    private WebShellEnvelope newDocument(WebShellEnvelope message) {
-        String content = text(message.payload(), "content");
-        try {
-            EditorSession session = manager.openDocument(null, content);
-            String displayName = "Untitled " + nextUntitledNumber++ + ".java";
-            untitledNames.put(session.getSessionId(), displayName);
-            observe(session);
-            WebDocumentSnapshot result = snapshot(session);
-            surface.send(WebShellEnvelope.event("document", "opened", result.payload()));
-            sendActiveChanged(session);
-            return message.response(Map.of("document", result.payload()));
-        } catch (RuntimeException exception) {
-            return message.error(new WebShellError("NEW_DOCUMENT_FAILED",
-                    exception.getMessage() == null ? "Unable to create document" : exception.getMessage(), true));
-        }
-    }
-
-    private WebShellEnvelope change(WebShellEnvelope message) {
-        if (sourceFor(message.payload()) != null) {
-            return message.error(new WebShellError("DOCUMENT_READ_ONLY",
-                    "JDK source documents are read-only", true));
-        }
-        EditorSession session = sessionFor(message.payload());
-        if (session == null) return message.error(new WebShellError(
-                "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
-        EditorDocument document = documentFor(session);
-        if (document == null) return message.error(new WebShellError(
-                "DOCUMENT_UNAVAILABLE", "The document is unavailable", true));
-        long expectedVersion = number(message.payload(), "version", document.currentVersion());
-        if (expectedVersion != document.currentVersion()) return message.error(new WebShellError(
-                "DOCUMENT_VERSION_CONFLICT", "The document version is no longer current", true));
-        if (!message.payload().containsKey("content")) return message.error(new WebShellError(
-                "INVALID_DOCUMENT", "Document content is required", true));
-        String content = text(message.payload(), "content");
-        if (!content.equals(document.snapshot().getText())) document.setText(content);
-        WebDocumentSnapshot result = snapshot(session);
-        surface.send(WebShellEnvelope.event("document", "changed", result.payload()));
-        return message.response(Map.of("document", result.payload()));
-    }
-
-    private WebShellEnvelope save(WebShellEnvelope message) {
-        if (sourceFor(message.payload()) != null) {
-            return message.error(new WebShellError("DOCUMENT_READ_ONLY",
-                    "JDK source documents are read-only", true));
-        }
-        EditorSession session = sessionFor(message.payload());
-        if (session == null) return message.error(new WebShellError(
-                "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
-        if (session.getFile() == null) return saveAs(message, session);
-        boolean saved = manager.flushSession(session.getSessionId());
-        if (!saved) return message.error(new WebShellError(
-                "SAVE_FAILED", "The document could not be saved", true));
-        return message.response(Map.of("document", snapshot(session).payload()));
-    }
-
-    private WebShellEnvelope saveAs(WebShellEnvelope message, EditorSession session) {
-        if (!nativeUi.isAvailable()) {
-            return nativeUiUnavailable(message, "File save selection is unavailable in the web runtime");
-        }
-        Path destination = chooseSaveTarget(session);
-        if (destination == null) return message.response(Map.of("cancelled", true));
-        String previousUri = MonacoModelId.forSession(session);
-        if (manager.getSessions().stream()
-                .anyMatch(other -> other != session
-                        && MonacoModelId.identity(destination).equals(MonacoModelId.identity(other.getFile())))) {
-            return message.error(new WebShellError(
-                    "DOCUMENT_ALREADY_OPEN",
-                    "The selected destination is already open",
-                    true));
-        }
-        if (!manager.saveAs(session.getSessionId(), destination)) {
-            return message.error(new WebShellError(
-                    "SAVE_AS_FAILED",
-                    "The document could not be saved to the selected destination",
-                    true));
-        }
-        WebDocumentSnapshot result = snapshot(session);
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("previousUri", previousUri);
-        payload.put("document", result.payload());
-        surface.send(WebShellEnvelope.event("document", "reidentified", payload));
-        return message.response(payload);
-    }
-
-    private Path chooseSaveTarget(EditorSession session) {
-        String suggestedName = untitledNames.get(session.getSessionId());
-        return nativeUi.chooseJavaSaveTarget(suggestedName);
-    }
-
-    private WebShellEnvelope close(WebShellEnvelope message) {
-        String documentationUri = text(message.payload(), "uri");
-        WebDocumentationDocument documentation = documentationDocuments.remove(documentationUri);
-        if (documentation != null) {
-            if (documentationHost != null) documentationHost.hide();
-            surface.send(WebShellEnvelope.event("document", "closed", Map.of("uri", documentation.uri())));
-            EditorSession active = manager.getCurrentSession();
-            if (active != null) sendActiveChanged(active);
-            return message.response(Map.of("closed", true));
-        }
-        String sourceUri = documentationUri;
-        WebJdkSourceDocument source = jdkSourceDocuments.remove(sourceUri);
-        if (source != null) {
-            surface.send(WebShellEnvelope.event("document", "closed", Map.of("uri", source.uri())));
-            EditorSession active = manager.getCurrentSession();
-            if (active != null) sendActiveChanged(active);
-            return message.response(Map.of("closed", true));
-        }
-        EditorSession session = sessionFor(message.payload());
-        if (session == null) return message.error(new WebShellError(
-                "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
-        diagnosticsController.invalidate(MonacoModelId.forSession(session));
-        boolean closed = manager.closeSession(session.getSessionId());
-        if (!closed) return message.error(new WebShellError(
-                "CLOSE_FAILED", "The document could not be closed", true));
-        observedDocuments.remove(session.getSessionId());
-        untitledNames.remove(session.getSessionId());
-        surface.send(WebShellEnvelope.event("document", "closed", Map.of(
-                "uri", MonacoModelId.forSession(session))));
-        EditorSession active = manager.getCurrentSession();
-        if (active != null) sendActiveChanged(active);
-        return message.response(Map.of("closed", true));
-    }
-
-    private EditorSession openPath(Path path) {
-        EditorSession session = manager.openDocument(path.toAbsolutePath().normalize());
-        observe(session);
-        WebDocumentSnapshot result = snapshot(session);
-        surface.send(WebShellEnvelope.event("document", "opened", result.payload()));
-        sendActiveChanged(session);
-        return session;
-    }
-
-    private void observe(EditorSession session) {
-        if (observedDocuments.containsKey(session.getSessionId())) return;
-        EditorDocument document = documentFor(session);
-        if (document == null) return;
-        observedDocuments.put(session.getSessionId(), document);
-        document.addDocumentChangeListener(event -> {
-            if (!disposed && !reidentifyingSessions.contains(session.getSessionId())) surface.send(WebShellEnvelope.event("document", "changed",
-                    snapshot(session).payload()));
-        });
-        document.addDirtyChangeListener(dirty -> {
-            if (!disposed && !reidentifyingSessions.contains(session.getSessionId())) surface.send(WebShellEnvelope.event("document", "changed",
-                    snapshot(session).payload()));
-        });
-    }
-
-    private void onSaved(SavedEvent event) {
-        if (disposed || event == null) return;
-        EditorSession session = sessionForPath(event.path());
-        if (session == null) return;
-        surface.send(WebShellEnvelope.event("document", event.succeeded() ? "saved" : "saveFailed",
-                Map.of("document", snapshot(session).payload(),
-                        "message", event.error() == null ? "" : event.error().getMessage())));
-    }
-
-    private void onExternalChanged(ExternalFileEvent event) {
-        if (disposed || event == null) return;
-        EditorSession session = sessionForPath(event.path());
-        if (session != null && event.state() != ExternalFileState.SYNCED
-                && event.state() != ExternalFileState.IGNORED) surface.send(WebShellEnvelope.event("document", "externalChanged",
-                snapshot(session).payload()));
-        sendTreeChanged(event.path());
-    }
 
     private void sendTreeChanged(Path changedPath) {
-        ProjectModel project = projectLifecycleService.currentProject();
-        if (project == null || changedPath == null) return;
-        Path root = project.getRootDir().toAbsolutePath().normalize();
-        Path changed = changedPath.toAbsolutePath().normalize();
-        if (!changed.startsWith(root)) return;
-        Path parent = changed.getParent();
-        if (parent == null || !parent.startsWith(root)) return;
-        surface.send(WebShellEnvelope.event("workspace", "treeChanged", Map.of("parent", parent.toString())));
-    }
-
-    private void sendActiveChanged(EditorSession session) {
-        surface.send(WebShellEnvelope.event("document", "activeChanged", Map.of(
-                "uri", MonacoModelId.forSession(session),
-                "documentId", session.getDocumentId())));
-    }
-
-    private void openDocumentationTarget(DocumentationTarget target) {
-        String uri = documentationUri(target);
-        boolean existing = documentationDocuments.containsKey(uri);
-        WebDocumentationDocument document = documentationDocuments.computeIfAbsent(uri,
-                ignored -> new WebDocumentationDocument(uri, target));
-        if (!existing) surface.send(WebShellEnvelope.event("document", "opened", document.payload()));
-        documentationOpener.accept(target);
-        sendActiveChanged(document);
-    }
-
-    private WebShellEnvelope documentationLayout(WebShellEnvelope message) {
-        if (documentationHost != null) {
-            documentationHost.layoutFromBrowser(
-                    number(message.payload(), "x", 0),
-                    number(message.payload(), "y", 0),
-                    number(message.payload(), "width", 0),
-                    number(message.payload(), "height", 0));
-        }
-        return message.response(Map.of("updated", true));
-    }
-
-    private static String documentationUri(DocumentationTarget target) {
-        String token = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(target.url().getBytes(StandardCharsets.UTF_8));
-        return "documentation://" + token;
-    }
-    private void openJdkSource(JdkSourceTarget target) {
-        String uri = target.sourceIdentity();
-        WebJdkSourceDocument cached = jdkSourceDocuments.get(uri);
-        String content = cached == null
-                ? jdkSourceLoader.load(target).orElseThrow(() ->
-                new IllegalStateException("JDK source is unavailable for " + target.displayName()))
-                : cached.content();
-        int offset = jdkSourceDeclarationLocator.find(content, target);
-        int line = 1;
-        int column = 1;
-        for (int index = 0; index < offset; index++) {
-            if (content.charAt(index) == '\n') {
-                line++;
-                column = 1;
-            } else {
-                column++;
-            }
-        }
-        WebJdkSourceDocument source = new WebJdkSourceDocument(
-                uri, target.displayName(), content, line, column);
-        jdkSourceDocuments.put(uri, source);
-        surface.send(WebShellEnvelope.event("document", "opened", source.payload()));
-        sendActiveChanged(source);
-    }
-    private void sendActiveChanged(WebDocumentationDocument document) {
-        surface.send(WebShellEnvelope.event("document", "activeChanged", Map.of(
-                "uri", document.uri(), "documentId", document.uri())));
-    }
-
-    private WebDocumentationDocument documentationFor(Map<String, Object> payload) {
-        String uri = text(payload, "uri");
-        return uri.isBlank() ? null : documentationDocuments.get(uri);
-    }
-    private void sendActiveChanged(WebJdkSourceDocument source) {
-        surface.send(WebShellEnvelope.event("document", "activeChanged", Map.of(
-                "uri", source.uri(), "documentId", source.uri())));
-    }
-
-    private WebJdkSourceDocument sourceFor(Map<String, Object> payload) {
-        String uri = text(payload, "uri");
-        return uri.isBlank() ? null : jdkSourceDocuments.get(uri);
-    }
-    private EditorSession sessionFor(Map<String, Object> payload) {
-        String uri = text(payload, "uri");
-        String documentId = text(payload, "documentId");
-        return manager.getSessions().stream()
-                .filter(session -> (!uri.isBlank() && (MonacoModelId.forSession(session).equals(uri)
-                        || MonacoModelId.matches(uri, session.getFile())))
-                        || (!documentId.isBlank() && documentId.equals(session.getDocumentId())))
-                .findFirst().orElse(null);
-    }
-
-    private EditorSession sessionForPath(Path path) {
-        if (path == null) return null;
-        String identity = MonacoModelId.identity(path);
-        return manager.getSessions().stream()
-                .filter(session -> identity.equals(MonacoModelId.identity(session.getFile())))
-                .findFirst().orElse(null);
-    }
-
-    private ProjectModel requireProject() {
-        ProjectModel project = projectLifecycleService.currentProject();
-        if (project == null) throw new IllegalArgumentException("No project is open");
-        return project;
-    }
-
-    private List<EditorSession> sessionsUnder(Path target) {
-        Path safe = target.toAbsolutePath().normalize();
-        return manager.getSessions().stream()
-                .filter(session -> session.getFile() != null
-                        && session.getFile().toAbsolutePath().normalize().startsWith(safe))
-                .toList();
+        explorer.changedParent(projects.current(), changedPath).ifPresent(parent ->
+                surface.send(WebShellEnvelope.event("workspace", "treeChanged", Map.of("parent", parent.toString()))));
     }
 
     private Map<String, Object> mutationPayload(Path path, Path parent, boolean openFile) {
@@ -847,15 +298,9 @@ public final class WebShellWorkspaceController {
         payload.put("path", target.toString());
         payload.put("parent", parent == null ? "" : parent.toAbsolutePath().normalize().toString());
         payload.put("openFile", openFile);
-        ProjectModel project = projectLifecycleService.currentProject();
+        ProjectModel project = projects.current();
         if (project != null) {
-            Path root = project.getRootDir().toAbsolutePath().normalize();
-            List<Path> reverse = new ArrayList<>();
-            for (Path current = target.getParent(); current != null && !current.equals(root); current = current.getParent()) {
-                reverse.add(current);
-            }
-            java.util.Collections.reverse(reverse);
-            payload.put("ancestors", reverse.stream().map(Path::toString).toList());
+            payload.put("ancestors", explorer.ancestors(project, target).stream().map(Path::toString).toList());
         }
         return payload;
     }
@@ -869,23 +314,11 @@ public final class WebShellWorkspaceController {
         Path apply(ProjectModel project, Path directory, String name) throws IOException;
     }
 
-    private EditorDocument documentFor(EditorSession session) {
-        return session == null ? null : manager.getBuffer(session.getSessionId())
-                .map(buffer -> buffer.getDocument()).orElse(null);
-    }
-
-    private WebDocumentSnapshot snapshot(EditorSession session) {
-        String displayName = untitledNames.get(session.getSessionId());
-        return displayName == null
-                ? WebDocumentSnapshot.file(session, documentFor(session))
-                : WebDocumentSnapshot.untitled(session, documentFor(session), displayName);
-    }
-
     private Map<String, Object> workspacePayload() {
-        ProjectModel project = projectLifecycleService.currentProject();
+        ProjectModel project = projects.current();
         Map<String, Object> payload = new LinkedHashMap<>();
         if (project != null) payload.put("project", projectPayload(project));
-        payload.put("recentProjects", projectLifecycleService.recentProjects().stream()
+        payload.put("recentProjects", projects.recent().stream()
                 .map(info -> Map.<String, Object>of("name", info.getName(), "path", info.getPath()))
                 .toList());
         return payload;
@@ -896,185 +329,22 @@ public final class WebShellWorkspaceController {
         payload.put("name", project.getName());
         payload.put("path", project.getRootDir().toString());
         payload.put("type", project.getType().name());
-        payload.put("root", treeNode(project.getRootDir(), true));
+        payload.put("root", treePayload(explorer.node(project.getRootDir()), true));
         return payload;
-    }
-
-    private Optional<Path> preferredEntryPoint(ProjectModel project) {
-        RunConfiguration selected = runService.selectedConfiguration();
-        if (selected != null && selected.projectRoot().equals(project.getRootDir().toAbsolutePath().normalize())) {
-            Optional<Path> source = sourceFor(project, selected.mainClass());
-            if (source.isPresent()) return source;
-        }
-        for (Path sourceRoot : sourceRoots(project)) {
-            if (!Files.isDirectory(sourceRoot)) continue;
-            try (var paths = Files.walk(sourceRoot, 12)) {
-                Optional<Path> main = paths.filter(Files::isRegularFile)
-                        .filter(path -> path.getFileName().toString().equals("Main.java"))
-                        .filter(this::isSensibleSource)
-                        .sorted(Comparator.comparing(path -> path.toAbsolutePath().normalize().toString()))
-                        .findFirst();
-                if (main.isPresent()) return main.map(path -> path.toAbsolutePath().normalize());
-            } catch (IOException ignored) {
-            }
-        }
-        return Optional.empty();
-    }
-
-    private Optional<Path> sourceFor(ProjectModel project, String qualifiedName) {
-        if (qualifiedName == null || qualifiedName.isBlank()) return Optional.empty();
-        String relative = qualifiedName.replace('.', File.separatorChar) + ".java";
-        return sourceRoots(project).stream().map(root -> root.resolve(relative).normalize())
-                .filter(Files::isRegularFile).findFirst();
-    }
-
-    private List<Path> sourceRoots(ProjectModel project) {
-        Path root = project.getRootDir().toAbsolutePath().normalize();
-        Path standard = root.resolve("src/main/java");
-        return Files.isDirectory(standard) ? List.of(standard) : List.of(root.resolve("src"));
-    }
-
-    private boolean isSensibleSource(Path path) {
-        for (Path part : path) {
-            if (Set.of("target", "build", "out", ".gradle", ".idea", "node_modules", ".git").contains(part.toString())) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private Map<String, Object> revealPayload(ProjectModel project, Path target) {
-        Path root = project.getRootDir().toAbsolutePath().normalize();
-        List<Path> reverseAncestors = new ArrayList<>();
-        for (Path current = target.getParent(); current != null && !current.equals(root); current = current.getParent()) {
-            reverseAncestors.add(current);
-        }
-        java.util.Collections.reverse(reverseAncestors);
         return Map.of("targetPath", target.toAbsolutePath().normalize().toString(),
-                "ancestors", reverseAncestors.stream().map(Path::toString).toList());
-    }
-
-    private Map<String, Object> treeNode(Path path, boolean root) {
-        Path normalized = path.toAbsolutePath().normalize();
-        boolean directory = Files.isDirectory(normalized);
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("name", normalized.getFileName().toString());
-        payload.put("path", normalized.toString());
-        payload.put("kind", directory ? (root ? "project" : "directory") : "file");
-        payload.put("hasChildren", directory && hasVisibleChildren(normalized));
-        return payload;
-    }
-
-    private List<Map<String, Object>> treeChildren(Path directory) {
-        try (var stream = Files.list(directory)) {
-            return stream.filter(this::isVisibleProjectPath)
-                    .sorted(Comparator
-                            .comparing((Path path) -> !Files.isDirectory(path))
-                            .thenComparing(path -> path.getFileName().toString(), String.CASE_INSENSITIVE_ORDER))
-                    .map(path -> treeNode(path, false))
-                    .toList();
-        } catch (IOException ignored) {
-            return List.of();
-        }
-    }
-
-    private boolean hasVisibleChildren(Path directory) {
-        try (var stream = Files.list(directory)) {
-            return stream.anyMatch(this::isVisibleProjectPath);
-        } catch (IOException ignored) {
-            return false;
-        }
-    }
-
-    private boolean isVisibleProjectPath(Path path) {
-        if (!Files.isDirectory(path)) return true;
-        String name = path.getFileName().toString();
-        return !Set.of(".git", ".idea", ".gradle", ".eyecode", "target", "build", "out").contains(name);
-    }
-
-    private Path chooseDirectory(String title) {
-        return nativeUi.chooseDirectory(title);
+                "ancestors", explorer.ancestors(project, target).stream().map(Path::toString).toList());
     }
 
     private WebShellEnvelope nativeUiUnavailable(WebShellEnvelope message, String detail) {
         return message.error(new WebShellError("NATIVE_UI_UNAVAILABLE", detail, true));
     }
 
-    private Map<String, Object> runPayload() {
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("running", runService.isRunning());
-        payload.put("phase", runService.phase().name());
-        payload.put("finished", runService.hasCompletion());
-        payload.put("exitCode", runService.lastExitCode());
-        payload.put("stopped", runService.lastStopped());
-        payload.put("rerunAvailable", runService.hasLastRequest());
-        payload.put("configurations", runService.configurations().stream()
-                .map(this::runConfigurationPayload).toList());
-        RunConfiguration selected = runService.selectedConfiguration();
-        payload.put("selectedConfigurationId", selected == null ? "" : selected.id());
-        return payload;
-    }
-
-    private Map<String, Object> runConfigurationPayload(RunConfiguration configuration) {
-        return Map.of("id", configuration.id(), "name", configuration.displayName(),
-                "mainClass", configuration.mainClass(), "kind", configuration.kind().name());
-    }
-
-    private void sendRunState() {
-        if (!disposed) surface.send(WebShellEnvelope.event("run", "state", runPayload()));
-    }
-
-    private record WebDocumentationDocument(String uri, DocumentationTarget target) {
-        private Map<String, Object> payload() {
-            Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("uri", uri);
-            payload.put("documentId", uri);
-            payload.put("displayName", "Documentação: " + target.label());
-            payload.put("language", "html");
-            payload.put("content", "");
-            payload.put("version", 1);
-            payload.put("dirty", false);
-            payload.put("readOnly", true);
-            payload.put("kind", "documentation");
-            payload.put("documentationUrl", target.url());
-            return payload;
-        }
-    }
-    private record WebJdkSourceDocument(String uri, String displayName, String content,
-                                        int revealLine, int revealColumn) {
-        private Map<String, Object> payload() {
-            Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("uri", uri);
-            payload.put("documentId", uri);
-            payload.put("displayName", displayName);
-            payload.put("language", "java");
-            payload.put("content", content);
-            payload.put("version", 1);
-            payload.put("dirty", false);
-            payload.put("readOnly", true);
-            payload.put("kind", "jdk-source");
-            payload.put("revealLine", revealLine);
-            payload.put("revealColumn", revealColumn);
-            return payload;
-        }
-    }
-    private static String text(Map<String, Object> payload, String key) {
-        Object value = payload == null ? null : payload.get(key);
-        return value == null ? "" : String.valueOf(value);
-    }
-
-    private static long number(Map<String, Object> payload, String key, long fallback) {
-        Object value = payload == null ? null : payload.get(key);
-        return value instanceof Number number ? number.longValue() : fallback;
-    }
-
-    private static List<String> paths(Map<String, Object> payload, String key) {
-        Object value = payload == null ? null : payload.get(key);
-        if (!(value instanceof Iterable<?> values)) return List.of();
-        List<String> result = new ArrayList<>();
-        for (Object item : values) {
-            if (item != null) result.add(String.valueOf(item));
-        }
-        return result;
+    private Map<String, Object> treePayload(ProjectExplorerQuery.Entry entry, boolean root) {
+        return Map.of("name", entry.name(), "path", entry.path().toString(),
+                "kind", entry.directory() ? (root ? "project" : "directory") : "file",
+                "hasChildren", entry.hasChildren());
     }
 }

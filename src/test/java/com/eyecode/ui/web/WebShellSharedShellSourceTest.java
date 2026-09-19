@@ -199,7 +199,7 @@ class WebShellSharedShellSourceTest {
         String pane = Files.readString(Path.of("src/main/web/src/workspace/WorkspacePane.ts"));
         String dockPane = Files.readString(Path.of("src/main/web/src/workspace/DockPane.tsx"));
         String bottomPanel = Files.readString(Path.of("src/main/web/src/workspace/BottomPanel.tsx"));
-        String controller = Files.readString(Path.of("src/main/java/com/eyecode/ui/web/WebShellWorkspaceController.java"));
+        String execution = Files.readString(Path.of("src/main/java/com/eyecode/ui/web/WebShellExecutionController.java"));
         String lessonPanel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
         String projectExplorer = Files.readString(Path.of("src/main/web/src/workspace/ProjectExplorer.tsx"));
         String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
@@ -222,12 +222,12 @@ class WebShellSharedShellSourceTest {
         assertFalse(bottomPanel.contains("label: 'Output'"));
         assertFalse(bottomPanel.contains("active === 'output'"));
         assertFalse(bottomPanel.contains("output.join('\\n')"));
-        assertTrue(controller.contains("\"text\", text"));
-        assertTrue(controller.contains("\"error\", error"));
-        assertTrue(controller.contains("payload.put(\"finished\", runService.hasCompletion())"));
-        assertTrue(controller.contains("payload.put(\"exitCode\", runService.lastExitCode())"));
-        assertTrue(controller.contains("payload.put(\"stopped\", runService.lastStopped())"));
-        assertFalse(controller.contains("\"line\", line"));
+        assertTrue(execution.contains("\"text\", text"));
+        assertTrue(execution.contains("\"error\", error"));
+        assertTrue(execution.contains("payload.put(\"finished\", runService.hasCompletion())"));
+        assertTrue(execution.contains("payload.put(\"exitCode\", runService.lastExitCode())"));
+        assertTrue(execution.contains("payload.put(\"stopped\", runService.lastStopped())"));
+        assertFalse(execution.contains("\"line\", line"));
         assertTrue(lessonPanel.contains("<DockPane paneId=\"lesson\""));
         assertTrue(lessonPanel.contains("const practiceLesson = session.kind === 'PRACTICE';"));
         assertFalse(lessonPanel.contains("bottom-panel lesson-panel"));
@@ -518,7 +518,7 @@ class WebShellSharedShellSourceTest {
         String statusBar = Files.readString(Path.of("src/main/web/src/workspace/StatusBar.tsx"));
         String protocol = Files.readString(Path.of("src/main/web/src/workspace/protocol.ts"));
         String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
-        String controller = Files.readString(Path.of("src/main/java/com/eyecode/ui/web/WebShellWorkspaceController.java"));
+        String execution = Files.readString(Path.of("src/main/java/com/eyecode/ui/web/WebShellExecutionController.java"));
 
         assertTrue(protocol.contains("export type RunPhase = 'IDLE' | 'PREPARING' | 'COMPILING' | 'RUNNING';"));
         assertTrue(protocol.contains("phase: RunPhase;"));
@@ -527,8 +527,8 @@ class WebShellSharedShellSourceTest {
         assertTrue(statusBar.contains("status-progress-track"));
         assertTrue(styles.contains("@media (prefers-reduced-motion: reduce)"));
         assertTrue(styles.contains(".status-progress-track span"));
-        assertTrue(controller.contains("payload.put(\"phase\", runService.phase().name())"));
-        assertTrue(controller.contains("onPhase(com.eyecode.runtime.RunPhase phase)"));
+        assertTrue(execution.contains("payload.put(\"phase\", runService.phase().name())"));
+        assertTrue(execution.contains("onPhase(com.eyecode.runtime.RunPhase phase)"));
         assertFalse(statusBar.contains("output"));
     }
 
@@ -537,14 +537,14 @@ class WebShellSharedShellSourceTest {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String lessonEditor = Files.readString(Path.of("src/main/web/src/lessons/LessonEditorController.ts"));
         String toolbar = Files.readString(Path.of("src/main/web/src/workspace/TopToolbar.tsx"));
-        String controller = Files.readString(Path.of("src/main/java/com/eyecode/ui/web/WebShellWorkspaceController.java"));
+        String execution = Files.readString(Path.of("src/main/java/com/eyecode/ui/web/WebShellExecutionController.java"));
 
         assertTrue(workspace.contains("context: 'lesson'"));
         assertTrue(workspace.contains("lessonSession?.phase === 'PRACTICE'"));
         assertTrue(workspace.contains("lessonEditor.executionFiles()"));
         assertTrue(lessonEditor.contains("executionFiles(): { name: string; source: string }[]"));
         assertTrue(toolbar.contains("runAvailable"));
-        assertTrue(controller.contains("runService.runLesson(lessonRunRequest(message))"));
+        assertTrue(execution.contains("runService.runLesson(lessonRunRequest(message))"));
     }
 
     @Test

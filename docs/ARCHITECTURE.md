@@ -12,9 +12,11 @@ O projeto ainda contém código de diferentes gerações. Esta documentação de
 flowchart TB
     Core[Core: editor.intelligence + language]
     Lessons[Lessons domain: catalog/content/session/practice/presentation]
-    App[Application services: workbench/project/runtime/filesystem]
+    App[Application: WorkspaceApplication]
+    Services[Application services: workbench/project/runtime/filesystem]
     Events[EventBus]
     WebContracts[ui.web contracts: envelope, Monaco DTOs, learning payloads]
+    WebComposition[WebShellWorkspaceComposition]
     WebShell[Web Shell controllers]
     Local[LocalWebShellSurface: HTTP + WebSocket]
     React[React/TypeScript + Monaco]
@@ -22,10 +24,12 @@ flowchart TB
     Swing[Swing + JCEF legacy adapter]
 
     Core --> Lessons
-    Core --> App
-    Lessons --> App
-    App <--> Events
-    App --> WebShell
+    Core --> Services
+    Lessons --> Services
+    Services <--> Events
+    App --> Services
+    WebComposition --> App
+    WebComposition --> WebShell
     Lessons --> WebShell
     WebContracts --> WebShell
     WebShell --> Local
@@ -43,12 +47,13 @@ flowchart TB
 | `editor.intelligence` | Documento, caret, seleção, indentação e Smart Editing sem toolkit | `DocumentSnapshot`, `TypingPipeline`, `JavaIndentPolicy` | Core |
 | `language` | Lexer, parser, AST, CFG, semântica e JDK source resolution | `JavaLexerService`, `JavaParserService`, `DefinitionAtCaretResolver` | Core |
 | `lessons` | Catálogo, conteúdo, sessão, prática e programas de apresentação | `LessonContentService`, `LessonSession`, `PresentationCompiler` | Domain |
-| `workbench`, `project`, `runtime`, `filesystem` | Ciclo do editor, workspace, execução e I/O | `EditorManager`, `ProjectLifecycleService`, `RunService` | Application/infrastructure |
+| `application` | Boundary e lifecycle compartilhado de uma workspace | `WorkspaceApplication` | Application/composition support |
+| `workbench`, `project`, `runtime`, `filesystem` | Ciclo do editor, workspace, execução e I/O | `EditorManager`, `ProjectLifecycleService`, `RunService`, `FileSystemService` | Application/infrastructure |
 | `eventbus` | Eventos internos em processo | `EventBus`, `Event`, `SubscriptionToken` | Shared infrastructure |
-| `ui.web` | Contratos, controllers, surfaces, asset server e bridge do Web Shell | `WebShellWorkspaceController`, `WebShellSurface`, `WebShellEnvelope` | Web adapter |
+| `ui.web` | Contratos, controllers, surfaces, asset server e bridge do Web Shell | `WebShellWorkspaceController`, `WebShellExecutionController`, `WebShellSurface`, `WebShellEnvelope` | Web adapter |
 | `ui.web.monaco` | DTOs e serviços sem toolkit para a conversa Java ↔ Monaco | `MonacoCommand`, `MonacoEvent`, `MonacoModelId`, `EyeCodeCompletionService` | Web contract |
 | `ui.web.learning` | Payload Web de Learn e classificação compartilhada de tamanho | `MonacoLearningOverlayPayload`, `LearningCardSizingPolicy` | Web contract |
-| `javafx` | Composição desktop JavaFX/CEFFX preservada | `FxApplication`, `FxMainWindow`, `JavaFxMonacoEditorSurface` | Legacy adapter |
+| `javafx` | Composição desktop JavaFX/CEFFX preservada | `FxApplication`, `FxMainWindow`, `JavaFxMonacoEditorSurface` | Legacy-but-required adapter |
 | `swing`, `ui`, `editor.v2.ui` | Aplicação e componentes Swing preservados | `SwingMainWindow`, `MainWindow`, `RichEditorView` | Legacy UI |
 | `src/main/web` | React, estado de workspace, bridge e renderização Monaco | `EyeCodeBridge`, `MonacoWorkspaceService`, `LessonEditorController` | React/Web UI |
 
@@ -58,25 +63,26 @@ flowchart TB
 | --- | --- | --- |
 | Core (`editor.intelligence`, `language`) | JDK, outros contratos Core | Swing, JavaFX, CEFFX, JCEF, React, Web Shell |
 | Lessons | Core e modelos de conteúdo | Monaco, superfícies Web, Swing, JavaFX |
-| Application/infrastructure | Core, Lessons, EventBus | Renderização concreta quando um contrato é suficiente |
+| Application | Core, Lessons, EventBus e ports que já representam I/O | React, WebSocket, Swing, JavaFX, CEFFX, JCEF |
+| Infrastructure (`filesystem`, execução concreta, terminal) | JDK/processos/bibliotecas externas e Application | Renderização concreta quando um contrato é suficiente |
 | `ui.web.monaco`, `ui.web.learning` | Core/Lessons necessários ao payload | Swing, JavaFX, CEFFX, JCEF |
 | Web controllers | Application, Lessons e contratos Web | Tipos concretos de Swing/JavaFX |
 | JavaFX e Swing | Application, Lessons e contratos Web | A implementação da outra UI |
 | React | Tipos de protocolo, bridge e serviços frontend | Classes Java ou detalhes nativos |
 
-Essas regras são protegidas por `ArchitectureBoundaryTest`. O teste verifica Core/Lessons sem imports de UI, contratos/controladores Web sem imports de toolkit e ausência de imports diretos Swing ↔ JavaFX.
+Essas regras são protegidas por `ArchitectureBoundaryTest`. Além da inspeção de imports dos packages Core, o teste inspeciona referências no bytecode para garantir que `application` não alcança adapters, que controllers não consultam `WorkspaceApplication`, que Workspace não alcança `RunService`/`TerminalService`, e que a composição Web não referencia desktop.
 
 ## 5. Arquitetura das UIs
 
 ### Swing
 
-Swing é compatibilidade legada. `com.eyecode.swing.SwingMainWindow` compõe `SwingWebShellSurface`, `SwingWebShellNativeUi` e `WebShellWorkspaceController`. A surface contém somente ciclo de vida JCEF/AWT; as mensagens e a lógica de workspace continuam no Web Shell compartilhado.
+Swing é compatibilidade legada. `com.eyecode.swing.SwingMainWindow` compõe `SwingWebShellSurface`, `SwingWebShellNativeUi` e `WebShellWorkspaceComposition`. A surface contém somente ciclo de vida JCEF/AWT; as mensagens e a lógica de workspace continuam no Web Shell compartilhado.
 
 `com.eyecode.ui` e partes de `editor.v2.ui` ainda contêm telas Swing históricas. Elas não definem APIs para Core novo.
 
 ### Runtime Web principal
 
-`LocalWebShellLauncher` é o composition root principal. Ele cria `LocalWebShellSurface` e `WebShellWorkspaceController` com `WebShellNativeUi.unavailable()`. A surface sobe HTTP e WebSocket em loopback, injeta a configuração de bootstrap/token no frontend empacotado e publica sua URL. React usa `EyeCodeBridge` e `LocalWebSocketTransport`; Monaco continua no frontend.
+`LocalWebShellLauncher` inicia `LocalWebShellRuntime`, que cria `LocalWebShellSurface` e chama `WebShellWorkspaceComposition`. A composição escolhe explicitamente `DefaultFileSystemService`, um único `EventBus`, `ProjectFileOperationService`, `WebShellEditorViewFactory`, `EditorManager`, `ProjectLifecycleService`, `RunService`, `TerminalService` e `MavenProjectCreationService`. Ela também cria os controllers e devolve `WebShellWorkspaceRuntime`, o owner do conjunto. A surface sobe HTTP e WebSocket em loopback, injeta a configuração de bootstrap/token no frontend empacotado e publica sua URL. React usa `EyeCodeBridge` e `LocalWebSocketTransport`; Monaco continua no frontend.
 
 `java.awt.Desktop` está isolado em `LocalWebShellBrowserOpener` e só é usado quando `eyecode.web.openBrowser=true`. Sua indisponibilidade não interrompe o backend.
 
@@ -116,7 +122,7 @@ O antigo package `com.eyecode.javafx.web` misturava Web Shell, Swing e JavaFX so
 | `javafx.monaco` | implementação visual `JavaFxMonacoEditorSurface` e parser interno CEFFX |
 | `swing` / JavaFX | adapters nativos que implementam `WebShellSurface` ou `WebShellNativeUi` |
 
-`WebShellEnvelope` é um **WEB CONTRACT**, não um DTO de Core. Ele tem protocolo fixo `eyecode.web/1`, `kind` (`request`, `response`, `event`), `channel`, `name`, correlação por `requestId` e `payload`. A semântica do payload pertence ao handler do par `channel/name`.
+`WebShellEnvelope` é um **WEB CONTRACT**, não um DTO de Core. Ele tem protocolo fixo `eyecode.web/1`, `kind` (`request`, `response`, `event`), `channel`, `name`, correlação por `requestId` e `payload`. HTTP serve assets/bootstrap; WebSocket local ou bridge CEFFX transporta o mesmo envelope. A semântica do payload pertence ao handler do par `channel/name`, nunca ao envelope ou ao transporte.
 
 `WebShellDispatcher` faz dispatch exato desse par. Handler desconhecido gera `UNKNOWN_COMMAND` apenas para requests. `WebShellProtocolCodec` valida versão e kind do envelope; cada controller valida seu payload.
 
@@ -141,7 +147,7 @@ Contratos reais:
 - `subscribe` retorna `SubscriptionToken`; o dono do subscriber deve chamar `unsubscribe` durante seu ciclo de vida.
 - Implementação usa coleções concorrentes, mas não introduz agendamento, isolamento de falhas nem EventBus global adicional.
 
-Exemplos ativos incluem `DocumentTextChangeEvent` → `LexerEventBridge`/`ParserEventBridge` → `TokensUpdatedEvent`/`ParserSnapshotUpdatedEvent`, e `ProjectRefreshEvent` → `ProjectRefreshService`. Eventos de UI históricos continuam em `eventbus.events`.
+No runtime Web, o fluxo ativo é `DocumentTextChangeEvent` → `LexerEventBridge` → `TokensUpdatedEvent`. `ParserEventBridge` e `ProjectRefreshService` permanecem fluxos independentes de infraestrutura/legado; eles não são criados nem assinam o barramento da composição Web atual. Eventos de UI históricos continuam em `eventbus.events`.
 
 ## 8. Learn e Presentation Architecture
 
@@ -163,30 +169,36 @@ Practice remains owned by `LessonSession`/lesson models and is reached through `
 
 ## 9. Project and runtime architecture
 
-`ProjectLifecycleService` owns the active project and listener lifecycle. `EditorManager` owns editor sessions, autosave wiring and document events. `ProjectFileOperationService` and `MavenProjectCreationService` perform file/project actions. `RunService` owns run state and delegates terminal concerns to `TerminalService`.
+`WorkspaceApplication` owns only the shared lifecycle of `EditorManager`, `ProjectLifecycleService`, `RunService` and `TerminalService`; it has no factory and no service getters. `EditorManager` owns editor sessions, autosave wiring, the external-file watcher and the `LexerEventBridge` subscription. `ProjectLifecycleService` owns the active project and listener lifecycle. `RunService` owns run state; `TerminalService` owns terminal sessions and their dedicated WebSocket endpoint. `ProjectFileOperationService` and `MavenProjectCreationService` are stateless concrete collaborators owned by the Web composition rather than lifecycle services.
 
-`WebShellWorkspaceController` adapts these existing services to Web channels (`workspace`, `document`, `run`, `terminal`) and publishes their state as Web events. It does not own a different project, run or editor model.
+`WebShellWorkspaceRuntime` owns every controller and closes them before `WorkspaceApplication`. `WebShellWorkspaceController` adapts the 14 `workspace` requests. `WebShellDocumentController` owns the seven `document` handlers, tab payloads and document observations, including read-only documentation/JDK tabs. It detaches document and dirty listeners on close/reset/disposal. Both are constructed in `WebShellWorkspaceComposition`, never inside each other. Workspace coordinates document reset/reidentification and execution-state publication through these explicitly injected sibling adapters. `WebShellExecutionController` receives project lifecycle, run and terminal services and owns their UI listeners. Completion, learning, lessons and diagnostics remain sibling controllers. The terminal's dedicated WebSocket is terminal infrastructure, not the definition of Project Run semantics.
+
+`WorkspaceProjects` owns the application workflow for opening/creating a workspace: stop execution, open/record the project, close editor sessions, watch the new root and refresh run configurations. `ProjectLifecycleService` still owns the current project and recent-project persistence; `MavenProjectCreationService` still creates Maven projects. No generic build-system abstraction was added.
+
+`ProjectExplorerQuery` owns filesystem traversal, visibility, ordering, child availability, valid expanded directories, ancestors and preferred entry-point discovery. Its `Entry` contains only JDK values; it has no JSON/envelope/UI dependency. The Web adapter encodes project/directory/file kinds and payload names. Another frontend can reuse these queries without copying explorer rules.
+
+`EditorManager` remains the document application boundary; no competing DocumentService exists. Safe rename/delete operations protect dirty sessions before delegating to existing path mutation/rebinding. The single shared `ProjectFileOperationService` handles create/duplicate and filesystem rules directly. `WebShellPayload` is local protocol coercion, not an application DTO. Error codes and `eyecode.web/1` remain unchanged.
 
 ## 10. Runtime flows
 
 ### Startup
 
-1. `LocalWebShellLauncher` creates `LocalWebShellSurface` and its loopback HTTP/WebSocket endpoints.
-2. `WebShellWorkspaceController` registers the shared channel handlers on `WebShellSurface` with unavailable native-window capabilities.
+1. `LocalWebShellLauncher` starts `LocalWebShellRuntime`, which creates `LocalWebShellSurface` and its loopback HTTP/WebSocket endpoints.
+2. `WebShellWorkspaceComposition` assembles the services, `WorkspaceApplication`, all Web controllers and `WebShellWorkspaceRuntime`; controllers register their channel handlers on `WebShellSurface` with unavailable native capabilities.
 3. The launcher prints the URL; the browser loads React and receives the injected local bootstrap/token.
 4. React opens `LocalWebSocketTransport`, sends `shell/ready`, receives bootstrap state and uses `EyeCodeBridge`.
 
 ### Open project
 
 1. React requests `workspace/openProject`.
-2. `WebShellWorkspaceController` delegates to `ProjectLifecycleService`.
+2. `WebShellWorkspaceController` adapts the request and delegates to `WorkspaceProjects.open`; the application workflow coordinates the existing services.
 3. The controller projects workspace and document state into response/events.
 4. React updates its workspace view and Monaco models.
 
 ### Run
 
 1. React requests `run/run` or `run/rerun`.
-2. The Web controller flushes through the configured `RunService` path.
+2. `WebShellExecutionController` delegates through the configured `RunService` path.
 3. Run phase/state and output are sent as `run/state` and `run/output` events.
 4. React renders structured state; it must not infer run state by parsing output text.
 
@@ -206,7 +218,10 @@ Practice remains owned by `LessonSession`/lesson models and is reached through `
 | New lesson | resource + lesson catalog/content model; no Monaco ranges in the resource |
 | New Web command | `WebShellSurface.registerHandler` through the owning `WebShell*Controller` |
 | New Web event | `WebShellEnvelope.event(channel, name, payload)` and matching frontend subscription/service |
-| New native window capability | add it to `WebShellNativeUi`, implement in each native adapter only when both need it |
+| New workspace lifecycle service | add it to `WorkspaceApplication` only when it must be closed with the workspace; construct it in composition and inject it into its owning controller |
+| New native file capability | add a focused port such as `WebShellNativeFileSelection`, then implement it in the native adapters that offer it |
+| New window capability | add it to `WebShellWindowControls`, not to file-selection consumers |
+| New build system | add discovery/execution capability behind the current runtime seam only when a second real implementation exists; do not make a generic build API speculatively |
 | New EventBus event | immutable `Event` plus publisher and explicit subscriber lifecycle |
 
 ## 12. Deprecated and legacy architecture
@@ -228,25 +243,47 @@ No code was removed in this audit: lack of IDE callers is not sufficient evidenc
 
 | Principle | Finding | Resolution or status |
 | --- | --- | --- |
-| S — Single Responsibility | `WebShellWorkspaceController` coordinates documents, workspace, run, terminal, JDK source and native documentation. | **Known debt.** These handlers share session/lifecycle state, and splitting them now would be a behavior-bearing change. New unrelated concerns must not be added there; extract an aggregate controller only with targeted flow tests. |
-| O — Open/Closed | Web commands are extensible through handler registration rather than a global switch. Presentation compilation falls back safely when a plan is not exact. | No artificial strategy/factory added. |
-| L — Liskov | `WebShellSurface` implementations preserve send/register semantics; `WebShellNativeUi.unavailable()` is an explicit null object rather than a partial subtype throwing unsupported-operation errors. | No concrete violation found in these boundaries. |
-| I — Interface Segregation | `WebShellSurface` has two transport operations. `WebShellDocumentationHost` separates documentation placement from the broader native-window capability. | **Corrected:** Web Shell controller no longer accepts a JavaFX documentation class. |
-| D — Dependency Inversion | Shared Web controller previously referenced JavaFX-specific surface/documentation types; shared Monaco/Learn payload contracts lived under `javafx.*`. | **Corrected:** controller depends on `WebShellSurface`/`WebShellDocumentationHost`; toolkit-free Monaco and Learn Web contracts moved to `ui.web.*`. |
+| S — Single Responsibility | `WebShellWorkspaceController` previously also owned all `run` and `terminal` handlers, state projection and listeners. | **Corrected:** `WebShellExecutionController` now owns the execution/terminal protocol cluster. Workspace retains cohesive workspace/document/learning/documentation coordination. |
+| O — Open/Closed | Web commands are extensible through handler registration rather than a global switch. Presentation compilation falls back safely when a plan is not exact. | **False positive for new factories/strategies:** no generic command or build framework was added. |
+| L — Liskov | `WebShellNativeUi.unavailable()` returned non-useful values but had no precise capability contract. | **Corrected:** file selection is now a capability with explicit availability, cancellation and failure semantics. Unavailable native UI reports unavailable and controllers do not invoke its pickers. |
+| I — Interface Segregation | A workspace controller and a window controller both received all native UI methods. | **Corrected:** `WebShellNativeFileSelection` and `WebShellWindowControls` separate the actual consumers; `WebShellNativeUi` remains a desktop-adapter facade. |
+| D — Dependency Inversion | The workspace Web adapter built editor/filesystem/project/run/terminal implementations itself and then reached them through an application boundary. | **Corrected:** `WebShellWorkspaceComposition` performs visible assembly; controllers declare concrete collaborators needed by their aggregate; `WorkspaceApplication` is lifecycle-only. |
 
-`WebShellWorkspaceController` still constructs several application services directly. It is an adapter-side composition concern rather than a Core → UI dependency, but it remains the largest architectural debt. It was deliberately documented rather than refactored without a dedicated behavior-preserving migration.
+Maven execution remains concrete inside `ProjectExecutionResolver`/`MavenClasspathResolver`, and `TerminalService` owns a concrete `TerminalWebSocketTransport`. These are **documented debt**, not failures hidden by placeholder interfaces: a second build implementation or terminal transport has not yet supplied a consumer-driven contract.
 
-## 14. Architectural invariants
+## 14. Inventory, classifications and migration limits
+
+| Área | Classificação | Evidência e limite atual |
+| --- | --- | --- |
+| `application` | APPLICATION / COMPOSITION SUPPORT | Shared workspace lifecycle; has no Web or desktop import. |
+| `editor.intelligence`, `language`, `lessons` | DOMAIN / CORE | Stable engines and lesson domain; toolkit-free invariant is tested. |
+| `workbench`, `project` | APPLICATION | Editor/workspace use cases; some historical imports from legacy UI remain outside the new Web runtime path. |
+| `filesystem` | PORT + INFRASTRUCTURE | `FileSystemService` abstracts workspace persistence for the editor; `Path` remains a JDK value type. Project file operations still use NIO directly and are a coherent concrete filesystem service. |
+| `runtime` | APPLICATION + INFRASTRUCTURE | Run lifecycle is application-facing; process creation, Maven classpath resolution and settings persistence are concrete infrastructure. |
+| `terminal` | INFRASTRUCTURE / LEGACY UI MIX | `TerminalService` and session transport are active; Swing terminal widgets are legacy UI in the same historical package. Do not move without a behavior-specific split. |
+| `eventbus` | INFRASTRUCTURE | In-memory synchronous application event mechanism; not RPC or WebSocket. |
+| `ui.web`, `src/main/web` | ADAPTER / UI | Stable internal protocol and Web/React frontend. `MonacoWorkspaceService` is the frontend integration boundary. |
+| `javafx`, `swing`, historical `ui` | LEGACY_BUT_REQUIRED | Entry points, integration tests, native callbacks and manual diagnostics still exist. No deletion evidence. |
+| `browser`, `chromium`, `diag`, `spike` | UNCERTAIN / diagnostic legacy | `diag.JcefValidator` is native JCEF diagnostics, distinct from source diagnostics; standalone/demo entry points prevent safe removal. |
+| `diagnostics` | APPLICATION SERVICE | Java compiler-backed source diagnostics consumed by `WebShellDiagnosticsController`; distinct from `diag`. |
+| `autosave` | INFRASTRUCTURE | Scheduler, external-file fingerprinting and persistence collaborate through `EditorManager`, editor document events and `FileSystemService`; no UI dependency found. |
+| `command`, `explorer`, `run`, `maven` | LEGACY / UNCERTAIN | Older Swing-oriented command, explorer and run models still have tests or direct legacy dependencies. They are not the Web runtime's command path, so no move was made merely for package symmetry. |
+| `designsystem` | LEGACY UI SUPPORT | Desktop visual themes/tokens; intentionally not exposed as Core architecture. |
+
+## 15. Architectural invariants
 
 - Core and Lessons do not import UI toolkits or Web implementation.
+- `WorkspaceApplication` does not import Web, JavaFX, Swing, CEFFX or JCEF adapters.
+- Web composition selects concrete implementations; Web controllers receive their direct services and narrow native capabilities, never `WorkspaceApplication`.
 - Canonical lesson code is authoritative; presentation programs must end at the exact canonical target.
 - Web protocol version is `eyecode.web/1` until a deliberate compatible migration is made.
-- One application-owned EventBus is passed to participants; do not create feature-local global buses.
+- The Web composition creates one `EventBus` and passes it to `EditorManager`. Its `EditorBuffer` instances publish `DocumentTextChangeEvent`; `LexerEventBridge` synchronously derives `TokensUpdatedEvent`. Parser, diagnostics, autosave, project lifecycle and lessons do not subscribe to this Web runtime bus today, and it is never bridged to WebSocket.
+- `WebShellWorkspaceRuntime` and `WebShellSurface` share one lifetime: the runtime is closed first, then the surface. Registered handlers therefore remain valid until the surface closes; controller replacement on a live surface is unsupported and no unregister API is required.
 - Swing and JavaFX may use shared Web contracts but do not directly import one another.
 - React renders state and sends bridge messages; it does not own Java parsing, project lifecycle or lesson transition decisions.
 - Generated `src/main/resources/webshell` assets are output of `src/main/web`.
 
-## 15. Testing architecture
+## 16. Testing architecture
 
 | Scope | Tests / command |
 | --- | --- |
@@ -258,10 +295,11 @@ No code was removed in this audit: lack of IDE callers is not sufficient evidenc
 | Frontend type safety | `npm run typecheck` in `src/main/web` |
 | Frontend bundle | `npm run build` in `src/main/web` |
 
-## 16. Package map
+## 17. Package map
 
 ```text
 com.eyecode
+├── application              shared workspace application boundary
 ├── editor.intelligence       toolkit-neutral editor Core
 ├── language                  toolkit-neutral language Core
 ├── lessons                   lesson domain and presentation compiler
@@ -270,10 +308,15 @@ com.eyecode
 ├── ui.web                    Web Shell adapter and transport contracts
 │   ├── monaco                Java ↔ Monaco contract and completion adapter
 │   └── learning              Learn payload contract for Web overlays
-├── javafx                    active JavaFX / CEFFX UI implementation
+├── javafx                    legacy-but-required JavaFX / CEFFX adapter
 │   └── monaco                JavaFX Monaco visual surface only
 ├── swing                     legacy Swing compatibility shell
 └── ui, editor.v2.ui          remaining legacy Swing UI
 ```
 
-The remaining top-level packages (`autosave`, `browser`, `chromium`, `command`, `designsystem`, `diag`, `diagnostics`, `explorer`, `maven`, `run`, `terminal`, `spike`) are supporting or legacy areas. They should be placed only after a behavior-specific migration, not moved for directory symmetry.
+The remaining top-level packages (`autosave`, `browser`, `chromium`, `command`, `designsystem`, `diag`, `diagnostics`, `explorer`, `maven`, `run`, `terminal`, `spike`) have the classifications documented in the inventory above. They should be moved only after a behavior-specific migration, not for directory symmetry.
+
+## 18. Architecture decisions
+
+- [ADR 0001 — Web-first runtime](adr/0001-web-first-runtime.md)
+- [ADR 0002 — Composition and dependency direction](adr/0002-dependency-direction.md)

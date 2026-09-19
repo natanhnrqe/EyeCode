@@ -7,6 +7,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class SwingWebShellNativeUi implements WebShellNativeUi {
@@ -25,14 +26,14 @@ public final class SwingWebShellNativeUi implements WebShellNativeUi {
     }
 
     @Override
-    public Path chooseDirectory(String title) {
-        return callOnEdt(() -> {
+    public CompletableFuture<Path> chooseDirectoryAsync(String title) {
+        return CompletableFuture.supplyAsync(() -> callOnEdt(() -> {
             JFileChooser chooser = new JFileChooser();
             chooser.setDialogTitle(title);
             chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             return chooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION
                     ? chooser.getSelectedFile().toPath().toAbsolutePath().normalize() : null;
-        });
+        }));
     }
 
     @Override
