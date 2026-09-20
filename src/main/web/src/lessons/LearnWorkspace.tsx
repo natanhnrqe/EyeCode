@@ -42,13 +42,14 @@ export function LearnWorkspace({ navigation, onHome, onOpenRoadmap, onOpenTopic,
 type LearnExplorerProps = {
   activeTrackId: string | null;
   selectedLessonId: string | null;
+  completedLessonId?: string | null;
   files?: LessonFile[];
   activeFileId?: string | null;
   onOpenFile?(fileId: string): void;
   onOpenLesson(lesson: LessonDescriptor, path: string[]): void;
 };
 
-export function LearnExplorer({ activeTrackId, selectedLessonId, files = [], activeFileId, onOpenFile, onOpenLesson }: LearnExplorerProps) {
+export function LearnExplorer({ activeTrackId, selectedLessonId, completedLessonId, files = [], activeFileId, onOpenFile, onOpenLesson }: LearnExplorerProps) {
   const [catalog, setCatalog] = useState<LessonsCatalog | null>(null);
   const [error, setError] = useState('');
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(() => new Set(['java.fundamentals']));
@@ -94,15 +95,16 @@ export function LearnExplorer({ activeTrackId, selectedLessonId, files = [], act
             const practice = lesson.kind === 'PRACTICE' && lesson.practiceFiles !== undefined;
             const lessonExpanded = expandedLessons.has(lesson.id);
             const path = [category?.title ?? '', topic.title, lesson.title];
+            const progress = lesson.id === completedLessonId ? 'completed' : lesson.id === selectedLessonId ? 'current' : lesson.executable ? 'available' : 'locked';
             if (!practice) return <div key={lesson.id} className="tree-node" role="treeitem">
               <button type="button" className={`tree-row tree-file${selectedLessonId === lesson.id ? ' is-selected' : ''}`} disabled={!lesson.executable}
                 onClick={() => onOpenLesson(lesson, path)} style={{ paddingLeft: '38px' }}>
-                <span className="tree-chevron" /><EyeCodeIcon name={lesson.kind === 'THEORY' ? 'markdown' : 'file'} className="tree-icon" /><span className="tree-label">{lesson.title}</span>
+                <span className="tree-chevron" /><LessonProgressMarker state={progress} /><span className="tree-label">{lesson.title}</span>
               </button>
             </div>;
             return <div key={lesson.id} className="tree-node" role="treeitem" aria-expanded={lessonExpanded}>
               <button type="button" className={`tree-row tree-directory${selectedLessonId === lesson.id ? ' is-selected' : ''}`} onClick={() => toggleLesson(lesson.id)} style={{ paddingLeft: '38px' }}>
-                <span className={`tree-chevron${lessonExpanded ? ' is-open' : ''}`}>›</span><EyeCodeIcon name={lessonExpanded ? 'folderOpen' : 'folder'} className="tree-icon" /><span className="tree-label">{lesson.title}</span>
+                <span className={`tree-chevron${lessonExpanded ? ' is-open' : ''}`}>›</span><LessonProgressMarker state={progress} /><span className="tree-label">{lesson.title}</span>
               </button>
               {lessonExpanded && lesson.practiceFiles!.map(file => <button key={file.id} type="button" className={`tree-row tree-file${activeFileId === file.id && selectedLessonId === lesson.id ? ' is-selected' : ''}`} onClick={() => {
                 if (selectedLessonId === lesson.id && onOpenFile) onOpenFile(file.id);
@@ -117,6 +119,12 @@ export function LearnExplorer({ activeTrackId, selectedLessonId, files = [], act
     </div>
     {error && <div className="learn-roadmap-error" role="alert">{error}</div>}
   </section>;
+}
+
+function LessonProgressMarker({ state }: { state: 'completed' | 'current' | 'available' | 'locked' }) {
+  const label = state === 'completed' ? 'Concluída' : state === 'current' ? 'Aula atual' : state === 'available' ? 'Disponível' : 'Indisponível';
+  const marker = state === 'completed' ? '✓' : state === 'current' ? '●' : state === 'available' ? '○' : '•';
+  return <span className={`lesson-progress-marker is-${state}`} aria-label={label}>{marker}</span>;
 }
 
 function LearnHome({ catalog, onOpenRoadmap }: { catalog: LessonsCatalog; onOpenRoadmap(categoryId: string): void }) {

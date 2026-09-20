@@ -7,18 +7,19 @@ type Props = {
   state: DiagnosticsViewState | null;
   documents: DocumentLabel[];
   onNavigate(uri: string, diagnostic: WebDiagnostic): void;
+  learnMode?: boolean;
 };
 
 const rank = (diagnostic: WebDiagnostic): number => diagnostic.severity === 'ERROR' ? 0
   : diagnostic.severity === 'WARNING' ? 1 : diagnostic.severity === 'INFO' ? 2 : 3;
 
-export function ProblemsPanel({ state, documents, onNavigate }: Props) {
+export function ProblemsPanel({ state, documents, onNavigate, learnMode = false }: Props) {
   const names = new Map(documents.map(document => [document.uri, document.displayName]));
   const problems: Problem[] = (state?.results ?? []).flatMap(result => result.diagnostics.map(diagnostic => ({
     ...diagnostic, uri: result.uri, fileName: names.get(result.uri) ?? fileName(result.uri)
   }))).sort((first, second) => rank(first) - rank(second) || first.fileName.localeCompare(second.fileName)
     || first.startLine - second.startLine || first.startColumn - second.startColumn);
-  if (!problems.length) return <div className="problems-empty">No problems detected</div>;
+  if (!problems.length) return <div className="problems-empty">{learnMode ? <><strong>Nenhum problema encontrado</strong><span>Seu código está pronto para continuar.</span></> : 'No problems detected'}</div>;
   return <div className="problems-list" role="list">
     {problems.map(problem => <button key={`${problem.uri}:${problem.startLine}:${problem.startColumn}:${problem.code}:${problem.message}`}
       type="button" className={`problem-entry severity-${problem.severity.toLowerCase()}`}

@@ -229,13 +229,14 @@ class WebShellSharedShellSourceTest {
         assertTrue(execution.contains("payload.put(\"exitCode\", runService.lastExitCode())"));
         assertTrue(execution.contains("payload.put(\"stopped\", runService.lastStopped())"));
         assertFalse(execution.contains("\"line\", line"));
-        assertTrue(lessonPanel.contains("<DockPane paneId=\"lesson\""));
+        String learningPanel = Files.readString(Path.of("src/main/web/src/lessons/LearningPanel.tsx"));
+        assertTrue(learningPanel.contains("<DockPane paneId=\"lesson\""));
         assertTrue(lessonPanel.contains("const practiceLesson = session.kind === 'PRACTICE';"));
         assertFalse(lessonPanel.contains("bottom-panel lesson-panel"));
         assertTrue(projectExplorer.contains("<DockPane paneId=\"explorer\""));
         assertTrue(projectExplorer.contains("headerClassName=\"panel-heading\""));
         assertTrue(bottomPanel.contains("headerClassName=\"bottom-tabs\""));
-        assertTrue(lessonPanel.contains("headerClassName=\"bottom-tabs lesson-pane-header\""));
+        assertTrue(learningPanel.contains("headerClassName=\"learning-panel-tabs\""));
         assertTrue(learnWorkspace.contains("learn-navigation-page"));
         assertFalse(learnWorkspace.contains("DockPane"));
     }
@@ -252,7 +253,7 @@ class WebShellSharedShellSourceTest {
         assertTrue(pane.contains("export const theoryDockTree"));
         assertEquals(3, occurrences(pane, "paneId: 'explorer'"));
         assertEquals(3, occurrences(pane, "paneId: 'editor'"));
-        assertEquals(1, occurrences(pane, "paneId: 'bottom'"));
+        assertEquals(2, occurrences(pane, "paneId: 'bottom'"));
         assertEquals(2, occurrences(pane, "paneId: 'lesson'"));
         assertTrue(layout.contains("dock-split-${node.orientation}"));
         assertTrue(layout.contains("const draggablePaneIds = new Set(dockPaneIds(tree).filter"));
@@ -310,8 +311,7 @@ class WebShellSharedShellSourceTest {
     void learnLessonUsesTheResizableEditorLessonSplitWithoutChangingPracticeWiring() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String pane = Files.readString(Path.of("src/main/web/src/workspace/WorkspacePane.ts"));
-        String panel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
-        String taskCard = Files.readString(Path.of("src/main/web/src/lessons/LessonTaskCard.tsx"));
+        String panel = Files.readString(Path.of("src/main/web/src/lessons/LearningPanel.tsx"));
         String controller = Files.readString(Path.of("src/main/web/src/lessons/LessonEditorController.ts"));
         String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
 
@@ -319,22 +319,20 @@ class WebShellSharedShellSourceTest {
         String learnTree = pane.substring(pane.indexOf("learnPracticeDockTree"), pane.indexOf("theoryDockTree"));
         assertTrue(projectTree.contains("orientation: 'vertical', ratio: 0.7"));
         assertTrue(projectTree.contains("paneId: 'bottom'"));
-        assertTrue(learnTree.contains("orientation: 'horizontal', ratio: 0.55"));
+        assertTrue(learnTree.contains("orientation: 'vertical', ratio: 0.68"));
         assertTrue(learnTree.contains("paneId: 'lesson'"));
+        assertTrue(learnTree.contains("paneId: 'bottom'"));
         assertEquals(1, occurrences(learnTree, "paneId: 'editor'"));
         assertEquals(1, occurrences(learnTree, "paneId: 'lesson'"));
         assertEquals(1, occurrences(workspace, "<MonacoHost"));
-        assertTrue(panel.contains("const practiceLesson = session.kind === 'PRACTICE';"));
-        assertTrue(panel.contains("bodyClassName=\"lesson-pane-content lesson-panel-content learning-body\""));
-        assertTrue(panel.contains("<LessonBlocks blocks={session.contentBlocks} theory={theory} />"));
-        assertTrue(panel.contains("lesson-practice-header"));
-        assertTrue(panel.contains("lesson-practice-title"));
-        assertTrue(taskCard.contains("lesson-task-card"));
-        assertTrue(taskCard.contains("onClick={onVerify}"));
-        assertTrue(taskCard.contains("{verification.message}"));
+        assertTrue(panel.contains("LearningPanelTab"));
+        assertTrue(panel.contains("label: 'Exercício'"));
+        assertTrue(panel.contains("<PracticeSupport blocks={session.contentBlocks} />"));
+        assertTrue(panel.contains("onClick={onVerify}"));
+        assertTrue(panel.contains("{verification.message}"));
         assertTrue(controller.contains("this.service.setEphemeralReadOnly(\n        document.uri,\n        document.file.readOnly"));
         assertTrue(controller.contains("this.service.setLessonPracticeIntelligence(\n        document.uri,\n        true"));
-        assertTrue(styles.contains(".lesson-pane-content {"));
+        assertTrue(styles.contains(".learning-panel-content {"));
         assertFalse(styles.contains(".lesson-panel { grid-column: 2 / 4"));
         assertTrue(workspace.indexOf("<DockLayout") < workspace.indexOf("<div className=\"overlay-root\">"));
     }

@@ -11,6 +11,7 @@ type Props = {
   canDockDrop?(paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: DockSide): boolean;
   resolveDockPreview?(paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: DockSide, ratio: number): DockNode | null;
   onDockDrop?(paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: DockSide, ratio: number): void;
+  className?: string;
 };
 
 type DragTarget = { paneId: WorkspacePaneId; side: DockSide; ratio: number; preview: DockRect };
@@ -20,7 +21,7 @@ type ActiveResize = { pointerId: number; splitId: string; node: DockSplitNode; b
 const dockDragThreshold = 5;
 const dockSides: DockSide[] = ['LEFT', 'RIGHT', 'TOP', 'BOTTOM'];
 
-export function DockLayout({ tree, renderPane, onRatioChange, onEditorGeometryChange, layoutKind = 'PROJECT', canDockDrop, resolveDockPreview, onDockDrop }: Props) {
+export function DockLayout({ tree, renderPane, onRatioChange, onEditorGeometryChange, layoutKind = 'PROJECT', canDockDrop, resolveDockPreview, onDockDrop, className }: Props) {
   const activeResize = useRef<ActiveResize | null>(null);
   const activeDrag = useRef<ActiveDrag | null>(null);
   const [preview, setPreview] = useState<DockRect | null>(null);
@@ -149,7 +150,7 @@ export function DockLayout({ tree, renderPane, onRatioChange, onEditorGeometryCh
     scheduleRatio(active, clampDockSplitPosition(active.node, position, size) / available);
   }
 
-  return <div className={`dock-layout${layoutKind === 'THEORY' ? ' is-theory' : ''}${dragging ? ' is-dragging' : ''}`} onPointerDown={beginDrag} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={cleanupDrag} onLostPointerCapture={cleanupDrag}>
+  return <div className={`dock-layout${layoutKind === 'THEORY' ? ' is-theory' : ''}${dragging ? ' is-dragging' : ''}${className ? ` ${className}` : ''}`} onPointerDown={beginDrag} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={cleanupDrag} onLostPointerCapture={cleanupDrag}>
     {renderNode(tree, renderPane, beginResize, moveResize, finishResize, 'root', layoutKind, activeResizeId, draggingPane, draggablePaneIds)}
     {preview && <div className="dock-drop-preview" aria-hidden="true" style={previewStyle(preview)} />}
     {ghost && <div className="dock-drag-ghost" aria-hidden="true" data-dock-ghost={ghost.paneId} style={ghostStyle(ghost)} />}

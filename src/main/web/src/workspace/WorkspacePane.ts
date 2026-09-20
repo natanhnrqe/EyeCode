@@ -49,8 +49,8 @@ export const projectDockRules: DockRules = {
 };
 
 export const learnPracticeDockRules: DockRules = {
-  requiredPaneIds: ['explorer', 'editor', 'lesson'],
-  dockablePaneIds: ['explorer', 'editor', 'lesson']
+  requiredPaneIds: ['explorer', 'editor', 'lesson', 'bottom'],
+  dockablePaneIds: ['explorer', 'editor', 'lesson', 'bottom']
 };
 
 export const projectDockTree: DockNode = {
@@ -64,13 +64,17 @@ export const projectDockTree: DockNode = {
 };
 
 export const learnPracticeDockTree: DockNode = {
-  type: 'split', orientation: 'horizontal', ratio: 0.28,
-  first: { type: 'pane', paneId: 'explorer' },
-  second: {
-    type: 'split', orientation: 'horizontal', ratio: 0.55,
-    first: { type: 'pane', paneId: 'editor' },
-    second: { type: 'pane', paneId: 'lesson' }
-  }
+  type: 'split', orientation: 'vertical', ratio: 0.68,
+  first: {
+    type: 'split', orientation: 'horizontal', ratio: 0.28,
+    first: { type: 'pane', paneId: 'explorer' },
+    second: {
+      type: 'split', orientation: 'horizontal', ratio: 0.6,
+      first: { type: 'pane', paneId: 'editor' },
+      second: { type: 'pane', paneId: 'lesson' }
+    }
+  },
+  second: { type: 'pane', paneId: 'bottom' }
 };
 
 export const theoryDockTree: DockNode = {

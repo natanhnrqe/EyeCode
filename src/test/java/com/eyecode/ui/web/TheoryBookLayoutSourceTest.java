@@ -14,7 +14,6 @@ class TheoryBookLayoutSourceTest {
         String panel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
         String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
 
-        assertTrue(panel.contains("lesson-breadcrumb"));
         assertTrue(panel.contains("lesson-chapter-title"));
         assertTrue(panel.contains("<h1 className=\"lesson-chapter-title\">{session.title}</h1>"));
         assertFalse(panel.contains("lesson-chapter-meta"));

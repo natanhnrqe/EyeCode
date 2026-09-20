@@ -16,7 +16,8 @@ class PracticeLessonVisualSourceTest {
 
         assertTrue(panel.contains("const practiceLesson = session.kind === 'PRACTICE';"));
         assertTrue(panel.contains("const practiceActive = practiceLesson && session.phase === 'PRACTICE' && session.practice !== undefined;"));
-        assertTrue(panel.contains("is-practice${practicePhaseClass}"));
+        String learningPanel = Files.readString(Path.of("src/main/web/src/lessons/LearningPanel.tsx"));
+        assertTrue(learningPanel.contains("is-practice${phaseClass}"));
         assertTrue(panel.contains("is-presentation"));
         assertTrue(panel.contains("is-practice-active"));
         assertTrue(panel.contains("is-completed"));

@@ -1,34 +1,23 @@
 import { Fragment, useEffect, useState } from 'react';
 import { highlightLearningJavaSource } from '../learning/highlightJava';
 import type { LessonContentBlock, LessonInlineContent, LessonSession } from './protocol';
-import { DockPane } from '../workspace/DockPane';
 
-type Breadcrumb = { category: string; topic: string; onCategory?(): void; onTopic?(): void };
-type Props = { session: LessonSession; breadcrumb?: Breadcrumb; onPrevious(): void; onNext(): void; onExit(): void };
-
-export function LessonPanel({ session, breadcrumb, onPrevious, onNext, onExit }: Props) {
+export function LessonContent({ session }: { session: LessonSession }) {
   const theory = session.kind === 'THEORY';
   const practiceLesson = session.kind === 'PRACTICE';
   const practiceActive = practiceLesson && session.phase === 'PRACTICE' && session.practice !== undefined;
   const practicePhaseClass = session.phase === 'PRESENTATION' ? ' is-presentation' : session.phase === 'PRACTICE' ? ' is-practice-active' : ' is-completed';
-  return <DockPane paneId="lesson" className={`lesson-panel${theory ? ' is-theory' : ''}${practiceLesson ? ` is-practice${practicePhaseClass}${session.practiceCompleted ? ' is-practice-completed' : ''}` : ''}`} label="Conteúdo da aula" headerClassName="bottom-tabs lesson-pane-header" header={<>{theory ? <LessonBreadcrumb breadcrumb={breadcrumb} /> : <span className="lesson-pane-kicker">{practiceLesson ? 'Prática' : 'Conteúdo da aula'}</span>}<span className="lesson-part-indicator">Parte {session.currentStep + 1} de {session.totalSteps}</span></>} bodyClassName="lesson-pane-content lesson-panel-content learning-body" footerClassName="lesson-panel-actions" footer={<><button type="button" onClick={onExit}>Voltar ao roteiro</button><div><button type="button" onClick={onPrevious} disabled={!session.canPrevious}>Anterior</button><button type="button" className="primary-action" onClick={onNext} disabled={!session.canNext}>Próximo</button></div></>}>
-      <article className="lesson-reading-article">{theory && <header className="lesson-chapter-header"><h1 className="lesson-chapter-title">{session.title}</h1>{session.message && <p className="lesson-chapter-lead">{session.message}</p>}</header>}{practiceLesson && <header className="lesson-practice-header"><p className="lesson-practice-kicker">Prática</p><h1 className="lesson-practice-title">{session.title}</h1>{session.message && <p className="lesson-practice-lead">{session.message}</p>}</header>}{practiceActive ? <PracticeSupport blocks={session.contentBlocks} /> : <LessonBlocks blocks={session.contentBlocks} theory={theory} />}</article>
-  </DockPane>;
+  return <article className={`lesson-reading-article${practicePhaseClass}${session.practiceCompleted ? ' is-practice-completed' : ''}`}>{theory && <header className="lesson-chapter-header"><h1 className="lesson-chapter-title">{session.title}</h1>{session.message && <p className="lesson-chapter-lead">{session.message}</p>}</header>}{practiceLesson && <header className="lesson-practice-header"><p className="lesson-practice-kicker">Prática</p><h1 className="lesson-practice-title">{session.title}</h1>{session.message && <p className="lesson-practice-lead">{session.message}</p>}</header>}{practiceActive ? <PracticeSupport blocks={session.contentBlocks} /> : <LessonBlocks blocks={session.contentBlocks} theory={theory} />}</article>;
 }
 
-function PracticeSupport({ blocks }: { blocks: LessonContentBlock[] }) {
+export function PracticeSupport({ blocks }: { blocks: LessonContentBlock[] }) {
   const syntax = blocks.find(block => block.type === 'CODE');
   const hints = blocks.filter(block => block.type === 'CALLOUT');
   const concepts = blocks.filter(block => block.type === 'HEADING').slice(1).map(block => block.text).filter((text): text is string => Boolean(text));
   return <section className="lesson-practice-support"><section><h2>O que fazer</h2><ol><li>Use o editor para realizar a tarefa indicada no card.</li><li>Faça a alteração necessária dentro do método <code>main</code>.</li><li>Revise o código antes de verificar.</li></ol></section>{syntax && <section><h2>Exemplo de sintaxe</h2><LessonBlock block={syntax} theory={false} /></section>}{hints.length > 0 && <details className="lesson-practice-disclosure"><summary>Dicas</summary>{hints.map((hint, index) => <LessonBlock key={index} block={hint} theory={false} />)}</details>}{concepts.length > 0 && <details className="lesson-practice-disclosure"><summary>Conceitos relacionados</summary><ul>{concepts.map(concept => <li key={concept}>{concept}</li>)}</ul></details>}</section>;
 }
 
-function LessonBreadcrumb({ breadcrumb }: { breadcrumb?: Breadcrumb }) {
-  if (!breadcrumb) return <span className="lesson-pane-kicker">Teoria</span>;
-  return <nav className="lesson-breadcrumb" aria-label="Localização da aula">{breadcrumb.onCategory ? <button type="button" onClick={breadcrumb.onCategory}>{breadcrumb.category}</button> : <span className="lesson-breadcrumb-item">{breadcrumb.category}</span>}<span className="lesson-breadcrumb-separator" aria-hidden="true">›</span>{breadcrumb.onTopic ? <button type="button" onClick={breadcrumb.onTopic}>{breadcrumb.topic}</button> : <span className="lesson-breadcrumb-item">{breadcrumb.topic}</span>}</nav>;
-}
-
-function LessonBlocks({ blocks, theory }: { blocks: LessonContentBlock[]; theory: boolean }) {
+export function LessonBlocks({ blocks, theory }: { blocks: LessonContentBlock[]; theory: boolean }) {
   let section = 0;
   return <>{blocks.map((block, index) => {
     const sectionNumber = theory && block.type === 'HEADING' ? ++section : undefined;
@@ -67,7 +56,7 @@ function LessonCodeBlock({ block }: { block: LessonContentBlock }) {
   return <section className="lesson-code-frame">{language && <header className="lesson-code-frame-header"><span>{language}</span><button type="button" onClick={() => void copy()}>{copied ? 'Copiado' : 'Copiar'}</button></header>}<pre className="lesson-code-block"><code className={language === 'java' ? 'language-java' : undefined} dangerouslySetInnerHTML={language === 'java' ? { __html: highlightLearningJavaSource(source) } : undefined}>{language === 'java' ? undefined : source}</code></pre></section>;
 }
 
-function InlineContent({ content, fallback }: { content?: LessonInlineContent[]; fallback?: string }) {
+export function InlineContent({ content, fallback }: { content?: LessonInlineContent[]; fallback?: string }) {
   if (!content?.length) return <>{fallback}</>;
   return <>{content.map((part, index) => {
     if (part.type === 'CODE') return <code key={index}>{part.text}</code>;

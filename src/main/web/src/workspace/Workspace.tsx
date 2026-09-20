@@ -11,8 +11,8 @@ import type { LearningPopupState } from '../learning/protocol';
 import { LearnExplorer, LearnWorkspace, type LearnNavigationState } from '../lessons/LearnWorkspace';
 import { LessonAnnotation } from '../lessons/LessonAnnotation';
 import { LessonEditorController } from '../lessons/LessonEditorController';
-import { LessonPanel } from '../lessons/LessonPanel';
-import { LessonTaskCard } from '../lessons/LessonTaskCard';
+import { LearningPanel } from '../lessons/LearningPanel';
+import { LearnContextPanel, type LearnContextTab } from '../lessons/LearnContextPanel';
 import type { LessonDescriptor, LessonFile, LessonSession, LessonVerificationResponse, PracticeVerificationResult } from '../lessons/protocol';
 import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
 import { BottomPanel } from './BottomPanel';
@@ -65,6 +65,7 @@ export function Workspace() {
   const [runOutput, setRunOutput] = useState<RunOutputChunk[]>([]);
   const [terminalState, setTerminalState] = useState<TerminalState>(emptyTerminalState);
   const [bottomPanel, setBottomPanel] = useState<BottomPanelId>('terminal');
+  const [learnContextTab, setLearnContextTab] = useState<LearnContextTab>('problems');
   const [sidePanel, setSidePanel] = useState<SidePanelId>('project');
   const [caret, setCaret] = useState({ line: 1, column: 1 });
   const [newProjectOpen, setNewProjectOpen] = useState(false);
@@ -85,6 +86,7 @@ export function Workspace() {
   const [practiceVerifying, setPracticeVerifying] = useState(false);
   const [projectDockLayout, setProjectDockLayout] = useState<DockNode>(() => projectDockTree);
   const [learnPracticeDockLayout, setLearnPracticeDockLayout] = useState<DockNode>(() => learnPracticeDockTree);
+  const [learnExplorerCollapsed, setLearnExplorerCollapsed] = useState(false);
   const shellWorkspace = useRef<HTMLDivElement>(null);
   const [editorSurfaceBounds, setEditorSurfaceBounds] = useState<EditorSurfaceBounds | null>(null);
 
@@ -383,6 +385,10 @@ export function Workspace() {
     if (id === 'terminal' && !terminalState.running) void terminal('show');
   }
 
+  function selectLearnContextTab(id: LearnContextTab) {
+    setLearnContextTab(id);
+  }
+
   async function selectConfiguration(id: string) {
     try { await bridge.request('run', 'selectConfiguration', { id }); }
     catch (error) { setMessage(formatError(error)); }
@@ -576,7 +582,7 @@ export function Workspace() {
     onWindowAction={action => void windowAction(action)} />;
   const renderPane = (paneId: WorkspacePaneId) => {
     if (paneId === 'explorer') return <aside className="side-panel">
-      {learnMode ? <LearnExplorer activeTrackId={activeLearnTrackId} selectedLessonId={lessonSession?.lessonId ?? selectedLearnLesson?.id ?? null}
+      {learnMode ? <LearnExplorer activeTrackId={activeLearnTrackId} selectedLessonId={lessonSession?.lessonId ?? selectedLearnLesson?.id ?? null} completedLessonId={lessonSession?.practiceCompleted ? lessonSession.lessonId : null}
         files={lessonSession?.kind === 'PRACTICE' ? lessonEditor.lessonFiles() : []} activeFileId={activeLessonFileId}
         onOpenFile={fileId => { const uri = lessonEditor.lessonUriFor(fileId); if (uri) activateLessonFile(uri); }} onOpenLesson={openLearnLesson} /> : sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
         reveal={workspace.reveal} treeChangedPath={treeChangedPath} treeRefreshRevision={treeRefreshRevision} onLoadChildren={loadChildren} onOpenFile={openFile}
@@ -600,10 +606,11 @@ export function Workspace() {
         </section>
       </div>
     </section>;
-    if (paneId === 'bottom') return <BottomPanel active={bottomPanel} output={runOutput} runState={runState} terminalState={terminalState}
+    if (paneId === 'bottom') return learnMode ? <LearnContextPanel active={learnContextTab} output={runOutput} runState={runState} diagnostics={diagnostics} documents={documents} onSelect={selectLearnContextTab}
+      onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} /> : <BottomPanel active={bottomPanel} output={runOutput} runState={runState} terminalState={terminalState}
       diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />;
-    return lessonSession ? <LessonPanel session={lessonSession} breadcrumb={{ category: learnPath[0] ?? 'Aulas', topic: learnPath[1] ?? 'Aulas', onCategory: () => void returnToLearnRoadmap(), onTopic: () => void returnToLearnTopicFromBreadcrumb() }} onPrevious={() => void changeLessonStep('previous')}
+    return lessonSession ? <LearningPanel session={lessonSession} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} onPrevious={() => void changeLessonStep('previous')}
       onNext={() => void changeLessonStep('next')} onExit={() => void returnToLearnTopic()} /> : null;
   };
   const layoutKind = learnMode && lessonSession?.kind === 'THEORY' ? 'THEORY' : learnMode ? 'LEARN' : 'PROJECT';
@@ -688,12 +695,13 @@ export function Workspace() {
       {projectMode ? <nav className="activity-bar" aria-label="Workspace views">
         {(['project', 'search', 'documentation', 'settings'] as SidePanelId[]).map(id => <button key={id}
           type="button" className={sidePanel === id ? 'is-active' : ''} onClick={() => selectSidePanel(id)} aria-label={id}><EyeCodeIcon name={sideIcon(id)} /></button>)}
-      </nav> : !learnNavigationVisible && <nav className="activity-bar learn-activity-bar" aria-hidden="true" />}
+      </nav> : !learnNavigationVisible && <nav className="activity-bar learn-activity-bar" aria-label="Navegação da aula"><button type="button" className={!learnExplorerCollapsed ? 'is-active' : ''} onClick={() => setLearnExplorerCollapsed(value => !value)} aria-label={learnExplorerCollapsed ? 'Mostrar aulas' : 'Ocultar aulas'} aria-expanded={!learnExplorerCollapsed}><EyeCodeIcon name="markdown" /></button></nav>}
       {learnNavigationVisible && <LearnWorkspace navigation={learnNavigation} onHome={() => { setActiveLearnTrackId(null); setLearnNavigation({ screen: 'HOME' }); }}
         onOpenRoadmap={categoryId => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'ROADMAP', categoryId }); }}
         onOpenTopic={(categoryId, topicId) => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'TOPIC', categoryId, topicId }); }}
         onOpenLesson={openLearnLesson} />}
-      <DockLayout tree={dockTree} renderPane={renderPane} layoutKind={layoutKind}
+      {learnMode && lessonSession && learnExplorerCollapsed && <nav className="collapsed-lesson-header" aria-label="Localização da aula"><span>{learnPath.slice(0, 3).filter(Boolean).join(' › ')}</span><span>Parte {lessonSession.currentStep + 1} de {lessonSession.totalSteps}</span></nav>}
+      <DockLayout tree={dockTree} renderPane={renderPane} layoutKind={layoutKind} className={learnExplorerCollapsed && learnMode ? 'is-learn-explorer-collapsed' : undefined}
         canDockDrop={dockRules ? canDockDrop : undefined} resolveDockPreview={dockRules ? resolveDockPreview : undefined} onDockDrop={handleDockDrop}
         onRatioChange={updateDockRatio} onEditorGeometryChange={() => service.layout()} />
       <section className={`persistent-editor-surface${editorSurfaceVisible ? '' : ' is-hidden'}`} style={editorSurfaceBounds ? {
@@ -703,7 +711,6 @@ export function Workspace() {
         height: editorSurfaceBounds.height
       } : undefined} aria-hidden={!editorSurfaceVisible}>
         <MonacoHost service={service} />
-        {learnMode && lessonSession?.phase === 'PRACTICE' && lessonSession.practice && <LessonTaskCard session={lessonSession} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} />}
       </section>
     </div>
     {projectMode ? <StatusBar activeUri={activeEditorDocument?.uri} displayName={activeEditorDocument?.displayName}
