@@ -1,4 +1,4 @@
-package com.eyecode.terminal;
+package com.eyecode.terminal.swing;
 
 import com.eyecode.ui.TerminalTheme;
 

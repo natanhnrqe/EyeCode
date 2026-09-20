@@ -1,6 +1,6 @@
 package com.eyecode.ui;
 
-import com.eyecode.terminal.TerminalPanel;
+import com.eyecode.terminal.swing.TerminalPanel;
 import com.eyecode.ui.designsystem.ColorManager;
 import com.eyecode.ui.designsystem.IconManager;
 import com.eyecode.ui.designsystem.SpacingSystem;

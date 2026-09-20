@@ -1,4 +1,4 @@
-package com.eyecode.terminal;
+package com.eyecode.terminal.swing;
 
 import com.jediterm.terminal.ProcessTtyConnector;
 import com.pty4j.PtyProcess;

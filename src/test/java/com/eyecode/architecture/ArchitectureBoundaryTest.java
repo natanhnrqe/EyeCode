@@ -55,6 +55,16 @@ class ArchitectureBoundaryTest {
     }
 
     @Test
+    void activeTerminalRuntimeDoesNotDependOnSwingPresentation() throws IOException {
+        assertNoSourceImports(List.of(
+                MAIN_SOURCE.resolve("com/eyecode/terminal/TerminalService.java"),
+                MAIN_SOURCE.resolve("com/eyecode/terminal/TerminalSession.java"),
+                MAIN_SOURCE.resolve("com/eyecode/terminal/TerminalWebSocketTransport.java")),
+                List.of("import com.eyecode.terminal.swing.", "import javax.swing.",
+                        "import java.awt.", "import com.jediterm."));
+    }
+
+    @Test
     void applicationHasNoAdapterReferencesOrHiddenFactory() {
         assertNoClassReferences(WorkspaceApplication.class, TOOLKIT_REFERENCES);
         assertNoClassReferences(WorkspaceApplication.class, List.of("com/eyecode/ui/web/"));

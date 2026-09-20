@@ -80,6 +80,10 @@ Essas regras são protegidas por `ArchitectureBoundaryTest`. Além da inspeção
 
 `EditorManager` possui o lifecycle de sessões, documentos, buffers, views, autosave e file watcher. A inteligência recebe snapshots e eventos versionados; ela não recebe nem possui o documento mutável. Monaco é uma view sincronizada: o controller Web valida a versão e altera `EditorDocument`, que continua a autoridade backend.
 
+### Terminal ownership
+
+`TerminalService`, `TerminalSession` e `TerminalWebSocketTransport` formam o runtime ativo do terminal: o service orquestra sessões, workspace, endpoint e lifecycle; a session contém Pty4J, I/O, resize e stop; o transport loopback autenticado transmite bytes e não decide shell ou processo. A apresentação Swing histórica fica em `terminal.swing` (`TerminalPanel`, connector Pty4J, scrollbar e startup trace) e mantém sua stack JediTerm/Pty4J própria. Ela não é consumida pelo runtime Web.
+
 ## 5. Arquitetura das UIs
 
 ### Swing
