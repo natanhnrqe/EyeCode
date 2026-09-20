@@ -51,6 +51,7 @@ docs/*
 !docs/
 !docs/ARCHITECTURE.md
 !docs/DEVELOPMENT_GUIDE.md
+!docs/GLOBAL_ARCHITECTURE_AUDIT.md
 !docs/WORKSPACE_DECOMPOSITION_REPORT.md
 !docs/adr/
 !docs/adr/*.md

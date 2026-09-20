@@ -80,6 +80,14 @@ Swing é compatibilidade legada. `com.eyecode.swing.SwingMainWindow` compõe `Sw
 
 `com.eyecode.ui` e partes de `editor.v2.ui` ainda contêm telas Swing históricas. Elas não definem APIs para Core novo.
 
+### Legacy desktop compatibility
+
+Swing/JCEF e JavaFX/CEFFX são adapters de compatibilidade, não implementações que o Core, Application ou Web runtime possam consumir. A direção permitida é sempre desktop legado → contracts/capabilities compartilhados; a direção inversa é proibida.
+
+Cada desktop root é localizável: `SwingApplication` → `SwingMainWindow` e `FxApplication` → `FxMainWindow`. Ambos podem compor `WebShellWorkspaceComposition` para reutilizar o Web Shell, mas não introduzem uma UI factory, um provider global ou uma abstração universal de toolkit. `WebShellSurface`, `WebShellNativeUi`, `WebShellNativeFileSelection`, `WebShellWindowControls`, `EditorViewFactory`, `FileSystemService` e os serviços de workspace são as seams existentes.
+
+Novo comportamento compartilhável pertence a Core, Application ou contratos Web neutros; não deve ser colocado em `swing`, `javafx`, `ui` Swing histórico ou `editor.v2.ui` só porque o primeiro caller é desktop. Código desktop novo deve adaptar uma capability existente. Remoção futura de um adapter exige prova de ausência de consumidores, entrypoint manual/documentado, configuração reflexiva e cobertura relevante.
+
 ### Runtime Web principal
 
 `LocalWebShellLauncher` inicia `LocalWebShellRuntime`, que cria `LocalWebShellSurface` e chama `WebShellWorkspaceComposition`. A composição escolhe explicitamente `DefaultFileSystemService`, um único `EventBus`, `ProjectFileOperationService`, `WebShellEditorViewFactory`, `EditorManager`, `ProjectLifecycleService`, `RunService`, `TerminalService` e `MavenProjectCreationService`. Ela também cria os controllers e devolve `WebShellWorkspaceRuntime`, o owner do conjunto. A surface sobe HTTP e WebSocket em loopback, injeta a configuração de bootstrap/token no frontend empacotado e publica sua URL. React usa `EyeCodeBridge` e `LocalWebSocketTransport`; Monaco continua no frontend.

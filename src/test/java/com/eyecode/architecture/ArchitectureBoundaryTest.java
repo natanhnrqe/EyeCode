@@ -11,6 +11,7 @@ import com.eyecode.ui.web.WebShellDiagnosticsController;
 import com.eyecode.ui.web.WebShellLearningController;
 import com.eyecode.ui.web.WebShellLessonsController;
 import com.eyecode.ui.web.WebShellWorkspaceComposition;
+import com.eyecode.ui.web.WebShellWorkspaceRuntime;
 import com.eyecode.ui.web.WebShellWorkspaceController;
 import org.junit.jupiter.api.Test;
 
@@ -147,6 +148,39 @@ class ArchitectureBoundaryTest {
         }
         assertNoClassReferences(WebShellWorkspaceController.class, List.of("java/nio/file/Files"));
         assertNoClassReferences(webClass("WebShellDocumentController"), List.of("java/nio/file/Files"));
+    }
+
+    @Test
+    void activeServicesDoNotReferenceDesktopImplementations() throws IOException {
+        assertNoSourceImports(List.of(
+                MAIN_SOURCE.resolve("com/eyecode/application"),
+                MAIN_SOURCE.resolve("com/eyecode/workbench"),
+                MAIN_SOURCE.resolve("com/eyecode/runtime"),
+                MAIN_SOURCE.resolve("com/eyecode/filesystem"),
+                MAIN_SOURCE.resolve("com/eyecode/language"),
+                MAIN_SOURCE.resolve("com/eyecode/lessons"),
+                MAIN_SOURCE.resolve("com/eyecode/eventbus")), UI_IMPORTS);
+        for (Class<?> type : List.of(EditorManager.class, WorkspaceApplication.class,
+                com.eyecode.project.ProjectLifecycleService.class,
+                com.eyecode.runtime.RunService.class,
+                com.eyecode.runtime.RunSession.class,
+                com.eyecode.filesystem.DefaultFileSystemService.class)) {
+            assertNoClassReferences(type, TOOLKIT_REFERENCES);
+        }
+    }
+
+    @Test
+    void activeWebContractsAndCompositionDoNotReferenceNativeDesktopAdapters() {
+        for (Class<?> type : List.of(WebShellWorkspaceComposition.class,
+                WebShellWorkspaceRuntime.class,
+                com.eyecode.ui.web.WebShellEnvelope.class,
+                com.eyecode.ui.web.WebShellSurface.class,
+                com.eyecode.ui.web.WebShellDispatcher.class,
+                WebShellWorkspaceController.class,
+                webClass("WebShellDocumentController"),
+                webClass("WebShellExecutionController"))) {
+            assertNoClassReferences(type, TOOLKIT_REFERENCES);
+        }
     }
 
     @Test

@@ -61,6 +61,8 @@ Não use container DI, singleton global ou uma interface nova caso não exista u
 
 Swing é compatibilidade. Primeiro confirme que a regra não pertence ao Core ou ao Web Shell compartilhado.
 
+Não coloque comportamento novo em packages desktop legados quando ele puder ser expresso como capability compartilhada. `swing`, `javafx`, `ui` histórico e `editor.v2.ui` adaptam contracts existentes; Core, Application, runtime, project, language, lessons e os controllers Web não podem importar implementações Swing, JavaFX, JCEF ou CEFFX.
+
 1. Coloque a implementação visual em `com.eyecode.swing` ou no componente legado responsável.
 2. Para uma capacidade Web Shell, implemente/adapte `WebShellNativeUi` ou `WebShellSurface`; não bifurque o controller de workspace.
 3. Não importe `com.eyecode.javafx.*`.
