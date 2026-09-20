@@ -8,7 +8,7 @@ The active product path is Web-first and its dependency direction is substantial
 
 `LocalWebShellLauncher -> LocalWebShellRuntime -> WebShellWorkspaceComposition -> application/workbench/project/runtime/terminal -> WebShell protocol -> React/Monaco`.
 
-The main architectural pressure is not a Maven, Web, language, or Presentation leak. It is the coexistence of substantial Swing/JavaFX generations beside the active Web composition, plus a few package-level cycles around the editor model. The recommended next frontier is therefore **legacy desktop containment at the package boundary**, beginning with an evidence-backed ownership map and compatibility seams, not deletion or a new UI abstraction.
+The main architectural pressure is not a Maven, Web, language, or Presentation leak. The former desktop-containment, document-cycle and terminal-package findings have now been addressed at their proven boundaries. Remaining desktop generations are contained legacy rather than an active-path refactoring frontier.
 
 ## 1. Production package map
 
@@ -38,7 +38,7 @@ The table groups every production package family; an asterisk includes its liste
 | `run` | Older direct Java/Maven runner stack | DESKTOP_LEGACY | Legacy candidate, not active Web runtime |
 | `runtime` | Current run lifecycle, configuration, resolution, process session | APPLICATION / INFRASTRUCTURE | Active; semantically mixed |
 | `swing`, `ui`, `ui.core`, `ui.editor`, `ui.scroll`, `ui.swing` | Swing desktop windows, components and design system | DESKTOP_LEGACY | Legacy required |
-| `terminal` | Web terminal service/session/transport plus Swing terminal widget | MIXED | Active core/Web plus legacy UI |
+| `terminal`, `terminal.swing` | Web terminal service/session/transport and isolated Swing/JediTerm presentation | INFRASTRUCTURE / DESKTOP_LEGACY | Active runtime and contained legacy UI |
 | `ui.designsystem` | Shared color/typography/spacing/icon services | UTILITY | Active shared |
 | `ui.web`, `ui.web.learning`, `ui.web.monaco` | Envelope/dispatcher, HTTP/WebSocket and native surfaces, Web controllers, Monaco payloads | WEB_UI / ADAPTER / COMPOSITION | Active |
 | `workbench.editor`, `workbench.toolwindow` | Editor session lifecycle, autosave integration, workbench state | APPLICATION | Active |
@@ -74,7 +74,7 @@ Static import analysis found package-level mutual references. Most are intra-fea
 | `language.semantic <-> language.symbol` and `language.java <-> semantic/symbol` | BENIGN / review on next language change | Resolver and symbol model collaborate bidirectionally inside one language implementation. |
 | `language.java <-> workbench.editor` | BENIGN bridge | Event bridges connect document changes to lexer/parser updates; composition owns lifecycle. |
 | `eventbus.events <-> workbench.editor/toolwindow` | STRUCTURAL_DEBT | Some event DTOs carry workbench types, which makes generic event packages less neutral. |
-| `terminal <-> ui` | LEGACY_DEBT | Swing terminal/UI references coexist with the active terminal service. |
+| `terminal.swing <-> ui` | LEGACY_ONLY | The isolated Swing terminal presentation consumes historical Swing UI support; active terminal runtime has no reverse dependency. |
 | `ui <-> ui.editor`, `editor.v2 <-> v2.*` | BENIGN legacy implementation cycles | Historical Swing composition and editor implementation. |
 | `lessons.catalog <-> content`, `learning.content <-> model/html` | BENIGN feature cohesion | Content parsing/model APIs are mutually referenced. |
 
@@ -173,7 +173,7 @@ Frontend/backend duplication is largely a required presentation mirror: protocol
 
 Tests are concentrated in Java unit/integration packages: language (74), editor (47), JavaFX (35), learning (32), UI (19), runtime/project/workbench/Web integration. Real temporary filesystem/process/Web tests are deliberate. Environment-sensitive clipboard tests remain isolated historical Swing behavior. Critical coverage includes `ArchitectureBoundaryTest`, Web asset/runtime/protocol tests, lifecycle tests, and real run/stop tests. Gaps: no frontend unit-test suite was found, and documentation rules around legacy package containment are only partially automated.
 
-`docs/ARCHITECTURE.md`, `DEVELOPMENT_GUIDE.md`, and ADRs 0001–0003 broadly match code. Minor divergence: architecture prose calls `editor.intelligence` wholly Core while its transaction implementation imports `editor.v2` model/command types; that is a package-boundary qualification, not a toolkit violation. No documentation was changed here except this audit report.
+`docs/ARCHITECTURE.md`, `DEVELOPMENT_GUIDE.md`, and ADRs 0001–0005 match the active composition and the post-refactor ownership boundaries. The remaining `ui.web` native adapter implementations are legacy desktop adapters selected only by desktop roots; the local launcher composes unavailable native UI and remains toolkit-free.
 
 ## 30. Renewability matrix
 
@@ -194,19 +194,28 @@ Tests are concentrated in Java unit/integration packages: language (74), editor 
 
 ## 31–33. SOLID, risks, and debt
 
-Top findings: (1) S—legacy `RichEditorView` and desktop roots aggregate many UI concerns (**legacy debt**); (2) S/O—`runtime` combines resolver/process/Maven concepts (**minor debt**, no proven abstraction yet); (3) D—`editor.intelligence.document` imports v2 model/command (**structural debt**); (4) D—event DTOs carry workbench types (**minor debt**); (5) I/D—terminal service is cohesive but shares a package with Swing terminal widgets (**structural package debt**); (6) O—`ProjectExecutionResolver` would change for a real second build tool, accepted until that implementation exists; (7) static native UI toggles are legacy global state; (8) synchronous EventBus propagates subscriber failures, accepted by contract.
+Top findings: (1) S—legacy `RichEditorView` and desktop roots aggregate many UI concerns (**legacy debt**); (2) S/O—`runtime` combines resolver/process/Maven concepts (**minor debt**, no proven abstraction yet); (3) D—event DTOs carry workbench types (**minor debt**); (4) O—`ProjectExecutionResolver` would change for a real second build tool, accepted until that implementation exists; (5) static native UI toggles are legacy global state; (6) synchronous EventBus propagates subscriber failures, accepted by contract.
 
-Top risks: legacy desktop blast radius (high/medium); editor document-v2 cycle (medium/medium); terminal package mixing (medium/medium); unbounded cached HTTP/run stream pools (medium/low); native JCEF singleton lifecycle (medium/low); Java parser/Rich Swing view size (medium/medium); partial Gradle branches (medium/low); synchronous EventBus failure propagation (medium/low); static legacy UI flags (low/medium); no frontend unit suite (medium/medium).
+Top risks: unbounded cached HTTP/run stream pools (medium/low); synchronous EventBus failure propagation (medium/low); partial Gradle branches (medium/low); and the absence of a frontend unit-test suite (medium/medium). Desktop UI/JCEF size and static toggles remain legacy risks, not active Web architecture risks.
 
-Debt register: **minor**—runtime semantic mix, event DTO coupling, system-property/native flags; **structural**—editor document/v2 and terminal/UI package cycles; **legacy**—Swing/JavaFX editors, command/run/explorer generations; **accepted**—Maven-specific resolver and Java-specific language implementations until a second real consumer exists.
+Debt register: **minor**—runtime semantic mix, event DTO coupling and process-local catalog mutability; **structural**—none that currently violate an active dependency direction; **legacy**—Swing/JavaFX editors, native adapters, command/run/explorer generations; **accepted**—Maven-specific resolver and Java-specific language implementations until a second real consumer exists.
 
-## 34–36. Candidate frontiers and recommendation
+## 34–36. Historical candidate frontiers and recommendation
 
-1. **Desktop legacy containment**. Why now: active Web is stable while JavaFX/Swing/older UI remain large and mixed with compatibility services. Benefit: reduced blast radius and clearer deletion/migration evidence. Risk: high if behavior is accidentally moved. Do not touch Web protocol, language core, or Presentation.
-2. **Editor model package boundary**. Why now: the only meaningful active-core cycle is `editor.intelligence.document <-> editor.v2`. Benefit: clarify document/transaction ownership. Risk: broad editor/language/test impact. Do not change smart-edit behavior or UI adapters in the first step.
-3. **Terminal core versus Swing widget separation**. Why now: active terminal service/transport and Swing terminal presentation share one package. Benefit: a clear process/transport boundary. Risk: medium; terminal lifecycle is sensitive. Do not replace PTY or WebSocket semantics.
+1. **Desktop legacy containment** — completed; desktop adapters remain isolated behind existing seams.
+2. **Editor model package boundary** — completed; immutable document values no longer depend on `editor.v2`.
+3. **Terminal core versus Swing widget separation** — completed; Swing/JediTerm presentation is in `terminal.swing`.
 
-**Recommendation: desktop legacy containment.** The evidence is architectural, not LOC-only: active Web composition has clean directional tests, whereas two desktop generations and experimental native browser code coexist with divergent ownership. Start with a future, separately approved inventory-and-boundary sprint; do not delete, move, or abstract during this audit.
+The following post-refactor status supersedes the historical frontier recommendation.
+
+## Post-refactor status
+
+- Desktop containment is complete for the active Web composition: `LocalWebShellLauncher`, `LocalWebShellRuntime`, `LocalWebShellSurface`, controllers and composition do not bootstrap a desktop toolkit. Native Swing/JavaFX implementations remain compatibility adapters selected only by their desktop roots.
+- The `editor.intelligence.document <-> editor.v2` cycle is removed. `EditorDocument` remains mutable text/version/dirty authority, `EditorBuffer` owns interaction/history state, immutable document values remain analytical views, and `DocumentTransaction` is owned beside the command executor.
+- Terminal Swing presentation is separated in `terminal.swing`. The active `TerminalService`, `TerminalSession` and `TerminalWebSocketTransport` do not depend on that package or Swing/JediTerm.
+- Architecture tests protect application, Web composition/controller, language neutrality, document-value and active-terminal boundaries. The remaining mutual references are either feature-internal or legacy-only.
+- Current validated baseline: 2176 tests, 0 failures, 0 errors and 7 skipped; frontend typecheck and production build pass.
+- **Structural freeze recommendation: recommended.** No remaining active-layer dependency violation, duplicate authority, critical active cycle, or unowned lifecycle/resource evidence justifies another architectural refactor before feature work.
 
 ## 37–44. Validation and audit integrity
 

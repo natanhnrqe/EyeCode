@@ -281,7 +281,7 @@ Maven execution remains concrete inside `ProjectExecutionResolver`/`MavenClasspa
 | `workbench`, `project` | APPLICATION | Editor/workspace use cases; some historical imports from legacy UI remain outside the new Web runtime path. |
 | `filesystem` | PORT + INFRASTRUCTURE | `FileSystemService` abstracts workspace persistence for the editor; `Path` remains a JDK value type. Project file operations still use NIO directly and are a coherent concrete filesystem service. |
 | `runtime` | APPLICATION + INFRASTRUCTURE | Run lifecycle is application-facing; process creation, Maven classpath resolution and settings persistence are concrete infrastructure. |
-| `terminal` | INFRASTRUCTURE / LEGACY UI MIX | `TerminalService` and session transport are active; Swing terminal widgets are legacy UI in the same historical package. Do not move without a behavior-specific split. |
+| `terminal`, `terminal.swing` | INFRASTRUCTURE / LEGACY UI | `TerminalService` and session transport are active in `terminal`; Swing/JediTerm widgets are isolated in `terminal.swing` and are not consumed by the Web runtime. |
 | `eventbus` | INFRASTRUCTURE | In-memory synchronous application event mechanism; not RPC or WebSocket. |
 | `ui.web`, `src/main/web` | ADAPTER / UI | Stable internal protocol and Web/React frontend. `MonacoWorkspaceService` is the frontend integration boundary. |
 | `javafx`, `swing`, historical `ui` | LEGACY_BUT_REQUIRED | Entry points, integration tests, native callbacks and manual diagnostics still exist. No deletion evidence. |
