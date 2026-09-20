@@ -1,10 +1,10 @@
-package com.eyecode.editor.intelligence.document;
+package com.eyecode.editor.v2.command;
 
+import com.eyecode.editor.intelligence.document.TextRange;
 import com.eyecode.editor.intelligence.events.DocumentChangeListener;
 import com.eyecode.editor.intelligence.events.DocumentTextChangeEvent;
-import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.editor.v2.EditorBuffer;
-import com.eyecode.editor.v2.command.CommandManager;
+import com.eyecode.editor.v2.EditorDocument;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

@@ -1,10 +1,10 @@
 package com.eyecode.editor.intelligence.pipeline;
 
 import com.eyecode.editor.intelligence.document.DocumentSnapshot;
-import com.eyecode.editor.intelligence.document.DocumentTransaction;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorPosition;
 import com.eyecode.editor.v2.EditorSelection;
+import com.eyecode.editor.v2.command.DocumentTransaction;
 
 /**
  * Context handed to an {@link EditorCommand} when it executes.

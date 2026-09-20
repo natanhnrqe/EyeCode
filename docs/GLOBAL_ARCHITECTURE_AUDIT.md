@@ -70,7 +70,7 @@ Static import analysis found package-level mutual references. Most are intra-fea
 
 | Cycle | Classification | Evidence |
 | --- | --- | --- |
-| `editor.intelligence.document <-> editor.v2` | STRUCTURAL_DEBT | `DocumentTransaction` depends on `EditorDocument`/`CommandManager`; v2 model exposes intelligence snapshots. No toolkit leak, but package ownership is blurred. |
+| `editor.intelligence.document <-> editor.v2` | RESOLVED | Immutable document values remain in `editor.intelligence.document`; `DocumentTransaction` moved beside `CommandManager` in `editor.v2.command`, removing the reverse dependency. |
 | `language.semantic <-> language.symbol` and `language.java <-> semantic/symbol` | BENIGN / review on next language change | Resolver and symbol model collaborate bidirectionally inside one language implementation. |
 | `language.java <-> workbench.editor` | BENIGN bridge | Event bridges connect document changes to lexer/parser updates; composition owns lifecycle. |
 | `eventbus.events <-> workbench.editor/toolwindow` | STRUCTURAL_DEBT | Some event DTOs carry workbench types, which makes generic event packages less neutral. |

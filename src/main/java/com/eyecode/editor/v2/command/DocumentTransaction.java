@@ -1,7 +1,7 @@
-package com.eyecode.editor.intelligence.document;
+package com.eyecode.editor.v2.command;
 
+import com.eyecode.editor.intelligence.document.TextRange;
 import com.eyecode.editor.v2.EditorDocument;
-import com.eyecode.editor.v2.command.CommandManager;
 
 /**
  * Groups multiple edits into one atomic unit of work.

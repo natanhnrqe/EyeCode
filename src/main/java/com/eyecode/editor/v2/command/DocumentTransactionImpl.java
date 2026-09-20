@@ -1,11 +1,7 @@
-package com.eyecode.editor.intelligence.document;
+package com.eyecode.editor.v2.command;
 
+import com.eyecode.editor.intelligence.document.TextRange;
 import com.eyecode.editor.v2.EditorDocument;
-import com.eyecode.editor.v2.command.CommandManager;
-import com.eyecode.editor.v2.command.CompositeEditCommand;
-import com.eyecode.editor.v2.command.DeleteTextCommand;
-import com.eyecode.editor.v2.command.EditCommand;
-import com.eyecode.editor.v2.command.InsertTextCommand;
 
 import java.util.ArrayList;
 import java.util.List;

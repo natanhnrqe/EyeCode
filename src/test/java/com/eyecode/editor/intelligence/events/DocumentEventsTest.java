@@ -1,9 +1,9 @@
 package com.eyecode.editor.intelligence.events;
 
-import com.eyecode.editor.intelligence.document.DocumentTransaction;
 import com.eyecode.editor.intelligence.document.TextRange;
 import com.eyecode.editor.v2.EditorBuffer;
 import com.eyecode.editor.v2.EditorDocument;
+import com.eyecode.editor.v2.command.DocumentTransaction;
 import com.eyecode.eventbus.Event;
 import com.eyecode.eventbus.EventBus;
 import org.junit.jupiter.api.Test;

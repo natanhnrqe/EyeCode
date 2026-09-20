@@ -72,6 +72,14 @@ flowchart TB
 
 Essas regras são protegidas por `ArchitectureBoundaryTest`. Além da inspeção de imports dos packages Core, o teste inspeciona referências no bytecode para garantir que `application` não alcança adapters, que controllers não consultam `WorkspaceApplication`, que Workspace não alcança `RunService`/`TerminalService`, e que a composição Web não referencia desktop.
 
+### Document authority and editor ownership
+
+`EditorDocument` é a única autoridade mutável para texto, versão monotônica, `LineMap`, dirty state, source path e batches de mutação. `EditorBuffer` referencia esse documento; ele não replica texto nem versão, e mantém somente estado de interação por buffer — caret, seleção, diagnósticos, completion, contexto de linguagem e histórico de comandos.
+
+`DocumentSnapshot`, `TextRange`, `LineMap`, `TextChange` e `DocumentTextChangeEvent` formam o boundary imutável/observável consumido pela inteligência. `DocumentTransaction` pertence a `editor.v2.command`: é um executor mutável que aplica `EditCommand`s em batch e os registra como uma unidade de undo. Ele não é uma capability de inteligência nem uma descrição imutável de edit.
+
+`EditorManager` possui o lifecycle de sessões, documentos, buffers, views, autosave e file watcher. A inteligência recebe snapshots e eventos versionados; ela não recebe nem possui o documento mutável. Monaco é uma view sincronizada: o controller Web valida a versão e altera `EditorDocument`, que continua a autoridade backend.
+
 ## 5. Arquitetura das UIs
 
 ### Swing

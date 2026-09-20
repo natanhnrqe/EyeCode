@@ -49,6 +49,12 @@ class ArchitectureBoundaryTest {
     }
 
     @Test
+    void immutableDocumentValuesDoNotDependOnEditorImplementation() throws IOException {
+        assertNoSourceImports(List.of(MAIN_SOURCE.resolve("com/eyecode/editor/intelligence/document")),
+                List.of("import com.eyecode.editor.v2."));
+    }
+
+    @Test
     void applicationHasNoAdapterReferencesOrHiddenFactory() {
         assertNoClassReferences(WorkspaceApplication.class, TOOLKIT_REFERENCES);
         assertNoClassReferences(WorkspaceApplication.class, List.of("com/eyecode/ui/web/"));
