@@ -62,8 +62,49 @@ public final class JavaSyntaxDiagnosticAnalyzer {
     private JavaDiagnostic toDiagnostic(JavaDiagnosticRequest request, Diagnostic<? extends JavaFileObject> diagnostic) {
         Range range = range(request.source(), diagnostic.getStartPosition(), diagnostic.getEndPosition());
         return new JavaDiagnostic(request.uri(), request.requestId(), request.modelVersion(), severity(diagnostic.getKind()),
-                diagnostic.getCode(), diagnostic.getMessage(Locale.ROOT), range.startLine(), range.startColumn(),
+                diagnostic.getCode(), category(request.source(), diagnostic, range), diagnostic.getMessage(Locale.ROOT), range.startLine(), range.startColumn(),
                 range.endLine(), range.endColumn());
+    }
+
+    private static String category(String source, Diagnostic<? extends JavaFileObject> diagnostic, Range range) {
+        if (!"compiler.err.expected".equals(diagnostic.getCode())) return "";
+        int start = position(diagnostic.getStartPosition(), source == null ? 0 : source.length(), 0);
+        return hasUnclosedParenthesis(source, start) ? "MISSING_CLOSING_PARENTHESIS" : "";
+    }
+
+    private static boolean hasUnclosedParenthesis(String source, int end) {
+        String text = source == null ? "" : source;
+        int depth = 0;
+        boolean lineComment = false;
+        boolean blockComment = false;
+        boolean string = false;
+        boolean character = false;
+        boolean escaped = false;
+        for (int index = 0; index < Math.min(end, text.length()); index++) {
+            char current = text.charAt(index);
+            char next = index + 1 < text.length() ? text.charAt(index + 1) : '\0';
+            if (lineComment) {
+                if (current == '\n') lineComment = false;
+                continue;
+            }
+            if (blockComment) {
+                if (current == '*' && next == '/') { blockComment = false; index++; }
+                continue;
+            }
+            if (string || character) {
+                if (escaped) { escaped = false; continue; }
+                if (current == '\\') { escaped = true; continue; }
+                if ((string && current == '"') || (character && current == '\'')) { string = false; character = false; }
+                continue;
+            }
+            if (current == '/' && next == '/') { lineComment = true; index++; continue; }
+            if (current == '/' && next == '*') { blockComment = true; index++; continue; }
+            if (current == '"') { string = true; continue; }
+            if (current == '\'') { character = true; continue; }
+            if (current == '(') depth++;
+            if (current == ')' && depth > 0) depth--;
+        }
+        return depth > 0;
     }
 
     static Range range(String source, long startPosition, long endPosition) {

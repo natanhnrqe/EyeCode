@@ -221,8 +221,14 @@ export class MonacoWorkspaceService {
   }
 
   setLessonPracticeIntelligence(uri: string, enabled: boolean): void {
-    if (enabled) this.lessonPracticeUris.add(uri);
-    else this.lessonPracticeUris.delete(uri);
+    if (enabled) {
+      this.lessonPracticeUris.add(uri);
+      const model = this.ephemeralModels.get(uri);
+      if (model) this.scheduleDiagnostics(uri, model);
+    } else {
+      this.lessonPracticeUris.delete(uri);
+      this.invalidateDiagnostics(uri, this.ephemeralModels.get(uri) ?? null);
+    }
   }
 
   activateEphemeralModel(uri: string): void {
@@ -387,7 +393,7 @@ export class MonacoWorkspaceService {
     const model = this.ephemeralModels.get(uri);
     if (!model?.deltaDecorations) return;
     const previous = this.ephemeralDecorations.get(uri) ?? [];
-    const next = model.deltaDecorations(previous, ranges.map(range => ({ range, options: { inlineClassName: 'lesson-highlight' } })));
+    const next = model.deltaDecorations(previous, ranges.map(range => ({ range, options: { isWholeLine: true, className: 'lesson-highlight' } })));
     this.ephemeralDecorations.set(uri, next);
   }
 
@@ -616,9 +622,12 @@ export class MonacoWorkspaceService {
 
   revealDiagnostic(uri: string, diagnostic: WebDiagnostic): void {
     const editor = this.editor;
-    const model = this.models.get(uri);
+    const model = this.models.get(uri) ?? this.ephemeralModels.get(uri);
     if (!editor || !model) return;
-    if (editor.getModel() !== model) this.activate(uri);
+    if (editor.getModel() !== model) {
+      if (this.ephemeralModels.has(uri)) this.activateEphemeralModel(uri);
+      else this.activate(uri);
+    }
     const position = { lineNumber: diagnostic.startLine, column: diagnostic.startColumn };
     editor.setPosition(position);
     editor.revealPositionInCenterIfOutsideViewport(position);
@@ -798,7 +807,7 @@ export class MonacoWorkspaceService {
     if (timer !== undefined) window.clearTimeout(timer);
     const scheduled = window.setTimeout(() => {
       this.diagnosticsTimers.delete(uri);
-      if (this.disposed || this.models.get(uri) !== model) return;
+      if (this.disposed || this.modelForUri(uri) !== model) return;
       const requestId = bridge.reserveRequestId();
       const modelVersion = model.getAlternativeVersionId();
       this.pendingDiagnostics.set(requestId, { uri, model, modelVersion });
@@ -833,7 +842,7 @@ export class MonacoWorkspaceService {
     this.pendingDiagnostics.delete(response.requestId);
     if (!pending || this.latestDiagnosticsRequestIds.get(response.uri) !== response.requestId
         || pending.uri !== response.uri || pending.modelVersion !== response.modelVersion
-        || this.models.get(response.uri) !== pending.model
+        || this.modelForUri(response.uri) !== pending.model
         || pending.model.getAlternativeVersionId() !== response.modelVersion) return;
     const api = this.api;
     if (!api) return;
@@ -842,8 +851,22 @@ export class MonacoWorkspaceService {
       startLineNumber: diagnostic.startLine, startColumn: diagnostic.startColumn,
       endLineNumber: diagnostic.endLine, endColumn: diagnostic.endColumn
     })));
-    this.diagnosticsByUri.set(response.uri, response);
+    this.diagnosticsByUri.set(response.uri, {
+      ...response,
+      diagnostics: response.diagnostics.map(diagnostic => ({ ...diagnostic, sourceExcerpt: this.sourceExcerpt(pending.model, diagnostic) }))
+    });
     this.publishDiagnosticsForActiveModel();
+  }
+
+  private sourceExcerpt(model: MonacoModel, diagnostic: WebDiagnostic) {
+    const lines = model.getValue().split(/\r?\n/);
+    const first = Math.max(1, diagnostic.startLine - 1);
+    const last = Math.min(lines.length, diagnostic.endLine + 1);
+    return {
+      lines: lines.slice(first - 1, last).map((text, index) => ({ lineNumber: first + index, text })),
+      pointerLine: diagnostic.startLine,
+      pointerColumn: Math.max(1, diagnostic.startColumn)
+    };
   }
 
   private markerSeverity(diagnostic: WebDiagnostic): number {
@@ -1315,6 +1338,10 @@ export class MonacoWorkspaceService {
       if (candidate === model) return uri;
     }
     return null;
+  }
+
+  private modelForUri(uri: string): MonacoModel | undefined {
+    return this.models.get(uri) ?? this.ephemeralModels.get(uri);
   }
 
   private applyLessonModelEdit(uri: string, model: MonacoModel,

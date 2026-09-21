@@ -37,6 +37,6 @@ public final class JavaDiagnosticsProvider implements DiagnosticsProvider {
             case WARNING -> DiagnosticSeverity.WARNING;
             case INFO -> DiagnosticSeverity.INFO;
             case HINT -> DiagnosticSeverity.HINT;
-        }, value.code(), value.message(), value.startLine(), value.startColumn(), value.endLine(), value.endColumn());
+        }, value.code(), value.message(), value.startLine(), value.startColumn(), value.endLine(), value.endColumn(), value.category());
     }
 }

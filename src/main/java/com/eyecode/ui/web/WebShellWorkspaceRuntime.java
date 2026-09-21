@@ -1,6 +1,7 @@
 package com.eyecode.ui.web;
 
 import com.eyecode.application.WorkspaceApplication;
+import com.eyecode.language.java.lsp.JdtLsProjectService;
 
 import java.util.Objects;
 
@@ -9,6 +10,7 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
     private final WebShellWorkspaceController workspaceController;
     private final WebShellDocumentController documentController;
     private final WebShellCompletionController completionController;
+    private final JdtLsProjectService jdt;
     private final WebShellLearningController learningController;
     private final WebShellLessonsController lessonsController;
     private final WebShellDiagnosticsController diagnosticsController;
@@ -19,6 +21,7 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
                              WebShellWorkspaceController workspaceController,
                              WebShellDocumentController documentController,
                              WebShellCompletionController completionController,
+                             JdtLsProjectService jdt,
                              WebShellLearningController learningController,
                              WebShellLessonsController lessonsController,
                              WebShellDiagnosticsController diagnosticsController,
@@ -27,6 +30,7 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
         this.workspaceController = Objects.requireNonNull(workspaceController, "workspaceController");
         this.documentController = Objects.requireNonNull(documentController, "documentController");
         this.completionController = Objects.requireNonNull(completionController, "completionController");
+        this.jdt = Objects.requireNonNull(jdt, "jdt");
         this.learningController = Objects.requireNonNull(learningController, "learningController");
         this.lessonsController = Objects.requireNonNull(lessonsController, "lessonsController");
         this.diagnosticsController = Objects.requireNonNull(diagnosticsController, "diagnosticsController");
@@ -40,6 +44,7 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
         workspaceController.dispose();
         documentController.dispose();
         completionController.dispose();
+        jdt.close();
         learningController.dispose();
         lessonsController.closeActiveSession();
         diagnosticsController.dispose();

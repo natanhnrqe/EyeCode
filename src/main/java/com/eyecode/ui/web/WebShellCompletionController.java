@@ -60,14 +60,12 @@ public final class WebShellCompletionController {
             EditorSession session = sessionForModel(modelId);
             boolean lessonPractice = isLessonPracticeRequest(message.payload(), modelId);
             if (session == null && !lessonPractice) {
-                publish(message, responsePayload(message, modelId, List.of()));
+                publish(message, responsePayload(message, modelId, numberLong(message.payload(), "version", 0), List.of()));
                 return;
             }
-            String content = text(message.payload(), "content");
-            if (content.isEmpty() && !lessonPractice) {
-                content = manager.getBuffer(session.getSessionId())
-                        .map(buffer -> buffer.getDocument().snapshot().getText()).orElse("");
-            }
+            var snapshot = session == null ? null : manager.getBuffer(session.getSessionId())
+                    .map(buffer -> buffer.getDocument().snapshot()).orElse(null);
+            String content = snapshot == null ? text(message.payload(), "content") : snapshot.getText();
             int offset = number(message.payload(), "offset", -1);
             if (offset < 0) {
                 int line = number(message.payload(), "line", 1);
@@ -79,12 +77,13 @@ public final class WebShellCompletionController {
             LanguageDocument document = new LanguageDocument(modelId, session == null ? null : session.getFile(),
                     session == null ? text(message.payload(), "displayName") : session.getDisplayName(),
                     LanguageId.parse(text(message.payload(), "language")).orElse(null));
+            long version = snapshot == null ? numberLong(message.payload(), "version", 0) : snapshot.version();
             CompletionResult result = completionService.complete(new CompletionRequest(document,
-                    numberLong(message.payload(), "version", 0), content, offset,
+                    version, content, offset,
                     Boolean.TRUE.equals(message.payload().get("explicit")),
                     number(message.payload(), "replaceStart", -1), number(message.payload(), "replaceEnd", -1)));
             if (isLatest(modelId, message.requestId())) {
-                publish(message, responsePayload(message, modelId, result.candidates()));
+                publish(message, responsePayload(message, modelId, version, result.candidates()));
             }
         } catch (RuntimeException exception) {
             if (!isLatest(modelId, message.requestId())) return;
@@ -107,7 +106,7 @@ public final class WebShellCompletionController {
         return message.response(Map.of("accepted", accepted, "requestId", message.requestId()));
     }
 
-    private Map<String, Object> responsePayload(WebShellEnvelope message, String modelId,
+    private Map<String, Object> responsePayload(WebShellEnvelope message, String modelId, long version,
                                                   List<CompletionCandidate> items) {
         List<Map<String, Object>> serialized = new ArrayList<>();
         for (CompletionCandidate item : items) {
@@ -133,7 +132,7 @@ public final class WebShellCompletionController {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("requestId", message.requestId());
         response.put("uri", modelId);
-        response.put("version", numberLong(message.payload(), "version", 0));
+        response.put("version", version);
         response.put("items", serialized);
         return response;
     }

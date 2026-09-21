@@ -139,6 +139,7 @@ class ArchitectureBoundaryTest {
                 com.eyecode.language.diagnostics.DiagnosticsRequest.class)) {
             assertNoClassReferences(type, TOOLKIT_REFERENCES);
             assertNoClassReferences(type, List.of("com/eyecode/ui/web/", "com/eyecode/ui/web/monaco/"));
+            assertNoClassReferences(type, List.of("org/eclipse/lsp4j/"));
         }
         assertNoClassReferences(EditorManager.class, List.of("com/eyecode/language/java/"));
         assertNoClassReferences(WebShellCompletionController.class, List.of(

@@ -20,12 +20,15 @@ import com.eyecode.language.completion.CompletionCandidate;
 import com.eyecode.language.completion.CompletionRequest;
 import com.eyecode.language.completion.CompletionResult;
 import com.eyecode.language.completion.CompletionProvider;
+import com.eyecode.language.java.lsp.JdtLsProjectService;
 
 import java.util.List;
+import java.util.Optional;
 
 public final class JavaCompletionProvider implements CompletionProvider {
     private final JavaSyntaxAnalyzer syntaxAnalyzer;
     private final CompletionEngine engine;
+    private final JdtLsProjectService jdt;
 
     public JavaCompletionProvider() {
         this(new JavaSyntaxAnalyzer(), new CompletionEngine(List.of(
@@ -35,12 +38,25 @@ public final class JavaCompletionProvider implements CompletionProvider {
                 new JavaStandardLibraryProvider(),
                 new JavaSnippetProvider(),
                 new SemanticCompletionProvider(new SemanticSymbolRegistry())
-        )));
+        )), null);
     }
 
     JavaCompletionProvider(JavaSyntaxAnalyzer syntaxAnalyzer, CompletionEngine engine) {
+        this(syntaxAnalyzer, engine, null);
+    }
+
+    public JavaCompletionProvider(JdtLsProjectService jdt) {
+        this(new JavaSyntaxAnalyzer(), new CompletionEngine(List.of(
+                new JavaKeywordCompletionProvider(), new JavaSemanticMemberCompletionProvider(),
+                new JavaKnowledgeBaseProvider(), new JavaStandardLibraryProvider(), new JavaSnippetProvider(),
+                new SemanticCompletionProvider(new SemanticSymbolRegistry())
+        )), jdt);
+    }
+
+    JavaCompletionProvider(JavaSyntaxAnalyzer syntaxAnalyzer, CompletionEngine engine, JdtLsProjectService jdt) {
         this.syntaxAnalyzer = syntaxAnalyzer;
         this.engine = engine;
+        this.jdt = jdt;
     }
 
     @Override
@@ -50,6 +66,10 @@ public final class JavaCompletionProvider implements CompletionProvider {
 
     @Override
     public CompletionResult complete(CompletionRequest request) {
+        Optional<CompletionResult> semantic = Optional.empty();
+        if (jdt != null) {
+            semantic = jdt.complete(request);
+        }
         EditorDocument document = new EditorDocument(request.document().sourceFile(), request.source());
         EditorPosition caret = document.positionOf(request.caretOffset());
         LanguageContext context = new LanguageContext(document, caret, new EditorSelection(caret, caret),
@@ -61,9 +81,15 @@ public final class JavaCompletionProvider implements CompletionProvider {
         int end = request.replaceEnd() >= request.caretOffset() ? request.replaceEnd() : request.caretOffset();
         int boundedStart = Math.max(0, Math.min(start, request.source().length()));
         int boundedEnd = Math.max(boundedStart, Math.min(end, request.source().length()));
-        return new CompletionResult(snapshot.getItems().stream()
+        CompletionResult local = new CompletionResult(snapshot.getItems().stream()
                 .limit(100)
                 .map(item -> candidate(item, boundedStart, boundedEnd, prefix)).toList());
+        return selectJdtOrFallback(semantic, local);
+    }
+
+    static CompletionResult selectJdtOrFallback(Optional<CompletionResult> jdtResult,
+                                                CompletionResult fallback) {
+        return jdtResult.orElse(fallback);
     }
 
     private CompletionCandidate candidate(CompletionItem item, int replaceStart, int replaceEnd, String prefix) {

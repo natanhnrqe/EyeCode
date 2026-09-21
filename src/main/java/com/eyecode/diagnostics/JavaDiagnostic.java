@@ -6,6 +6,7 @@ public record JavaDiagnostic(
         long modelVersion,
         JavaDiagnosticSeverity severity,
         String code,
+        String category,
         String message,
         int startLine,
         int startColumn,
@@ -17,6 +18,7 @@ public record JavaDiagnostic(
         requestId = requestId == null ? "" : requestId;
         severity = severity == null ? JavaDiagnosticSeverity.HINT : severity;
         code = code == null ? "" : code;
+        category = category == null ? "" : category;
         message = message == null ? "" : message;
         startLine = Math.max(1, startLine);
         startColumn = Math.max(1, startColumn);

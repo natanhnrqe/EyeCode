@@ -35,6 +35,19 @@ class JavaSyntaxDiagnosticAnalyzerTest {
     }
 
     @Test
+    void missingClosingParenthesisGetsStructuredCategory() {
+        JavaDiagnosticsResult result = analyzer.analyze(request("class Main { void run() { if (idade >= 18 { } } }"));
+        JavaDiagnostic diagnostic = result.diagnostics().getFirst();
+        assertEquals("MISSING_CLOSING_PARENTHESIS", diagnostic.category());
+    }
+
+    @Test
+    void unsupportedExpectedTokenKeepsTechnicalFallbackCategoryEmpty() {
+        JavaDiagnosticsResult result = analyzer.analyze(request("class Main { void run() { int value = 1 } }"));
+        assertTrue(result.diagnostics().stream().allMatch(diagnostic -> diagnostic.category().isEmpty()));
+    }
+
+    @Test
     void preservesRequestIdentityAndValidRanges() {
         JavaDiagnosticsResult result = analyzer.analyze(new JavaDiagnosticRequest("file:///C:/project/Main.java", "42", 19,
                 "class Main { void run() { int value = ; } }"));

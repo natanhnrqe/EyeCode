@@ -10,8 +10,11 @@ import com.eyecode.language.ExtensionDocumentLanguageResolver;
 import com.eyecode.language.LanguageId;
 import com.eyecode.language.completion.CompletionService;
 import com.eyecode.language.diagnostics.DiagnosticsService;
+import com.eyecode.language.diagnostics.DiagnosticsEducationService;
 import com.eyecode.diagnostics.JavaDiagnosticsProvider;
+import com.eyecode.diagnostics.JavaDiagnosticExplainer;
 import com.eyecode.language.java.completion.JavaCompletionProvider;
+import com.eyecode.language.java.lsp.JdtLsProjectService;
 import com.eyecode.language.java.JavaEditorIntelligence;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.project.MavenProjectCreationService;
@@ -67,8 +70,10 @@ public final class WebShellWorkspaceComposition {
         DocumentLanguageResolver languageResolver = new ExtensionDocumentLanguageResolver(
                 Map.of(LanguageId.JAVA, Set.of("java")));
         DiagnosticsService diagnostics = new DiagnosticsService(languageResolver, List.of(new JavaDiagnosticsProvider()));
-        CompletionService completion = new CompletionService(languageResolver, List.of(new JavaCompletionProvider()));
-        WebShellDiagnosticsController diagnosticsController = new WebShellDiagnosticsController(surface, diagnostics);
+        DiagnosticsEducationService education = new DiagnosticsEducationService(languageResolver, List.of(new JavaDiagnosticExplainer()));
+        JdtLsProjectService jdt = new JdtLsProjectService(projectLifecycleService);
+        CompletionService completion = new CompletionService(languageResolver, List.of(new JavaCompletionProvider(jdt)));
+        WebShellDiagnosticsController diagnosticsController = new WebShellDiagnosticsController(surface, diagnostics, education);
         WebShellExecutionController executionController = new WebShellExecutionController(surface,
                 projectLifecycleService, runService, terminalService);
         WorkspaceProjects projects = new WorkspaceProjects(projectLifecycleService, editorManager,
@@ -76,7 +81,8 @@ public final class WebShellWorkspaceComposition {
         ProjectExplorerQuery explorer = new ProjectExplorerQuery();
         WebShellNativeFileSelection selection = nativeUi == null ? WebShellNativeUi.unavailable() : nativeUi;
         WebShellDocumentController documentController = new WebShellDocumentController(surface,
-                documentationOpener, documentationHost, selection, editorManager, diagnosticsController, languageResolver);
+                documentationOpener, documentationHost, selection, editorManager, diagnosticsController, languageResolver,
+                jdt::closeDocument);
         WebShellWorkspaceController workspaceController = new WebShellWorkspaceController(surface,
                 selection, editorManager, projects, explorer, fileOperations, documentController, executionController);
         WebShellCompletionController completionController = new WebShellCompletionController(surface, editorManager,
@@ -84,7 +90,7 @@ public final class WebShellWorkspaceComposition {
         WebShellLearningController learningController = new WebShellLearningController(surface, editorManager,
                 documentController::openDocumentationTarget, documentController::openJdkSource);
         WebShellLessonsController lessonsController = new WebShellLessonsController(surface);
-        return new WebShellWorkspaceRuntime(application, workspaceController, documentController, completionController,
+        return new WebShellWorkspaceRuntime(application, workspaceController, documentController, completionController, jdt,
                 learningController, lessonsController, diagnosticsController, executionController);
     }
 }

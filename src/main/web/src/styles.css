@@ -445,20 +445,6 @@ html, body, #root {
   pointer-events: auto;
 }
 
-.collapsed-lesson-header {
-  z-index: 4;
-  display: flex;
-  grid-column: 2 / 4;
-  grid-row: 1;
-  min-width: 0;
-  padding: 8px 14px;
-  align-self: start;
-  justify-content: space-between;
-  color: var(--eyecode-text-secondary);
-  font: 11px/1.3 var(--eyecode-font-ui);
-  pointer-events: none;
-}
-
 .dock-layout.is-learn-explorer-collapsed [data-dock-path='root-first'] {
   grid-template-columns: 0 0 minmax(0, 1fr) !important;
   transition: grid-template-columns 160ms ease;
@@ -804,12 +790,26 @@ html, body, #root {
 .learning-tab h2 { margin: 20px 0 8px; color: var(--eyecode-text); font: 700 15px/1.35 var(--eyecode-font-ui); }
 .learning-tab-lead { margin: 0 0 18px; color: var(--eyecode-text-secondary); }
 .learning-panel-kicker { margin: 0 0 8px; color: var(--eyecode-accent-bright); font: 700 10px/1.2 var(--eyecode-font-ui); letter-spacing: .09em; text-transform: uppercase; }
+.exercise-header { margin-bottom: 18px; }
+.exercise-header .learning-panel-kicker { display: flex; justify-content: space-between; gap: 10px; }
+.exercise-header .learning-panel-kicker span { color: var(--eyecode-text-secondary); }
 .exercise-task { padding: 14px; border: 1px solid var(--eyecode-border); border-radius: var(--eyecode-radius-md); background: color-mix(in srgb, var(--eyecode-surface-elevated) 58%, var(--surface-editor)); }
 .exercise-task h2 { margin-top: 0; }
 .exercise-task > p { margin: 0 0 14px; color: var(--eyecode-text); }
 .exercise-feedback { margin: 12px 0; padding: 10px 11px; border-left: 3px solid #e0848e; background: rgba(224, 132, 142, .10); color: var(--eyecode-text-secondary); }
 .exercise-feedback.is-success { border-left-color: #81d58b; background: rgba(129, 213, 139, .10); }
 .exercise-feedback p { margin: 4px 0 0; }
+.exercise-help-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.exercise-help-actions button, .exercise-stuck-choices button, .exercise-guidance button { min-height: 32px; padding: 6px 10px; border: 1px solid var(--eyecode-border-strong); border-radius: var(--eyecode-radius-sm); background: var(--eyecode-surface-elevated); color: var(--eyecode-text); font: 600 12px var(--eyecode-font-ui); }
+.exercise-help-actions button:hover, .exercise-stuck-choices button:hover, .exercise-guidance button:hover { border-color: var(--eyecode-accent); background: var(--eyecode-hover); }
+.exercise-hints, .exercise-stuck { display: grid; gap: 9px; margin-top: 12px; padding: 12px; border: 1px solid var(--eyecode-border); border-radius: var(--eyecode-radius-md); background: color-mix(in srgb, var(--eyecode-surface-elevated) 42%, var(--surface-editor)); }
+.exercise-hints > div { padding-left: 10px; border-left: 3px solid var(--eyecode-accent-bright); }
+.exercise-hints .lesson-callout { margin: 5px 0 0; padding: 0; border: 0; background: transparent; }
+.exercise-hints .lesson-callout > strong { display: none; }
+.exercise-stuck h2 { margin: 0; font-size: 14px; }
+.exercise-stuck-choices { display: flex; flex-wrap: wrap; gap: 7px; }
+.exercise-guidance { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 4px; color: var(--eyecode-text-secondary); }
+.exercise-guidance p { flex: 1 1 180px; margin: 0; }
 .learning-empty-state, .context-empty-state { display: grid; min-height: 100%; align-content: center; justify-items: start; gap: 7px; padding: 20px; color: var(--eyecode-text-secondary); }
 .learning-empty-state p, .context-empty-state p { max-width: 500px; margin: 0; line-height: 1.6; }
 .learning-panel-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--eyecode-border); }
@@ -1373,6 +1373,23 @@ html, body, #root {
   flex: 0 1 auto;
   justify-content: center;
   gap: 12px;
+}
+
+.toolbar-mode-indicator {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--eyecode-border);
+  border-radius: 6px;
+  color: var(--eyecode-text-secondary);
+  background: rgba(33, 35, 55, .8);
+  font: 11px var(--eyecode-font-code);
+}
+
+.toolbar-mode-indicator span {
+  color: var(--eyecode-muted);
 }
 
 .toolbar-actions {
@@ -2126,8 +2143,8 @@ html, body, #root {
 }
 
 .lesson-highlight {
-  background: rgba(94, 166, 255, .24);
-  border-bottom: 2px solid var(--eyecode-accent);
+  background: color-mix(in srgb, var(--eyecode-accent-soft) 48%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--eyecode-accent) 72%, transparent);
 }
 
 .editor-tabs {
@@ -2431,6 +2448,25 @@ html, body, #root {
 .learn-context-panel .problems-empty { display: grid; min-height: 100%; place-content: center; justify-items: start; gap: 6px; padding: 20px; color: var(--eyecode-text-secondary); }
 .learn-context-panel .problems-empty strong { color: #81d58b; font: 600 15px/1.3 var(--eyecode-font-ui); }
 .learn-context-panel .problems-empty span { font: 13px/1.5 var(--eyecode-font-ui); }
+.learn-problems-experience { min-height: 100%; overflow: auto; padding: 14px; color: var(--eyecode-text-secondary); }
+.learn-problem-selector { display: flex; gap: 7px; margin-bottom: 12px; overflow-x: auto; }
+.learn-problem-selector button { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 7px; min-width: 190px; padding: 8px 10px; border: 1px solid var(--eyecode-border); border-radius: var(--eyecode-radius-sm); background: var(--eyecode-surface-elevated); color: var(--eyecode-text-secondary); text-align: left; font: 12px/1.35 var(--eyecode-font-ui); }
+.learn-problem-selector button.is-selected { border-color: var(--eyecode-accent-bright); color: var(--eyecode-text); }
+.learn-problem-selector button small { grid-column: 2 / -1; color: var(--eyecode-muted); }
+.severity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--eyecode-muted); }
+.severity-dot.severity-error { background: #e36d78; }.severity-dot.severity-warning { background: #e5b45c; }.severity-dot.severity-info { background: #6eafff; }.severity-dot.severity-hint { background: #ad8cff; }
+.learn-problems-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.05fr) minmax(190px, .72fr); gap: 12px; align-items: stretch; }
+.learn-problem-card { min-width: 0; padding: 14px; border: 1px solid var(--eyecode-border); border-radius: var(--eyecode-radius-sm); background: var(--eyecode-surface-elevated); }
+.learn-problem-card.learn-problem-error { border-top: 2px solid #e36d78; }.learn-problem-card.learn-problem-error.severity-warning { border-top-color: #e5b45c; }.learn-problem-card.learn-problem-error.severity-info { border-top-color: #6eafff; }.learn-problem-card.learn-problem-error.severity-hint { border-top-color: #ad8cff; }
+.learn-problem-card > header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; color: var(--eyecode-text); font-weight: 600; }.learn-problem-card > header .eyecode-icon { width: 16px; height: 16px; }
+.learn-problem-card h2 { margin: 0 0 9px; color: var(--eyecode-text); font: 650 15px/1.35 var(--eyecode-font-ui); }.learn-problem-card p { margin: 0 0 12px; line-height: 1.5; }
+.learn-problem-source, .learn-problem-pattern, .learn-problem-example { margin: 12px 0; padding: 10px; overflow: auto; border: 1px solid var(--eyecode-border); border-radius: 5px; background: var(--surface-editor); color: var(--eyecode-text); font: 12px/1.55 var(--eyecode-font-code); white-space: pre; }.learn-problem-source span { display: block; }.learn-problem-source b { color: var(--eyecode-muted); font-weight: 400; }.learn-problem-source i { display: block; color: #e36d78; font-style: normal; }.learn-problem-source .is-pointer-line { color: var(--eyecode-text); }
+.learn-problem-short-explanation { color: var(--eyecode-text-secondary); }.learn-problem-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }.learn-problem-actions button { min-height: 30px; padding: 0 10px; border: 1px solid var(--eyecode-border-strong); border-radius: var(--eyecode-radius-sm); background: var(--eyecode-surface-elevated); color: var(--eyecode-text); font: 12px var(--eyecode-font-ui); }.learn-problem-actions .primary-action { border-color: transparent; }
+.learn-problem-technical { margin-top: 14px; color: var(--eyecode-muted); font-size: 11px; }.learn-problem-technical summary, .learn-diagnostic-understanding summary { cursor: pointer; color: var(--eyecode-text-secondary); }.learn-problem-technical dl { margin: 8px 0 0; }.learn-problem-technical dl div { display: flex; gap: 7px; margin-top: 4px; }.learn-problem-technical dt { min-width: 70px; }.learn-problem-technical dd { margin: 0; color: var(--eyecode-text); font-family: var(--eyecode-font-code); }
+.learn-problem-explanation p { color: var(--eyecode-text); }.learn-problem-pattern { color: #b6d7ff; }.learn-problem-tip { display: grid; gap: 4px; margin-top: 12px; padding: 10px; border: 1px solid rgba(84, 203, 153, .25); border-radius: 5px; background: rgba(38, 145, 110, .12); color: var(--eyecode-text-secondary); }.learn-problem-tip strong { color: #77d9ad; }.learn-problem-related ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }.learn-problem-related li button { display: grid; gap: 4px; width: 100%; padding: 10px; border: 1px solid var(--eyecode-border); border-radius: 5px; background: transparent; color: var(--eyecode-text-secondary); text-align: left; }.learn-problem-related li button:hover, .learn-problem-related li button:focus-visible { border-color: var(--eyecode-accent-bright); }.learn-problem-related li strong { color: var(--eyecode-text); }.learn-problem-related li span { font-size: 11px; }
+.learn-diagnostic-understanding { min-height: 100%; padding: 16px; color: var(--eyecode-text-secondary); }.learn-diagnostic-understanding h2 { margin: 0 0 18px; color: var(--eyecode-text); }.learn-diagnostic-understanding h3 { margin: 18px 0 6px; color: var(--eyecode-text); font-size: 14px; }.learn-diagnostic-understanding pre { padding: 10px; overflow: auto; background: var(--surface-editor); color: var(--eyecode-text); font: 12px/1.5 var(--eyecode-font-code); }
+@media (max-width: 980px) { .learn-problems-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }.learn-problem-related { grid-column: 1 / -1; } }
+@media (max-width: 680px) { .learn-problems-grid { grid-template-columns: minmax(0, 1fr); }.learn-problem-related { grid-column: auto; }.learn-problem-selector button { min-width: 170px; } }
 .learn-output { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 100%; background: var(--surface-editor); }
 .learn-output header { padding: 9px 14px; border-bottom: 1px solid var(--eyecode-border); color: var(--eyecode-muted); font: 12px/1.3 var(--eyecode-font-ui); }
 .learn-output header.is-success { color: #81d58b; }

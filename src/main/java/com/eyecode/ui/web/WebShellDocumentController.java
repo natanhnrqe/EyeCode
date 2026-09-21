@@ -42,6 +42,7 @@ public final class WebShellDocumentController {
     private final Set<String> reidentifyingSessions = new java.util.HashSet<>();
     private final Consumer<SavedEvent> saveListener;
     private final Consumer<ExternalFileEvent> externalFileListener;
+    private final Consumer<Path> documentClosed;
     private int nextUntitledNumber = 1;
     private boolean disposed;
 
@@ -49,11 +50,20 @@ public final class WebShellDocumentController {
                                WebShellDocumentationHost documentationHost, WebShellNativeFileSelection nativeUi,
                                EditorManager manager, WebShellDiagnosticsController diagnosticsController,
                                DocumentLanguageResolver languageResolver) {
+        this(surface, documentationOpener, documentationHost, nativeUi, manager, diagnosticsController, languageResolver,
+                ignored -> { });
+    }
+
+    WebShellDocumentController(WebShellSurface surface, Consumer<DocumentationTarget> documentationOpener,
+                               WebShellDocumentationHost documentationHost, WebShellNativeFileSelection nativeUi,
+                               EditorManager manager, WebShellDiagnosticsController diagnosticsController,
+                               DocumentLanguageResolver languageResolver, Consumer<Path> documentClosed) {
         this.surface = Objects.requireNonNull(surface);
         this.nativeUi = Objects.requireNonNull(nativeUi);
         this.manager = Objects.requireNonNull(manager);
         this.diagnosticsController = Objects.requireNonNull(diagnosticsController);
         this.languageResolver = Objects.requireNonNull(languageResolver);
+        this.documentClosed = documentClosed == null ? ignored -> { } : documentClosed;
         this.documentationOpener = documentationOpener == null ? target -> { } : documentationOpener;
         this.documentationHost = documentationHost;
         this.saveListener = this::onSaved;
@@ -276,6 +286,7 @@ public final class WebShellDocumentController {
         if (session == null) return message.error(new WebShellError(
                 "DOCUMENT_NOT_OPEN", "The requested document is not open", true));
         diagnosticsController.invalidate(MonacoModelId.forSession(session));
+        documentClosed.accept(session.getFile());
         boolean closed = manager.closeSession(session.getSessionId());
         if (!closed) return message.error(new WebShellError(
                 "CLOSE_FAILED", "The document could not be closed", true));

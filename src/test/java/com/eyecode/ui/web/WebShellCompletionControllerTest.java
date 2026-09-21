@@ -23,11 +23,39 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WebShellCompletionControllerTest {
+    @TempDir Path temporary;
+
+    @Test
+    void existingEditorSessionIgnoresStalePayloadTextAndVersion() throws Exception {
+        Surface surface = new Surface();
+        EditorManager manager = manager();
+        Path file = Files.writeString(temporary.resolve("Main.java"), "class Main { String current; }");
+        var session = manager.openDocument(file);
+        var document = manager.getBuffer(session.getSessionId()).orElseThrow().getDocument();
+        document.setText("class Main { String authoritative; }");
+        CapturingProvider provider = new CapturingProvider();
+        WebShellCompletionController controller = new WebShellCompletionController(surface, manager,
+                new CompletionService(resolver(), List.of(provider)));
+        try {
+            surface.handler("completion", "request").handle(WebShellEnvelope.request("completion", "request", "current", Map.of(
+                    "uri", file.toUri().toString(), "language", "java", "content", "class Main { String stale; }",
+                    "version", 1L, "offset", 20, "explicit", true)));
+            assertTrue(provider.called.await(2, TimeUnit.SECONDS));
+            assertEquals(document.snapshot().getText(), provider.request.source());
+            assertEquals(document.currentVersion(), provider.request.version());
+        } finally {
+            controller.dispose();
+            manager.dispose();
+        }
+    }
 
     @Test
     void publishesOnlyTheLatestCompletionForADocument() throws InterruptedException {
@@ -96,6 +124,17 @@ class WebShellCompletionControllerTest {
             return new CompletionResult(List.of(new CompletionCandidate(request.source(), "KEYWORD", "", "",
                     request.source(), request.source(), false, 0, request.source().length(), 0,
                     "", "", "", "", "", List.of())));
+        }
+    }
+
+    private static final class CapturingProvider implements CompletionProvider {
+        private final CountDownLatch called = new CountDownLatch(1);
+        private volatile CompletionRequest request;
+        @Override public LanguageId languageId() { return LanguageId.JAVA; }
+        @Override public CompletionResult complete(CompletionRequest value) {
+            request = value;
+            called.countDown();
+            return CompletionResult.empty();
         }
     }
 

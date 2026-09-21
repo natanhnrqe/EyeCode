@@ -3,7 +3,9 @@ package com.eyecode.ui.web;
 import com.eyecode.language.LanguageDocument;
 import com.eyecode.language.LanguageId;
 import com.eyecode.language.diagnostics.Diagnostic;
+import com.eyecode.language.diagnostics.DiagnosticEducation;
 import com.eyecode.language.diagnostics.DiagnosticsRequest;
+import com.eyecode.language.diagnostics.DiagnosticsEducationService;
 import com.eyecode.language.diagnostics.DiagnosticsResult;
 import com.eyecode.language.diagnostics.DiagnosticsService;
 
@@ -19,13 +21,20 @@ public final class WebShellDiagnosticsController {
 
     private final WebShellSurface surface;
     private final DiagnosticsService diagnostics;
+    private final DiagnosticsEducationService education;
     private final ThreadPoolExecutor executor;
     private final Map<String, String> latestRequestByUri = new java.util.concurrent.ConcurrentHashMap<>();
     private volatile boolean disposed;
 
     WebShellDiagnosticsController(WebShellSurface surface, DiagnosticsService diagnostics) {
+        this(surface, diagnostics, null);
+    }
+
+    WebShellDiagnosticsController(WebShellSurface surface, DiagnosticsService diagnostics,
+                                  DiagnosticsEducationService education) {
         this.surface = surface;
         this.diagnostics = diagnostics;
+        this.education = education;
         this.executor = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1),
                 runnable -> {
                     Thread thread = new Thread(runnable, "eyecode-java-diagnostics");
@@ -86,11 +95,11 @@ public final class WebShellDiagnosticsController {
         payload.put("uri", request.document().uri());
         payload.put("requestId", requestId);
         payload.put("modelVersion", request.version());
-        payload.put("diagnostics", result.diagnostics().stream().map(this::payload).toList());
+        payload.put("diagnostics", result.diagnostics().stream().map(diagnostic -> payload(request, diagnostic)).toList());
         return payload;
     }
 
-    private Map<String, Object> payload(Diagnostic diagnostic) {
+    private Map<String, Object> payload(DiagnosticsRequest request, Diagnostic diagnostic) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("severity", diagnostic.severity().name());
         payload.put("code", diagnostic.code());
@@ -99,6 +108,21 @@ public final class WebShellDiagnosticsController {
         payload.put("startColumn", diagnostic.startColumn());
         payload.put("endLine", diagnostic.endLine());
         payload.put("endColumn", diagnostic.endColumn());
+        if (!diagnostic.category().isBlank()) payload.put("category", diagnostic.category());
+        if (education != null) education.explain(request.document(), diagnostic).ifPresent(value -> payload.put("education", educationPayload(value)));
+        return payload;
+    }
+
+    private static Map<String, Object> educationPayload(DiagnosticEducation value) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("title", value.title());
+        payload.put("summary", value.summary());
+        payload.put("explanation", value.explanation());
+        payload.put("pattern", value.pattern());
+        payload.put("correctedPattern", value.correctedPattern());
+        payload.put("tip", value.tip());
+        payload.put("relatedContent", value.relatedContent().stream().map(related -> Map.of(
+                "id", related.id(), "title", related.title(), "description", related.description())).toList());
         return payload;
     }
 

@@ -1,3 +1,16 @@
+export type DiagnosticRelatedContent = { id: string; title: string; description: string };
+export type DiagnosticEducation = {
+  title: string;
+  summary: string;
+  explanation: string;
+  pattern: string;
+  correctedPattern: string;
+  tip: string;
+  relatedContent: DiagnosticRelatedContent[];
+};
+export type DiagnosticSourceLine = { lineNumber: number; text: string };
+export type DiagnosticSourceExcerpt = { lines: DiagnosticSourceLine[]; pointerLine: number; pointerColumn: number };
+
 export type WebDiagnostic = {
   severity: 'ERROR' | 'WARNING' | 'INFO' | 'HINT';
   code: string;
@@ -6,6 +19,9 @@ export type WebDiagnostic = {
   startColumn: number;
   endLine: number;
   endColumn: number;
+  category?: string;
+  education?: DiagnosticEducation;
+  sourceExcerpt?: DiagnosticSourceExcerpt;
 };
 
 export type DiagnosticsPublish = {

@@ -127,6 +127,7 @@ public final class WebShellLessonsController {
         payload.put("language", file.language());
         payload.put("starterCode", file.starterCode());
         payload.put("readOnly", file.readOnly());
+        if (file.editableRange() != null) payload.put("editableRange", rangePayload(file.editableRange()));
         return payload;
     }
 

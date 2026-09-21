@@ -131,7 +131,8 @@ public final class LessonContentService {
 
     private static LessonFile file(Map<?, ?> file) {
         return new LessonFile(required(file, "id"), required(file, "name"), required(file, "language"),
-                file.get("starterCode") instanceof String code ? code : "", Boolean.TRUE.equals(file.get("readOnly")));
+                file.get("starterCode") instanceof String code ? code : "", Boolean.TRUE.equals(file.get("readOnly")),
+                file.get("editableRange") instanceof Map<?, ?> value ? range(object(value, "intervalo editável")) : null);
     }
 
     private static LessonPresentation presentation(Map<?, ?> object) {

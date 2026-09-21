@@ -53,6 +53,7 @@ docs/*
 !docs/DEVELOPMENT_GUIDE.md
 !docs/GLOBAL_ARCHITECTURE_AUDIT.md
 !docs/WORKSPACE_DECOMPOSITION_REPORT.md
+!docs/JDT_LS_SPIKE.md
 !docs/adr/
 !docs/adr/*.md
 

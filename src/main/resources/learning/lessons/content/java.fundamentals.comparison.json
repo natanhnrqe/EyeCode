@@ -111,7 +111,13 @@
           "name": "Main.java",
           "language": "java",
           "starterCode": "public class Main {\n\n    public static void main(String[] args) {\n\n    }\n}\n",
-          "readOnly": false
+          "readOnly": false,
+          "editableRange": {
+            "startLineNumber": 4,
+            "startColumn": 1,
+            "endLineNumber": 4,
+            "endColumn": 5
+          }
         }
       }
     }

@@ -167,7 +167,7 @@ export class LessonEditorController {
     const active = this.documentsByUri.get(this.activeUri);
     if (!active) return;
 
-    this.service.clearEphemeralDecorations(this.activeUri);
+    this.documentsByUri.forEach(document => this.service.clearEphemeralDecorations(document.uri));
 
     if (!this.practiceStarted || this.service.ephemeralModelValue(this.activeUri) !== active.file.starterCode) {
       this.service.updateLessonFile(
@@ -187,6 +187,10 @@ export class LessonEditorController {
         document.uri,
         true
       );
+
+      if (!document.file.readOnly && document.file.editableRange) {
+        this.service.setEphemeralDecorations(document.uri, [document.file.editableRange]);
+      }
     });
 
     this.service.activateLessonFile(this.activeUri);

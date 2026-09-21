@@ -25,7 +25,7 @@ export function LessonBlocks({ blocks, theory }: { blocks: LessonContentBlock[];
   })}</>;
 }
 
-function LessonBlock({ block, theory, sectionNumber }: { block: LessonContentBlock; theory: boolean; sectionNumber?: number }) {
+export function LessonBlock({ block, theory, sectionNumber }: { block: LessonContentBlock; theory: boolean; sectionNumber?: number }) {
   if (block.type === 'HEADING') return <h2 className="lesson-heading">{sectionNumber && <span className="lesson-section-marker">{sectionNumber}</span>}<span><InlineContent content={block.inlineContent} fallback={block.text} /></span></h2>;
   if (block.type === 'PARAGRAPH') return <p className="lesson-paragraph"><InlineContent content={block.inlineContent} fallback={block.text} /></p>;
   if (block.type === 'CODE') return theory ? <LessonCodeBlock block={block} /> : <pre className="lesson-code-block"><code className={block.language === 'java' ? 'language-java' : undefined} dangerouslySetInnerHTML={block.language === 'java' ? { __html: highlightLearningJavaSource(block.code ?? '') } : undefined}>{block.language === 'java' ? undefined : block.code}</code></pre>;

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { ProblemsPanel } from '../diagnostics/ProblemsPanel';
+import { useEffect, useRef, useState } from 'react';
+import { ProblemsPanel, toProblems, type Problem } from '../diagnostics/ProblemsPanel';
 import type { DiagnosticsViewState, WebDiagnostic } from '../diagnostics/protocol';
 import { DockPane } from '../workspace/DockPane';
 import type { RunOutputChunk, RunState } from '../workspace/protocol';
@@ -14,15 +14,28 @@ const tabs: Array<{ id: LearnContextTab; label: string }> = [
 
 export function LearnContextPanel({ active, output, runState, diagnostics, documents, onSelect, onNavigateProblem }: Props) {
   const problemCount = diagnostics?.results.reduce((total, result) => total + result.diagnostics.length, 0) ?? 0;
+  const problems = toProblems(diagnostics, documents);
+  const [selectedProblemKey, setSelectedProblemKey] = useState<string | null>(null);
+  useEffect(() => {
+    setSelectedProblemKey(current => problems.some(problem => problem.key === current) ? current : problems[0]?.key ?? null);
+  }, [diagnostics, documents]);
+  const selectedProblem = problems.find(problem => problem.key === selectedProblemKey) ?? problems[0] ?? null;
   return <DockPane paneId="bottom" className="bottom-panel learn-context-panel" label="Contexto da aula" headerClassName="bottom-tabs" header={<div role="tablist" aria-label="Contexto do programa">
     {tabs.map(tab => <button type="button" key={tab.id} role="tab" aria-selected={active === tab.id} className={active === tab.id ? 'is-active' : ''} onClick={() => onSelect(tab.id)}>{tab.label}{tab.id === 'problems' && problemCount ? ` ${problemCount}` : ''}</button>)}
   </div>} bodyClassName="bottom-panel-content">
-    {active === 'problems' ? <ProblemsPanel state={diagnostics} documents={documents} onNavigate={onNavigateProblem} learnMode />
+    {active === 'problems' ? <ProblemsPanel state={diagnostics} documents={documents} onNavigate={onNavigateProblem} learnMode selectedKey={selectedProblem?.key}
+      onSelectProblem={(problem: Problem) => setSelectedProblemKey(problem.key)} onUnderstand={() => onSelect('understand')} />
       : active === 'output' ? <LearnOutput output={output} runState={runState} />
-        : active === 'understand' ? <ContextEmpty title="Entenda seu código" message="Execute uma atividade compatível para acompanhar seu código passo a passo." />
+        : active === 'understand' ? <DiagnosticUnderstanding problem={selectedProblem} />
           : active === 'variables' ? <ContextEmpty title="Variáveis em tempo de execução" message="A visualização de variáveis estará disponível em exercícios compatíveis." />
             : <ContextEmpty title="Visualização de execução" message="Visualizações de estruturas de dados estarão disponíveis em exercícios compatíveis." />}
   </DockPane>;
+}
+
+function DiagnosticUnderstanding({ problem }: { problem: Problem | null }) {
+  const education = problem?.education;
+  if (!problem || !education) return <ContextEmpty title="Entenda seu código" message="Selecione um problema com explicação pedagógica para ver como raciocinar sobre ele." />;
+  return <article className="learn-diagnostic-understanding"><p className="learning-panel-kicker">Entendendo o problema</p><h2>{education.title}</h2><section><h3>O que aconteceu?</h3><p>{education.explanation}</p></section><section><h3>Como pensar sobre isso?</h3><p>{education.summary}</p><pre><code>{education.pattern}</code></pre></section>{education.tip && <section className="learn-problem-tip"><strong>💡 Dica</strong><span>{education.tip}</span></section>}<details><summary>Detalhes técnicos</summary><p>{problem.message} · linha {problem.startLine}, coluna {problem.startColumn}</p></details></article>;
 }
 
 function LearnOutput({ output, runState }: Pick<Props, 'output' | 'runState'>) {

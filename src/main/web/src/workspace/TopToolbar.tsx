@@ -4,6 +4,7 @@ import type { RecentProject, RunState } from './protocol';
 import { EyeCodeIcon } from './EyeCodeIcon';
 
 type Props = {
+  learnMode?: boolean;
   projectName?: string;
   projectPath?: string;
   recentProjects: RecentProject[];
@@ -23,7 +24,7 @@ type Props = {
   onWindowAction(action: 'windowMinimize' | 'windowToggleMaximize' | 'windowClose'): void;
 };
 
-export function TopToolbar({ projectName, projectPath, recentProjects, runState, runAvailable, onNewProject, onOpenProject, onNewFile, onOpenRecentProject, onWelcome, onRun, onRerun, onStop, onSelectConfiguration, onOpenSearch, onOpenSettings, onWindowAction }: Props) {
+export function TopToolbar({ learnMode = false, projectName, projectPath, recentProjects, runState, runAvailable, onNewProject, onOpenProject, onNewFile, onOpenRecentProject, onWelcome, onRun, onRerun, onStop, onSelectConfiguration, onOpenSearch, onOpenSettings, onWindowAction }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const dragPointer = useRef<number | null>(null);
@@ -58,7 +59,7 @@ export function TopToolbar({ projectName, projectPath, recentProjects, runState,
       <span className="brand-sign">EC</span>
       <div className="project-switcher-wrap">
         <button type="button" className="project-switcher" onClick={() => setSwitcherOpen(value => !value)} aria-expanded={switcherOpen}>
-          <strong>{projectName || 'EyeCode Workspace'}</strong><span>⌄</span>
+          <strong>{learnMode ? 'EyeCode Learn' : projectName || 'EyeCode Workspace'}</strong><span>⌄</span>
         </button>
         {switcherOpen && <div className="project-switcher-popover">
           {projectName && <div className="project-switcher-current"><strong>{projectName}</strong><span className="project-switcher-path">{projectPath}</span></div>}
@@ -77,16 +78,17 @@ export function TopToolbar({ projectName, projectPath, recentProjects, runState,
       </div>
     </div>
     <div className="toolbar-run-group">
-      <select value={runState.selectedConfigurationId} onChange={event => onSelectConfiguration(event.target.value)}
+      {learnMode && <span className="toolbar-mode-indicator" aria-label="Modo Aprender">Aprender <span aria-hidden="true">⌄</span></span>}
+      {!learnMode && <select value={runState.selectedConfigurationId} onChange={event => onSelectConfiguration(event.target.value)}
         aria-label="Run configuration" disabled={!runState.configurations.length}>
         {runState.configurations.length === 0 && <option value="">No run configuration</option>}
         {runState.configurations.map(configuration => <option key={configuration.id} value={configuration.id}>
           {configuration.name}
         </option>)}
-      </select>
+      </select>}
       <button type="button" className="toolbar-run" onClick={onRun} disabled={runState.running || !runAvailable}>
         {runState.running ? <span className="toolbar-run-spinner" aria-hidden="true" /> : <EyeCodeIcon name="run" />}
-        {runState.running ? 'Running...' : 'Run'}
+        {runState.running ? learnMode ? 'Executando...' : 'Running...' : learnMode ? 'Executar' : 'Run'}
       </button>
       <button type="button" className="toolbar-icon" onClick={onRerun} disabled={!runAvailable || !runState.rerunAvailable} aria-label="Rerun"><EyeCodeIcon name="reload" /></button>
       <button type="button" className="toolbar-icon stop" onClick={onStop} disabled={!runState.running} aria-label="Stop"><EyeCodeIcon name="stop" /></button>

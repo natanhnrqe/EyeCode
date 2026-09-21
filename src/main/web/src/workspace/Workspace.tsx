@@ -574,7 +574,7 @@ export function Workspace() {
     || (learnMode && !learnNavigationVisible && lessonSession?.kind !== 'THEORY');
   const lessonRunAvailable = learnMode && lessonSession?.phase === 'PRACTICE' && !!lessonSession.workspace && !!lessonEditor.lessonUri();
   const runAvailable = projectMode ? runState.configurations.length > 0 : lessonRunAvailable;
-  const toolbar = <TopToolbar projectName={projectMode ? workspace.project?.name : undefined} projectPath={projectMode ? workspace.project?.path : undefined} recentProjects={workspace.recentProjects} runState={runState} runAvailable={runAvailable}
+  const toolbar = <TopToolbar learnMode={learnMode} projectName={projectMode ? workspace.project?.name : undefined} projectPath={projectMode ? workspace.project?.path : undefined} recentProjects={workspace.recentProjects} runState={runState} runAvailable={runAvailable}
     onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()}
     onOpenRecentProject={path => void openProject(path)} onWelcome={() => void leaveProject()} onRun={() => void run('run')} onRerun={() => void run('rerun')}
     onStop={() => void run('stop')} onSelectConfiguration={id => void selectConfiguration(id)}
@@ -611,7 +611,8 @@ export function Workspace() {
       diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />;
     return lessonSession ? <LearningPanel session={lessonSession} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} onPrevious={() => void changeLessonStep('previous')}
-      onNext={() => void changeLessonStep('next')} onExit={() => void returnToLearnTopic()} /> : null;
+      onNext={() => void changeLessonStep('next')} onExit={() => void returnToLearnTopic()} hasDiagnostics={(diagnostics?.results ?? []).some(result => result.diagnostics.length > 0)}
+      onShowProblems={() => selectLearnContextTab('problems')} /> : null;
   };
   const layoutKind = learnMode && lessonSession?.kind === 'THEORY' ? 'THEORY' : learnMode ? 'LEARN' : 'PROJECT';
   const dockTree = layoutKind === 'THEORY' ? theoryDockTree : layoutKind === 'LEARN' ? learnPracticeDockLayout : projectDockLayout;
@@ -700,7 +701,6 @@ export function Workspace() {
         onOpenRoadmap={categoryId => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'ROADMAP', categoryId }); }}
         onOpenTopic={(categoryId, topicId) => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'TOPIC', categoryId, topicId }); }}
         onOpenLesson={openLearnLesson} />}
-      {learnMode && lessonSession && learnExplorerCollapsed && <nav className="collapsed-lesson-header" aria-label="Localização da aula"><span>{learnPath.slice(0, 3).filter(Boolean).join(' › ')}</span><span>Parte {lessonSession.currentStep + 1} de {lessonSession.totalSteps}</span></nav>}
       <DockLayout tree={dockTree} renderPane={renderPane} layoutKind={layoutKind} className={learnExplorerCollapsed && learnMode ? 'is-learn-explorer-collapsed' : undefined}
         canDockDrop={dockRules ? canDockDrop : undefined} resolveDockPreview={dockRules ? resolveDockPreview : undefined} onDockDrop={handleDockDrop}
         onRatioChange={updateDockRatio} onEditorGeometryChange={() => service.layout()} />

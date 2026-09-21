@@ -327,7 +327,7 @@ class WebShellSharedShellSourceTest {
         assertEquals(1, occurrences(workspace, "<MonacoHost"));
         assertTrue(panel.contains("LearningPanelTab"));
         assertTrue(panel.contains("label: 'Exercício'"));
-        assertTrue(panel.contains("<PracticeSupport blocks={session.contentBlocks} />"));
+        assertTrue(panel.contains("<section className=\"exercise-task\"><h2>Sua tarefa</h2>"));
         assertTrue(panel.contains("onClick={onVerify}"));
         assertTrue(panel.contains("{verification.message}"));
         assertTrue(controller.contains("this.service.setEphemeralReadOnly(\n        document.uri,\n        document.file.readOnly"));
@@ -411,6 +411,29 @@ class WebShellSharedShellSourceTest {
         assertTrue(learnWorkspace.contains("shell-page-content"));
         assertTrue(styles.contains(".shell-page-content"));
         assertTrue(styles.contains(".learn-navigation-page") && styles.contains("background: transparent"));
+    }
+
+    @Test
+    void learnUsesTheGlobalToolbarAndBottomBreadcrumbsWithoutAddingAnEditorHeader() throws IOException {
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+        String toolbar = Files.readString(Path.of("src/main/web/src/workspace/TopToolbar.tsx"));
+        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+
+        assertFalse(workspace.contains("collapsed-lesson-header"));
+        assertFalse(styles.contains("collapsed-lesson-header"));
+        assertTrue(workspace.contains("breadcrumbs={learnStatusBreadcrumbs}"));
+        assertTrue(workspace.contains("<TopToolbar learnMode={learnMode}"));
+        assertTrue(toolbar.contains("learnMode ? 'EyeCode Learn'"));
+        assertTrue(toolbar.contains("learnMode && <span className=\"toolbar-mode-indicator\""));
+        assertTrue(toolbar.contains("Aprender <span aria-hidden=\"true\">⌄</span>"));
+        assertTrue(toolbar.contains("learnMode ? 'Executar' : 'Run'"));
+        assertTrue(toolbar.contains("{!learnMode && <select"));
+        assertTrue(workspace.contains("onClick={() => setLearnExplorerCollapsed(value => !value)}"));
+        assertTrue(workspace.contains("const editorSurfaceKey = `${mode}:${learnNavigation.screen}:${layoutKind}`;"));
+        assertEquals(1, occurrences(workspace, "<MonacoHost"));
+        assertTrue(styles.contains(".toolbar-mode-indicator"));
+        assertTrue(styles.contains(".dock-layout.is-learn-explorer-collapsed"));
+        assertTrue(styles.contains("@media (prefers-reduced-motion: reduce)"));
     }
 
     @Test

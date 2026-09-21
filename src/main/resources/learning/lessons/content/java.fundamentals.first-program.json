@@ -187,7 +187,13 @@
           "name": "Main.java",
           "language": "java",
           "starterCode": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Olá, mundo!\");\n    }\n}\n",
-          "readOnly": false
+          "readOnly": false,
+          "editableRange": {
+            "startLineNumber": 3,
+            "startColumn": 1,
+            "endLineNumber": 3,
+            "endColumn": 42
+          }
         }
       }
     },
