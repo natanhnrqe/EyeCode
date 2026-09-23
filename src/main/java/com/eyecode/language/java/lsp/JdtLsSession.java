@@ -11,13 +11,22 @@ import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
+import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
+import org.eclipse.lsp4j.Hover;
+import org.eclipse.lsp4j.HoverCapabilities;
+import org.eclipse.lsp4j.HoverParams;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
+import org.eclipse.lsp4j.SignatureHelp;
+import org.eclipse.lsp4j.SignatureHelpCapabilities;
+import org.eclipse.lsp4j.SignatureHelpParams;
+import org.eclipse.lsp4j.SignatureHelpContext;
+import org.eclipse.lsp4j.SignatureHelpTriggerKind;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.TextDocumentClientCapabilities;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
@@ -114,7 +123,10 @@ public final class JdtLsSession implements AutoCloseable {
         try {
             initializeResult = await(server.initialize(params), timeout, "INITIALIZE");
             server.initialized(new InitializedParams());
+            server.getWorkspaceService().didChangeConfiguration(new DidChangeConfigurationParams(
+                    Map.of("java", Map.of("signatureHelp", Map.of("enabled", true)))));
             state = JdtLsLifecycleState.READY;
+            event("capabilities hover=" + supportsHover() + " signatureHelp=" + supportsSignatureHelp());
             event("ready");
             return initializeResult;
         } catch (RuntimeException exception) {
@@ -161,12 +173,44 @@ public final class JdtLsSession implements AutoCloseable {
         return result.isLeft() ? List.copyOf(result.getLeft()) : List.copyOf(result.getRight().getItems());
     }
 
+    public Hover hover(String uri, int line, int character, Duration timeout) {
+        requireState(JdtLsLifecycleState.READY, "HOVER");
+        if (!supportsHover()) return null;
+        HoverParams params = new HoverParams(new TextDocumentIdentifier(uri),
+                new org.eclipse.lsp4j.Position(line, character));
+        event("hover request");
+        return await(server.getTextDocumentService().hover(params), timeout, "HOVER");
+    }
+
+    public SignatureHelp signatureHelp(String uri, int line, int character, Duration timeout) {
+        requireState(JdtLsLifecycleState.READY, "SIGNATURE_HELP");
+        if (!supportsSignatureHelp()) return null;
+        SignatureHelpParams params = new SignatureHelpParams(new TextDocumentIdentifier(uri),
+                new org.eclipse.lsp4j.Position(line, character));
+        SignatureHelpContext context = new SignatureHelpContext(SignatureHelpTriggerKind.Invoked, false);
+        context.setTriggerCharacter("(");
+        params.setContext(context);
+        event("signature help request");
+        return await(server.getTextDocumentService().signatureHelp(params), timeout, "SIGNATURE_HELP");
+    }
+
     public JdtLsLifecycleState state() {
         return state;
     }
 
     public InitializeResult initializeResult() {
         return initializeResult;
+    }
+
+    public boolean supportsHover() {
+        if (initializeResult == null || initializeResult.getCapabilities() == null) return false;
+        var provider = initializeResult.getCapabilities().getHoverProvider();
+        return provider != null && (!provider.isLeft() || Boolean.TRUE.equals(provider.getLeft()));
+    }
+
+    public boolean supportsSignatureHelp() {
+        return initializeResult != null && initializeResult.getCapabilities() != null
+                && initializeResult.getCapabilities().getSignatureHelpProvider() != null;
     }
 
     public Throwable failure() {
@@ -215,6 +259,12 @@ public final class JdtLsSession implements AutoCloseable {
         capabilities.setWorkspace(workspace);
         TextDocumentClientCapabilities textDocument = new TextDocumentClientCapabilities();
         textDocument.setCompletion(new CompletionCapabilities());
+        HoverCapabilities hover = new HoverCapabilities();
+        hover.setContentFormat(List.of("markdown", "plaintext"));
+        textDocument.setHover(hover);
+        SignatureHelpCapabilities signatureHelp = new SignatureHelpCapabilities();
+        signatureHelp.setContextSupport(true);
+        textDocument.setSignatureHelp(signatureHelp);
         capabilities.setTextDocument(textDocument);
         return capabilities;
     }
@@ -377,8 +427,18 @@ public final class JdtLsSession implements AutoCloseable {
 
         @Override
         public CompletableFuture<List<Object>> configuration(ConfigurationParams params) {
-            int size = params.getItems() == null ? 0 : params.getItems().size();
-            return CompletableFuture.completedFuture(java.util.Collections.nCopies(size, Map.of()));
+            if (params.getItems() == null) return CompletableFuture.completedFuture(List.of());
+            return CompletableFuture.completedFuture(params.getItems().stream()
+                    .map(item -> configurationValue(item.getSection())).toList());
+        }
+
+        private static Object configurationValue(String section) {
+            if (section == null || "java".equals(section)) {
+                return Map.of("signatureHelp", Map.of("enabled", true));
+            }
+            if ("java.signatureHelp.enabled".equals(section)) return true;
+            if ("java.signatureHelp".equals(section)) return Map.of("enabled", true);
+            return Map.of();
         }
 
         private synchronized void recordStderr(String line) {

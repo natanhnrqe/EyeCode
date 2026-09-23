@@ -10,6 +10,7 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
     private final WebShellWorkspaceController workspaceController;
     private final WebShellDocumentController documentController;
     private final WebShellCompletionController completionController;
+    private final WebShellLanguageFeatureController languageFeatureController;
     private final JdtLsProjectService jdt;
     private final WebShellLearningController learningController;
     private final WebShellLessonsController lessonsController;
@@ -21,6 +22,7 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
                              WebShellWorkspaceController workspaceController,
                              WebShellDocumentController documentController,
                              WebShellCompletionController completionController,
+                             WebShellLanguageFeatureController languageFeatureController,
                              JdtLsProjectService jdt,
                              WebShellLearningController learningController,
                              WebShellLessonsController lessonsController,
@@ -30,6 +32,7 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
         this.workspaceController = Objects.requireNonNull(workspaceController, "workspaceController");
         this.documentController = Objects.requireNonNull(documentController, "documentController");
         this.completionController = Objects.requireNonNull(completionController, "completionController");
+        this.languageFeatureController = Objects.requireNonNull(languageFeatureController, "languageFeatureController");
         this.jdt = Objects.requireNonNull(jdt, "jdt");
         this.learningController = Objects.requireNonNull(learningController, "learningController");
         this.lessonsController = Objects.requireNonNull(lessonsController, "lessonsController");
@@ -44,6 +47,7 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
         workspaceController.dispose();
         documentController.dispose();
         completionController.dispose();
+        languageFeatureController.dispose();
         jdt.close();
         learningController.dispose();
         lessonsController.closeActiveSession();

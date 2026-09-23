@@ -4,7 +4,7 @@ import type { DocumentSnapshot } from '../document/protocol';
 import type { CompletionPopupState, CompletionResponse } from '../completion/protocol';
 import type { LearningPopupState, LearningResponse } from '../learning/protocol';
 import type { DiagnosticsViewState, DiagnosticsPublish, WebDiagnostic } from '../diagnostics/protocol';
-import type { Disposable, MonacoApi, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoKeyEvent, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoSnippetController } from './api';
+import type { Disposable, MonacoApi, MonacoCancellationToken, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoHover, MonacoKeyEvent, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoSignatureHelp, MonacoSnippetController } from './api';
 import type { LessonEditorRange, PresentationProgram } from '../lessons/protocol';
 
 type DocumentChangeHandler = (document: DocumentSnapshot) => void;
@@ -28,6 +28,20 @@ type LearningRequestTarget = Omit<PendingLearning, 'modelVersion'> & {
 };
 type PendingDiagnostics = { uri: string; model: MonacoModel; modelVersion: number };
 type PendingEphemeralModel = { content: string; language: string; readOnly: boolean };
+type HoverResponse = {
+  contents?: Array<{ kind?: string; value?: string }>;
+  rangeStart?: number;
+  rangeEnd?: number;
+};
+type SignatureResponse = {
+  signatures?: Array<{
+    label?: string;
+    documentation?: string;
+    parameters?: Array<{ label?: string; labelStart?: number; labelEnd?: number; documentation?: string }>;
+  }>;
+  activeSignature?: number;
+  activeParameter?: number;
+};
 
 const LEARNING_CARD_OPEN_DELAY_MS = 200;
 const LEARNING_CARD_CLOSE_DELAY_MS = 10;
@@ -55,6 +69,7 @@ export class MonacoWorkspaceService {
   private mouseMoveListener: Disposable | null = null;
   private mouseLeaveListener: Disposable | null = null;
   private scrollListener: Disposable | null = null;
+  private readonly languageFeatureProviders: Disposable[] = [];
   private readonly viewportListeners = new Set<() => void>();
   private lessonTyping: { uri: string; frame: number; finalCode: string; resolve: (finished: boolean) => void } | null = null;
   private completionMessageUnsubscribe: (() => void) | null = null;
@@ -525,6 +540,7 @@ export class MonacoWorkspaceService {
       readOnly: false,
       model: null
     });
+    this.registerLanguageFeatureProviders();
     this.completionMessageUnsubscribe = bridge.subscribe(message => {
       this.receiveCompletionMessage(message);
       this.receiveLearningMessage(message);
@@ -716,6 +732,7 @@ export class MonacoWorkspaceService {
     this.mouseLeaveListener = null;
     this.scrollListener?.dispose();
     this.scrollListener = null;
+    this.languageFeatureProviders.splice(0).forEach(provider => provider.dispose());
     this.viewportListeners.clear();
     this.completionMessageUnsubscribe?.();
     this.completionMessageUnsubscribe = null;
@@ -922,6 +939,111 @@ export class MonacoWorkspaceService {
     if (model) this.api?.editor.setModelMarkers(model, 'eyecode.diagnostics', []);
     this.publishDiagnosticsForActiveModel();
   }
+  private registerLanguageFeatureProviders(): void {
+    if (!this.api) return;
+    this.languageFeatureProviders.push(
+      this.api.languages.registerHoverProvider('java', {
+        provideHover: (model, position, token) => this.provideHover(model, position, token)
+      }),
+      this.api.languages.registerSignatureHelpProvider('java', {
+        signatureHelpTriggerCharacters: ['(', ','],
+        signatureHelpRetriggerCharacters: [','],
+        provideSignatureHelp: (model, position, token) => this.provideSignatureHelp(model, position, token)
+      })
+    );
+  }
+
+  private provideHover(model: MonacoModel, position: { lineNumber: number; column: number },
+                       token: MonacoCancellationToken): Promise<MonacoHover | null> {
+    if (!this.isProjectModel(model) || token.isCancellationRequested) return Promise.resolve(null);
+    const uri = model.uri.toString();
+    const offset = model.getOffsetAt(position);
+    const version = model.getAlternativeVersionId();
+    return this.requestLanguageFeature<HoverResponse>('hover', {
+      uri,
+      version,
+      offset,
+      language: model.getLanguageId?.() ?? 'java'
+    }).then(response => {
+      if (token.isCancellationRequested || !response?.contents?.length) return null;
+      const contents = response.contents
+        .map(content => ({ value: content.value ?? '' }))
+        .filter(content => content.value.length > 0);
+      if (!contents.length) return null;
+      const start = boundedFeatureOffset(response.rangeStart, offset, model.getValue().length);
+      const end = boundedFeatureOffset(response.rangeEnd, start, model.getValue().length);
+      return {
+        contents,
+        range: {
+          startLineNumber: model.getPositionAt(start).lineNumber,
+          startColumn: model.getPositionAt(start).column,
+          endLineNumber: model.getPositionAt(end).lineNumber,
+          endColumn: model.getPositionAt(end).column
+        }
+      };
+    });
+  }
+
+  private provideSignatureHelp(model: MonacoModel, position: { lineNumber: number; column: number },
+                               token: MonacoCancellationToken): Promise<MonacoSignatureHelp | null> {
+    if (!this.isProjectModel(model) || token.isCancellationRequested) return Promise.resolve(null);
+    const uri = model.uri.toString();
+    return this.requestLanguageFeature<SignatureResponse>('signatureHelp', {
+      uri,
+      version: model.getAlternativeVersionId(),
+      offset: model.getOffsetAt(position),
+      language: model.getLanguageId?.() ?? 'java'
+    }).then(response => {
+      if (token.isCancellationRequested || !response?.signatures?.length) return null;
+      const signatures = response.signatures.map(signature => ({
+        label: signature.label ?? '',
+        documentation: signature.documentation || undefined,
+        parameters: (signature.parameters ?? []).map(parameter => ({
+          label: parameter.labelStart != null && parameter.labelEnd != null
+            ? [parameter.labelStart, parameter.labelEnd] as [number, number]
+            : parameter.label ?? '',
+          documentation: parameter.documentation || undefined
+        }))
+      }));
+      return {
+        signatures,
+        activeSignature: response.activeSignature != null && response.activeSignature >= 0
+          ? response.activeSignature : undefined,
+        activeParameter: response.activeParameter != null && response.activeParameter >= 0
+          ? response.activeParameter : undefined
+      };
+    });
+  }
+
+  private isProjectModel(model: MonacoModel): boolean {
+    const uri = model.uri.toString();
+    return uri.startsWith('file:') && this.models.get(uri) === model;
+  }
+
+  private requestLanguageFeature<T>(channel: 'hover' | 'signatureHelp', payload: Record<string, unknown>): Promise<T | null> {
+    const requestId = bridge.reserveRequestId();
+    return new Promise(resolve => {
+      let settled = false;
+      let timeout = 0;
+      let unsubscribe = () => {};
+      const finish = (value: T | null) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        unsubscribe();
+        resolve(value);
+      };
+      timeout = window.setTimeout(() => finish(null), 5000);
+      unsubscribe = bridge.subscribe(message => {
+        if (message.kind !== 'response' || message.channel !== channel || message.name !== 'request'
+            || message.requestId !== requestId) return;
+        finish(message.error ? null : message.payload as T);
+      });
+      void bridge.request<{ accepted: boolean }>(channel, 'request', payload, { requestId, timeoutMs: 3000 })
+        .catch(() => finish(null));
+    });
+  }
+
   private requestCompletion(explicit: boolean, triggerCharacter: string | null): void {
     const editor = this.editor;
     const model = editor?.getModel();
@@ -1359,6 +1481,11 @@ export class MonacoWorkspaceService {
 
 function completionIdentity(item: { label: string; kind: string }): string {
   return `${item.label}\u0000${item.kind}`;
+}
+
+function boundedFeatureOffset(value: number | undefined, fallback: number, length: number): number {
+  const offset = Number.isInteger(value) ? value! : fallback;
+  return Math.max(0, Math.min(offset, length));
 }
 
 function snippetFallbackText(snippet: string): string {

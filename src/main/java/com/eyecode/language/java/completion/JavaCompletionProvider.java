@@ -4,6 +4,8 @@ import com.eyecode.editor.v2.EditorDocument;
 import com.eyecode.editor.v2.EditorPosition;
 import com.eyecode.editor.v2.EditorSelection;
 import com.eyecode.editor.v2.completion.CompletionEngine;
+import com.eyecode.editor.v2.completion.CompletionContextKind;
+import com.eyecode.editor.v2.completion.CompletionContextResolver;
 import com.eyecode.editor.v2.completion.CompletionItem;
 import com.eyecode.editor.v2.completion.JavaKeywordCompletionProvider;
 import com.eyecode.editor.v2.completion.JavaSnippetProvider;
@@ -24,6 +26,9 @@ import com.eyecode.language.java.lsp.JdtLsProjectService;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 public final class JavaCompletionProvider implements CompletionProvider {
     private final JavaSyntaxAnalyzer syntaxAnalyzer;
@@ -84,12 +89,99 @@ public final class JavaCompletionProvider implements CompletionProvider {
         CompletionResult local = new CompletionResult(snapshot.getItems().stream()
                 .limit(100)
                 .map(item -> candidate(item, boundedStart, boundedEnd, prefix)).toList());
-        return selectJdtOrFallback(semantic, local);
+        CompletionContextKind contextKind = CompletionContextResolver.resolve(context);
+        if (contextKind != CompletionContextKind.MEMBER_ACCESS || semantic.isEmpty()) {
+            return local;
+        }
+        return mergeMemberResults(local, semantic.get(), prefix, boundedStart, boundedEnd);
     }
 
     static CompletionResult selectJdtOrFallback(Optional<CompletionResult> jdtResult,
                                                 CompletionResult fallback) {
-        return jdtResult.orElse(fallback);
+        return jdtResult.filter(result -> !result.candidates().isEmpty()).orElse(fallback);
+    }
+
+    static CompletionResult mergeMemberResults(CompletionResult local, CompletionResult semantic,
+                                               String prefix) {
+        return mergeMemberResults(local, semantic, prefix, 0, 0);
+    }
+
+    static CompletionResult mergeMemberResults(CompletionResult local, CompletionResult semantic,
+                                               String prefix, int replaceStart, int replaceEnd) {
+        List<CompletionCandidate> merged = new ArrayList<>(local.candidates());
+        Set<String> identities = new HashSet<>(local.candidates().stream()
+                .map(JavaCompletionProvider::identity).toList());
+        for (CompletionCandidate candidate : semantic.candidates()) {
+            if (!prefix.isEmpty() && !isSubsequence(prefix, baseLabel(candidate.label()))) continue;
+            if (identities.add(identity(candidate))) {
+                merged.add(enrichCandidate(candidate, prefix, replaceStart, replaceEnd));
+            }
+        }
+        return new CompletionResult(merged);
+    }
+
+    private static CompletionCandidate enrichCandidate(CompletionCandidate raw, String prefix,
+                                                       int replaceStart, int replaceEnd) {
+        String base = baseLabel(raw.label());
+        com.eyecode.editor.v2.completion.CompletionItem kbItem =
+                com.eyecode.editor.v2.completion.knowledge.JavaKnowledgeBase.get(base);
+        if (kbItem == null) {
+            kbItem = com.eyecode.editor.v2.completion.database.CompletionDatabase.get(base);
+        }
+        String documentation = !raw.documentation().isEmpty() ? raw.documentation()
+                : kbItem != null && kbItem.getDocumentation() != null ? kbItem.getDocumentation() : "";
+        String example = kbItem != null && kbItem.getExample() != null ? kbItem.getExample() : "";
+        String category = kbItem != null && kbItem.getCategory() != null ? kbItem.getCategory()
+                : "METHOD".equals(raw.kind()) ? "Method" : "FIELD".equals(raw.kind()) ? "Field" : "";
+        String signature = !raw.signature().isEmpty() ? raw.signature()
+                : kbItem != null && kbItem.getSignature() != null ? kbItem.getSignature() : base + "()";
+        String returnType = !raw.returnType().isEmpty() ? raw.returnType()
+                : kbItem != null && kbItem.getReturnType() != null ? kbItem.getReturnType() : "";
+        String owner = !raw.owner().isEmpty() ? raw.owner()
+                : kbItem != null && kbItem.getOwner() != null ? kbItem.getOwner() : "";
+
+        List<Integer> matchIndices = computeMatchIndices(base, prefix);
+
+        int start = replaceStart > 0 || replaceEnd > 0 ? replaceStart : raw.replaceStart();
+        int end = replaceStart > 0 || replaceEnd > 0 ? replaceEnd : raw.replaceEnd();
+
+        return new CompletionCandidate(raw.label(), raw.kind(), raw.detail(), documentation,
+                raw.insertText(), raw.filterText(), raw.snippet(), start, end, raw.sortKey(),
+                signature, returnType, owner, example, category, matchIndices);
+    }
+
+    private static List<Integer> computeMatchIndices(String target, String query) {
+        if (target == null || query == null || query.isEmpty()) return List.of();
+        String qLow = query.toLowerCase(java.util.Locale.ROOT);
+        String tLow = target.toLowerCase(java.util.Locale.ROOT);
+        List<Integer> indices = new ArrayList<>();
+        int qi = 0;
+        for (int ti = 0; ti < tLow.length() && qi < qLow.length(); ti++) {
+            if (tLow.charAt(ti) == qLow.charAt(qi)) {
+                indices.add(ti);
+                qi++;
+            }
+        }
+        return qi == qLow.length() ? List.copyOf(indices) : List.of();
+    }
+
+    private static String identity(CompletionCandidate candidate) {
+        return candidate.kind() + "\u0000" + baseLabel(candidate.label());
+    }
+
+    private static String baseLabel(String label) {
+        int open = label.indexOf('(');
+        return open > 0 ? label.substring(0, open) : label;
+    }
+
+    private static boolean isSubsequence(String query, String candidate) {
+        int index = 0;
+        String normalizedQuery = query.toLowerCase(java.util.Locale.ROOT);
+        String normalizedCandidate = candidate.toLowerCase(java.util.Locale.ROOT);
+        for (int cursor = 0; cursor < normalizedCandidate.length() && index < normalizedQuery.length(); cursor++) {
+            if (normalizedCandidate.charAt(cursor) == normalizedQuery.charAt(index)) index++;
+        }
+        return index == normalizedQuery.length();
     }
 
     private CompletionCandidate candidate(CompletionItem item, int replaceStart, int replaceEnd, String prefix) {

@@ -14,7 +14,11 @@ import com.eyecode.language.diagnostics.DiagnosticsEducationService;
 import com.eyecode.diagnostics.JavaDiagnosticsProvider;
 import com.eyecode.diagnostics.JavaDiagnosticExplainer;
 import com.eyecode.language.java.completion.JavaCompletionProvider;
+import com.eyecode.language.java.hover.JavaHoverProvider;
 import com.eyecode.language.java.lsp.JdtLsProjectService;
+import com.eyecode.language.java.signature.JavaSignatureHelpProvider;
+import com.eyecode.language.hover.HoverService;
+import com.eyecode.language.signature.SignatureHelpService;
 import com.eyecode.language.java.JavaEditorIntelligence;
 import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.project.MavenProjectCreationService;
@@ -73,6 +77,9 @@ public final class WebShellWorkspaceComposition {
         DiagnosticsEducationService education = new DiagnosticsEducationService(languageResolver, List.of(new JavaDiagnosticExplainer()));
         JdtLsProjectService jdt = new JdtLsProjectService(projectLifecycleService);
         CompletionService completion = new CompletionService(languageResolver, List.of(new JavaCompletionProvider(jdt)));
+        HoverService hover = new HoverService(languageResolver, List.of(new JavaHoverProvider(jdt)));
+        SignatureHelpService signatureHelp = new SignatureHelpService(languageResolver,
+                List.of(new JavaSignatureHelpProvider(jdt)));
         WebShellDiagnosticsController diagnosticsController = new WebShellDiagnosticsController(surface, diagnostics, education);
         WebShellExecutionController executionController = new WebShellExecutionController(surface,
                 projectLifecycleService, runService, terminalService);
@@ -87,10 +94,13 @@ public final class WebShellWorkspaceComposition {
                 selection, editorManager, projects, explorer, fileOperations, documentController, executionController);
         WebShellCompletionController completionController = new WebShellCompletionController(surface, editorManager,
                 completion);
+        WebShellLanguageFeatureController languageFeatureController = new WebShellLanguageFeatureController(surface,
+                editorManager, hover, signatureHelp);
         WebShellLearningController learningController = new WebShellLearningController(surface, editorManager,
                 documentController::openDocumentationTarget, documentController::openJdkSource);
         WebShellLessonsController lessonsController = new WebShellLessonsController(surface);
-        return new WebShellWorkspaceRuntime(application, workspaceController, documentController, completionController, jdt,
+        return new WebShellWorkspaceRuntime(application, workspaceController, documentController, completionController,
+                languageFeatureController, jdt,
                 learningController, lessonsController, diagnosticsController, executionController);
     }
 }

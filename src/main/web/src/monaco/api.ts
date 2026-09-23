@@ -32,6 +32,34 @@ export type MonacoCursorPositionEvent = { position?: { lineNumber: number; colum
 export type MonacoMouseEvent = { target?: { position?: { lineNumber: number; column: number } | null; range?: { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number } | null } | null };
 export type MonacoRange = { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number };
 export type MonacoSnippetController = { insert: (template: string) => void };
+export type MonacoCancellationToken = { isCancellationRequested: boolean };
+export type MonacoHover = {
+  contents: Array<{ value: string; isTrusted?: boolean }>;
+  range?: MonacoRange;
+};
+export type MonacoSignatureHelp = {
+  signatures: Array<{
+    label: string;
+    documentation?: string;
+    parameters?: Array<{ label: string | [number, number]; documentation?: string }>;
+  }>;
+  activeSignature?: number;
+  activeParameter?: number;
+};
+
+export type MonacoLanguageProviders = {
+  registerHoverProvider: (language: string, provider: {
+    provideHover: (model: MonacoModel, position: { lineNumber: number; column: number },
+                    token: MonacoCancellationToken) => Promise<MonacoHover | null> | MonacoHover | null;
+  }) => Disposable;
+  registerSignatureHelpProvider: (language: string, provider: {
+    signatureHelpTriggerCharacters?: string[];
+    signatureHelpRetriggerCharacters?: string[];
+    provideSignatureHelp: (model: MonacoModel, position: { lineNumber: number; column: number },
+                           token: MonacoCancellationToken, context: unknown) =>
+      Promise<MonacoSignatureHelp | null> | MonacoSignatureHelp | null;
+  }) => Disposable;
+};
 
 export type MonacoEditor = {
   getModel: () => MonacoModel | null;
@@ -69,6 +97,7 @@ export type MonacoApi = {
   };
   MarkerSeverity: { Hint: number; Info: number; Warning: number; Error: number };
   Uri: { parse: (value: string) => unknown };
+  languages: MonacoLanguageProviders;
   KeyMod: { CtrlCmd: number };
   KeyCode: { KeyS: number; Space: number; UpArrow: number; DownArrow: number; Enter: number; Tab: number; Escape: number };
 };

@@ -40,6 +40,8 @@ final class JdtLsProjectCompletionIntegrationTest {
             assertTrue(result.isPresent());
             assertTrue(result.get().candidates().stream().map(candidate -> candidate.label())
                     .anyMatch(label -> label.startsWith("getNome(")));
+            assertTrue(result.get().candidates().stream().filter(candidate -> candidate.label().startsWith("getNome("))
+                    .allMatch(candidate -> candidate.insertText().equals("getNome()")));
             assertTrue(result.get().candidates().stream().map(candidate -> candidate.label())
                     .anyMatch(label -> label.startsWith("salvar(")));
         } finally {

@@ -2,6 +2,9 @@ package com.eyecode.language.java.lsp;
 
 import com.eyecode.language.completion.CompletionRequest;
 import com.eyecode.language.completion.CompletionResult;
+import com.eyecode.language.LanguageFeatureRequest;
+import com.eyecode.language.hover.HoverResult;
+import com.eyecode.language.signature.SignatureHelpResult;
 import com.eyecode.project.ProjectLifecycleService;
 import com.eyecode.project.model.ProjectModel;
 
@@ -16,6 +19,7 @@ import java.util.concurrent.Executors;
 public final class JdtLsProjectService implements AutoCloseable, ProjectLifecycleService.Listener {
     private static final Duration INITIALIZE_TIMEOUT = Duration.ofSeconds(60);
     private static final Duration COMPLETION_TIMEOUT = Duration.ofMillis(900);
+    private static final Duration FEATURE_TIMEOUT = Duration.ofSeconds(5);
     private final ProjectLifecycleService projects;
     private final ExecutorService startup = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "eyecode-jdtls-project");
@@ -47,6 +51,18 @@ public final class JdtLsProjectService implements AutoCloseable, ProjectLifecycl
         return current.complete(request, COMPLETION_TIMEOUT);
     }
 
+    public Optional<HoverResult> hover(LanguageFeatureRequest request) {
+        JdtLsProjectCompletion current = completion;
+        if (current == null || !eligible(request.document().sourceFile(), request.document().uri())) return Optional.empty();
+        return current.hover(request, FEATURE_TIMEOUT);
+    }
+
+    public Optional<SignatureHelpResult> signatureHelp(LanguageFeatureRequest request) {
+        JdtLsProjectCompletion current = completion;
+        if (current == null || !eligible(request.document().sourceFile(), request.document().uri())) return Optional.empty();
+        return current.signatureHelp(request, FEATURE_TIMEOUT);
+    }
+
     public synchronized void closeDocument(Path file) {
         JdtLsProjectCompletion current = completion;
         if (current != null) current.close(file);
@@ -76,9 +92,13 @@ public final class JdtLsProjectService implements AutoCloseable, ProjectLifecycl
     }
 
     private boolean eligible(CompletionRequest request) {
-        if (request.document().uri().startsWith("lesson://") || request.document().sourceFile() == null) return false;
+        return eligible(request.document().sourceFile(), request.document().uri());
+    }
+
+    private boolean eligible(Path file, String uri) {
+        if (uri.startsWith("lesson://") || file == null) return false;
         ProjectModel project = projects.currentProject();
-        return project != null && request.document().sourceFile().toAbsolutePath().normalize().startsWith(project.getRootDir());
+        return project != null && file.toAbsolutePath().normalize().startsWith(project.getRootDir());
     }
 
     private synchronized void closeSession() {
