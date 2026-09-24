@@ -29,6 +29,8 @@ import java.util.Optional;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.IdentityHashMap;
+import java.util.Map;
 
 public final class JavaCompletionProvider implements CompletionProvider {
     private final JavaSyntaxAnalyzer syntaxAnalyzer;
@@ -71,15 +73,12 @@ public final class JavaCompletionProvider implements CompletionProvider {
 
     @Override
     public CompletionResult complete(CompletionRequest request) {
-        Optional<CompletionResult> semantic = Optional.empty();
-        if (jdt != null) {
-            semantic = jdt.complete(request);
-        }
         EditorDocument document = new EditorDocument(request.document().sourceFile(), request.source());
         EditorPosition caret = document.positionOf(request.caretOffset());
         LanguageContext context = new LanguageContext(document, caret, new EditorSelection(caret, caret),
                 syntaxAnalyzer.analyze(document), com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot.empty());
-        var snapshot = engine.complete(context, request.explicit());
+        var snapshot = engine.complete(context, request.explicit()
+                || request.triggerKind() == CompletionRequest.TriggerKind.TRIGGER_CHARACTER);
         String prefix = CompletionPrefixResolver.resolvePrefix(context);
         int start = request.replaceStart() >= 0 && request.replaceStart() <= request.caretOffset()
                 ? request.replaceStart() : Math.max(0, request.caretOffset() - prefix.length());
@@ -90,9 +89,11 @@ public final class JavaCompletionProvider implements CompletionProvider {
                 .limit(100)
                 .map(item -> candidate(item, boundedStart, boundedEnd, prefix)).toList());
         CompletionContextKind contextKind = CompletionContextResolver.resolve(context);
-        if (contextKind != CompletionContextKind.MEMBER_ACCESS || semantic.isEmpty()) {
+        if (contextKind != CompletionContextKind.MEMBER_ACCESS || jdt == null) {
             return local;
         }
+        Optional<CompletionResult> semantic = jdt.complete(request);
+        if (semantic.isEmpty()) return local;
         return mergeMemberResults(local, semantic.get(), prefix, boundedStart, boundedEnd);
     }
 
@@ -117,7 +118,27 @@ public final class JavaCompletionProvider implements CompletionProvider {
                 merged.add(enrichCandidate(candidate, prefix, replaceStart, replaceEnd));
             }
         }
-        return new CompletionResult(merged);
+        com.eyecode.editor.v2.completion.CompletionRanking ranking =
+                new com.eyecode.editor.v2.completion.CompletionRanking();
+        Map<CompletionItem, CompletionCandidate> originals = new IdentityHashMap<>();
+        List<CompletionItem> rankable = new ArrayList<>(merged.size());
+        for (CompletionCandidate candidate : merged) {
+            CompletionItem item = new CompletionItem(candidate.label(), candidate.insertText(), candidate.detail(),
+                    completionKind(candidate.kind()), candidate.signature(), candidate.returnType(), candidate.owner(),
+                    candidate.documentation(), candidate.example(), candidate.category(), candidate.sortKey());
+            rankable.add(item);
+            originals.put(item, candidate);
+        }
+        return new CompletionResult(ranking.rank(rankable, prefix, true).stream()
+                .map(originals::get).toList());
+    }
+
+    private static com.eyecode.editor.v2.completion.CompletionItemKind completionKind(String kind) {
+        try {
+            return com.eyecode.editor.v2.completion.CompletionItemKind.valueOf(kind);
+        } catch (IllegalArgumentException | NullPointerException ignored) {
+            return com.eyecode.editor.v2.completion.CompletionItemKind.VARIABLE;
+        }
     }
 
     private static CompletionCandidate enrichCandidate(CompletionCandidate raw, String prefix,
@@ -130,8 +151,9 @@ public final class JavaCompletionProvider implements CompletionProvider {
         }
         String documentation = !raw.documentation().isEmpty() ? raw.documentation()
                 : kbItem != null && kbItem.getDocumentation() != null ? kbItem.getDocumentation() : "";
-        String example = kbItem != null && kbItem.getExample() != null ? kbItem.getExample() : "";
+        String example = kbItem != null && kbItem.getExample() != null ? kbItem.getExample() : raw.example();
         String category = kbItem != null && kbItem.getCategory() != null ? kbItem.getCategory()
+                : !raw.category().isEmpty() ? raw.category()
                 : "METHOD".equals(raw.kind()) ? "Method" : "FIELD".equals(raw.kind()) ? "Field" : "";
         String signature = !raw.signature().isEmpty() ? raw.signature()
                 : kbItem != null && kbItem.getSignature() != null ? kbItem.getSignature() : base + "()";

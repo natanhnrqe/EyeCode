@@ -58,6 +58,29 @@ class WebShellCompletionControllerTest {
     }
 
     @Test
+    void propagatesTriggerKindAndCharacterToCompletionRequest() throws Exception {
+        Surface surface = new Surface();
+        EditorManager manager = manager();
+        CapturingProvider provider = new CapturingProvider();
+        WebShellCompletionController controller = new WebShellCompletionController(surface, manager,
+                new CompletionService(resolver(), List.of(provider)));
+        try {
+            String source = "class Main { void run() { value. } }";
+            surface.handler("completion", "request").handle(WebShellEnvelope.request("completion", "request", "trigger",
+                    Map.of("uri", "lesson://language/trigger/main", "language", "java", "lessonPractice", true,
+                            "content", source, "version", 3L, "offset", source.length(), "explicit", false,
+                            "triggerKind", "triggerCharacter", "triggerCharacter", ".")));
+            assertTrue(provider.called.await(2, TimeUnit.SECONDS));
+            assertEquals(CompletionRequest.TriggerKind.TRIGGER_CHARACTER, provider.request.triggerKind());
+            assertEquals(".", provider.request.triggerCharacter());
+            assertEquals(false, provider.request.explicit());
+        } finally {
+            controller.dispose();
+            manager.dispose();
+        }
+    }
+
+    @Test
     void publishesOnlyTheLatestCompletionForADocument() throws InterruptedException {
         Surface surface = new Surface();
         EditorManager manager = manager();

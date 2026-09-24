@@ -78,10 +78,16 @@ public final class WebShellCompletionController {
                     session == null ? text(message.payload(), "displayName") : session.getDisplayName(),
                     LanguageId.parse(text(message.payload(), "language")).orElse(null));
             long version = snapshot == null ? numberLong(message.payload(), "version", 0) : snapshot.version();
+            CompletionRequest.TriggerKind triggerKind = switch (text(message.payload(), "triggerKind")) {
+                case "triggerCharacter" -> CompletionRequest.TriggerKind.TRIGGER_CHARACTER;
+                case "incomplete" -> CompletionRequest.TriggerKind.INCOMPLETE;
+                default -> CompletionRequest.TriggerKind.INVOKED;
+            };
             CompletionResult result = completionService.complete(new CompletionRequest(document,
                     version, content, offset,
                     Boolean.TRUE.equals(message.payload().get("explicit")),
-                    number(message.payload(), "replaceStart", -1), number(message.payload(), "replaceEnd", -1)));
+                    number(message.payload(), "replaceStart", -1), number(message.payload(), "replaceEnd", -1),
+                    triggerKind, text(message.payload(), "triggerCharacter")));
             if (isLatest(modelId, message.requestId())) {
                 publish(message, responsePayload(message, modelId, version, result.candidates()));
             }

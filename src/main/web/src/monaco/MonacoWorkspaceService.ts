@@ -1033,7 +1033,7 @@ export class MonacoWorkspaceService {
         unsubscribe();
         resolve(value);
       };
-      timeout = window.setTimeout(() => finish(null), 5000);
+      timeout = window.setTimeout(() => finish(null), 7000);
       unsubscribe = bridge.subscribe(message => {
         if (message.kind !== 'response' || message.channel !== channel || message.name !== 'request'
             || message.requestId !== requestId) return;
