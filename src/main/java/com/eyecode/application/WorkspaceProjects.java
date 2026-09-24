@@ -27,13 +27,29 @@ public final class WorkspaceProjects {
     }
 
     public ProjectModel open(Path root) {
+        if (root == null || !java.nio.file.Files.isDirectory(root)) {
+            throw new IllegalArgumentException("Project root must be an existing directory");
+        }
+        Path normalizedRoot = root.toAbsolutePath().normalize();
+        if (com.eyecode.project.ProjectDetector.detect(normalizedRoot.toFile())
+                == com.eyecode.project.ProjectType.UNKNOWN && isEmptyDirectory(normalizedRoot)) {
+            throw new IllegalArgumentException("Selected directory does not contain a project");
+        }
         execution.stop();
-        ProjectModel project = lifecycle.open(root);
+        ProjectModel project = lifecycle.open(normalizedRoot);
         lifecycle.recordRecent(project);
         editor.closeAllSessions();
         editor.watchProject(project.getRootDir());
         execution.refreshConfigurations();
         return project;
+    }
+
+    private boolean isEmptyDirectory(Path root) {
+        try (var entries = java.nio.file.Files.list(root)) {
+            return entries.findAny().isEmpty();
+        } catch (IOException exception) {
+            throw new IllegalArgumentException("Unable to read project directory", exception);
+        }
     }
 
     public ProjectModel create(MavenProjectCreationService.CreationRequest request) throws IOException {
@@ -52,6 +68,10 @@ public final class WorkspaceProjects {
 
     public List<ProjectInfo> recent() {
         return lifecycle.recentProjects();
+    }
+
+    public void removeRecent(Path root) {
+        lifecycle.removeRecent(root);
     }
 
     public Optional<String> selectedMainClass(ProjectModel project) {

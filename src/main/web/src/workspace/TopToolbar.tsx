@@ -14,6 +14,7 @@ type Props = {
   onOpenProject(): void;
   onNewFile(): void;
   onOpenRecentProject(path: string): void;
+  onRemoveRecentProject(path: string): void;
   onWelcome(): void;
   onRun(): void;
   onRerun(): void;
@@ -24,7 +25,7 @@ type Props = {
   onWindowAction(action: 'windowMinimize' | 'windowToggleMaximize' | 'windowClose'): void;
 };
 
-export function TopToolbar({ learnMode = false, projectName, projectPath, recentProjects, runState, runAvailable, onNewProject, onOpenProject, onNewFile, onOpenRecentProject, onWelcome, onRun, onRerun, onStop, onSelectConfiguration, onOpenSearch, onOpenSettings, onWindowAction }: Props) {
+export function TopToolbar({ learnMode = false, projectName, projectPath, recentProjects, runState, runAvailable, onNewProject, onOpenProject, onNewFile, onOpenRecentProject, onRemoveRecentProject, onWelcome, onRun, onRerun, onStop, onSelectConfiguration, onOpenSearch, onOpenSettings, onWindowAction }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const dragPointer = useRef<number | null>(null);
@@ -65,9 +66,12 @@ export function TopToolbar({ learnMode = false, projectName, projectPath, recent
           {projectName && <div className="project-switcher-current"><strong>{projectName}</strong><span className="project-switcher-path">{projectPath}</span></div>}
           {otherRecentProjects.length > 0 && <div className="project-switcher-recent">
             <span>Recent Projects</span>
-            {otherRecentProjects.map(project => <button key={project.path} type="button" onClick={() => { setSwitcherOpen(false); onOpenRecentProject(project.path); }}>
-              <strong>{project.name}</strong><small className="project-switcher-path">{project.path}</small>
-            </button>)}
+            {otherRecentProjects.map(project => <div className="project-switcher-recent-row" key={project.path}>
+              <button type="button" onClick={() => { setSwitcherOpen(false); onOpenRecentProject(project.path); }}>
+                <strong>{project.name}</strong><small className="project-switcher-path">{project.path}</small>
+              </button>
+              <button type="button" aria-label={`Remove ${project.name} from recent projects`} onClick={() => onRemoveRecentProject(project.path)}>Remove</button>
+            </div>)}
           </div>}
           <div className="project-switcher-actions">
             <button type="button" onClick={() => { setSwitcherOpen(false); onNewProject(); }}>New Project</button>

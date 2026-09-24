@@ -6,6 +6,10 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -15,6 +19,18 @@ class ProjectServiceTest {
 
     @TempDir
     Path tempDir;
+    private final List<Path> createdRoots = new ArrayList<>();
+
+    @AfterEach
+    void removeCreatedRoots() throws Exception {
+        for (Path root : createdRoots) {
+            if (Files.exists(root)) {
+                try (var paths = Files.walk(root)) {
+                    for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
+                }
+            }
+        }
+    }
 
     @Test
     void removesKnownRunFixturesUnderTheSystemTempDirectory() throws Exception {
@@ -24,6 +40,7 @@ class ProjectServiceTest {
         ProjectService writer = new ProjectService(storage);
         writer.addRecent(info(stop));
         writer.addRecent(info(service));
+        writer.save();
 
         ProjectService loaded = new ProjectService(storage);
 
@@ -34,8 +51,7 @@ class ProjectServiceTest {
     @Test
     void preservesRealProjectsOutsideTempAndArbitraryProjectsInsideTemp() throws Exception {
         Path storage = tempDir.resolve("recent.dat");
-        Path outside = Path.of("target/recent-project-test/eyecode-run-service-example")
-                .toAbsolutePath().normalize();
+        Path outside = createProjectRoot("eyecode-run-service-example");
         Path arbitraryTempProject = Files.createTempDirectory("my-real-java-project");
         Files.createDirectories(outside);
         ProjectService writer = new ProjectService(storage);
@@ -44,17 +60,32 @@ class ProjectServiceTest {
 
         ProjectService loaded = new ProjectService(storage);
 
-        assertEquals(2, loaded.getRecentProjects().size());
+        assertEquals(1, loaded.getRecentProjects().size());
         assertTrue(loaded.getRecentProjects().stream()
                 .anyMatch(project -> project.getPath().equals(outside.toAbsolutePath().normalize().toString())));
         assertTrue(loaded.getRecentProjects().stream()
-                .anyMatch(project -> project.getPath().equals(arbitraryTempProject.toAbsolutePath().normalize().toString())));
+                .noneMatch(project -> project.getPath().equals(arbitraryTempProject.toAbsolutePath().normalize().toString())));
+    }
+
+    @Test
+    void retainsRecentNonemptyWorkspaceEvenWhenProjectDetectorDoesNotRecognizeIt() throws Exception {
+        Path root = Path.of("target").toAbsolutePath().normalize()
+                .resolve("recent-unmarked-" + UUID.randomUUID());
+        Files.createDirectories(root);
+        Files.writeString(root.resolve("README.md"), "workspace");
+        createdRoots.add(root);
+        ProjectService service = new ProjectService(tempDir.resolve("recent.dat"));
+
+        service.addRecent(info(root));
+
+        assertEquals(root.toAbsolutePath().normalize().toString(),
+                service.getRecentProjects().getFirst().getPath());
     }
 
     @Test
     void removesNonexistentEntriesAndPersistsTheCleanedList() throws Exception {
         Path storage = tempDir.resolve("recent.dat");
-        Path valid = Files.createDirectory(tempDir.resolve("valid-project"));
+        Path valid = createProjectRoot("valid-project");
         ProjectService writer = new ProjectService(storage);
         writer.addRecent(info(valid));
         writer.addRecent(info(tempDir.resolve("deleted-project")));
@@ -71,7 +102,7 @@ class ProjectServiceTest {
     @Test
     void validLoadDoesNotRewriteTheStorageFile() throws Exception {
         Path storage = tempDir.resolve("recent.dat");
-        Path valid = Files.createDirectory(tempDir.resolve("valid"));
+        Path valid = createProjectRoot("valid");
         ProjectService writer = new ProjectService(storage);
         writer.addRecent(info(valid));
         byte[] before = Files.readAllBytes(storage);
@@ -92,11 +123,20 @@ class ProjectServiceTest {
         ProjectService service = new ProjectService(tempDir.resolve("recent.dat"));
 
         for (int index = 0; index < 11; index++) {
-            Path project = Files.createDirectory(tempDir.resolve("project-" + index));
+            Path project = createProjectRoot("project-" + index);
             service.addRecent(info(project));
         }
 
         assertEquals(10, service.getRecentProjects().size());
+    }
+
+    private Path createProjectRoot(String name) throws Exception {
+        Path target = Path.of("target").toAbsolutePath().normalize();
+        Files.createDirectories(target);
+        Path root = Files.createDirectory(target.resolve("recent-project-" + name + "-" + UUID.randomUUID()));
+        Files.writeString(root.resolve("pom.xml"), "<project><modelVersion>4.0.0</modelVersion></project>");
+        createdRoots.add(root);
+        return root;
     }
 
     private ProjectInfo info(Path path) {

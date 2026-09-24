@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import com.eyecode.diagnostics.JavaDiagnosticsProvider;
 import com.eyecode.language.DocumentLanguageResolver;
 import com.eyecode.language.ExtensionDocumentLanguageResolver;
@@ -23,15 +25,108 @@ class WebShellWorkspaceDocumentsTest {
         Surface surface = new Surface();
         try (var runtime = WebShellWorkspaceComposition.create(surface)) {
             assertEquals(7, surface.handlers.keySet().stream().filter(key -> key.startsWith("document/")).count());
-            assertEquals(14, surface.handlers.keySet().stream().filter(key -> key.startsWith("workspace/")).count());
+            assertEquals(15, surface.handlers.keySet().stream().filter(key -> key.startsWith("workspace/")).count());
             assertNull(surface.call("workspace", "snapshot", Map.of()).error());
             assertEquals("NATIVE_UI_UNAVAILABLE", surface.call("workspace", "chooseDirectory", Map.of()).error().code());
+            assertNull(surface.call("workspace", "removeRecent", Map.of("path", temp.toString())).error());
+        }
+    }
+
+    @Test
+    void createProjectRegistersAndOpensTheMavenRootWithoutJdt() throws Exception {
+        Surface surface = new Surface();
+        try (var runtime = WebShellWorkspaceComposition.create(surface)) {
+            var created = surface.call("workspace", "createProject", Map.of(
+                    "name", "Demo", "location", temp.toString(), "groupId", "example.app"));
+
+            assertNull(created.error());
+            Path root = temp.resolve("Demo");
+            assertEquals(root.toString(), ((Map<?, ?>) created.payload().get("project")).get("path"));
+            assertTrue(Files.isRegularFile(root.resolve("pom.xml")));
+            assertTrue(Files.isRegularFile(root.resolve(".gitignore")));
+            Path main = root.resolve("src/main/java/example/app/Main.java");
+            assertTrue(Files.isRegularFile(main));
+            assertNull(surface.call("workspace", "openFile", Map.of("path", main.toString())).error());
+            assertNull(surface.call("workspace", "openProject", Map.of("path", root.toString())).error());
+        }
+    }
+
+    @Test
+    void nativeProjectPickerSupportsCreateOpenCancelAndInvalidSelection() throws Exception {
+        Path location = Files.createDirectory(temp.resolve("picker-location"));
+        Path invalid = Files.createDirectory(temp.resolve("not-a-project"));
+        AtomicReference<Path> selected = new AtomicReference<>(location);
+        List<String> pickerTitles = new CopyOnWriteArrayList<>();
+        WebShellNativeUi nativeUi = new WebShellNativeUi() {
+            @Override public boolean isAvailable() { return true; }
+            @Override public CompletableFuture<Path> chooseDirectoryAsync(String title) {
+                pickerTitles.add(title);
+                return CompletableFuture.completedFuture(selected.get());
+            }
+            @Override public Path chooseJavaSaveTarget(String suggestedName) { return null; }
+        };
+        Surface surface = new Surface();
+        try (var runtime = WebShellWorkspaceComposition.create(surface, target -> { }, nativeUi)) {
+            assertNull(surface.handler("workspace", "chooseDirectory").handle(
+                    WebShellEnvelope.request("workspace", "chooseDirectory", "create-browse", Map.of())));
+            WebShellEnvelope createBrowse = surface.awaitResponse("create-browse");
+            assertNull(createBrowse.error());
+            assertEquals(location.toString(), createBrowse.payload().get("path"));
+            assertEquals("Choose Project Location", pickerTitles.getFirst());
+
+            WebShellEnvelope created = surface.call("workspace", "createProject", Map.of(
+                    "name", "Picked", "location", createBrowse.payload().get("path"), "groupId", "example.app"));
+            assertNull(created.error());
+            Path projectRoot = location.resolve("Picked");
+            assertTrue(Files.isRegularFile(projectRoot.resolve("pom.xml")));
+
+            selected.set(projectRoot);
+            assertNull(surface.handler("workspace", "openProject").handle(
+                    WebShellEnvelope.request("workspace", "openProject", "open-browse", Map.of())));
+            WebShellEnvelope opened = surface.awaitResponse("open-browse");
+            assertNull(opened.error());
+            assertEquals(projectRoot.toString(), ((Map<?, ?>) opened.payload().get("project")).get("path"));
+            assertEquals("Open Project", pickerTitles.get(1));
+
+            selected.set(null);
+            assertNull(surface.handler("workspace", "chooseDirectory").handle(
+                    WebShellEnvelope.request("workspace", "chooseDirectory", "create-cancel", Map.of())));
+            assertEquals(Boolean.TRUE, surface.awaitResponse("create-cancel").payload().get("cancelled"));
+            assertNull(surface.handler("workspace", "openProject").handle(
+                    WebShellEnvelope.request("workspace", "openProject", "open-cancel", Map.of())));
+            assertEquals(Boolean.TRUE, surface.awaitResponse("open-cancel").payload().get("cancelled"));
+
+            selected.set(invalid);
+            assertNull(surface.handler("workspace", "openProject").handle(
+                    WebShellEnvelope.request("workspace", "openProject", "open-invalid", Map.of())));
+            assertEquals("INVALID_PROJECT", surface.awaitResponse("open-invalid").error().code());
+            Map<?, ?> current = (Map<?, ?>) surface.call("workspace", "snapshot", Map.of()).payload().get("project");
+            assertEquals(projectRoot.toString(), current.get("path"));
+            assertEquals(List.of("Choose Project Location", "Open Project", "Choose Project Location",
+                    "Open Project", "Open Project"), pickerTitles);
+        }
+    }
+
+    @Test
+    void startupProjectUsesTheWorkspaceOpenFlowAndBecomesActive() throws Exception {
+        Path root = Files.createDirectory(temp.resolve("external-project"));
+        Files.writeString(root.resolve("pom.xml"), "<project/>");
+        Surface surface = new Surface();
+        try (var runtime = WebShellWorkspaceComposition.create(surface)) {
+            runtime.openProjectAtStartup(root);
+
+            Map<?, ?> project = (Map<?, ?>) surface.call("workspace", "snapshot", Map.of())
+                    .payload().get("project");
+            assertEquals(root.toAbsolutePath().normalize().toString(), project.get("path"));
+            assertTrue(surface.events.stream().anyMatch(event -> event.name().equals("changed")
+                    && "workspace".equals(event.channel())));
         }
     }
 
     @Test
     void openEditConflictSaveRenameAndDeletePreservePayloadsAndEvents() throws Exception {
         Path root = Files.createDirectory(temp.resolve("project"));
+        Files.writeString(root.resolve("pom.xml"), "<project/>");
         Path file = Files.writeString(root.resolve("note.txt"), "initial");
         Surface surface = new Surface();
         try (var runtime = WebShellWorkspaceComposition.create(surface)) {
@@ -60,6 +155,7 @@ class WebShellWorkspaceDocumentsTest {
     @Test
     void explorerAndMutationResultsKeepWebShapeAndErrorCodes() throws Exception {
         Path root = Files.createDirectory(temp.resolve("project"));
+        Files.writeString(root.resolve("pom.xml"), "<project/>");
         Files.createDirectory(root.resolve("target"));
         Surface surface = new Surface();
         try (var runtime = WebShellWorkspaceComposition.create(surface)) {
@@ -71,7 +167,7 @@ class WebShellWorkspaceDocumentsTest {
             var children = surface.call("workspace", "children", Map.of("path", root.toString()));
             assertEquals(root.toString(), children.payload().get("parent"));
             List<?> entries = (List<?>) children.payload().get("children");
-            assertEquals(1, entries.size());
+            assertEquals(2, entries.size());
             assertEquals(Map.of("name", "src", "path", root.resolve("src").toString(),
                     "kind", "directory", "hasChildren", false), entries.getFirst());
             assertEquals("INVALID_TREE_PATH", surface.call("workspace", "children", Map.of("path", temp.toString())).error().code());
@@ -139,6 +235,23 @@ class WebShellWorkspaceDocumentsTest {
             assertEquals("eyecode.web/1", response.protocol());
             assertEquals("test", response.requestId());
             return response;
+        }
+
+        WebShellMessageHandler handler(String channel, String name) {
+            return handlers.get(channel + "/" + name);
+        }
+
+        WebShellEnvelope awaitResponse(String requestId) throws InterruptedException {
+            for (int attempt = 0; attempt < 200; attempt++) {
+                WebShellEnvelope response = events.stream()
+                        .filter(event -> event.kind() == WebShellEnvelope.Kind.RESPONSE)
+                        .filter(event -> requestId.equals(event.requestId()))
+                        .findFirst().orElse(null);
+                if (response != null) return response;
+                Thread.sleep(10);
+            }
+            fail("No response for " + requestId);
+            return null;
         }
     }
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { bridge } from '../bridge/EyeCodeBridge';
+import { bridge, WebShellRequestError } from '../bridge/EyeCodeBridge';
 import type { ShellBootstrap, WebShellEnvelope } from '../bridge/protocol';
 import type { CompletionPopupState } from '../completion/protocol';
 import { CompletionPopup } from '../completion/CompletionPopup';
@@ -275,7 +275,13 @@ export function Workspace() {
         setMode('PROJECT');
       }
       setMessage('');
-    } catch (error) { setMessage(formatError(error)); }
+    } catch (error) {
+      if (path && error instanceof WebShellRequestError && error.code === 'INVALID_PROJECT') {
+        try { setWorkspace(await bridge.request<WorkspaceSnapshot>('workspace', 'removeRecent', { path })); }
+        catch { setMessage(formatError(error)); }
+      }
+      setMessage(formatError(error));
+    }
   }
 
   async function chooseProjectLocation(): Promise<string | undefined> {
@@ -297,6 +303,13 @@ export function Workspace() {
       setNewProjectOpen(false);
       setMessage('');
     }
+  }
+
+  async function removeRecentProject(path: string) {
+    try {
+      setWorkspace(await bridge.request<WorkspaceSnapshot>('workspace', 'removeRecent', { path }));
+      setMessage('');
+    } catch (error) { setMessage(formatError(error)); }
   }
 
   async function newDocument() {
@@ -576,7 +589,7 @@ export function Workspace() {
   const runAvailable = projectMode ? runState.configurations.length > 0 : lessonRunAvailable;
   const toolbar = <TopToolbar learnMode={learnMode} projectName={projectMode ? workspace.project?.name : undefined} projectPath={projectMode ? workspace.project?.path : undefined} recentProjects={workspace.recentProjects} runState={runState} runAvailable={runAvailable}
     onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()}
-    onOpenRecentProject={path => void openProject(path)} onWelcome={() => void leaveProject()} onRun={() => void run('run')} onRerun={() => void run('rerun')}
+    onOpenRecentProject={path => void openProject(path)} onRemoveRecentProject={path => void removeRecentProject(path)} onWelcome={() => void leaveProject()} onRun={() => void run('run')} onRerun={() => void run('rerun')}
     onStop={() => void run('stop')} onSelectConfiguration={id => void selectConfiguration(id)}
     onOpenSearch={() => setSidePanel('search')} onOpenSettings={() => setSidePanel('settings')}
     onWindowAction={action => void windowAction(action)} />;
@@ -717,7 +730,7 @@ export function Workspace() {
       projectRoot={workspace.project?.root.path} projectName={workspace.project?.name} caret={caret} message={message} runState={runState} />
       : learnMode && lessonSession ? <StatusBar breadcrumbs={learnStatusBreadcrumbs} caret={caret} message={message} runState={runState} /> : <div className="shell-status-spacer" />}
     {mode === 'WELCOME' && <section className="welcome-mode"><WelcomeScreen recentProjects={workspace.recentProjects} onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()}
-      onOpenRecentProject={path => void openProject(path)} onLessons={openLessons} /></section>}
+      onOpenRecentProject={path => void openProject(path)} onRemoveRecentProject={path => void removeRecentProject(path)} onLessons={openLessons} /></section>}
     <div className="overlay-root">
       {completion && <CompletionPopup state={completion} onSelect={selectCompletion} onAccept={acceptCompletion} />}
       {learning && <LearningCard state={learning} onNavigate={identifier => service.navigateLearning(identifier)}

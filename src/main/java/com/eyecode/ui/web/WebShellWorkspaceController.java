@@ -47,6 +47,7 @@ public final class WebShellWorkspaceController {
         };
         manager.addExternalFileListener(externalFileListener);
         surface.registerHandler("workspace", "snapshot", this::workspaceSnapshot);
+        surface.registerHandler("workspace", "removeRecent", this::removeRecent);
         surface.registerHandler("workspace", "openProject", this::openProject);
         surface.registerHandler("workspace", "createProject", this::createProject);
         surface.registerHandler("workspace", "chooseDirectory", this::chooseDirectory);
@@ -70,6 +71,18 @@ public final class WebShellWorkspaceController {
 
     private WebShellEnvelope workspaceSnapshot(WebShellEnvelope message) {
         return message.response(workspacePayload());
+    }
+
+    private WebShellEnvelope removeRecent(WebShellEnvelope message) {
+        String rawPath = text(message.payload(), "path");
+        if (rawPath.isBlank()) return message.error(new WebShellError(
+                "INVALID_PROJECT", "A recent project root is required", true));
+        try {
+            projects.removeRecent(Path.of(rawPath));
+            return message.response(workspacePayload());
+        } catch (IllegalArgumentException exception) {
+            return message.error(new WebShellError("INVALID_PROJECT", safeMessage(exception), true));
+        }
     }
 
     private WebShellEnvelope openProject(WebShellEnvelope message) {
@@ -128,6 +141,10 @@ public final class WebShellWorkspaceController {
 
     private Map<String, Object> openWorkspace(Path root) {
         return workspaceOpened(projects.open(root));
+    }
+
+    void openProjectAtStartup(Path root) {
+        openWorkspace(root);
     }
 
     private Map<String, Object> workspaceOpened(ProjectModel project) {

@@ -7,6 +7,10 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,6 +22,18 @@ class ProjectLifecycleServiceTest {
 
     @TempDir
     Path tempDir;
+    private final List<Path> createdRoots = new ArrayList<>();
+
+    @AfterEach
+    void removeCreatedRoots() throws Exception {
+        for (Path root : createdRoots) {
+            if (Files.exists(root)) {
+                try (var paths = Files.walk(root)) {
+                    for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
+                }
+            }
+        }
+    }
 
     @Test
     void opensAnyDirectoryAndReportsProjectChanges() throws Exception {
@@ -37,7 +53,7 @@ class ProjectLifecycleServiceTest {
         assertEquals(opened, changed.get());
         assertTrue(service.recentProjects().isEmpty());
         service.recordRecent(opened);
-        assertEquals(1, service.recentProjects().size());
+        assertTrue(service.recentProjects().isEmpty());
     }
 
     @Test
@@ -83,7 +99,7 @@ class ProjectLifecycleServiceTest {
     @Test
     void recentProjectsPersistAndReopenWithNormalizedPath() throws Exception {
         Path storage = tempDir.resolve("recent.dat");
-        Path project = Files.createDirectory(tempDir.resolve("project"));
+        Path project = createProjectRoot("persisted");
         ProjectLifecycleService first = new ProjectLifecycleService(new ProjectService(storage));
         first.open(project.resolve("."));
         assertTrue(first.recentProjects().isEmpty());
@@ -110,7 +126,7 @@ class ProjectLifecycleServiceTest {
 
     @Test
     void explicitRecordingIsIdempotentForTheSameProject() throws Exception {
-        Path project = Files.createDirectory(tempDir.resolve("user-project"));
+        Path project = createProjectRoot("user-project");
         ProjectLifecycleService service = new ProjectLifecycleService(
                 new ProjectService(tempDir.resolve("recent.dat")));
 
@@ -124,8 +140,8 @@ class ProjectLifecycleServiceTest {
     @Test
     void persistsAnExplicitLastWorkspaceIndependentlyOfRecentOrdering() throws Exception {
         Path storage = tempDir.resolve("recent.dat");
-        Path firstProject = Files.createDirectory(tempDir.resolve("first"));
-        Path lastProject = Files.createDirectory(tempDir.resolve("last"));
+        Path firstProject = createProjectRoot("first");
+        Path lastProject = createProjectRoot("last");
         ProjectLifecycleService first = new ProjectLifecycleService(new ProjectService(storage));
 
         first.open(firstProject);
@@ -143,15 +159,24 @@ class ProjectLifecycleServiceTest {
     @Test
     void dropsAnInvalidLastWorkspaceDuringRestoreEligibilityCheck() throws Exception {
         Path storage = tempDir.resolve("recent.dat");
-        Path project = Files.createDirectory(tempDir.resolve("deleted-after-close"));
+        Path project = createProjectRoot("deleted-after-close");
         ProjectLifecycleService first = new ProjectLifecycleService(new ProjectService(storage));
         first.open(project);
         first.recordRecent(first.currentProject());
-        Files.delete(project);
+        Files.delete(project.resolve("pom.xml"));
 
         ProjectLifecycleService restored = new ProjectLifecycleService(new ProjectService(storage));
 
         assertTrue(restored.lastOpenedWorkspace().isEmpty());
         assertTrue(restored.recentProjects().isEmpty());
+    }
+
+    private Path createProjectRoot(String name) throws Exception {
+        Path target = Path.of("target").toAbsolutePath().normalize();
+        Files.createDirectories(target);
+        Path root = Files.createDirectory(target.resolve("lifecycle-project-" + name + "-" + UUID.randomUUID()));
+        Files.writeString(root.resolve("pom.xml"), "<project><modelVersion>4.0.0</modelVersion></project>");
+        createdRoots.add(root);
+        return root;
     }
 }

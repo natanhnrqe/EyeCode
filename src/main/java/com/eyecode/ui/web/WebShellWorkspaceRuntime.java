@@ -2,6 +2,7 @@ package com.eyecode.ui.web;
 
 import com.eyecode.application.WorkspaceApplication;
 import com.eyecode.language.java.lsp.JdtLsProjectService;
+import java.nio.file.Path;
 
 import java.util.Objects;
 
@@ -38,6 +39,10 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
         this.lessonsController = Objects.requireNonNull(lessonsController, "lessonsController");
         this.diagnosticsController = Objects.requireNonNull(diagnosticsController, "diagnosticsController");
         this.executionController = Objects.requireNonNull(executionController, "executionController");
+    }
+
+    public void openProjectAtStartup(Path root) {
+        workspaceController.openProjectAtStartup(Objects.requireNonNull(root, "root"));
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.eyecode.ui.web;
 
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 final class LocalWebShellRuntime implements AutoCloseable {
@@ -8,8 +9,13 @@ final class LocalWebShellRuntime implements AutoCloseable {
     private final AtomicBoolean closed = new AtomicBoolean();
 
     LocalWebShellRuntime() {
+        this(null);
+    }
+
+    LocalWebShellRuntime(Path startupProject) {
         surface = new LocalWebShellSurface();
-        workspace = WebShellWorkspaceComposition.create(surface);
+        workspace = WebShellWorkspaceComposition.create(surface, target -> { }, new LocalWebShellNativeUi());
+        if (startupProject != null) workspace.openProjectAtStartup(startupProject);
     }
 
     LocalWebShellSurface surface() {

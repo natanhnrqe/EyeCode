@@ -15,6 +15,7 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.nio.file.Path;
 
 public final class SwingMainWindow {
     private JFrame frame;
@@ -22,6 +23,15 @@ public final class SwingMainWindow {
     private SwingWebShellSurface surface;
     private WebShellWorkspaceRuntime workspaceController;
     private boolean disposed;
+    private final Path startupProject;
+
+    public SwingMainWindow() {
+        this(null);
+    }
+
+    public SwingMainWindow(Path startupProject) {
+        this.startupProject = startupProject;
+    }
 
     public void show() {
         frame = new JFrame("EyeCode");
@@ -33,6 +43,7 @@ public final class SwingMainWindow {
         surface = new SwingWebShellSurface(assetServer.entryUrl());
         SwingWebShellNativeUi nativeUi = new SwingWebShellNativeUi(frame);
         workspaceController = WebShellWorkspaceComposition.create(surface, target -> { }, nativeUi);
+        if (startupProject != null) workspaceController.openProjectAtStartup(startupProject);
         new WebShellNativeController(surface, nativeUi);
         surface.start();
         frame.add(surface.component(), BorderLayout.CENTER);

@@ -1485,6 +1485,9 @@ html, body, #root {
 .project-switcher-current strong, .project-switcher-recent > span { color: #e6e8ed; font: 600 12px var(--font-ui); }
 .project-switcher-path { display: block; min-width: 0; max-width: 100%; overflow: hidden; color: var(--text-muted); font: 11px var(--font-code); text-overflow: ellipsis; white-space: nowrap; }
 .project-switcher-recent { border-bottom: 1px solid rgba(255,255,255,.09); }
+.project-switcher-recent-row { display: flex; align-items: center; gap: 4px; }
+.project-switcher-recent-row > button:first-child { flex: 1; min-width: 0; }
+.project-switcher-recent-row > button:last-child { width: auto; color: var(--text-muted); }
 .project-switcher-recent button, .project-switcher-actions button { display: grid; gap: 2px; width: 100%; padding: 7px; border: 0; border-radius: 5px; color: #dfe2e8; background: transparent; text-align: left; font: 12px var(--font-ui); }
 .project-switcher-recent button:hover, .project-switcher-actions button:hover { background: rgba(111,132,211,.16); }
 .project-switcher-actions { gap: 2px; }
@@ -2352,6 +2355,9 @@ html, body, #root {
 .welcome-recents header span, .welcome-recents > p { color: var(--text-muted); font: 11px var(--font-ui); }
 .welcome-recents > p { margin: 0; padding: 18px 16px; }
 .welcome-recents > div { display: grid; padding: 6px; }
+.welcome-recent-row { display: flex; align-items: center; gap: 4px; }
+.welcome-recent-row > button:first-child { flex: 1; min-width: 0; }
+.welcome-recent-row > button:last-child { width: auto; color: var(--text-muted); }
 .welcome-recents button { display: grid; gap: 3px; min-width: 0; padding: 10px; border: 0; border-radius: 6px; color: #e4e6eb; background: transparent; text-align: left; }
 .welcome-recents button:hover { background: rgba(104,125,209,.15); }
 .welcome-recents button strong, .welcome-recents button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,11 +1,15 @@
 package com.eyecode.ui.web;
 
+import com.eyecode.project.ProjectLaunchPathResolver;
+import java.nio.file.Path;
+
 public final class LocalWebShellLauncher {
     private LocalWebShellLauncher() {
     }
 
     public static void main(String[] args) {
-        LocalWebShellRuntime runtime = new LocalWebShellRuntime();
+        Path startupProject = ProjectLaunchPathResolver.resolve(args);
+        LocalWebShellRuntime runtime = new LocalWebShellRuntime(startupProject);
         Runtime.getRuntime().addShutdownHook(new Thread(runtime::close, "eyecode-local-webshell-shutdown"));
         LocalWebShellSurface surface = runtime.surface();
         try {
@@ -17,7 +21,7 @@ public final class LocalWebShellLauncher {
                 System.out.println("[EyeCode] WebShell bundled mode");
                 System.out.println("[EyeCode] URL: " + surface.entryUrl());
             }
-            if (Boolean.getBoolean("eyecode.web.openBrowser")) {
+            if (startupProject != null || Boolean.getBoolean("eyecode.web.openBrowser")) {
                 LocalWebShellBrowserOpener.open(surface.entryUrl());
             }
         } catch (RuntimeException exception) {
@@ -25,5 +29,4 @@ public final class LocalWebShellLauncher {
             throw exception;
         }
     }
-
 }

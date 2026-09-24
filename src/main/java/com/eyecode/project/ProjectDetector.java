@@ -17,7 +17,7 @@ public final class ProjectDetector {
         if (hasPomXml(folder))    return ProjectType.MAVEN;
         if (hasGradle(folder))    return ProjectType.GRADLE;
         if (hasGit(folder))       return ProjectType.GIT;
-        if (hasSrc(folder))       return ProjectType.JAVA;
+        if (hasSrc(folder) || hasJavaSource(folder)) return ProjectType.JAVA;
         return ProjectType.UNKNOWN;
     }
 
@@ -53,5 +53,14 @@ public final class ProjectDetector {
     private static boolean hasSrc(File folder) {
         File src = new File(folder, "src");
         return src.exists() && src.isDirectory();
+    }
+
+    private static boolean hasJavaSource(File folder) {
+        File[] children = folder.listFiles();
+        if (children == null) return false;
+        for (File child : children) {
+            if (child.isFile() && child.getName().endsWith(".java")) return true;
+        }
+        return false;
     }
 }

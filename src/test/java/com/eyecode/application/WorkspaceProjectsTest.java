@@ -50,18 +50,20 @@ class WorkspaceProjectsTest {
     @Test
     void openingTransitionsSessionsAndRecordsRecentProject() throws Exception {
         Path first = Files.createDirectory(temp.resolve("first"));
+        Files.writeString(first.resolve("pom.xml"), "<project/>");
         projects.open(first);
         Path source = Files.writeString(first.resolve("Main.java"), "class Main {}");
         var session = editor.openDocument(source);
         var document = editor.getBuffer(session.getSessionId()).orElseThrow().getDocument();
         document.setText("class Main { int value; }");
         Path second = Files.createDirectory(temp.resolve("second"));
+        Files.writeString(second.resolve("pom.xml"), "<project><modelVersion>4.0.0</modelVersion></project>");
         var opened = projects.open(second);
         assertSame(opened, projects.current());
         assertSame(opened, lifecycle.currentProject());
         assertTrue(editor.getSessions().isEmpty());
         assertEquals("class Main { int value; }", Files.readString(source));
-        assertTrue(projects.recent().stream().anyMatch(info -> info.getPath().equals(second.toString())));
+        assertTrue(projects.recent().isEmpty());
     }
 
     @Test
@@ -75,7 +77,9 @@ class WorkspaceProjectsTest {
 
     @Test
     void failedOpenOrCreationDoesNotReplaceCurrentProject() throws Exception {
-        var original = projects.open(Files.createDirectory(temp.resolve("original")));
+        Path originalRoot = Files.createDirectory(temp.resolve("original"));
+        Files.writeString(originalRoot.resolve("pom.xml"), "<project/>");
+        var original = projects.open(originalRoot);
         assertThrows(IllegalArgumentException.class, () -> projects.open(temp.resolve("missing")));
         assertSame(original, projects.current());
         assertThrows(IllegalArgumentException.class, () -> projects.create(
@@ -84,8 +88,32 @@ class WorkspaceProjectsTest {
     }
 
     @Test
+    void rejectsAnUnmarkedDirectoryWithoutReplacingTheCurrentProject() throws Exception {
+        Path originalRoot = Files.createDirectory(temp.resolve("original-project"));
+        Files.writeString(originalRoot.resolve("pom.xml"), "<project/>");
+        var original = projects.open(originalRoot);
+        Path arbitrary = Files.createDirectory(temp.resolve("arbitrary-folder"));
+
+        assertThrows(IllegalArgumentException.class, () -> projects.open(arbitrary));
+        assertSame(original, projects.current());
+    }
+
+    @Test
+    void opensNonemptyWorkspaceEvenWhenProjectDetectorDoesNotRecognizeIt() throws Exception {
+        Path root = Files.createDirectory(temp.resolve("unmarked-workspace"));
+        Files.writeString(root.resolve("README.md"), "workspace");
+
+        var opened = projects.open(root);
+
+        assertSame(opened, projects.current());
+        assertEquals(root.toAbsolutePath().normalize(), opened.getRootDir());
+    }
+
+    @Test
     void renameFlushesAndRebindsWhileDeleteRejectsDirtySessions() throws Exception {
-        var project = projects.open(Files.createDirectory(temp.resolve("project")));
+        Path projectRoot = Files.createDirectory(temp.resolve("project"));
+        Files.writeString(projectRoot.resolve("pom.xml"), "<project/>");
+        var project = projects.open(projectRoot);
         Path source = Files.writeString(project.getRootDir().resolve("note.txt"), "old");
         var session = editor.openDocument(source);
         var document = editor.getBuffer(session.getSessionId()).orElseThrow().getDocument();

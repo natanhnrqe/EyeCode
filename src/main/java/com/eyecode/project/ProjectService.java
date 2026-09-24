@@ -40,6 +40,14 @@ public class ProjectService {
     }
 
     public List<ProjectInfo> getRecentProjects() {
+        boolean removed = recentProjects.removeIf(project -> !isEligibleWorkspace(project.getPath()));
+        if (removed) {
+            if (lastOpenedWorkspace != null && recentProjects.stream()
+                    .noneMatch(project -> project.getPath().equals(lastOpenedWorkspace))) {
+                lastOpenedWorkspace = null;
+            }
+            save();
+        }
         return recentProjects.stream()
                 .sorted(Comparator.comparingLong(ProjectInfo::getLastOpened).reversed())
                 .toList();
@@ -65,7 +73,7 @@ public class ProjectService {
         }
         try {
             Path path = Paths.get(lastOpenedWorkspace);
-            if (Files.isDirectory(path) && !isLegacyEyeCodeTestFixture(path)) {
+            if (isEligibleWorkspace(path.toString())) {
                 return Optional.of(path);
             }
         } catch (RuntimeException ignored) {
@@ -80,7 +88,7 @@ public class ProjectService {
             return false;
         }
         String normalizedPath = normalize(project.getPath());
-        if (normalizedPath == null) {
+        if (normalizedPath == null || !isEligibleWorkspace(normalizedPath)) {
             return false;
         }
         recentProjects.removeIf(existing -> normalize(existing.getPath()).equals(normalizedPath));
@@ -220,9 +228,20 @@ public class ProjectService {
     private boolean isEligibleWorkspace(String path) {
         try {
             Path candidate = Paths.get(path);
-            return Files.isDirectory(candidate) && !isLegacyEyeCodeTestFixture(candidate);
-        } catch (RuntimeException ignored) {
+            Path normalized = candidate.toAbsolutePath().normalize();
+            Path tempRoot = Paths.get(System.getProperty("java.io.tmpdir")).toAbsolutePath().normalize();
+            return Files.isDirectory(normalized)
+                    && hasWorkspaceContent(normalized)
+                    && !normalized.startsWith(tempRoot)
+                    && !isLegacyEyeCodeTestFixture(normalized);
+        } catch (IOException | RuntimeException ignored) {
             return false;
+        }
+    }
+
+    private boolean hasWorkspaceContent(Path root) throws IOException {
+        try (var entries = Files.list(root)) {
+            return entries.findAny().isPresent();
         }
     }
 
