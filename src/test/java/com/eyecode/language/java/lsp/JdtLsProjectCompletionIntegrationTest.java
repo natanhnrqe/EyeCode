@@ -83,6 +83,35 @@ final class JdtLsProjectCompletionIntegrationTest {
         }
     }
 
+    @Test
+    void synchronizationSurvivesNonMonotonicModelVersions() throws Exception {
+        Path home = Path.of(System.getProperty("eyecode.jdtls.home"));
+        Path sourceRoot = Files.createDirectories(temporary.resolve("undo/workspace/src"));
+        Path usuario = sourceRoot.resolve("Usuario.java");
+        String original = "public class Usuario { public String getNome() { return \"EyeCode\"; } }";
+        Files.writeString(usuario, original);
+        Path main = sourceRoot.resolve("Main.java");
+        String mainSource = "public class Main { void run() { Usuario usuario = new Usuario(); usuario. } }";
+        Files.writeString(main, mainSource);
+        JdtLsSession session = new JdtLsSession(JdtLsProcessConfiguration.fromInstallation(
+                JdtLsToolingJava.currentRuntime(Duration.ofSeconds(5)), home, temporary.resolve("undo/data"), sourceRoot.getParent()));
+        try {
+            session.start();
+            session.initialize(Duration.ofSeconds(60));
+            JdtLsProjectCompletion completion = new JdtLsProjectCompletion(session);
+            request(completion, usuario, original, 5);
+            request(completion, main, mainSource, 1);
+            assertTrue(awaitMember(completion, main, mainSource, "salvar(", false));
+            String added = "public class Usuario { public String getNome() { return \"EyeCode\"; } public void salvar() {} }";
+            request(completion, usuario, added, 6);
+            assertTrue(awaitMember(completion, main, mainSource, "salvar(", true));
+            request(completion, usuario, original, 1);
+            assertTrue(awaitMember(completion, main, mainSource, "salvar(", false));
+        } finally {
+            session.close();
+        }
+    }
+
     private static com.eyecode.language.completion.CompletionResult request(JdtLsProjectCompletion completion,
                                                                               Path file, String source, long version) {
         int receiver = source.indexOf("usuario.");

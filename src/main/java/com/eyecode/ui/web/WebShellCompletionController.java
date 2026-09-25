@@ -56,16 +56,19 @@ public final class WebShellCompletionController {
 
     private void compute(WebShellEnvelope message, String modelId) {
         if (disposed || !isLatest(modelId, message.requestId())) return;
+        long responseVersion = numberLong(message.payload(), "version", 0);
         try {
             EditorSession session = sessionForModel(modelId);
             boolean lessonPractice = isLessonPracticeRequest(message.payload(), modelId);
             if (session == null && !lessonPractice) {
-                publish(message, responsePayload(message, modelId, numberLong(message.payload(), "version", 0), List.of()));
+                publish(message, responsePayload(message, modelId, responseVersion, List.of()));
                 return;
             }
-            var snapshot = session == null ? null : manager.getBuffer(session.getSessionId())
-                    .map(buffer -> buffer.getDocument().snapshot()).orElse(null);
-            String content = snapshot == null ? text(message.payload(), "content") : snapshot.getText();
+            String content = text(message.payload(), "content");
+            if (content.isEmpty() && !lessonPractice) {
+                content = manager.getBuffer(session.getSessionId())
+                        .map(buffer -> buffer.getDocument().snapshot().getText()).orElse("");
+            }
             int offset = number(message.payload(), "offset", -1);
             if (offset < 0) {
                 int line = number(message.payload(), "line", 1);
@@ -77,7 +80,7 @@ public final class WebShellCompletionController {
             LanguageDocument document = new LanguageDocument(modelId, session == null ? null : session.getFile(),
                     session == null ? text(message.payload(), "displayName") : session.getDisplayName(),
                     LanguageId.parse(text(message.payload(), "language")).orElse(null));
-            long version = snapshot == null ? numberLong(message.payload(), "version", 0) : snapshot.version();
+            long version = responseVersion;
             CompletionRequest.TriggerKind triggerKind = switch (text(message.payload(), "triggerKind")) {
                 case "triggerCharacter" -> CompletionRequest.TriggerKind.TRIGGER_CHARACTER;
                 case "incomplete" -> CompletionRequest.TriggerKind.INCOMPLETE;
@@ -89,7 +92,7 @@ public final class WebShellCompletionController {
                     number(message.payload(), "replaceStart", -1), number(message.payload(), "replaceEnd", -1),
                     triggerKind, text(message.payload(), "triggerCharacter")));
             if (isLatest(modelId, message.requestId())) {
-                publish(message, responsePayload(message, modelId, version, result.candidates()));
+                publish(message, responsePayload(message, modelId, responseVersion, result.candidates()));
             }
         } catch (RuntimeException exception) {
             if (!isLatest(modelId, message.requestId())) return;

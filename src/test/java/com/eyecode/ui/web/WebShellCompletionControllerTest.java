@@ -34,7 +34,7 @@ class WebShellCompletionControllerTest {
     @TempDir Path temporary;
 
     @Test
-    void existingEditorSessionIgnoresStalePayloadTextAndVersion() throws Exception {
+    void payloadTextAndVersionWinOverExistingEditorSessionState() throws Exception {
         Surface surface = new Surface();
         EditorManager manager = manager();
         Path file = Files.writeString(temporary.resolve("Main.java"), "class Main { String current; }");
@@ -46,11 +46,72 @@ class WebShellCompletionControllerTest {
                 new CompletionService(resolver(), List.of(provider)));
         try {
             surface.handler("completion", "request").handle(WebShellEnvelope.request("completion", "request", "current", Map.of(
-                    "uri", file.toUri().toString(), "language", "java", "content", "class Main { String stale; }",
+                    "uri", file.toUri().toString(), "language", "java", "content", "class Main { String payload; }",
                     "version", 1L, "offset", 20, "explicit", true)));
             assertTrue(provider.called.await(2, TimeUnit.SECONDS));
+            assertEquals("class Main { String payload; }", provider.request.source());
+            assertEquals(1L, provider.request.version());
+        } finally {
+            controller.dispose();
+            manager.dispose();
+        }
+    }
+
+    @Test
+    void emptyPayloadContentFallsBackToSessionDocument() throws Exception {
+        Surface surface = new Surface();
+        EditorManager manager = manager();
+        Path file = Files.writeString(temporary.resolve("Main.java"), "class Main { String current; }");
+        var session = manager.openDocument(file);
+        var document = manager.getBuffer(session.getSessionId()).orElseThrow().getDocument();
+        document.setText("class Main { String authoritative; }");
+        CapturingProvider provider = new CapturingProvider();
+        WebShellCompletionController controller = new WebShellCompletionController(surface, manager,
+                new CompletionService(resolver(), List.of(provider)));
+        try {
+            surface.handler("completion", "request").handle(WebShellEnvelope.request("completion", "request", "current", Map.of(
+                    "uri", file.toUri().toString(), "language", "java", "content", "",
+                    "version", 7L, "offset", 20, "explicit", true)));
+            assertTrue(provider.called.await(2, TimeUnit.SECONDS));
             assertEquals(document.snapshot().getText(), provider.request.source());
-            assertEquals(document.currentVersion(), provider.request.version());
+            assertEquals(7L, provider.request.version());
+        } finally {
+            controller.dispose();
+            manager.dispose();
+        }
+    }
+
+    @Test
+    void completionResponseEchoesRequestModelVersionNotDocumentVersion() throws Exception {
+        Surface surface = new Surface();
+        EditorManager manager = manager();
+        Path file = Files.writeString(temporary.resolve("Main.java"), "class Main { String current; }");
+        var session = manager.openDocument(file);
+        var document = manager.getBuffer(session.getSessionId()).orElseThrow().getDocument();
+        document.setText("class Main { String authoritative; }");
+        long documentVersion = document.currentVersion();
+        CapturingProvider provider = new CapturingProvider();
+        WebShellCompletionController controller = new WebShellCompletionController(surface, manager,
+                new CompletionService(resolver(), List.of(provider)));
+        try {
+            long monacoAhead = documentVersion + 5;
+            surface.handler("completion", "request").handle(WebShellEnvelope.request("completion", "request", "ahead", Map.of(
+                    "uri", file.toUri().toString(), "language", "java",
+                    "content", "class Main { String authoritative; }",
+                    "version", monacoAhead, "offset", 20, "explicit", true)));
+            assertTrue(provider.called.await(2, TimeUnit.SECONDS));
+            Map<String, Object> response = null;
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+            while (System.nanoTime() < deadline && response == null) {
+                response = surface.sent.stream()
+                        .filter(message -> message.payload().containsKey("items")
+                                && "ahead".equals(message.payload().get("requestId")))
+                        .map(WebShellEnvelope::payload).findFirst().orElse(null);
+                if (response == null) TimeUnit.MILLISECONDS.sleep(10);
+            }
+            assertTrue(response != null, () -> "sem resposta de completion; sent=" + surface.sent);
+            assertEquals(monacoAhead, provider.request.version());
+            assertEquals(monacoAhead, ((Number) response.get("version")).longValue());
         } finally {
             controller.dispose();
             manager.dispose();

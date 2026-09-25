@@ -182,13 +182,15 @@ public final class JdtLsSession implements AutoCloseable {
         return await(server.getTextDocumentService().hover(params), timeout, "HOVER");
     }
 
-    public SignatureHelp signatureHelp(String uri, int line, int character, Duration timeout) {
+    public SignatureHelp signatureHelp(String uri, int line, int character, String triggerCharacter, Duration timeout) {
         requireState(JdtLsLifecycleState.READY, "SIGNATURE_HELP");
         if (!supportsSignatureHelp()) return null;
         SignatureHelpParams params = new SignatureHelpParams(new TextDocumentIdentifier(uri),
                 new org.eclipse.lsp4j.Position(line, character));
-        SignatureHelpContext context = new SignatureHelpContext(SignatureHelpTriggerKind.Invoked, false);
-        context.setTriggerCharacter("(");
+        boolean hasTrigger = triggerCharacter != null && !triggerCharacter.isEmpty();
+        SignatureHelpContext context = new SignatureHelpContext(
+                hasTrigger ? SignatureHelpTriggerKind.TriggerCharacter : SignatureHelpTriggerKind.Invoked, false);
+        if (hasTrigger) context.setTriggerCharacter(triggerCharacter);
         params.setContext(context);
         event("signature help request");
         return await(server.getTextDocumentService().signatureHelp(params), timeout, "SIGNATURE_HELP");

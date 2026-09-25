@@ -69,13 +69,16 @@ public final class WebShellLanguageFeatureController {
             var snapshot = session == null ? null : manager.getBuffer(session.getSessionId())
                     .map(buffer -> buffer.getDocument().snapshot()).orElse(null);
             if (session == null || snapshot == null) {
-                publish(message, feature, modelId, numberLong(message.payload(), "version", 0), Map.of());
+                Map<String, Object> empty = feature.equals("hover")
+                        ? hoverPayload(null) : signaturePayload((SignatureHelpResult) null);
+                publish(message, feature, modelId, numberLong(message.payload(), "version", 0), empty);
                 return;
             }
             LanguageDocument document = new LanguageDocument(modelId, session.getFile(), session.getDisplayName(),
                     LanguageId.parse(text(message.payload(), "language")).orElse(null));
             LanguageFeatureRequest request = new LanguageFeatureRequest(document, snapshot.version(),
-                    snapshot.getText(), number(message.payload(), "offset", 0));
+                    snapshot.getText(), number(message.payload(), "offset", 0),
+                    text(message.payload(), "triggerCharacter"));
             Map<String, Object> result = feature.equals("hover")
                     ? hoverPayload(hoverService.hover(request).orElse(null))
                     : signaturePayload(signatureHelpService.signatureHelp(request).orElse(null));

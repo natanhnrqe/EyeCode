@@ -30,6 +30,7 @@ import java.util.Optional;
 public final class JdtLsProjectCompletion {
     private final JdtLsSession session;
     private final Map<String, Integer> openedVersions = new HashMap<>();
+    private final Map<String, String> openedTexts = new HashMap<>();
 
     public JdtLsProjectCompletion(JdtLsSession session) {
         this.session = session;
@@ -38,16 +39,8 @@ public final class JdtLsProjectCompletion {
     public synchronized Optional<CompletionResult> complete(CompletionRequest request, Duration timeout) {
         Path file = request.document().sourceFile();
         if (file == null || session.state() != JdtLsLifecycleState.READY) return Optional.empty();
-        String uri = file.toAbsolutePath().normalize().toUri().toString();
-        int version = lspVersion(request.version());
         try {
-            Integer previous = openedVersions.get(uri);
-            if (previous == null) {
-                session.didOpen(uri, request.source(), version);
-            } else if (version > previous) {
-                session.didChange(uri, request.source(), version);
-            }
-            openedVersions.put(uri, version);
+            String uri = synchronize(file, request.source(), request.version());
             List<CompletionItem> items = session.completion(uri, positionFor(request.source(), request.caretOffset()).getLine(),
                     positionFor(request.source(), request.caretOffset()).getCharacter(), timeout);
             return Optional.of(new CompletionResult(items.stream().limit(100)
@@ -80,7 +73,8 @@ public final class JdtLsProjectCompletion {
         String uri = synchronize(file, request.source(), request.version());
         try {
             Position position = positionFor(request.source(), request.caretOffset());
-            SignatureHelp help = session.signatureHelp(uri, position.getLine(), position.getCharacter(), timeout);
+            SignatureHelp help = session.signatureHelp(uri, position.getLine(), position.getCharacter(),
+                    request.triggerCharacter(), timeout);
             return help == null ? Optional.empty() : Optional.of(toSignatureHelpResult(help));
         } catch (RuntimeException exception) {
             return Optional.empty();
@@ -94,20 +88,26 @@ public final class JdtLsProjectCompletion {
 
     private String synchronize(Path file, String source, long version) {
         String uri = file.toAbsolutePath().normalize().toUri().toString();
-        int lspVersion = lspVersion(version);
         Integer previous = openedVersions.get(uri);
-        if (previous == null) session.didOpen(uri, source, lspVersion);
-        else if (lspVersion > previous) session.didChange(uri, source, lspVersion);
-        openedVersions.put(uri, lspVersion);
+        if (previous == null) {
+            int lspVersion = lspVersion(version);
+            session.didOpen(uri, source, lspVersion);
+            openedVersions.put(uri, lspVersion);
+        } else if (!source.equals(openedTexts.get(uri))) {
+            int lspVersion = Math.max(previous + 1, lspVersion(version));
+            session.didChange(uri, source, lspVersion);
+            openedVersions.put(uri, lspVersion);
+        }
+        openedTexts.put(uri, source);
         return uri;
     }
 
-    private static HoverResult toHoverResult(Hover hover, LanguageFeatureRequest request) {
+    static HoverResult toHoverResult(Hover hover, LanguageFeatureRequest request) {
         List<HoverContent> contents = new java.util.ArrayList<>();
         Either<List<Either<String, MarkedString>>, org.eclipse.lsp4j.MarkupContent> value = hover.getContents();
         if (value != null && value.isRight()) {
             var markup = value.getRight();
-            contents.add(new HoverContent(markup.getKind(), markup.getValue()));
+            contents.add(new HoverContent(markup.getKind(), sanitizeMarkup(markup.getValue())));
         } else if (value != null && value.isLeft()) {
             for (Either<String, MarkedString> item : value.getLeft()) {
                 if (item.isLeft()) contents.add(new HoverContent("plaintext", item.getLeft()));
@@ -124,7 +124,15 @@ public final class JdtLsProjectCompletion {
         return new HoverResult(contents, start, end);
     }
 
-    private static SignatureHelpResult toSignatureHelpResult(SignatureHelp help) {
+    static String sanitizeMarkup(String value) {
+        if (value == null || value.isEmpty()) return "";
+        String sanitized = value.replaceAll("(?is)<script\\b[^>]*>.*?</script>", "");
+        sanitized = sanitized.replaceAll("(?i)javascript:", "");
+        sanitized = sanitized.replaceAll("(?i)\\son\\w+\\s*=", "");
+        return sanitized;
+    }
+
+    static SignatureHelpResult toSignatureHelpResult(SignatureHelp help) {
         List<SignatureInformation> signatures = help.getSignatures() == null ? List.of() : help.getSignatures().stream()
                 .map(signature -> new SignatureInformation(signature.getLabel(), text(signature.getDocumentation()),
                         parameters(signature.getParameters()), signature.getActiveParameter()))
@@ -151,11 +159,12 @@ public final class JdtLsProjectCompletion {
     public synchronized void close(Path file) {
         if (file == null) return;
         String uri = file.toAbsolutePath().normalize().toUri().toString();
+        openedTexts.remove(uri);
         if (openedVersions.remove(uri) != null) session.didClose(uri);
     }
 
-    private static int lspVersion(long version) {
-        return (int) Math.max(1, Math.min(Integer.MAX_VALUE, version));
+    static int lspVersion(long version) {
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(1L, version + 1));
     }
 
     private static CompletionCandidate candidate(CompletionItem item, CompletionRequest request) {

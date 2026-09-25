@@ -28,6 +28,7 @@ type LearningRequestTarget = Omit<PendingLearning, 'modelVersion'> & {
 };
 type PendingDiagnostics = { uri: string; model: MonacoModel; modelVersion: number };
 type PendingEphemeralModel = { content: string; language: string; readOnly: boolean };
+type LearningOutcome = { key: string; found: boolean | null };
 type HoverResponse = {
   contents?: Array<{ kind?: string; value?: string }>;
   rangeStart?: number;
@@ -45,6 +46,7 @@ type SignatureResponse = {
 
 const LEARNING_CARD_OPEN_DELAY_MS = 200;
 const LEARNING_CARD_CLOSE_DELAY_MS = 10;
+const LEARNING_OUTCOME_TIMEOUT_MS = 1000;
 const LESSON_TYPING_CADENCE_MS = 32;
 
 export class MonacoWorkspaceService {
@@ -96,6 +98,7 @@ export class MonacoWorkspaceService {
   private readonly pendingLearning = new Map<string, PendingLearning>();
   private latestLearningRequestId: string | null = null;
   private hoverKey: string | null = null;
+  private learningOutcome: LearningOutcome | null = null;
   private editorHovered = false;
   private learningHovered = false;
   private learningHideTimer: number | null = null;
@@ -477,6 +480,7 @@ export class MonacoWorkspaceService {
     this.pendingLearning.clear();
     this.latestLearningRequestId = null;
     this.hoverKey = null;
+    this.settleCurrentLearningOutcome(false);
     if (this.learningState === null) return;
     const uri = this.learningState.uri;
     this.learningState = null;
@@ -946,53 +950,74 @@ export class MonacoWorkspaceService {
         provideHover: (model, position, token) => this.provideHover(model, position, token)
       }),
       this.api.languages.registerSignatureHelpProvider('java', {
-        signatureHelpTriggerCharacters: ['(', ','],
+        signatureHelpTriggerCharacters: ['(', ',', ')'],
         signatureHelpRetriggerCharacters: [','],
-        provideSignatureHelp: (model, position, token) => this.provideSignatureHelp(model, position, token)
+        provideSignatureHelp: (model, position, token, context) => this.provideSignatureHelp(model, position, token, context)
       })
     );
   }
 
-  private provideHover(model: MonacoModel, position: { lineNumber: number; column: number },
-                       token: MonacoCancellationToken): Promise<MonacoHover | null> {
-    if (!this.isProjectModel(model) || token.isCancellationRequested) return Promise.resolve(null);
+  private async provideHover(model: MonacoModel, position: { lineNumber: number; column: number },
+                             token: MonacoCancellationToken): Promise<MonacoHover | null> {
+    if (!this.isProjectModel(model) || token.isCancellationRequested) return null;
     const uri = model.uri.toString();
     const offset = model.getOffsetAt(position);
     const version = model.getAlternativeVersionId();
+    if (this.learningState !== null && this.learningState.uri === uri) return null;
+    const word = model.getWordAtPosition(position);
+    const key = word && position.column >= word.startColumn && position.column < word.endColumn
+      ? `${uri}:${version}:${position.lineNumber}:${word.startColumn}:${word.endColumn}`
+      : null;
+    if (key !== null && key === this.hoverKey) {
+      const learningFound = await this.awaitLearningOutcome(key);
+      if (token.isCancellationRequested || this.disposed) return null;
+      if (learningFound || (this.learningState !== null && this.learningState.uri === uri)) return null;
+    }
+    const response = await this.requestJdtHover(model, uri, offset, version, token);
+    if (!response?.contents?.length) return null;
+    const contents = response.contents
+      .map(content => ({ value: content.value ?? '' }))
+      .filter(content => content.value.length > 0);
+    if (!contents.length) return null;
+    const start = boundedFeatureOffset(response.rangeStart, offset, model.getValue().length);
+    const end = boundedFeatureOffset(response.rangeEnd, start, model.getValue().length);
+    return {
+      contents,
+      range: {
+        startLineNumber: model.getPositionAt(start).lineNumber,
+        startColumn: model.getPositionAt(start).column,
+        endLineNumber: model.getPositionAt(end).lineNumber,
+        endColumn: model.getPositionAt(end).column
+      }
+    };
+  }
+
+  private requestJdtHover(model: MonacoModel, uri: string, offset: number, version: number,
+                          token: MonacoCancellationToken): Promise<HoverResponse | null> {
     return this.requestLanguageFeature<HoverResponse>('hover', {
       uri,
       version,
       offset,
       language: model.getLanguageId?.() ?? 'java'
     }).then(response => {
-      if (token.isCancellationRequested || !response?.contents?.length) return null;
-      const contents = response.contents
-        .map(content => ({ value: content.value ?? '' }))
-        .filter(content => content.value.length > 0);
-      if (!contents.length) return null;
-      const start = boundedFeatureOffset(response.rangeStart, offset, model.getValue().length);
-      const end = boundedFeatureOffset(response.rangeEnd, start, model.getValue().length);
-      return {
-        contents,
-        range: {
-          startLineNumber: model.getPositionAt(start).lineNumber,
-          startColumn: model.getPositionAt(start).column,
-          endLineNumber: model.getPositionAt(end).lineNumber,
-          endColumn: model.getPositionAt(end).column
-        }
-      };
+      if (token.isCancellationRequested || this.disposed
+          || (this.learningState !== null && this.learningState.uri === uri)
+          || !response?.contents?.length) return null;
+      return response;
     });
   }
 
   private provideSignatureHelp(model: MonacoModel, position: { lineNumber: number; column: number },
-                               token: MonacoCancellationToken): Promise<MonacoSignatureHelp | null> {
+                               token: MonacoCancellationToken, context: unknown): Promise<MonacoSignatureHelp | null> {
     if (!this.isProjectModel(model) || token.isCancellationRequested) return Promise.resolve(null);
     const uri = model.uri.toString();
+    const triggerCharacter = (context as { triggerCharacter?: string } | null)?.triggerCharacter ?? '';
     return this.requestLanguageFeature<SignatureResponse>('signatureHelp', {
       uri,
       version: model.getAlternativeVersionId(),
       offset: model.getOffsetAt(position),
-      language: model.getLanguageId?.() ?? 'java'
+      language: model.getLanguageId?.() ?? 'java',
+      triggerCharacter
     }).then(response => {
       if (token.isCancellationRequested || !response?.signatures?.length) return null;
       const signatures = response.signatures.map(signature => ({
@@ -1039,7 +1064,7 @@ export class MonacoWorkspaceService {
             || message.requestId !== requestId) return;
         finish(message.error ? null : message.payload as T);
       });
-      void bridge.request<{ accepted: boolean }>(channel, 'request', payload, { requestId, timeoutMs: 3000 })
+      void bridge.request<{ accepted: boolean }>(channel, 'request', payload, { requestId, timeoutMs: 6000 })
         .catch(() => finish(null));
     });
   }
@@ -1136,6 +1161,35 @@ export class MonacoWorkspaceService {
     });
   }
 
+  private beginLearningOutcome(key: string): void {
+    this.learningOutcome = { key, found: null };
+  }
+
+  private settleLearningOutcome(key: string, found: boolean): void {
+    const outcome = this.learningOutcome;
+    if (!outcome || outcome.key !== key || outcome.found !== null) return;
+    outcome.found = found;
+  }
+
+  private settleCurrentLearningOutcome(found: boolean): void {
+    const outcome = this.learningOutcome;
+    if (!outcome || outcome.found !== null) return;
+    outcome.found = found;
+  }
+
+  private async awaitLearningOutcome(key: string): Promise<boolean> {
+    const deadline = Date.now() + LEARNING_OUTCOME_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+      const outcome = this.learningOutcome;
+      if (!outcome || outcome.key !== key) return false;
+      if (outcome.found !== null) return outcome.found;
+      if (this.disposed) return false;
+      await new Promise<void>(resolve => window.setTimeout(resolve, 25));
+    }
+    const outcome = this.learningOutcome;
+    return outcome?.key === key && outcome.found === true;
+  }
+
   private handleLearningMouseMove(event: MonacoMouseEvent): void {
     const editor = this.editor;
     const model = editor?.getModel();
@@ -1170,12 +1224,13 @@ export class MonacoWorkspaceService {
     const key = `${uri}:${model.getAlternativeVersionId()}:${position.lineNumber}:${startColumn}:${endColumn}`;
     if (key === this.hoverKey) return;
     this.hoverKey = key;
+    this.beginLearningOutcome(key);
     this.scheduleLearningOpen('', { uri, model, editor, position,
       caretOffset: start, key, startOffset: start, endOffset: end });
   }
 
   private scheduleLearningOpen(identifier: string, target: LearningRequestTarget): void {
-    this.cancelLearningOpen();
+    this.cancelLearningOpen(false);
     this.learningOpenTimer = window.setTimeout(() => {
       this.learningOpenTimer = null;
       if (target.key !== this.hoverKey || target.editor.getModel() !== target.model
@@ -1190,6 +1245,7 @@ export class MonacoWorkspaceService {
     this.pendingLearning.clear();
     this.latestLearningRequestId = requestId;
     this.pendingLearning.set(requestId, { ...target, modelVersion: version });
+    this.beginLearningOutcome(target.key);
     const payload = {
       uri: target.uri,
       version,
@@ -1206,6 +1262,7 @@ export class MonacoWorkspaceService {
       .catch(error => {
         if (!this.pendingLearning.delete(requestId)) return;
         if (this.latestLearningRequestId === requestId) this.latestLearningRequestId = null;
+        this.settleLearningOutcome(target.key, false);
         this.onError?.(error instanceof Error ? error.message : String(error));
       });
   }
@@ -1215,6 +1272,7 @@ export class MonacoWorkspaceService {
     const pending = this.pendingLearning.get(message.requestId) ?? null;
     this.pendingLearning.delete(message.requestId);
     if (message.error) {
+      if (pending) this.settleLearningOutcome(pending.key, false);
       if (this.latestLearningRequestId === message.requestId) this.latestLearningRequestId = null;
       this.onError?.(message.error.message);
       return;
@@ -1227,17 +1285,23 @@ export class MonacoWorkspaceService {
         || this.documentUri(pending.model) !== pending.uri
         || pending.model.getAlternativeVersionId() !== pending.modelVersion
         || (!pending.key.startsWith('navigation:') && pending.key !== this.hoverKey)) {
+      this.settleLearningOutcome(pending?.key ?? '', false);
       if (this.latestLearningRequestId === message.requestId) this.latestLearningRequestId = null;
       return;
     }
     this.latestLearningRequestId = null;
     if (!response.found) {
+      this.settleLearningOutcome(pending.key, false);
       if (!this.learningHovered) this.learningState = null;
       this.onLearningState?.(this.learningState);
       return;
     }
     const anchor = pending.anchor ?? this.currentCompletionAnchor(pending.editor, pending.model, pending.position)?.anchor;
-    if (!anchor) return;
+    if (!anchor) {
+      this.settleLearningOutcome(pending.key, false);
+      return;
+    }
+    this.settleLearningOutcome(pending.key, true);
     this.learningState = {
       requestId: response.requestId,
       uri: response.uri,
@@ -1257,13 +1321,14 @@ export class MonacoWorkspaceService {
     }, LEARNING_CARD_CLOSE_DELAY_MS);
   }
 
-  private cancelLearningOpen(): void {
+  private cancelLearningOpen(settleOutcome = true): void {
     if (this.learningOpenTimer !== null) {
       window.clearTimeout(this.learningOpenTimer);
       this.learningOpenTimer = null;
     }
     this.pendingLearning.clear();
     this.latestLearningRequestId = null;
+    if (settleOutcome) this.settleCurrentLearningOutcome(false);
   }
 
   private cancelLearningHide(): void {

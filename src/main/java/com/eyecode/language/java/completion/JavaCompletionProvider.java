@@ -77,8 +77,7 @@ public final class JavaCompletionProvider implements CompletionProvider {
         EditorPosition caret = document.positionOf(request.caretOffset());
         LanguageContext context = new LanguageContext(document, caret, new EditorSelection(caret, caret),
                 syntaxAnalyzer.analyze(document), com.eyecode.editor.v2.diagnostics.DiagnosticSnapshot.empty());
-        var snapshot = engine.complete(context, request.explicit()
-                || request.triggerKind() == CompletionRequest.TriggerKind.TRIGGER_CHARACTER);
+        var snapshot = engine.complete(context, request.explicit());
         String prefix = CompletionPrefixResolver.resolvePrefix(context);
         int start = request.replaceStart() >= 0 && request.replaceStart() <= request.caretOffset()
                 ? request.replaceStart() : Math.max(0, request.caretOffset() - prefix.length());
