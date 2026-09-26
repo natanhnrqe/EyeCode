@@ -10,6 +10,7 @@ import java.util.Optional;
 
 public final class JavaSignatureHelpProvider implements SignatureHelpProvider {
     private final JdtLsProjectService jdt;
+    private final LocalSignatureHelpResolver localResolver = new LocalSignatureHelpResolver();
 
     public JavaSignatureHelpProvider(JdtLsProjectService jdt) {
         this.jdt = jdt;
@@ -22,6 +23,10 @@ public final class JavaSignatureHelpProvider implements SignatureHelpProvider {
 
     @Override
     public Optional<SignatureHelpResult> signatureHelp(LanguageFeatureRequest request) {
-        return jdt == null ? Optional.empty() : jdt.signatureHelp(request);
+        Optional<SignatureHelpResult> fromJdt = jdt == null ? Optional.empty() : jdt.signatureHelp(request);
+        if (fromJdt.isPresent() && !fromJdt.get().signatures().isEmpty()) {
+            return fromJdt;
+        }
+        return localResolver.resolve(request.source(), request.caretOffset());
     }
 }

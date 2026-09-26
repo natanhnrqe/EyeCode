@@ -10,6 +10,8 @@ import com.eyecode.language.hover.HoverContent;
 import com.eyecode.language.hover.HoverProvider;
 import com.eyecode.language.hover.HoverResult;
 import com.eyecode.language.hover.HoverService;
+import com.eyecode.language.inlay.InlayHintService;
+import com.eyecode.language.java.inlay.JavaInlayHintProvider;
 import com.eyecode.language.signature.SignatureHelpProvider;
 import com.eyecode.language.signature.SignatureHelpResult;
 import com.eyecode.language.signature.SignatureHelpService;
@@ -218,6 +220,47 @@ class WebShellLanguageFeatureControllerTest {
         }
     }
 
+    @Test
+    void inlayHintsReturnsHintsForKnownSession() throws Exception {
+        Surface surface = new Surface();
+        EditorManager manager = manager();
+        Path file = Files.writeString(temporary.resolve("Main.java"), "class Main { }");
+        var session = manager.openDocument(file);
+        var document = manager.getBuffer(session.getSessionId()).orElseThrow().getDocument();
+        document.setText("class Main {\n"
+                + "    void run() {\n"
+                + "        int x = add(1, 2);\n"
+                + "    }\n"
+                + "    int add(int left, int right) {\n"
+                + "        return left + right;\n"
+                + "    }\n"
+                + "}");
+        WebShellLanguageFeatureController controller = new WebShellLanguageFeatureController(surface, manager,
+                new HoverService(resolver(), List.of()), new SignatureHelpService(resolver(), List.of()),
+                new InlayHintService(resolver(), List.of(new JavaInlayHintProvider())));
+        try {
+            String source = document.snapshot().getText();
+            surface.handler("inlayHints", "request").handle(WebShellEnvelope.request("inlayHints", "request", "inlay", Map.of(
+                    "uri", file.toUri().toString(), "language", "java", "version", 1L,
+                    "fromOffset", 0, "toOffset", source.length(), "mode", "name")));
+            Map<String, Object> response = awaitResponse(surface, "inlay");
+            assertEquals("inlayHints", response.get("feature"));
+            assertEquals(document.currentVersion(), ((Number) response.get("version")).longValue());
+            List<?> hints = (List<?>) response.get("hints");
+            assertNotNull(hints);
+            assertEquals(2, hints.size());
+            Map<?, ?> first = (Map<?, ?>) hints.getFirst();
+            assertEquals("left:", first.get("label"));
+            assertEquals(source.indexOf("add(1, 2)") + "add(".length(), first.get("offset"));
+            Map<?, ?> second = (Map<?, ?>) hints.get(1);
+            assertEquals("right:", second.get("label"));
+            assertEquals(source.indexOf(", 2)") + ", ".length(), second.get("offset"));
+        } finally {
+            controller.dispose();
+            manager.dispose();
+        }
+    }
+
     private static Map<String, Object> awaitResponse(Surface surface, String requestId) throws InterruptedException {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
         while (System.nanoTime() < deadline) {
@@ -242,7 +285,8 @@ class WebShellLanguageFeatureControllerTest {
     private static WebShellLanguageFeatureController controller(Surface surface, EditorManager manager,
                                                                 HoverService hoverService,
                                                                 SignatureHelpService signatureService) {
-        return new WebShellLanguageFeatureController(surface, manager, hoverService, signatureService);
+        return new WebShellLanguageFeatureController(surface, manager, hoverService, signatureService,
+                new InlayHintService(resolver(), List.of()));
     }
 
     private static EditorManager manager() {

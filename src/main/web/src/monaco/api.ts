@@ -9,6 +9,8 @@ export type MonacoModel = {
   getLanguageId?: () => string;
   getPositionAt: (offset: number) => { lineNumber: number; column: number };
   getOffsetAt: (position: { lineNumber: number; column: number }) => number;
+  getLineCount: () => number;
+  getLineMaxColumn: (lineNumber: number) => number;
   getWordUntilPosition: (position: { lineNumber: number; column: number }) => { startColumn: number; endColumn: number };
   getWordAtPosition: (position: { lineNumber: number; column: number }) => { word: string; startColumn: number; endColumn: number } | null;
   onDidChangeContent?: (listener: (event: MonacoContentChangeEvent) => void) => Disposable;
@@ -33,32 +35,19 @@ export type MonacoMouseEvent = { target?: { position?: { lineNumber: number; col
 export type MonacoRange = { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number };
 export type MonacoSnippetController = { insert: (template: string) => void };
 export type MonacoCancellationToken = { isCancellationRequested: boolean };
-export type MonacoHover = {
-  contents: Array<{ value: string; isTrusted?: boolean }>;
-  range?: MonacoRange;
-};
-export type MonacoSignatureHelp = {
-  signatures: Array<{
-    label: string;
-    documentation?: string;
-    parameters?: Array<{ label: string | [number, number]; documentation?: string }>;
-  }>;
-  activeSignature?: number;
-  activeParameter?: number;
+
+export type MonacoInlayHint = {
+  position: { lineNumber: number; column: number };
+  label: string;
+  paddingLeft?: boolean;
+  paddingRight?: boolean;
 };
 
 export type MonacoLanguageProviders = {
-  registerHoverProvider: (language: string, provider: {
-    provideHover: (model: MonacoModel, position: { lineNumber: number; column: number },
-                    token: MonacoCancellationToken) => Promise<MonacoHover | null> | MonacoHover | null;
-  }) => Disposable;
-  registerSignatureHelpProvider: (language: string, provider: {
-    signatureHelpTriggerCharacters?: string[];
-    signatureHelpRetriggerCharacters?: string[];
-    provideSignatureHelp: (model: MonacoModel, position: { lineNumber: number; column: number },
-                           token: MonacoCancellationToken, context: unknown) =>
-      Promise<MonacoSignatureHelp | null> | MonacoSignatureHelp | null;
-  }) => Disposable;
+  registerInlayHintsProvider: (language: string, provider: {
+    provideInlayHints: (model: MonacoModel, range: MonacoRange, token: MonacoCancellationToken) =>
+      Promise<MonacoInlayHint[] | null> | MonacoInlayHint[] | null;
+  }) => Disposable | void;
 };
 
 export type MonacoEditor = {
@@ -68,6 +57,7 @@ export type MonacoEditor = {
   restoreViewState: (state: unknown) => void;
   updateOptions: (options: { readOnly?: boolean }) => void;
   onDidChangeModelContent: (listener: (event: MonacoContentChangeEvent) => void) => Disposable;
+  onDidChangeModel: (listener: () => void) => Disposable;
   onDidChangeCursorPosition: (listener: (event: MonacoCursorPositionEvent) => void) => Disposable;
   onKeyDown: (listener: (event: MonacoKeyEvent) => void) => Disposable;
   onMouseMove: (listener: (event: MonacoMouseEvent) => void) => Disposable;

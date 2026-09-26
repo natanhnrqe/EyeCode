@@ -15,6 +15,8 @@ import { LearningPanel } from '../lessons/LearningPanel';
 import { LearnContextPanel, type LearnContextTab } from '../lessons/LearnContextPanel';
 import type { LessonDescriptor, LessonFile, LessonSession, LessonVerificationResponse, PracticeVerificationResult } from '../lessons/protocol';
 import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
+import { SignaturePopup } from '../signature/SignaturePopup';
+import type { SignaturePopupState } from '../signature/protocol';
 import { BottomPanel } from './BottomPanel';
 import { DockLayout } from './DockLayout';
 import { DocumentationTab } from './DocumentationTab';
@@ -55,6 +57,7 @@ export function Workspace() {
   const [completion, setCompletion] = useState<CompletionPopupState | null>(null);
   const [diagnostics, setDiagnostics] = useState<DiagnosticsViewState | null>(null);
   const [learning, setLearning] = useState<LearningPopupState | null>(null);
+  const [signature, setSignature] = useState<SignaturePopupState | null>(null);
   const [workspace, setWorkspace] = useState<WorkspaceSnapshot>({ recentProjects: [] });
   const [childrenByPath, setChildrenByPath] = useState<Record<string, ProjectNode[]>>({});
   const childrenCache = useRef<Record<string, ProjectNode[]>>({});
@@ -142,13 +145,19 @@ export function Workspace() {
     service.setCompletionStateHandler(setCompletion);
     service.setDiagnosticsStateHandler(setDiagnostics);
     service.setLearningStateHandler(setLearning);
+    service.setSignatureStateHandler(setSignature);
     return () => {
       service.setCaretPositionHandler(null);
       service.setCompletionStateHandler(null);
       service.setDiagnosticsStateHandler(null);
       service.setLearningStateHandler(null);
+      service.setSignatureStateHandler(null);
     };
   }, [service, updateDocument]);
+
+  useEffect(() => {
+    if (completion) service.hideSignatureHelp();
+  }, [completion, service]);
 
   useEffect(() => {
     const unsubscribe = bridge.subscribe((event: WebShellEnvelope) => {
@@ -182,6 +191,7 @@ export function Workspace() {
         setActiveUri(null);
         setCompletion(null);
         setLearning(null);
+        setSignature(null);
         setDiagnostics(null);
         setMessage('');
         setMode('WELCOME');
@@ -732,8 +742,9 @@ export function Workspace() {
     {mode === 'WELCOME' && <section className="welcome-mode"><WelcomeScreen recentProjects={workspace.recentProjects} onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()}
       onOpenRecentProject={path => void openProject(path)} onRemoveRecentProject={path => void removeRecentProject(path)} onLessons={openLessons} /></section>}
     <div className="overlay-root">
+      {signature && !completion && <SignaturePopup state={signature} />}
       {completion && <CompletionPopup state={completion} onSelect={selectCompletion} onAccept={acceptCompletion} />}
-      {learning && <LearningCard state={learning} onNavigate={identifier => service.navigateLearning(identifier)}
+      {learning && !signature && <LearningCard state={learning} onNavigate={identifier => service.navigateLearning(identifier)}
         onAction={action => service.openLearningAction(action)} onHover={hovered => service.setLearningHovered(hovered)} />}
       {learnMode && lessonSession?.kind === 'PRACTICE' && lessonPresentationReady && <LessonAnnotation service={service} lessonUri={lessonEditor.lessonUri()} annotation={lessonSession.annotation} />}
       {newProjectOpen && <NewProjectDialog onCancel={() => setNewProjectOpen(false)} onBrowse={chooseProjectLocation} onCreate={createProject} />}

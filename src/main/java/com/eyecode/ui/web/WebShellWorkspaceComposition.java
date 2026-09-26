@@ -18,6 +18,8 @@ import com.eyecode.language.java.hover.JavaHoverProvider;
 import com.eyecode.language.java.lsp.JdtLsProjectService;
 import com.eyecode.language.java.signature.JavaSignatureHelpProvider;
 import com.eyecode.language.hover.HoverService;
+import com.eyecode.language.inlay.InlayHintService;
+import com.eyecode.language.java.inlay.JavaInlayHintProvider;
 import com.eyecode.language.signature.SignatureHelpService;
 import com.eyecode.language.java.JavaEditorIntelligence;
 import com.eyecode.learning.content.DocumentationTarget;
@@ -80,6 +82,8 @@ public final class WebShellWorkspaceComposition {
         HoverService hover = new HoverService(languageResolver, List.of(new JavaHoverProvider(jdt)));
         SignatureHelpService signatureHelp = new SignatureHelpService(languageResolver,
                 List.of(new JavaSignatureHelpProvider(jdt)));
+        InlayHintService inlayHints = new InlayHintService(languageResolver,
+                List.of(new JavaInlayHintProvider()));
         WebShellDiagnosticsController diagnosticsController = new WebShellDiagnosticsController(surface, diagnostics, education);
         WebShellExecutionController executionController = new WebShellExecutionController(surface,
                 projectLifecycleService, runService, terminalService);
@@ -95,7 +99,7 @@ public final class WebShellWorkspaceComposition {
         WebShellCompletionController completionController = new WebShellCompletionController(surface, editorManager,
                 completion);
         WebShellLanguageFeatureController languageFeatureController = new WebShellLanguageFeatureController(surface,
-                editorManager, hover, signatureHelp);
+                editorManager, hover, signatureHelp, inlayHints);
         WebShellLearningController learningController = new WebShellLearningController(surface, editorManager,
                 documentController::openDocumentationTarget, documentController::openJdkSource);
         WebShellLessonsController lessonsController = new WebShellLessonsController(surface);
