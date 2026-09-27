@@ -7,7 +7,7 @@ import type { SignaturePopupState } from '../signature/protocol';
 import { signatureHoverRegionAt } from '../signature/callContext';
 import { renderHoverContent } from './hoverContent';
 import type { DiagnosticsViewState, DiagnosticsPublish, WebDiagnostic } from '../diagnostics/protocol';
-import type { Disposable, MonacoApi, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoInlayHint, MonacoKeyEvent, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoSnippetController } from './api';
+import type { Disposable, MonacoApi, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoInlayHint, MonacoInlayHintList, MonacoKeyEvent, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoSnippetController } from './api';
 import type { LessonEditorRange, PresentationProgram } from '../lessons/protocol';
 
 type DocumentChangeHandler = (document: DocumentSnapshot) => void;
@@ -50,7 +50,7 @@ type SignatureResponse = {
 const LEARNING_CARD_OPEN_DELAY_MS = 200;
 const LEARNING_CARD_CLOSE_DELAY_MS = 10;
 const LESSON_TYPING_CADENCE_MS = 32;
-const INLAY_HINT_MODE = 'name';
+const INLAY_HINT_MODE = 'type';
 
 type InlayHintsResponse = { hints?: Array<{ offset: number; label: string }> };
 
@@ -560,6 +560,7 @@ export class MonacoWorkspaceService {
       scrollBeyondLastLine: false,
       smoothScrolling: false,
       guides: { indentation: true, highlightActiveIndentation: false, bracketPairs: true, bracketPairsHorizontal: false },
+      inlayHints: { enabled: 'on' },
       quickSuggestions: false,
       wordBasedSuggestions: false,
       suggestOnTriggerCharacters: false,
@@ -987,8 +988,8 @@ export class MonacoWorkspaceService {
   }
 
   private isProjectModel(model: MonacoModel): boolean {
-    const uri = model.uri.toString();
-    return uri.startsWith('file:') && this.models.get(uri) === model;
+    const uri = this.documentUri(model);
+    return uri !== null && uri.startsWith('file:') && this.models.get(uri) === model;
   }
 
   private requestLanguageFeature<T>(channel: 'hover' | 'signatureHelp' | 'inlayHints', payload: Record<string, unknown>): Promise<T | null> {
@@ -1004,13 +1005,21 @@ export class MonacoWorkspaceService {
         unsubscribe();
         resolve(value);
       };
+      const finishIfResult = (value: unknown) => {
+        if (value !== null && typeof value === 'object' && 'feature' in value) finish(value as T);
+      };
       timeout = window.setTimeout(() => finish(null), 7000);
       unsubscribe = bridge.subscribe(message => {
         if (message.kind !== 'response' || message.channel !== channel || message.name !== 'request'
             || message.requestId !== requestId) return;
-        finish(message.error ? null : message.payload as T);
+        if (message.error) {
+          finish(null);
+          return;
+        }
+        finishIfResult(message.payload);
       });
-      void bridge.request<{ accepted: boolean }>(channel, 'request', payload, { requestId, timeoutMs: 6000 })
+      void bridge.request<unknown>(channel, 'request', payload, { requestId, timeoutMs: 6000 })
+        .then(value => finishIfResult(value))
         .catch(() => finish(null));
     });
   }
@@ -1312,11 +1321,23 @@ export class MonacoWorkspaceService {
     const editor = this.editor;
     const model = editor?.getModel();
     const position = event.target?.position ?? null;
-    if (!editor || !model || !position || !this.isProjectModel(model) || this.completionState !== null) {
+    if (!editor || !model || !position) {
       this.hideSignatureHelp();
       return;
     }
-    const uri = model.uri.toString();
+    if (!this.isProjectModel(model)) {
+      this.hideSignatureHelp();
+      return;
+    }
+    if (this.completionState !== null) {
+      this.hideSignatureHelp();
+      return;
+    }
+    const uri = this.documentUri(model);
+    if (!uri) {
+      this.hideSignatureHelp();
+      return;
+    }
     const offset = model.getOffsetAt(position);
     const call = signatureHoverRegionAt(model.getValue(), offset);
     if (!call) {
@@ -1375,10 +1396,15 @@ export class MonacoWorkspaceService {
     });
   }
 
-  private async provideInlayHints(model: MonacoModel, range: MonacoRange): Promise<MonacoInlayHint[] | null> {
-    if (this.disposed || !this.isProjectModel(model)) return null;
+  private async provideInlayHints(model: MonacoModel, range: MonacoRange): Promise<MonacoInlayHintList | null> {
+    if (this.disposed) return null;
+    if (!this.isProjectModel(model)) {
+      return null;
+    }
     const uri = this.documentUri(model);
-    if (!uri) return null;
+    if (!uri) {
+      return null;
+    }
     const version = model.getAlternativeVersionId();
     const endLine = Math.min(range.endLineNumber, model.getLineCount());
     const fromOffset = model.getOffsetAt({ lineNumber: range.startLineNumber, column: 1 });
@@ -1393,13 +1419,15 @@ export class MonacoWorkspaceService {
     });
     if (this.disposed || model.getAlternativeVersionId() !== version) return null;
     if (!response?.hints?.length) return null;
-    return response.hints
+    const hints = response.hints
       .filter(hint => typeof hint.offset === 'number' && typeof hint.label === 'string' && hint.label.length > 0)
       .map(hint => ({
         position: model.getPositionAt(hint.offset),
         label: hint.label,
         paddingLeft: true
       }));
+    if (!hints.length) return null;
+    return { hints, dispose: () => {} };
   }
 
   hideSignatureHelp(): void {

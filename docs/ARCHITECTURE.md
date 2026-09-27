@@ -249,7 +249,7 @@ Practice remains owned by `LessonSession`/lesson models and is reached through `
 
 | Class/API | Status | Evidence / replacement | Action |
 | --- | --- | --- | --- |
-| `LearningChromiumView` | DEPRECATED | Existing `@Deprecated(forRemoval = true)` Swing/JCEF learning view; active UI uses Web Shell/JavaFX composition | Do not add callers; remove only after the old document view is retired |
+| `LearningChromiumView` | DEPRECATED | Existing `@Deprecated(forRemoval = true)` Swing/JCEF learning view; active UI uses Web Shell (React/Web) composition | Do not add callers; remove only after the old document view is retired |
 | `LearningDocumentView` | DEPRECATED | Existing Swing learning document wrapper over `LearningChromiumView` | Do not add callers |
 | `MarkdownToHtmlConverter` | DEPRECATED | Existing custom Markdown renderer; `FlexmarkConverter` is the maintained rendering path | Do not add callers |
 | `BrowserManager#getClient()` | DEPRECATED | Existing API annotation; callers should create clients through `createClient()` | Do not add callers |

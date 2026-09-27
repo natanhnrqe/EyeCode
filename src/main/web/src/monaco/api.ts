@@ -43,10 +43,15 @@ export type MonacoInlayHint = {
   paddingRight?: boolean;
 };
 
+export type MonacoInlayHintList = {
+  hints: MonacoInlayHint[];
+  dispose: () => void;
+};
+
 export type MonacoLanguageProviders = {
   registerInlayHintsProvider: (language: string, provider: {
     provideInlayHints: (model: MonacoModel, range: MonacoRange, token: MonacoCancellationToken) =>
-      Promise<MonacoInlayHint[] | null> | MonacoInlayHint[] | null;
+      Promise<MonacoInlayHintList | null> | MonacoInlayHintList | null;
   }) => Disposable | void;
 };
 

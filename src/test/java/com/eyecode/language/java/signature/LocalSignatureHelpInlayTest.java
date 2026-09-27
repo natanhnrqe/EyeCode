@@ -169,6 +169,71 @@ class LocalSignatureHelpInlayTest {
     }
 
     @Test
+    void qualifiedJdkCall_nameMode_usesDatabaseParameterNames() {
+        String text = source("System.out.println(result);");
+
+        List<InlayHint> hints = resolver.resolveInlayHints(text, 0, text.length(), InlayHintMode.NAME);
+
+        assertEquals(1, hints.size());
+        int firstArg = text.indexOf("System.out.println(result);") + "System.out.println(".length();
+        assertEquals(firstArg, hints.get(0).offset());
+        assertEquals("x:", hints.get(0).label());
+    }
+
+    @Test
+    void qualifiedJdkCall_bothMode_usesDatabaseParameterNames() {
+        String text = source("System.out.println(result);");
+
+        List<InlayHint> hints = resolver.resolveInlayHints(text, 0, text.length(), InlayHintMode.BOTH);
+
+        assertEquals(1, hints.size());
+        assertEquals("x: String", hints.get(0).label());
+    }
+
+    @Test
+    void qualifiedMemberTypeOnlySignature_typeModeStillUsesMemberTypes() {
+        String text = source("System.out.println(result);");
+
+        List<InlayHint> hints = resolver.resolveInlayHints(text, 0, text.length(), InlayHintMode.TYPE);
+
+        assertEquals(1, hints.size());
+        assertEquals("String:", hints.get(0).label());
+    }
+
+    @Test
+    void modeBoth_blankParameterNameFallsBackToTypeAndKeepsEveryArgument() {
+        String text = source("text.substring(0, 3);");
+
+        List<InlayHint> hints = resolver.resolveInlayHints(text, 0, text.length(), InlayHintMode.BOTH);
+
+        assertEquals(2, hints.size());
+        assertEquals(text.indexOf("text.substring(0, 3);") + "text.substring(".length(), hints.get(0).offset());
+        assertEquals("int:", hints.get(0).label());
+        assertEquals(text.indexOf(", 3)") + ", ".length(), hints.get(1).offset());
+        assertEquals("int:", hints.get(1).label());
+    }
+
+    @Test
+    void constructorCall_emitsParamHints() {
+        String text = "class Calculator {\n"
+                + "    static class Helper {\n"
+                + "        Helper(int n) { }\n"
+                + "    }\n"
+                + "\n"
+                + "    void run() {\n"
+                + "        int result = 1;\n"
+                + "        new Helper(result);\n"
+                + "    }\n"
+                + "}";
+
+        List<InlayHint> hints = resolver.resolveInlayHints(text, 0, text.length(), InlayHintMode.BOTH);
+
+        assertEquals(1, hints.size());
+        assertEquals(text.indexOf("new Helper(") + "new Helper(".length(), hints.get(0).offset());
+        assertEquals("n: int", hints.get(0).label());
+    }
+
+    @Test
     void emptyOrNullSource_returnsEmpty() {
         assertTrue(resolver.resolveInlayHints(null, 0, 10, InlayHintMode.NAME).isEmpty());
         assertTrue(resolver.resolveInlayHints("", 0, 0, InlayHintMode.NAME).isEmpty());

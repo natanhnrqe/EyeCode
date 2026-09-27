@@ -7,6 +7,7 @@ public record InlayHint(int offset, String label) {
         }
         if (offset < 0) {
             throw new IllegalArgumentException("offset must not be negative");
+
         }
     }
 }

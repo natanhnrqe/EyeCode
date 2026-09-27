@@ -121,7 +121,8 @@ public final class LocalSignatureHelpResolver {
                         if (!declarationParens.contains(token.startOffset())
                                 && previous != null && previous.type() == JavaTokenType.IDENTIFIER
                                 && !CALL_KEYWORDS.contains(previous.text()) && token.startOffset() <= to) {
-                            params = inlayParams(source, tokens, file, new Call(token, previous, qualified));
+                            params = inlayParams(source, tokens, file, new Call(token, previous, qualified),
+                                    resolvedMode);
                         }
                         stack.push(new InlayFrame(params));
                         angle = 0;
@@ -234,7 +235,7 @@ public final class LocalSignatureHelpResolver {
             case TYPE -> parameter.type().isBlank() ? null : parameter.type() + ":";
             case BOTH -> {
                 if (parameter.name().isBlank()) {
-                    yield null;
+                    yield parameter.type().isBlank() ? null : parameter.type() + ":";
                 }
                 yield parameter.type().isBlank()
                         ? parameter.name() + ":"
@@ -243,7 +244,8 @@ public final class LocalSignatureHelpResolver {
         };
     }
 
-    private List<InlayParam> inlayParams(String source, List<Token> tokens, JavaFileModel file, Call call) {
+    private List<InlayParam> inlayParams(String source, List<Token> tokens, JavaFileModel file, Call call,
+                                         InlayHintMode mode) {
         List<List<InlayParam>> candidates = new ArrayList<>();
         String callee = call.callee().text();
         if (call.qualified()) {
@@ -254,21 +256,28 @@ public final class LocalSignatureHelpResolver {
             }
         } else if (file != null) {
             Set<String> seen = new LinkedHashSet<>();
+            collectConstructorParams(file, callee, candidates, seen);
             for (JavaClassModel type : enclosingTypes(file, call.callee().startOffset())) {
                 collectMethodParams(type, callee, candidates, seen);
                 collectInheritedParams(file, type, callee, candidates, seen, new LinkedHashSet<>());
             }
         }
-        if (candidates.isEmpty()) {
+        boolean needsNames = mode != InlayHintMode.TYPE;
+        List<InlayParam> selected = candidates.isEmpty() ? null : candidates.getFirst();
+        if (selected == null || (needsNames && selected.stream().allMatch(param -> param.name().isBlank()))) {
             CompletionItem item = CompletionDatabase.get(callee);
             if (item != null && item.getKind() == CompletionItemKind.METHOD) {
                 String label = item.getSignature() == null || item.getSignature().isBlank()
                         ? callee + "()"
                         : item.getSignature();
-                candidates.add(paramsFromLabel(label));
+                List<InlayParam> fromDatabase = paramsFromLabel(label);
+                boolean databaseHasNames = fromDatabase.stream().anyMatch(param -> !param.name().isBlank());
+                if (selected == null || (databaseHasNames && fromDatabase.size() == selected.size())) {
+                    selected = fromDatabase;
+                }
             }
         }
-        return candidates.isEmpty() ? null : candidates.getFirst();
+        return selected;
     }
 
     private static List<InlayParam> memberParams(JavaFileModel file, JavaResolvedMember member) {
@@ -289,9 +298,26 @@ public final class LocalSignatureHelpResolver {
         return paramsFromLabel(member.signature());
     }
 
+    private static void collectConstructorParams(JavaFileModel file, String callee, List<List<InlayParam>> result,
+                                                 Set<String> seen) {
+        for (JavaClassModel type : allTypes(file)) {
+            if (!callee.equals(type.getName())) {
+                continue;
+            }
+            for (JavaConstructorModel constructor : type.getConstructors()) {
+                List<InlayParam> params = constructor.getParameters().stream()
+                        .map(parameter -> new InlayParam(parameter.getName(), parameter.getType()))
+                        .toList();
+                if (params.isEmpty() || !seen.add(callee + params)) {
+                    continue;
+                }
+                result.add(params);
+            }
+        }
+    }
+
     private static void collectMethodParams(JavaClassModel type, String callee, List<List<InlayParam>> result,
-                                            Set<String> seen) {
-        for (JavaMethodModel method : type.getMethods()) {
+                                            Set<String> seen) {        for (JavaMethodModel method : type.getMethods()) {
             if (!callee.equals(method.getName()) || !seen.add(labelFor(method))) {
                 continue;
             }
