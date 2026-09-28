@@ -19,6 +19,7 @@ public final class JavadocFormatter {
             "<a\\s+[^>]*href\\s*=\\s*\"([^\"]*)\"[^>]*>(.*?)</a>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
     private static final Pattern TAG = Pattern.compile("</?[a-zA-Z][^>]*>");
     private static final Pattern PLACEHOLDER = Pattern.compile("\uE000(\\d+)\uE001");
+    private static final Pattern GUTTER_LINE = Pattern.compile("(?m)^\\s*\\*(\\s|$)|(?m)^\\s*\\*/");
 
     private JavadocFormatter() {
     }
@@ -27,7 +28,7 @@ public final class JavadocFormatter {
         if (javadoc == null || javadoc.isBlank()) {
             return "";
         }
-        String body = javadoc.startsWith("/**") ? LocalJavadocResolver.clean(javadoc) : javadoc;
+        String body = normalize(javadoc);
         List<String> description = new ArrayList<>();
         List<Block> blocks = new ArrayList<>();
         Block current = null;
@@ -44,6 +45,42 @@ public final class JavadocFormatter {
             }
         }
         return render(description, blocks);
+    }
+
+    private static String normalize(String javadoc) {
+        if (javadoc.startsWith("/**")) {
+            return LocalJavadocResolver.clean(javadoc);
+        }
+        if (!GUTTER_LINE.matcher(javadoc).find()) {
+            return javadoc;
+        }
+        String[] lines = javadoc.split("\n", -1);
+        StringBuilder out = new StringBuilder();
+        for (int index = 0; index < lines.length; index++) {
+            if (index > 0) {
+                out.append('\n');
+            }
+            out.append(stripGutter(lines[index]));
+        }
+        return out.toString();
+    }
+
+    private static String stripGutter(String line) {
+        String trimmed = line.strip();
+        if (trimmed.startsWith("**/")) {
+            return trimmed.substring(3).stripLeading();
+        }
+        if (trimmed.startsWith("*/")) {
+            return trimmed.substring(2).stripLeading();
+        }
+        if (trimmed.startsWith("*")) {
+            String rest = trimmed.substring(1);
+            if (rest.startsWith(" ")) {
+                rest = rest.substring(1);
+            }
+            return rest;
+        }
+        return line;
     }
 
     private static String render(List<String> description, List<Block> blocks) {
@@ -69,7 +106,21 @@ public final class JavadocFormatter {
             }
             out.append(body).append("\n\n");
         }
-        return out.toString().trim().replaceAll("\\n{3,}", "\n\n");
+        return sweep(out.toString());
+    }
+
+    private static String sweep(String text) {
+        StringBuilder out = new StringBuilder();
+        for (String line : text.split("\n", -1)) {
+            if (line.strip().matches("\\*+")) {
+                continue;
+            }
+            if (out.length() > 0) {
+                out.append('\n');
+            }
+            out.append(line);
+        }
+        return out.toString().replaceAll("\\n{3,}", "\n\n").trim();
     }
 
     private static String looseBody(List<Block> blocks) {

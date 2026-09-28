@@ -37,7 +37,7 @@ public final class HoverHtmlRenderer {
                         .append("</code></pre>");
                 case "markdown" -> body.append(MARKDOWN_RENDERER.render(MARKDOWN_PARSER.parse(content.value())));
                 case "html" -> body.append(content.value());
-                default -> body.append("<p>").append(escape(content.value())).append("</p>");
+                default -> body.append(MARKDOWN_RENDERER.render(MARKDOWN_PARSER.parse(escape(content.value()))));
             }
         }
         if (body.isEmpty()) {

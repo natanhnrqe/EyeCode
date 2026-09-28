@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JavaHoverProviderTest {
@@ -82,6 +83,41 @@ class JavaHoverProviderTest {
             assertTrue(result.get().contents().getFirst().value().contains("Adds two values together."));
         } finally {
             jdt.close();
+        }
+    }
+
+    @Test
+    void jdtNull_jdkStyleJavadoc_rendersCleanHtmlWithoutStrayAsterisks() {
+        JavaHoverProvider provider = new JavaHoverProvider(null);
+        String source = "class Calculator {\n"
+                + "    /**\n"
+                + "     * Adds two values together.\n"
+                + "     * <p>Equivalent to {@code left + right}.\n"
+                + "     * @param left the first operand\n"
+                + "     * @param right the second operand\n"
+                + "     * @return the sum\n"
+                + "     */\n"
+                + "    int add(int left, int right) {\n"
+                + "        return left + right;\n"
+                + "    }\n"
+                + "\n"
+                + "    void run() {\n"
+                + "        int sum = ad|d(1, 2);\n"
+                + "    }\n"
+                + "}";
+        int caret = source.indexOf('|');
+        String text = source.replace("|", "");
+
+        Optional<HoverResult> result = provider.hover(request(text, caret));
+
+        assertTrue(result.isPresent());
+        String html = result.get().contents().getFirst().value();
+        assertEquals("html", result.get().contents().getFirst().kind());
+        assertTrue(html.contains("<h2>Parâmetros</h2>"));
+        assertTrue(html.contains("<strong>left</strong>"));
+        assertFalse(html.contains("* **"));
+        for (String line : html.split("\n", -1)) {
+            assertFalse(line.strip().matches("\\*+"), "stray asterisk line: " + line);
         }
     }
 

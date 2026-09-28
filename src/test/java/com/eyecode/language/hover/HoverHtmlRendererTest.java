@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HoverHtmlRendererTest {
@@ -30,6 +31,17 @@ class HoverHtmlRendererTest {
         String html = HoverHtmlRenderer.render(List.of(new HoverContent("plaintext", "<tag> & more")));
 
         assertTrue(html.contains("<p>&lt;tag&gt; &amp; more</p>"));
+    }
+
+    @Test
+    void plaintextJavadocResidue_rendersThroughMarkdownWithoutRawStars() {
+        String html = HoverHtmlRenderer.render(List.of(new HoverContent("plaintext",
+                "* **Parameters:**\n* **index** - the index")));
+
+        assertTrue(html.contains("<strong>Parameters:</strong>"));
+        assertTrue(html.contains("<li>"));
+        assertTrue(html.contains("<strong>index</strong>"));
+        assertFalse(html.contains("* **"));
     }
 
     @Test

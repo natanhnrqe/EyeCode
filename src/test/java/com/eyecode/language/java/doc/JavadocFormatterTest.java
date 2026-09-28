@@ -139,6 +139,45 @@ class JavadocFormatterTest {
         assertTrue(out.indexOf("Adds values.") < out.indexOf("## Retorno"));
     }
 
+    @Test
+    void starGutterWithoutBlockPrefix_isStrippedBeforeTagDetection() {
+        String out = JavadocFormatter.format(" * Adds values.\n"
+                + " * @param index the index\n"
+                + " * @return the index");
+
+        assertTrue(out.contains("Adds values."));
+        assertTrue(out.contains("## Parâmetros"));
+        assertTrue(out.contains("- **index** — the index"));
+        assertTrue(out.contains("## Retorno"));
+        assertFalse(hasLooseStarLine(out));
+    }
+
+    @Test
+    void jdkStyleSample_producesCleanMarkdownWithoutStarArtifacts() {
+        String out = JavadocFormatter.format(" * Returns the char at {@code index}.\n"
+                + " * <p>Equivalent to:\n"
+                + " * <pre>char c = value.charAt(0);</pre>\n"
+                + " * @param index the index\n"
+                + " * @throws IndexOutOfBoundsException when out of range\n"
+                + " */");
+
+        assertTrue(out.contains("`index`"));
+        assertTrue(out.contains("## Parâmetros"));
+        assertTrue(out.contains("## Exceções"));
+        assertFalse(out.contains("*/"));
+        assertFalse(hasLooseStarLine(out));
+        assertFalse(out.contains("* **"));
+    }
+
+    private static boolean hasLooseStarLine(String text) {
+        for (String line : text.split("\n", -1)) {
+            if (line.strip().matches("\\*+")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static int countOccurrences(String text, String needle) {
         int count = 0;
         int index = text.indexOf(needle);

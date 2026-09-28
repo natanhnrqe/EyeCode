@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -107,7 +108,7 @@ public final class JdtLsProjectCompletion {
         Either<List<Either<String, MarkedString>>, org.eclipse.lsp4j.MarkupContent> value = hover.getContents();
         if (value != null && value.isRight()) {
             var markup = value.getRight();
-            contents.add(new HoverContent(markup.getKind(), sanitizeMarkup(markup.getValue())));
+            contents.add(new HoverContent(normalizeMarkupKind(markup.getKind()), sanitizeMarkup(markup.getValue())));
         } else if (value != null && value.isLeft()) {
             for (Either<String, MarkedString> item : value.getLeft()) {
                 if (item.isLeft()) contents.add(new HoverContent("plaintext", item.getLeft()));
@@ -122,6 +123,14 @@ public final class JdtLsProjectCompletion {
             end = lines.offsetOf(hover.getRange().getEnd().getLine(), hover.getRange().getEnd().getCharacter());
         }
         return new HoverResult(contents, start, end);
+    }
+
+    static String normalizeMarkupKind(String kind) {
+        if (kind == null || kind.isBlank()) {
+            return "plaintext";
+        }
+        String normalized = kind.trim().toLowerCase(Locale.ROOT);
+        return normalized.equals("markdown") || normalized.equals("plaintext") ? normalized : "plaintext";
     }
 
     static String sanitizeMarkup(String value) {
