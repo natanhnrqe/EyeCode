@@ -36,20 +36,27 @@ export function DocumentationArticleTab({ page, fullscreen, onOpenRelated, onTog
   }, [fullscreen, onToggleFullscreen]);
 
   useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [page.id]);
+
+  useEffect(() => {
     const root = bodyRef.current;
-    if (!root || toc.length === 0 || typeof IntersectionObserver === 'undefined') return;
+    if (!root || toc.length === 0) return;
     const headings = toc
-      .map(item => document.getElementById(item.id))
+      .map(item => root.querySelector<HTMLElement>(`[id="${item.id}"]`))
       .filter((element): element is HTMLElement => element !== null);
     if (headings.length === 0) return;
-    const observer = new IntersectionObserver(observed => {
-      const visible = observed
-        .filter(entry => entry.isIntersecting)
-        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-      if (visible.length > 0) setActiveHeading(visible[0].target.id);
-    }, { root, rootMargin: '0px 0px -70% 0px', threshold: 0 });
-    headings.forEach(heading => observer.observe(heading));
-    return () => observer.disconnect();
+    const update = () => {
+      const rootTop = root.getBoundingClientRect().top;
+      let current = headings[0];
+      for (const heading of headings) {
+        if (heading.getBoundingClientRect().top - rootTop <= 90) current = heading;
+      }
+      setActiveHeading(current.id);
+    };
+    update();
+    root.addEventListener('scroll', update, { passive: true });
+    return () => root.removeEventListener('scroll', update);
   }, [toc]);
 
   return (
@@ -126,7 +133,9 @@ export function DocumentationArticleTab({ page, fullscreen, onOpenRelated, onTog
                   <button
                     type="button"
                     className={activeHeading === item.id ? 'is-active' : undefined}
-                    onClick={() => document.getElementById(item.id)?.scrollIntoView({ block: 'start' })}
+                    onClick={() => bodyRef.current
+                      ?.querySelector<HTMLElement>(`[id="${item.id}"]`)
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                   >
                     {item.text}
                   </button>

@@ -583,6 +583,86 @@ class WebShellSharedShellSourceTest {
         assertTrue(taskCard.contains("verification && <section className=\"lesson-task-feedback\""));
     }
 
+    @Test
+    void documentationCalloutsUseScopedTitleAndFlexBody() throws IOException {
+        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+
+        assertFalse(styles.contains(".docs-callout strong"));
+        assertFalse(styles.contains(".docs-callout-warning strong"));
+        assertTrue(styles.contains(".docs-callout-title"));
+        assertTrue(styles.contains(".docs-callout-body"));
+        assertTrue(styles.contains(".docs-callout-note"));
+        assertTrue(styles.contains(".docs-callout-tip"));
+        String callout = cssRule(styles, ".docs-callout");
+        assertTrue(callout.contains("display: flex"));
+        assertTrue(callout.contains("align-items: flex-start"));
+        assertTrue(callout.contains("gap: 12px"));
+    }
+
+    @Test
+    void documentationReaderKeepsTocVisibleAndExplorerCompact() throws IOException {
+        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+
+        String toc = cssRule(styles, ".docs-toc");
+        assertTrue(toc.contains("position: sticky"));
+        assertTrue(toc.contains("top: 16px"));
+        assertTrue(toc.contains("right: 0"));
+        assertTrue(toc.contains("align-self: flex-start"));
+        assertTrue(toc.contains("overflow-y: auto"));
+        assertTrue(toc.contains("flex: 0 0 190px"));
+        assertTrue(toc.contains("margin: 0"));
+        assertFalse(toc.contains("margin-left"));
+        assertTrue(cssRule(styles, ".docs-toc button").contains("padding: 6px 10px"));
+        String main = cssRule(styles, "\n.docs-article-main");
+        assertFalse(main.contains("max-width"));
+        assertTrue(cssRule(styles, "\n.docs-article-content").contains("max-width: 1000px"));
+        assertTrue(cssRule(styles, "\n.docs-article-footer").contains("max-width: 1000px"));
+        assertFalse(styles.contains(".docs-immersive-reader .docs-article-main"));
+        assertTrue(cssRule(styles, ".docs-branch-label").contains("text-transform: uppercase"));
+        assertTrue(cssRule(styles, ".docs-branch-count").contains("border-radius: 10px"));
+        assertTrue(styles.contains("-webkit-line-clamp: 2"));
+        assertFalse(cssRule(styles, ".docs-subgroup-label").contains("text-transform: uppercase"));
+    }
+
+    @Test
+    void docsFullscreenIsATopLevelImmersiveView() throws IOException {
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+
+        assertTrue(workspace.contains("{docsFullscreenActive && guidePage && <section className=\"docs-immersive\""));
+        assertTrue(workspace.contains("docs-immersive-exit"));
+        assertTrue(workspace.contains("<DocumentationExplorer"));
+        assertTrue(workspace.contains("const docsFullscreenActive = docsFullscreen && !!guidePage;"));
+        assertTrue(workspace.contains("&& !docsFullscreenActive && renderGuideArticle"));
+        assertFalse(workspace.contains("docs-fullscreen-view"));
+        assertFalse(styles.contains(".shell-workspace.is-docs-fullscreen"));
+        assertFalse(styles.contains(".docs-fullscreen-view"));
+        String immersive = cssRule(styles, ".docs-immersive");
+        assertTrue(immersive.contains("position: fixed"));
+        assertTrue(immersive.contains("inset: 0"));
+        assertTrue(immersive.contains("z-index: 50"));
+        assertTrue(immersive.contains("grid-template-columns: 300px minmax(0, 1fr)"));
+    }
+
+    @Test
+    void welcomeScreenOffersFullscreenDocumentationShortcut() throws IOException {
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+        String welcome = Files.readString(Path.of("src/main/web/src/workspace/WelcomeScreen.tsx"));
+        String article = Files.readString(Path.of("src/main/web/src/documentation/DocumentationArticleTab.tsx"));
+
+        assertTrue(welcome.contains("onDocumentation(): void;"));
+        assertTrue(welcome.contains("Explorar Documentação Java (Tela Cheia)"));
+        assertTrue(welcome.contains("EyeCodeIcon name=\"markdown\""));
+        assertTrue(workspace.contains("onDocumentation={() => { void openDocumentationPage('java/jdk/fundamentos/variables')"));
+        assertTrue(workspace.contains("if (opened) setDocsFullscreen(true)"));
+        assertTrue(article.contains("bodyRef.current"));
+        assertTrue(article.contains("scrollIntoView({ behavior: 'smooth', block: 'start' })"));
+        assertFalse(article.contains("document.getElementById"));
+        assertTrue(article.contains("bodyRef.current.scrollTop = 0"));
+        assertTrue(article.contains("addEventListener('scroll'"));
+        assertFalse(article.contains("IntersectionObserver"));
+    }
+
     private static int occurrences(String text, String target) {
         return text.split(java.util.regex.Pattern.quote(target), -1).length - 1;
     }

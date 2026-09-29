@@ -123,11 +123,11 @@ export function Workspace() {
     setChildrenByPath(next);
   }, []);
 
-  const openDocumentationPage = useCallback(async (id: string) => {
+  const openDocumentationPage = useCallback(async (id: string): Promise<boolean> => {
     const uri = `guide://${id}`;
     if (guidePages[uri]) {
       setActiveUri(uri);
-      return;
+      return true;
     }
     try {
       const page = await bridge.request<DocumentationPage>('docs', 'read', { id });
@@ -144,8 +144,10 @@ export function Workspace() {
       });
       setActiveUri(uri);
       setMessage('');
+      return true;
     } catch (error) {
       setMessage(formatError(error));
+      return false;
     }
   }, [guidePages, updateDocument]);
 
@@ -642,9 +644,9 @@ export function Workspace() {
   const activeEditorDocument = activeDocument?.kind === 'documentation' || activeDocument?.kind === 'guide'
     ? undefined : activeDocument;
   const projectMode = mode === 'PROJECT';
-  const docsFullscreenActive = projectMode && docsFullscreen && !!guidePage;
+  const docsFullscreenActive = docsFullscreen && !!guidePage;
   const renderGuideArticle = guidePage ? (
-    <DocumentationArticleTab page={guidePage} fullscreen={docsFullscreenActive}
+    <DocumentationArticleTab page={guidePage} fullscreen={false}
       onOpenRelated={id => void openDocumentationPage(id)}
       onToggleFullscreen={() => setDocsFullscreen(value => !value)} />
   ) : null;
@@ -681,7 +683,7 @@ export function Workspace() {
         </> : <header className="document-tabs learn-editor-tabs" data-dock-handle>{learnPath.join(' / ')}</header>}
         <section className="editor-region" data-editor-region-slot>
           {projectMode && activeDocument?.kind === 'documentation' && <DocumentationTab document={activeDocument} />}
-          {projectMode && activeDocument?.kind === 'guide' && renderGuideArticle}
+          {projectMode && activeDocument?.kind === 'guide' && !docsFullscreenActive && renderGuideArticle}
           {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
             <span>Open a file from Project panel or create something new.</span><div><button type="button" className="primary-action" onClick={() => setNewJavaClassOpen(true)}>New Java Class</button></div></div>}
           {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
@@ -775,8 +777,8 @@ export function Workspace() {
   }, [dockTree, editorSurfaceKey, editorVisible, service]);
   return <main className="app-shell">
     {toolbar}
-    <div ref={shellWorkspace} className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}${docsFullscreenActive ? ' is-docs-fullscreen' : ''}`} aria-hidden={mode === 'WELCOME'}>
-      {projectMode ? !docsFullscreenActive && <nav className="activity-bar" aria-label="Workspace views">
+    <div ref={shellWorkspace} className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}`} aria-hidden={mode === 'WELCOME'}>
+      {projectMode ? <nav className="activity-bar" aria-label="Workspace views">
         {(['project', 'search', 'documentation', 'settings'] as SidePanelId[]).map(id => <button key={id}
           type="button" className={sidePanel === id ? 'is-active' : ''} onClick={() => selectSidePanel(id)} aria-label={id}><EyeCodeIcon name={sideIcon(id)} /></button>)}
       </nav> : !learnNavigationVisible && <nav className="activity-bar learn-activity-bar" aria-label="Navegação da aula"><button type="button" className={!learnExplorerCollapsed ? 'is-active' : ''} onClick={() => setLearnExplorerCollapsed(value => !value)} aria-label={learnExplorerCollapsed ? 'Mostrar aulas' : 'Ocultar aulas'} aria-expanded={!learnExplorerCollapsed}><EyeCodeIcon name="markdown" /></button></nav>}
@@ -784,11 +786,9 @@ export function Workspace() {
         onOpenRoadmap={categoryId => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'ROADMAP', categoryId }); }}
         onOpenTopic={(categoryId, topicId) => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'TOPIC', categoryId, topicId }); }}
         onOpenLesson={openLearnLesson} />}
-      {docsFullscreenActive && renderGuideArticle
-        ? <section className="docs-fullscreen-view">{renderGuideArticle}</section>
-        : <DockLayout tree={dockTree} renderPane={renderPane} layoutKind={layoutKind} className={learnExplorerCollapsed && learnMode ? 'is-learn-explorer-collapsed' : undefined}
-          canDockDrop={dockRules ? canDockDrop : undefined} resolveDockPreview={dockRules ? resolveDockPreview : undefined} onDockDrop={handleDockDrop}
-          onRatioChange={updateDockRatio} onEditorGeometryChange={() => service.layout()} />}
+      <DockLayout tree={dockTree} renderPane={renderPane} layoutKind={layoutKind} className={learnExplorerCollapsed && learnMode ? 'is-learn-explorer-collapsed' : undefined}
+        canDockDrop={dockRules ? canDockDrop : undefined} resolveDockPreview={dockRules ? resolveDockPreview : undefined} onDockDrop={handleDockDrop}
+        onRatioChange={updateDockRatio} onEditorGeometryChange={() => service.layout()} />
       <section className={`persistent-editor-surface${editorSurfaceVisible ? '' : ' is-hidden'}`} style={editorSurfaceBounds ? {
         left: editorSurfaceBounds.left,
         top: editorSurfaceBounds.top,
@@ -802,7 +802,8 @@ export function Workspace() {
       projectRoot={workspace.project?.root.path} projectName={workspace.project?.name} caret={caret} message={message} runState={runState} />
       : learnMode && lessonSession ? <StatusBar breadcrumbs={learnStatusBreadcrumbs} caret={caret} message={message} runState={runState} /> : <div className="shell-status-spacer" />}
     {mode === 'WELCOME' && <section className="welcome-mode"><WelcomeScreen recentProjects={workspace.recentProjects} onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()}
-      onOpenRecentProject={path => void openProject(path)} onRemoveRecentProject={path => void removeRecentProject(path)} onLessons={openLessons} /></section>}
+      onOpenRecentProject={path => void openProject(path)} onRemoveRecentProject={path => void removeRecentProject(path)} onLessons={openLessons}
+      onDocumentation={() => { void openDocumentationPage('java/jdk/fundamentos/variables').then(opened => { if (opened) setDocsFullscreen(true); }); }} /></section>}
     <div className="overlay-root">
       {signature && !completion && <SignaturePopup state={signature} />}
       {completion && <CompletionPopup state={completion} onSelect={selectCompletion} onAccept={acceptCompletion} />}
@@ -812,6 +813,19 @@ export function Workspace() {
       {newProjectOpen && <NewProjectDialog onCancel={() => setNewProjectOpen(false)} onBrowse={chooseProjectLocation} onCreate={createProject} />}
       {newJavaClassOpen && <NewJavaClassDialog onCancel={() => setNewJavaClassOpen(false)} onCreate={createJavaClass} />}
     </div>
+    {docsFullscreenActive && guidePage && <section className="docs-immersive">
+      <DocumentationExplorer
+        activeId={activeDocument?.kind === 'guide' && activeUri ? activeUri.slice('guide://'.length) : null}
+        onOpen={id => void openDocumentationPage(id)} />
+      <section className="docs-immersive-reader">
+        <DocumentationArticleTab page={guidePage} fullscreen
+          onOpenRelated={id => void openDocumentationPage(id)}
+          onToggleFullscreen={() => setDocsFullscreen(false)} />
+      </section>
+      <button type="button" className="docs-immersive-exit" onClick={() => setDocsFullscreen(false)}>
+        Sair da tela cheia
+      </button>
+    </section>}
   </main>;
 }
 

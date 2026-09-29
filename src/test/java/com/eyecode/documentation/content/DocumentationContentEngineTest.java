@@ -140,6 +140,56 @@ class DocumentationContentEngineTest {
     }
 
     @Test
+    void calloutUsesUnifiedTitleAndBodyStructure() {
+        String html = engine.render("> [!INFO] Toda janela é um **Stage**.");
+
+        assertTrue(html.contains(
+                "<div class=\"docs-callout docs-callout-info\"><span class=\"docs-callout-title\">Info</span><div class=\"docs-callout-body\">"),
+                () -> "estrutura unificada ausente: " + html);
+        assertTrue(html.contains("<strong>Stage</strong>"), () -> "negrito do conteúdo perdido: " + html);
+        assertTrue(html.trim().endsWith("</div></div>"), () -> "body fechado incorretamente: " + html);
+    }
+
+    @Test
+    void markerOnlyAndInlineCalloutsShareTheSameWrapper() {
+        String inline = engine.render("> [!INFO] Texto **forte**.");
+        String markerOnly = engine.render("> [!INFO]\n>\n> Texto **forte**.");
+
+        String prefix = "<div class=\"docs-callout docs-callout-info\">"
+                + "<span class=\"docs-callout-title\">Info</span>"
+                + "<div class=\"docs-callout-body\">";
+        assertTrue(inline.startsWith(prefix), () -> "wrapper inline divergente: " + inline);
+        assertTrue(markerOnly.startsWith(prefix), () -> "wrapper marker-only divergente: " + markerOnly);
+        String body = "<p>Texto <strong>forte</strong>.</p>";
+        assertTrue(inline.contains(body), () -> "corpo inline divergente: " + inline);
+        assertTrue(markerOnly.contains(body), () -> "corpo marker-only divergente: " + markerOnly);
+    }
+
+    @Test
+    void noteAndTipCalloutsRenderUnifiedStructure() {
+        String note = engine.render("> [!NOTE] Uma observação.");
+        String tip = engine.render("> [!TIP] Uma dica útil.");
+
+        assertTrue(note.contains("class=\"docs-callout docs-callout-note\""), () -> note);
+        assertTrue(note.contains("<span class=\"docs-callout-title\">Nota</span>"), () -> note);
+        assertTrue(tip.contains("class=\"docs-callout docs-callout-tip\""), () -> tip);
+        assertTrue(tip.contains("<span class=\"docs-callout-title\">Dica</span>"), () -> tip);
+        assertFalse(note.contains("[!NOTE]"));
+        assertFalse(tip.contains("[!TIP]"));
+    }
+
+    @Test
+    void calloutMarkerOnFollowingLineWithNoBlankLineRenders() {
+        String html = engine.render("> [!INFO]\n> Conteúdo na linha seguinte.");
+
+        assertTrue(html.contains(
+                "<div class=\"docs-callout docs-callout-info\"><span class=\"docs-callout-title\">Info</span><div class=\"docs-callout-body\">"),
+                () -> html);
+        assertTrue(html.contains("<p>Conteúdo na linha seguinte.</p>"), () -> html);
+        assertFalse(html.contains("[!INFO]"));
+    }
+
+    @Test
     void regularBlockquoteStaysBlockquote() {
         String html = engine.render("> Uma citação comum.");
 

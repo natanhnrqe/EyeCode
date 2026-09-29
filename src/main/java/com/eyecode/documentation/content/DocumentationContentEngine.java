@@ -22,9 +22,9 @@ public final class DocumentationContentEngine {
     private static final Pattern HEADING = Pattern.compile("<h([23])>(.*?)</h\\1>", Pattern.DOTALL);
     private static final Pattern TAGS = Pattern.compile("<[^>]+>");
     private static final Pattern CALLOUT_MARKER_ONLY = Pattern.compile(
-            "<blockquote>\\s*<p>\\[!(INFO|WARNING)\\]</p>([\\s\\S]*?)</blockquote>");
+            "<blockquote>\\s*<p>\\[!(INFO|WARNING|NOTE|TIP)\\]</p>([\\s\\S]*?)</blockquote>");
     private static final Pattern CALLOUT_MARKER_INLINE = Pattern.compile(
-            "<blockquote>\\s*<p>\\[!(INFO|WARNING)\\]([\\s\\S]*?)</p>([\\s\\S]*?)</blockquote>");
+            "<blockquote>\\s*<p>\\[!(INFO|WARNING|NOTE|TIP)\\]([\\s\\S]*?)</p>([\\s\\S]*?)</blockquote>");
 
     private final DocumentationContentRepository repository = new DocumentationContentRepository();
     private final DocumentationFrontMatterParser frontMatterParser = new DocumentationFrontMatterParser();
@@ -111,15 +111,22 @@ public final class DocumentationContentEngine {
 
     static String transformCallouts(String html) {
         String markerOnly = CALLOUT_MARKER_ONLY.matcher(html).replaceAll(match ->
-                callout(match.group(1), match.group(2)));
+                callout(match.group(1), match.group(2).trim()));
         return CALLOUT_MARKER_INLINE.matcher(markerOnly).replaceAll(match ->
-                callout(match.group(1), "<p>" + match.group(2) + "</p>" + match.group(3)));
+                callout(match.group(1), ("<p>" + match.group(2).stripLeading() + "</p>" + match.group(3)).trim()));
     }
 
     private static String callout(String kind, String content) {
         String lower = kind.toLowerCase();
-        String label = kind.equals("INFO") ? "Info" : "Atenção";
+        String label = switch (kind) {
+            case "INFO" -> "Info";
+            case "WARNING" -> "Atenção";
+            case "NOTE" -> "Nota";
+            case "TIP" -> "Dica";
+            default -> kind;
+        };
         return Matcher.quoteReplacement("<div class=\"docs-callout docs-callout-" + lower
-                + "\"><strong>" + label + "</strong>" + content + "</div>");
+                + "\"><span class=\"docs-callout-title\">" + label + "</span>"
+                + "<div class=\"docs-callout-body\">" + content + "</div></div>");
     }
 }
