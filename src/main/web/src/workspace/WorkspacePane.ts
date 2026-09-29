@@ -56,7 +56,7 @@ export const learnPracticeDockRules: DockRules = {
 export const projectDockTree: DockNode = {
   type: 'split', orientation: 'vertical', ratio: 0.7,
   first: {
-    type: 'split', orientation: 'horizontal', ratio: 0.28,
+    type: 'split', orientation: 'horizontal', ratio: 0.2,
     first: { type: 'pane', paneId: 'explorer' },
     second: { type: 'pane', paneId: 'editor' }
   },

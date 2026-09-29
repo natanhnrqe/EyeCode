@@ -1,4 +1,4 @@
-export type DocumentKind = 'file' | 'jdk-source' | 'documentation' | 'lesson';
+export type DocumentKind = 'file' | 'jdk-source' | 'documentation' | 'lesson' | 'guide';
 
 export type DocumentSnapshot = {
   uri: string;

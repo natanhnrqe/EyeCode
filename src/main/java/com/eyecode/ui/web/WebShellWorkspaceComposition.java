@@ -103,6 +103,7 @@ public final class WebShellWorkspaceComposition {
         WebShellLearningController learningController = new WebShellLearningController(surface, editorManager,
                 documentController::openDocumentationTarget, documentController::openJdkSource);
         WebShellLessonsController lessonsController = new WebShellLessonsController(surface);
+        new WebShellDocumentationController(surface);
         return new WebShellWorkspaceRuntime(application, workspaceController, documentController, completionController,
                 languageFeatureController, jdt,
                 learningController, lessonsController, diagnosticsController, executionController);

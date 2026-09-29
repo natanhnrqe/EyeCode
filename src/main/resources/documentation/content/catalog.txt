@@ -1,0 +1,32 @@
+# EyeCode Documentation - catálogo de páginas
+# Um identificador por linha; linhas iniciadas com # são ignoradas.
+
+java/jdk/fundamentos/variables
+java/jdk/fundamentos/classes
+java/jdk/java.lang/string
+java/jdk/java.lang/stringbuilder
+java/jdk/java.lang/wrapper
+java/jdk/java.lang/math
+java/jdk/java.lang/object
+java/jdk/java.lang/system
+java/jdk/java.lang/thread
+java/jdk/java.lang/comparable
+java/jdk/java.lang/exceptions
+java/jdk/java.lang/enums
+java/jdk/java.lang/annotations
+java/jdk/java.util/list
+java/jdk/java.util/set
+java/jdk/java.util/map
+java/jdk/java.util/queue
+java/jdk/java.util/collections
+java/jdk/java.util/stream
+java/jdk/java.util/optional
+java/jdk/java.util/objects
+java/jdk/java.util/arrays
+java/jdk/java.util/scanner
+java/jdk/java.util/random
+java/jdk/java.util/comparator
+java/jdk/java.util/regex
+java/spring/boot-basics
+java/javafx/stage-scene
+java/junit/first-test

@@ -446,7 +446,7 @@ class WebShellSharedShellSourceTest {
 
         String projectTree = pane.substring(pane.indexOf("projectDockTree"), pane.indexOf("learnPracticeDockTree"));
         assertTrue(projectTree.contains("orientation: 'vertical', ratio: 0.7"));
-        assertTrue(projectTree.contains("orientation: 'horizontal', ratio: 0.28"));
+        assertTrue(projectTree.contains("orientation: 'horizontal', ratio: 0.2"));
         assertTrue(projectTree.contains("second: { type: 'pane', paneId: 'editor' }"));
         assertTrue(projectTree.contains("second: { type: 'pane', paneId: 'bottom' }"));
         assertTrue(pane.contains("export const learnPracticeDockRules"));

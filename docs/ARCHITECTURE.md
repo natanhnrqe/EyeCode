@@ -47,6 +47,7 @@ flowchart TB
 | `editor.intelligence` | Documento, caret, seleção, indentação e Smart Editing sem toolkit | `DocumentSnapshot`, `TypingPipeline`, `JavaIndentPolicy` | Core |
 | `language` | Identidade de linguagem, capacidades de completion/diagnóstico e o stack Java de lexer, parser, AST, CFG, semântica e JDK source resolution | `LanguageId`, `CompletionService`, `DiagnosticsService`, `JavaLexerService`, `JavaParserService` | Core |
 | `lessons` | Catálogo, conteúdo, sessão, prática e programas de apresentação | `LessonContentService`, `LessonSession`, `PresentationCompiler` | Domain |
+| `documentation.content` | Conteúdo Markdown do pilar Documentation: front matter, catálogo, render flexmark, callouts e âncoras | `DocumentationContentEngine`, `DocumentationContentRepository` | Domain |
 | `application` | Boundary e lifecycle compartilhado de uma workspace | `WorkspaceApplication` | Application/composition support |
 | `workbench`, `project`, `runtime`, `filesystem` | Ciclo do editor, workspace, execução e I/O | `EditorManager`, `ProjectLifecycleService`, `RunService`, `FileSystemService` | Application/infrastructure |
 | `eventbus` | Eventos internos em processo | `EventBus`, `Event`, `SubscriptionToken` | Shared infrastructure |
@@ -123,6 +124,7 @@ O frontend React vive em `src/main/web/src`:
 - `workspace/` e `document/`: composição e estado da área de trabalho;
 - `monaco/MonacoWorkspaceService.ts`: renderização Monaco, apresentação, highlight e recuperação visual;
 - `lessons/`: catálogo, painel, player e controle de lesson.
+- `documentation/`: explorador lateral (grupos por branch e subgrupo de package) e aba de leitura do pilar Documentation (canal `docs`, tabs sintéticas `guide://`, highlight Java e modo tela cheia).
 
 Componentes React devem solicitar ações pelo `bridge` ou por um serviço já existente. Não devem construir transportes CEFFX diretamente.
 
@@ -145,6 +147,8 @@ O antigo package `com.eyecode.javafx.web` misturava Web Shell, Swing e JavaFX so
 `WebShellEnvelope` é um **WEB CONTRACT**, não um DTO de Core. Ele tem protocolo fixo `eyecode.web/1`, `kind` (`request`, `response`, `event`), `channel`, `name`, correlação por `requestId` e `payload`. HTTP serve assets/bootstrap; WebSocket local ou bridge CEFFX transporta o mesmo envelope. A semântica do payload pertence ao handler do par `channel/name`, nunca ao envelope ou ao transporte.
 
 `WebShellDispatcher` faz dispatch exato desse par. Handler desconhecido gera `UNKNOWN_COMMAND` apenas para requests. `WebShellProtocolCodec` valida versão e kind do envelope; cada controller valida seu payload.
+
+O par `docs/catalog` e `docs/read` pertence a `WebShellDocumentationController` e publica o conteúdo Markdown de `documentation/content` (29 páginas com `type: concept|api` e subgrupos de package) como HTML didático; os callouts `> [!INFO|WARNING]` são transformados após o flexmark e o payload do catálogo carrega `branch`/`subgroup`. As abas de leitura não têm documento backend: o React cria um documento sintético `guide://<id>` (kind `guide`) e guarda o HTML em estado local; `WebShellDocumentationHost` continua sendo apenas o host de posicionamento da documentação Oracle em iframe.
 
 ## 7. EventBus
 
