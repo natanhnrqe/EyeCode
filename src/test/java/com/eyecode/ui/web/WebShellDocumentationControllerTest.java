@@ -23,7 +23,7 @@ class WebShellDocumentationControllerTest {
 
         assertNull(response.error());
         List<?> entries = (List<?>) response.payload().get("entries");
-        assertEquals(29, entries.size());
+        assertEquals(67, entries.size());
         Map<?, ?> first = (Map<?, ?>) entries.getFirst();
         assertEquals("java/jdk/fundamentos/variables", first.get("id"));
         assertEquals("Variáveis em Java", first.get("title"));

@@ -148,7 +148,7 @@ O antigo package `com.eyecode.javafx.web` misturava Web Shell, Swing e JavaFX so
 
 `WebShellDispatcher` faz dispatch exato desse par. Handler desconhecido gera `UNKNOWN_COMMAND` apenas para requests. `WebShellProtocolCodec` valida versão e kind do envelope; cada controller valida seu payload.
 
-O par `docs/catalog` e `docs/read` pertence a `WebShellDocumentationController` e publica o conteúdo Markdown de `documentation/content` (29 páginas com `type: concept|api` e subgrupos de package) como HTML didático; os callouts `> [!INFO|WARNING]` são transformados após o flexmark e o payload do catálogo carrega `branch`/`subgroup`. As abas de leitura não têm documento backend: o React cria um documento sintético `guide://<id>` (kind `guide`) e guarda o HTML em estado local; `WebShellDocumentationHost` continua sendo apenas o host de posicionamento da documentação Oracle em iframe.
+O par `docs/catalog` e `docs/read` pertence a `WebShellDocumentationController` e publica o conteúdo Markdown de `documentation/content` (67 páginas com `type: concept|api|guide` e subgrupos de package) como HTML didático; os callouts `> [!INFO|WARNING|NOTE|TIP]` são transformados após o flexmark e o payload do catálogo carrega `branch`/`subgroup`. As abas de leitura não têm documento backend: o React cria um documento sintético `guide://<id>` (kind `guide`) e guarda o HTML em estado local; `WebShellDocumentationHost` continua sendo apenas o host de posicionamento da documentação Oracle em iframe.
 
 ## 7. EventBus
 

@@ -19,7 +19,7 @@ class DocumentationContentEngineTest {
     void catalogExposesEveryPageWithItsBranch() {
         List<DocumentationCatalogEntry> catalog = engine.catalog();
 
-        assertEquals(29, catalog.size());
+        assertEquals(67, catalog.size());
         DocumentationCatalogEntry first = catalog.getFirst();
         assertEquals("java/jdk/fundamentos/variables", first.id());
         assertEquals("Variáveis em Java", first.title());
@@ -33,7 +33,7 @@ class DocumentationContentEngineTest {
     void everyCatalogPageRendersToHtml() {
         List<DocumentationCatalogEntry> catalog = engine.catalog();
 
-        assertEquals(29, catalog.size());
+        assertEquals(67, catalog.size());
         for (DocumentationCatalogEntry entry : catalog) {
             DocumentationPage page = engine.page(entry.id());
             assertTrue(page.html().contains("<h2 id="), () -> "sem seções: " + entry.id());

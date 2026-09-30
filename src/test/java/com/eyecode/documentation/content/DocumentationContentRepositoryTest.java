@@ -48,7 +48,7 @@ class DocumentationContentRepositoryTest {
     void catalogListsAllDemoPagesIgnoringComments() {
         List<String> identifiers = repository.catalogIdentifiers();
 
-        assertEquals(29, identifiers.size());
+        assertEquals(67, identifiers.size());
         assertEquals("java/jdk/fundamentos/variables", identifiers.getFirst());
         assertTrue(identifiers.contains("java/spring/boot-basics"));
         assertTrue(identifiers.contains("java/junit/first-test"));

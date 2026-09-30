@@ -17,6 +17,7 @@ public record DocumentationFrontMatter(
 
     public static final String TYPE_CONCEPT = "concept";
     public static final String TYPE_API = "api";
+    public static final String TYPE_GUIDE = "guide";
 
     public DocumentationFrontMatter {
         Objects.requireNonNull(id, "id");
@@ -30,7 +31,7 @@ public record DocumentationFrontMatter(
             return null;
         }
         String normalized = type.trim();
-        if (!TYPE_CONCEPT.equals(normalized) && !TYPE_API.equals(normalized)) {
+        if (!TYPE_CONCEPT.equals(normalized) && !TYPE_API.equals(normalized) && !TYPE_GUIDE.equals(normalized)) {
             throw new IllegalArgumentException("Unsupported documentation type: " + normalized);
         }
         return normalized;

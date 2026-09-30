@@ -615,8 +615,8 @@ class WebShellSharedShellSourceTest {
         assertTrue(cssRule(styles, ".docs-toc button").contains("padding: 6px 10px"));
         String main = cssRule(styles, "\n.docs-article-main");
         assertFalse(main.contains("max-width"));
-        assertTrue(cssRule(styles, "\n.docs-article-content").contains("max-width: 1000px"));
-        assertTrue(cssRule(styles, "\n.docs-article-footer").contains("max-width: 1000px"));
+        assertTrue(cssRule(styles, "\n.docs-article-content").contains("max-width: 1200px"));
+        assertTrue(cssRule(styles, "\n.docs-article-footer").contains("max-width: 1200px"));
         assertFalse(styles.contains(".docs-immersive-reader .docs-article-main"));
         assertTrue(cssRule(styles, ".docs-branch-label").contains("text-transform: uppercase"));
         assertTrue(cssRule(styles, ".docs-branch-count").contains("border-radius: 10px"));

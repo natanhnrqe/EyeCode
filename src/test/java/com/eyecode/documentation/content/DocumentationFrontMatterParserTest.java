@@ -79,6 +79,19 @@ class DocumentationFrontMatterParserTest {
     }
 
     @Test
+    void parsesGuideType() {
+        String source = """
+                ---
+                id: java/spring/core/dependency-injection
+                title: Injeção de Dependência
+                type: guide
+                ---
+                Guia prático.
+                """;
+        assertEquals("guide", parser.parse(source, "java/spring/core/dependency-injection").metadata().type());
+    }
+
+    @Test
     void invalidTypeThrows() {
         String source = """
                 ---
