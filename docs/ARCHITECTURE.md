@@ -46,6 +46,8 @@ flowchart TB
 | --- | --- | --- | --- |
 | `editor.intelligence` | Documento, caret, seleção, indentação e Smart Editing sem toolkit | `DocumentSnapshot`, `TypingPipeline`, `JavaIndentPolicy` | Core |
 | `language` | Identidade de linguagem, capacidades de completion/diagnóstico e o stack Java de lexer, parser, AST, CFG, semântica e JDK source resolution | `LanguageId`, `CompletionService`, `DiagnosticsService`, `JavaLexerService`, `JavaParserService` | Core |
+| `language.java.lsp` | Cliente JDT Language Server: sessão LSP, sync incremental de documentos, completion/hover/signature, navegação, diagnósticos/quick fixes e rename | `JdtLsSession`, `JdtLsProjectService`, `JdtLsDocumentSync`, `JdtLsNavigationService`, `JdtLsProjectDiagnostics`, `JdtLsProjectRefactor` | Core |
+| `language.navigation` / `language.refactor` | Tipos Core de navegação (definition/references) e rename (prepareRename/WorkspaceEdit→RenamePlan) com fallback local | `NavigationService`, `NavigationTarget`, `PrepareRenameResult`, `RenamePlan`, `RenameResult` | Core |
 | `lessons` | Catálogo, conteúdo, sessão, prática e programas de apresentação | `LessonContentService`, `LessonSession`, `PresentationCompiler` | Domain |
 | `documentation.content` | Conteúdo Markdown do pilar Documentation: front matter, catálogo, render flexmark, callouts e âncoras | `DocumentationContentEngine`, `DocumentationContentRepository` | Domain |
 | `application` | Boundary e lifecycle compartilhado de uma workspace | `WorkspaceApplication` | Application/composition support |
@@ -149,6 +151,10 @@ O antigo package `com.eyecode.javafx.web` misturava Web Shell, Swing e JavaFX so
 `WebShellDispatcher` faz dispatch exato desse par. Handler desconhecido gera `UNKNOWN_COMMAND` apenas para requests. `WebShellProtocolCodec` valida versão e kind do envelope; cada controller valida seu payload.
 
 O par `docs/catalog` e `docs/read` pertence a `WebShellDocumentationController` e publica o conteúdo Markdown de `documentation/content` (67 páginas com `type: concept|api|guide` e subgrupos de package) como HTML didático; os callouts `> [!INFO|WARNING|NOTE|TIP]` são transformados após o flexmark e o payload do catálogo carrega `branch`/`subgroup`. As abas de leitura não têm documento backend: o React cria um documento sintético `guide://<id>` (kind `guide`) e guarda o HTML em estado local; `WebShellDocumentationHost` continua sendo apenas o host de posicionamento da documentação Oracle em iframe.
+
+### Integração JDT Language Server
+
+O canal `navigation` (`WebShellNavigationController`) resolve `definition`/`references` primeiro via JDT LS (`JdtLsNavigationService`) e faz fallback nos resolutores locais (`DefinitionAtCaretResolver`/`JavaReferenceFinder`); o payload carrega `source: local|jdt|none`. O canal `diagnostics` ganhou a operação `quickFix` (`WebShellJdtDiagnosticsController`) e publica o evento `jdtPublish` com os diagnósticos do servidor sob o marker owner Monaco `eyecode.jdt`, separado do owner local `eyecode.diagnostics`; `server/applyEdit` continua recusado — quem aplica workspace edits é o canal `refactor`. A operação `completion/resolve` (`WebShellCompletionController` + `ResolveGateway`) resolve `completionItem/resolve` do JDT (auto-import via `additionalTextEdits`, documentação) a partir do `resolveId` do `CompletionCandidate`. O canal `refactor` (`WebShellRefactorController`) expõe `prepareRename`/`rename` (`JdtLsProjectRefactor` converte `WorkspaceEdit` em `RenamePlan` Core; `ProjectRenameService` aplica com rollback; validação de identificador Java). Toda a integração é opcional: sem `eyecode.jdtls.home` configurado ou sem sessão READY, tudo cai no comportamento local existente; os testes de integração real contra o servidor exigem `-Deyecode.jdtls.integration=true` e `-Deyecode.jdtls.home`.
 
 ## 7. EventBus
 

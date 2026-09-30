@@ -26,6 +26,7 @@ import com.eyecode.learning.content.DocumentationTarget;
 import com.eyecode.project.MavenProjectCreationService;
 import com.eyecode.project.ProjectFileOperationService;
 import com.eyecode.project.ProjectLifecycleService;
+import com.eyecode.project.ProjectRenameService;
 import com.eyecode.runtime.RunService;
 import com.eyecode.terminal.TerminalService;
 import com.eyecode.workbench.editor.EditorManager;
@@ -104,8 +105,14 @@ public final class WebShellWorkspaceComposition {
                 documentController::openDocumentationTarget, documentController::openJdkSource);
         WebShellLessonsController lessonsController = new WebShellLessonsController(surface);
         new WebShellDocumentationController(surface);
+        WebShellNavigationController navigationController = new WebShellNavigationController(surface, editorManager, jdt);
+        WebShellJdtDiagnosticsController jdtDiagnosticsController = new WebShellJdtDiagnosticsController(surface, jdt);
+        completionController.setResolveGateway(jdt::resolveCompletion);
+        WebShellRefactorController refactorController = new WebShellRefactorController(surface, editorManager,
+                projectLifecycleService, jdt, new ProjectRenameService(fileOperations));
         return new WebShellWorkspaceRuntime(application, workspaceController, documentController, completionController,
                 languageFeatureController, jdt,
-                learningController, lessonsController, diagnosticsController, executionController);
+                learningController, lessonsController, diagnosticsController, executionController,
+                navigationController, jdtDiagnosticsController);
     }
 }

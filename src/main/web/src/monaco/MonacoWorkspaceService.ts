@@ -5,9 +5,16 @@ import type { CompletionPopupState, CompletionResponse } from '../completion/pro
 import type { LearningPopupState, LearningResponse, LearningCardPayload } from '../learning/protocol';
 import type { SignaturePopupState } from '../signature/protocol';
 import { signatureHoverRegionAt } from '../signature/callContext';
+import { monacoLocations } from '../navigation/navigationTarget';
+import type { NavigationResponsePayload } from '../navigation/navigationTarget';
 import { renderHoverContent } from './hoverContent';
+import { canResolveCandidate, mergeDocumentation, toMonacoEdits } from './autoImportResolve';
+import type { CompletionResolveResult } from './autoImportResolve';
 import type { DiagnosticsViewState, DiagnosticsPublish, WebDiagnostic } from '../diagnostics/protocol';
-import type { Disposable, MonacoApi, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoInlayHint, MonacoInlayHintList, MonacoKeyEvent, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoSnippetController } from './api';
+import { parseJdtPublish, parseQuickFixes, jdtMarkerRange, overlappingMarkers, quickFixRequestSpan, toMonacoCodeActions } from '../diagnostics/quickFixes';
+import type { JdtQuickFix } from '../diagnostics/quickFixes';
+import type { Disposable, MonacoApi, MonacoCodeAction, MonacoCodeActionContext, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoInlayHint, MonacoInlayHintList, MonacoKeyEvent, MonacoLocation, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoSnippetController, MonacoWorkspaceEdit } from './api';
+import { isValidJavaIdentifier, renameFailureMessage, toMonacoRenameLocation, type PrepareRenamePayload, type RenameResponsePayload } from '../refactor/applyRename';
 import type { LessonEditorRange, PresentationProgram } from '../lessons/protocol';
 
 type DocumentChangeHandler = (document: DocumentSnapshot) => void;
@@ -81,6 +88,10 @@ export class MonacoWorkspaceService {
   private signatureScrollListener: Disposable | null = null;
   private signatureKeyListener: Disposable | null = null;
   private inlayHintsProvider: Disposable | null = null;
+  private definitionProvider: Disposable | null = null;
+  private referencesProvider: Disposable | null = null;
+  private quickFixProvider: Disposable | null = null;
+  private renameProvider: Disposable | null = null;
   private readonly viewportListeners = new Set<() => void>();
   private lessonTyping: { uri: string; frame: number; finalCode: string; resolve: (finished: boolean) => void } | null = null;
   private completionMessageUnsubscribe: (() => void) | null = null;
@@ -94,6 +105,7 @@ export class MonacoWorkspaceService {
   private readonly pendingDiagnostics = new Map<string, PendingDiagnostics>();
   private readonly latestDiagnosticsRequestIds = new Map<string, string>();
   private readonly diagnosticsTimers = new Map<string, number>();
+  private jdtMessageUnsubscribe: (() => void) | null = null;
   private onCompletionState: ((state: CompletionPopupState | null) => void) | null = null;
   private completionState: CompletionPopupState | null = null;
   private readonly pendingCompletions = new Map<string, PendingCompletion>();
@@ -570,8 +582,9 @@ export class MonacoWorkspaceService {
     this.completionMessageUnsubscribe = bridge.subscribe(message => {
       this.receiveCompletionMessage(message);
       this.receiveLearningMessage(message);
-      this.receiveDiagnosticsMessage(message);
-    });
+        this.receiveDiagnosticsMessage(message);
+      });
+    this.jdtMessageUnsubscribe = bridge.subscribe(message => this.receiveJdtDiagnosticsMessage(message));
     this.contentListener = this.editor.onDidChangeModelContent(event => {
       this.forwardContentChange();
       if (!this.suppressContentChange && !this.suppressCompletionTrigger) this.handleContentChange(event);
@@ -597,6 +610,31 @@ export class MonacoWorkspaceService {
         provideInlayHints: (model, range) => this.provideInlayHints(model, range)
       });
       this.inlayHintsProvider = provider ?? { dispose: () => {} };
+    }
+    if (!this.definitionProvider) {
+      const provider = this.api.languages.registerDefinitionProvider?.('java', {
+        provideDefinition: (model, position) => this.provideDefinition(model, position)
+      });
+      this.definitionProvider = provider ?? { dispose: () => {} };
+    }
+    if (!this.referencesProvider) {
+      const provider = this.api.languages.registerReferenceProvider?.('java', {
+        provideReferences: (model, position, context) => this.provideReferences(model, position, context)
+      });
+      this.referencesProvider = provider ?? { dispose: () => {} };
+    }
+    if (!this.quickFixProvider) {
+      const provider = this.api.languages.registerCodeActionProvider('java', {
+        provideCodeActions: (model, range, context) => this.provideQuickFixActions(model, range, context)
+      });
+      this.quickFixProvider = provider ?? { dispose: () => {} };
+    }
+    if (!this.renameProvider) {
+      const provider = this.api.languages.registerRenameProvider('java', {
+        resolveRenameLocation: (model, position) => this.resolveRenameLocation(model, position),
+        provideRenameEdits: (model, position, newName) => this.provideRenameEdits(model, position, newName)
+      });
+      this.renameProvider = provider ?? { dispose: () => {} };
     }
     this.editor.addCommand(this.api.KeyMod.CtrlCmd | this.api.KeyCode.KeyS, () => this.saveActive());
     this.editor.addCommand(this.api.KeyMod.CtrlCmd | this.api.KeyCode.Space, () => this.requestCompletion(true, null));
@@ -780,9 +818,19 @@ export class MonacoWorkspaceService {
     this.signatureKeyListener = null;
     this.inlayHintsProvider?.dispose();
     this.inlayHintsProvider = null;
+    this.definitionProvider?.dispose();
+    this.definitionProvider = null;
+    this.referencesProvider?.dispose();
+    this.referencesProvider = null;
+    this.quickFixProvider?.dispose();
+    this.quickFixProvider = null;
+    this.renameProvider?.dispose();
+    this.renameProvider = null;
     this.viewportListeners.clear();
     this.completionMessageUnsubscribe?.();
     this.completionMessageUnsubscribe = null;
+    this.jdtMessageUnsubscribe?.();
+    this.jdtMessageUnsubscribe = null;
     this.editor?.dispose();
     this.editor = null;
     this.models.forEach(model => model.dispose());
@@ -985,6 +1033,77 @@ export class MonacoWorkspaceService {
     this.diagnosticsByUri.delete(uri);
     if (model) this.api?.editor.setModelMarkers(model, 'eyecode.diagnostics', []);
     this.publishDiagnosticsForActiveModel();
+  }
+
+  private modelForUri(uri: string): MonacoModel | undefined {
+    return this.models.get(uri) ?? this.ephemeralModels.get(uri);
+  }
+
+  private receiveJdtDiagnosticsMessage(message: WebShellEnvelope): void {
+    if (message.channel !== 'diagnostics' || message.name !== 'jdtPublish' || message.kind !== 'event') return;
+    const event = parseJdtPublish(message.payload);
+    if (!event) return;
+    const model = this.modelForUri(event.uri);
+    const api = this.api;
+    if (!model || !api) return;
+    api.editor.setModelMarkers(model, 'eyecode.jdt', event.diagnostics.map(diagnostic => ({
+      severity: this.markerSeverity({
+        severity: diagnostic.severity, code: '', message: diagnostic.message,
+        startLine: diagnostic.range.startLine, startColumn: diagnostic.range.startColumn,
+        endLine: diagnostic.range.endLine, endColumn: diagnostic.range.endColumn
+      }),
+      message: diagnostic.message,
+      ...jdtMarkerRange(diagnostic.range)
+    })));
+  }
+
+  private provideQuickFixActions(model: MonacoModel, range: MonacoRange,
+                                 context?: MonacoCodeActionContext): Promise<MonacoCodeAction[] | null> {
+    if (this.disposed || !this.isProjectModel(model)) return Promise.resolve(null);
+    const uri = this.documentUri(model);
+    if (!uri) return Promise.resolve(null);
+    const markers = overlappingMarkers(range, context?.markers ?? []);
+    if (markers.length === 0) return Promise.resolve(null);
+    const span = quickFixRequestSpan(range, markers);
+    const version = model.getAlternativeVersionId();
+    const requestId = bridge.reserveRequestId();
+    return new Promise(resolve => {
+      let settled = false;
+      let timeout = 0;
+      let unsubscribe = () => {};
+      const finish = (value: MonacoCodeAction[] | null) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        unsubscribe();
+        resolve(value);
+      };
+      const finishIfCurrent = (fixes: JdtQuickFix[]) => {
+        if (this.disposed || model.getAlternativeVersionId() !== version) {
+          finish(null);
+          return;
+        }
+        const actions = toMonacoCodeActions(fixes, model.uri, markers);
+        finish(actions.length > 0 ? actions : null);
+      };
+      timeout = window.setTimeout(() => finish(null), 7000);
+      unsubscribe = bridge.subscribe(message => {
+        if (message.kind !== 'response' || message.channel !== 'diagnostics' || message.name !== 'quickFix'
+            || message.requestId !== requestId) return;
+        if (message.error) {
+          finish(null);
+          return;
+        }
+        if (message.payload !== null && typeof message.payload === 'object' && 'fixes' in message.payload) {
+          finishIfCurrent(parseQuickFixes(message.payload));
+        }
+      });
+      void bridge.request<unknown>('diagnostics', 'quickFix', { uri, range: span }, { requestId, timeoutMs: 6000 })
+        .then(value => {
+          if (value !== null && typeof value === 'object' && 'fixes' in value) finishIfCurrent(parseQuickFixes(value));
+        })
+        .catch(() => finish(null));
+    });
   }
 
   private isProjectModel(model: MonacoModel): boolean {
@@ -1430,6 +1549,98 @@ export class MonacoWorkspaceService {
     return { hints, dispose: () => {} };
   }
 
+  private provideDefinition(model: MonacoModel,
+                            position: { lineNumber: number; column: number }): Promise<MonacoLocation[] | null> {
+    return this.provideNavigation(model, position, 'definition', undefined);
+  }
+
+  private provideReferences(model: MonacoModel, position: { lineNumber: number; column: number },
+                            context: { includeDeclaration: boolean }): Promise<MonacoLocation[] | null> {
+    return this.provideNavigation(model, position, 'references', context?.includeDeclaration !== false);
+  }
+
+  private async provideNavigation(model: MonacoModel, position: { lineNumber: number; column: number },
+                                 operation: 'definition' | 'references',
+                                 includeDeclaration: boolean | undefined): Promise<MonacoLocation[] | null> {
+    if (this.disposed) return null;
+    const uri = this.documentUri(model);
+    if (!uri || !uri.startsWith('file:')) return null;
+    const modelVersion = model.getAlternativeVersionId();
+    const payload: Record<string, unknown> = {
+      uri,
+      line: position.lineNumber,
+      column: position.column
+    };
+    if (includeDeclaration !== undefined) payload.includeDeclaration = includeDeclaration;
+    const response = await this.requestNavigation(operation, payload);
+    if (this.disposed || this.documentUri(model) !== uri
+        || model.getAlternativeVersionId() !== modelVersion) return null;
+    return monacoLocations(response, value => this.api?.Uri?.parse(value) ?? null);
+  }
+
+  private requestNavigation(operation: 'definition' | 'references',
+                           payload: Record<string, unknown>): Promise<NavigationResponsePayload | null> {
+    return bridge.request<NavigationResponsePayload | null>('navigation', operation, payload, { timeoutMs: 6000 })
+      .catch(() => null);
+  }
+
+  private async resolveRenameLocation(model: MonacoModel, position: { lineNumber: number; column: number }):
+    Promise<{ range: MonacoRange; placeholder: string }> {
+    if (this.disposed || !this.isProjectModel(model)) {
+      return Promise.reject('Renomeação indisponível (documento fora do projeto).');
+    }
+    const uri = this.documentUri(model);
+    if (!uri) {
+      return Promise.reject('Renomeação indisponível (documento sem URI).');
+    }
+    const response = await bridge.request<PrepareRenamePayload>('refactor', 'prepareRename', {
+      uri,
+      version: model.getAlternativeVersionId(),
+      line: position.lineNumber,
+      column: position.column,
+      language: model.getLanguageId?.() ?? 'java'
+    }, { timeoutMs: 8000 }).catch(() => null);
+    if (this.disposed || !response) {
+      return Promise.reject('Renomeação indisponível (símbolo inválido ou servidor JDT falhou).');
+    }
+    const location = toMonacoRenameLocation(response);
+    if (!location) {
+      return Promise.reject('Renomeação indisponível neste símbolo.');
+    }
+    return location;
+  }
+
+  private async provideRenameEdits(model: MonacoModel, position: { lineNumber: number; column: number }, newName: string):
+    Promise<MonacoWorkspaceEdit | null> {
+    if (this.disposed || !this.isProjectModel(model)) return null;
+    const uri = this.documentUri(model);
+    if (!uri) return null;
+    if (!isValidJavaIdentifier(newName)) {
+      this.onError?.('Novo nome invalido: deve ser um identificador Java valido');
+      return { edits: [] };
+    }
+    const response = await bridge.request<RenameResponsePayload>('refactor', 'rename', {
+      uri,
+      version: model.getAlternativeVersionId(),
+      line: position.lineNumber,
+      column: position.column,
+      newName,
+      language: model.getLanguageId?.() ?? 'java'
+    }, { timeoutMs: 30000 }).catch(error => {
+      this.onError?.(error instanceof Error ? error.message : String(error));
+      return null;
+    });
+    if (!response) return { edits: [] };
+    const failure = renameFailureMessage(response);
+    if (failure) {
+      this.onError?.(failure);
+      return { edits: [] };
+    }
+    if (!response.success) return { edits: [] };
+    this.saveActive();
+    return { edits: [] };
+  }
+
   hideSignatureHelp(): void {
     this.signatureCallKey = null;
     this.latestSignatureRequestId = null;
@@ -1536,6 +1747,13 @@ export class MonacoWorkspaceService {
       endColumn: end.column
     };
     this.hideCompletion();
+    void this.applyCompletion(item, model, editor, range);
+  }
+
+  private async applyCompletion(item: { label: string; resolveId?: string; documentation: string; insertText: string; snippet: boolean },
+                                model: MonacoModel, editor: MonacoEditor, range: MonacoRange): Promise<void> {
+    const additionalEdits = item.snippet ? [] : await this.fetchCompletionResolveEdits(item, model);
+    if (this.disposed || editor.getModel() !== model) return;
     this.suppressCompletionTrigger = true;
     try {
       if (item.snippet) {
@@ -1552,12 +1770,63 @@ export class MonacoWorkspaceService {
           }]);
         }
       } else {
-        editor.executeEdits('eyecode.completion', [{ range, text: item.insertText, forceMoveMarkers: true }]);
+        editor.executeEdits('eyecode.completion', [
+          { range, text: item.insertText, forceMoveMarkers: true },
+          ...additionalEdits
+        ]);
       }
     } finally {
       this.suppressCompletionTrigger = false;
     }
+    if (item.snippet) this.resolveCompletionEdits(item, model, editor);
     editor.focus();
+  }
+
+  private fetchCompletionResolveEdits(item: { label: string; resolveId?: string; documentation: string },
+                                      model: MonacoModel): Promise<Array<{ range: MonacoRange; text: string; forceMoveMarkers: boolean }>> {
+    if (!canResolveCandidate(item)) return Promise.resolve([]);
+    const uri = this.documentUri(model);
+    if (!uri) return Promise.resolve([]);
+    return bridge.request<CompletionResolveResult>('completion', 'resolve', {
+      resolveId: item.resolveId,
+      label: item.label,
+      uri
+    }, { timeoutMs: 4000 }).then(result => {
+      if (!result) return [];
+      const documentation = mergeDocumentation(item.documentation ?? '', result.documentation ?? '');
+      if (documentation && documentation !== item.documentation) item.documentation = documentation;
+      return toMonacoEdits(result.edits ?? []).map(edit => ({ ...edit, forceMoveMarkers: true }));
+    }).catch(() => []);
+  }
+
+  private resolveCompletionEdits(item: { label: string; resolveId?: string; documentation: string },
+                                 model: MonacoModel, editor: MonacoEditor): void {
+    if (!canResolveCandidate(item)) return;
+    const uri = this.documentUri(model);
+    if (!uri || editor.getModel() !== model) return;
+    void bridge.request<CompletionResolveResult>('completion', 'resolve', {
+      resolveId: item.resolveId,
+      label: item.label,
+      uri
+    }).then(result => {
+      if (!result || editor.getModel() !== model) return;
+      const edits = toMonacoEdits(result.edits ?? []);
+      if (edits.length) {
+        this.suppressCompletionTrigger = true;
+        try {
+          editor.executeEdits('eyecode.completion.resolve', edits.map(edit => ({
+            range: edit.range,
+            text: edit.text,
+            forceMoveMarkers: true
+          })));
+        } finally {
+          this.suppressCompletionTrigger = false;
+        }
+      }
+      const documentation = mergeDocumentation(item.documentation ?? '', result.documentation ?? '');
+      if (documentation && documentation !== item.documentation) item.documentation = documentation;
+    }).catch(() => {
+    });
   }
 
   private completionIsCurrent(): boolean {
@@ -1652,10 +1921,6 @@ export class MonacoWorkspaceService {
       if (candidate === model) return uri;
     }
     return null;
-  }
-
-  private modelForUri(uri: string): MonacoModel | undefined {
-    return this.models.get(uri) ?? this.ephemeralModels.get(uri);
   }
 
   private applyLessonModelEdit(uri: string, model: MonacoModel,

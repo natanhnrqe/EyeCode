@@ -156,8 +156,9 @@ public final class JavaTypeMemberResolver {
 
     private Optional<ResolvedType> loadClass(String name, boolean staticAccess) {
         try {
-            return resolveClass(Class.forName(name), staticAccess);
-        } catch (ClassNotFoundException ignored) {
+            return resolveClass(Class.forName(name, false, JavaTypeMemberResolver.class.getClassLoader()), staticAccess);
+        } catch (ClassNotFoundException | LinkageError ignored) {
+            // Includes ExceptionInInitializerError (e.g. JavaFX "Toolkit not initialized"): never kill the caller thread.
             return Optional.empty();
         }
     }

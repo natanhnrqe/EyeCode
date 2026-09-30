@@ -36,6 +36,13 @@ export type MonacoRange = { startLineNumber: number; startColumn: number; endLin
 export type MonacoSnippetController = { insert: (template: string) => void };
 export type MonacoCancellationToken = { isCancellationRequested: boolean };
 
+export type MonacoLocation = {
+  uri: unknown;
+  range: MonacoRange;
+};
+
+export type MonacoReferenceContext = { includeDeclaration: boolean };
+
 export type MonacoInlayHint = {
   position: { lineNumber: number; column: number };
   label: string;
@@ -48,11 +55,48 @@ export type MonacoInlayHintList = {
   dispose: () => void;
 };
 
+export type MonacoCodeActionContext = { markers: MonacoMarker[] };
+export type MonacoCodeActionEdit = { resource: unknown; edit: { range: MonacoRange; text?: string } };
+export type MonacoCodeAction = {
+  title: string;
+  kind?: string;
+  edit?: { edits: MonacoCodeActionEdit[] };
+  diagnostics?: MonacoMarker[];
+  isPreferred?: boolean;
+};
+
+export type MonacoRenameLocation = { range: MonacoRange; text?: string; placeholder?: string };
+
+export type MonacoWorkspaceEdit = { edits: Array<{ range: MonacoRange; text: string }> };
+
+export type MonacoRenameProvider = {
+  provideRenameEdits: (model: MonacoModel, position: { lineNumber: number; column: number }, newName: string, token: MonacoCancellationToken) =>
+    Promise<MonacoWorkspaceEdit | null> | MonacoWorkspaceEdit | null;
+  resolveRenameLocation?: (model: MonacoModel, position: { lineNumber: number; column: number }, token: MonacoCancellationToken) =>
+    Promise<MonacoRenameLocation | null> | MonacoRenameLocation | null;
+};
+
 export type MonacoLanguageProviders = {
   registerInlayHintsProvider: (language: string, provider: {
     provideInlayHints: (model: MonacoModel, range: MonacoRange, token: MonacoCancellationToken) =>
       Promise<MonacoInlayHintList | null> | MonacoInlayHintList | null;
   }) => Disposable | void;
+  registerDefinitionProvider: (language: string, provider: {
+    provideDefinition: (model: MonacoModel, position: { lineNumber: number; column: number },
+                        token: MonacoCancellationToken) =>
+      Promise<MonacoLocation | MonacoLocation[] | null> | MonacoLocation | MonacoLocation[] | null;
+  }) => Disposable | void;
+  registerReferenceProvider: (language: string, provider: {
+    provideReferences: (model: MonacoModel, position: { lineNumber: number; column: number },
+                        context: MonacoReferenceContext, token: MonacoCancellationToken) =>
+      Promise<MonacoLocation[] | null> | MonacoLocation[] | null;
+  }) => Disposable | void;
+  registerCodeActionProvider: (language: string, provider: {
+    provideCodeActions: (model: MonacoModel, range: MonacoRange,
+                         context: MonacoCodeActionContext, token: MonacoCancellationToken) =>
+      Promise<MonacoCodeAction[] | null> | MonacoCodeAction[] | null;
+  }) => Disposable | void;
+  registerRenameProvider: (language: string, provider: MonacoRenameProvider) => Disposable | void;
 };
 
 export type MonacoEditor = {

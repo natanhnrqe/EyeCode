@@ -3,16 +3,32 @@ package com.eyecode.language.java.lsp;
 import org.eclipse.lsp4j.ApplyWorkspaceEditParams;
 import org.eclipse.lsp4j.ApplyWorkspaceEditResponse;
 import org.eclipse.lsp4j.ClientCapabilities;
+import org.eclipse.lsp4j.CodeAction;
+import org.eclipse.lsp4j.CodeActionCapabilities;
+import org.eclipse.lsp4j.CodeActionContext;
+import org.eclipse.lsp4j.CodeActionKind;
+import org.eclipse.lsp4j.CodeActionKindCapabilities;
+import org.eclipse.lsp4j.CodeActionLiteralSupportCapabilities;
+import org.eclipse.lsp4j.CodeActionParams;
+import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.CompletionCapabilities;
 import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.CompletionParams;
 import org.eclipse.lsp4j.ConfigurationParams;
+import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
+import org.eclipse.lsp4j.DefinitionCapabilities;
+import org.eclipse.lsp4j.DefinitionParams;
+import org.eclipse.lsp4j.Location;
+import org.eclipse.lsp4j.LocationLink;
+import org.eclipse.lsp4j.ReferenceContext;
+import org.eclipse.lsp4j.ReferenceParams;
+import org.eclipse.lsp4j.ReferencesCapabilities;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
@@ -21,7 +37,15 @@ import org.eclipse.lsp4j.HoverCapabilities;
 import org.eclipse.lsp4j.HoverParams;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.PrepareRenameDefaultBehavior;
+import org.eclipse.lsp4j.PrepareRenameParams;
+import org.eclipse.lsp4j.PublishDiagnosticsCapabilities;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
+import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.RenameCapabilities;
+import org.eclipse.lsp4j.RenameOptions;
+import org.eclipse.lsp4j.RenameParams;
+import org.eclipse.lsp4j.WorkspaceEdit;
 import org.eclipse.lsp4j.SignatureHelp;
 import org.eclipse.lsp4j.SignatureHelpCapabilities;
 import org.eclipse.lsp4j.SignatureHelpParams;
@@ -37,6 +61,7 @@ import org.eclipse.lsp4j.WorkspaceClientCapabilities;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.eclipse.lsp4j.jsonrpc.messages.Either3;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -55,6 +80,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -253,6 +279,104 @@ public final class JdtLsSession implements AutoCloseable {
         }
     }
 
+    public Either3<Range, org.eclipse.lsp4j.PrepareRenameResult, PrepareRenameDefaultBehavior> prepareRename(
+            String uri, int line, int character, Duration timeout) {
+        requireState(JdtLsLifecycleState.READY, "PREPARE_RENAME");
+        if (!supportsRename()) return null;
+        PrepareRenameParams params = new PrepareRenameParams(new TextDocumentIdentifier(uri),
+                new org.eclipse.lsp4j.Position(line, character));
+        event("prepareRename request");
+        return await(server.getTextDocumentService().prepareRename(params), timeout, "PREPARE_RENAME");
+    }
+
+    public WorkspaceEdit rename(String uri, int line, int character, String newName, Duration timeout) {
+        requireState(JdtLsLifecycleState.READY, "RENAME");
+        if (!supportsRename()) return null;
+        RenameParams params = new RenameParams(new TextDocumentIdentifier(uri),
+                new org.eclipse.lsp4j.Position(line, character), newName);
+        event("rename request");
+        return await(server.getTextDocumentService().rename(params), timeout, "RENAME");
+    }
+
+    public boolean supportsRename() {
+        if (initializeResult == null || initializeResult.getCapabilities() == null) return false;
+        Either<Boolean, RenameOptions> provider = initializeResult.getCapabilities().getRenameProvider();
+        if (provider == null) return false;
+        return provider.isLeft() ? Boolean.TRUE.equals(provider.getLeft()) : provider.getRight() != null;
+    }
+
+    public void setDiagnosticsListener(DiagnosticsListener listener) {
+        client.setDiagnosticsListener(listener);
+    }
+
+    public List<Diagnostic> publishedDiagnostics(String uri) {
+        return client.publishedDiagnostics(uri);
+    }
+
+    public List<Either<Command, CodeAction>> codeAction(String uri, Range range, CodeActionContext context) {
+        requireState(JdtLsLifecycleState.READY, "CODE_ACTION");
+        if (!supportsCodeAction()) return List.of();
+        CodeActionParams params = new CodeActionParams(new TextDocumentIdentifier(uri), range, context);
+        event("code action request");
+        List<Either<Command, CodeAction>> result = await(server.getTextDocumentService().codeAction(params),
+                Duration.ofSeconds(3), "CODE_ACTION");
+        return result == null ? List.of() : List.copyOf(result);
+    }
+
+    public boolean supportsCodeAction() {
+        return initializeResult != null && initializeResult.getCapabilities() != null
+                && initializeResult.getCapabilities().getCodeActionProvider() != null;
+    }
+
+    public interface DiagnosticsListener {
+        void onPublish(String uri, List<Diagnostic> diagnostics);
+    }
+
+    public CompletionItem completionItemResolve(CompletionItem item, Duration timeout) {
+        requireState(JdtLsLifecycleState.READY, "COMPLETION_RESOLVE");
+        Objects.requireNonNull(item, "item");
+        if (!supportsCompletionResolve()) return item;
+        event("completion resolve request");
+        CompletionItem resolved = await(server.getTextDocumentService().resolveCompletionItem(item), timeout, "COMPLETION_RESOLVE");
+        return resolved == null ? item : resolved;
+    }
+
+    public boolean supportsCompletionResolve() {
+        if (initializeResult == null || initializeResult.getCapabilities() == null) return false;
+        var provider = initializeResult.getCapabilities().getCompletionProvider();
+        return provider != null && Boolean.TRUE.equals(provider.getResolveProvider());
+    }
+
+    public Either<List<? extends Location>, List<? extends LocationLink>> definition(String uri, int line, int character,
+                                                                                      Duration timeout) {
+        requireState(JdtLsLifecycleState.READY, "DEFINITION");
+        DefinitionParams params = new DefinitionParams(new TextDocumentIdentifier(uri),
+                new org.eclipse.lsp4j.Position(line, character));
+        event("definition request");
+        return await(server.getTextDocumentService().definition(params), timeout, "DEFINITION");
+    }
+
+    public List<? extends Location> references(String uri, int line, int character, boolean includeDeclarations,
+                                               Duration timeout) {
+        requireState(JdtLsLifecycleState.READY, "REFERENCES");
+        ReferenceParams params = new ReferenceParams(new TextDocumentIdentifier(uri),
+                new org.eclipse.lsp4j.Position(line, character), new ReferenceContext(includeDeclarations));
+        event("references request");
+        return await(server.getTextDocumentService().references(params), timeout, "REFERENCES");
+    }
+
+    public boolean supportsDefinition() {
+        if (initializeResult == null || initializeResult.getCapabilities() == null) return false;
+        var provider = initializeResult.getCapabilities().getDefinitionProvider();
+        return provider != null && (!provider.isLeft() || Boolean.TRUE.equals(provider.getLeft()));
+    }
+
+    public boolean supportsReferences() {
+        if (initializeResult == null || initializeResult.getCapabilities() == null) return false;
+        var provider = initializeResult.getCapabilities().getReferencesProvider();
+        return provider != null && (!provider.isLeft() || Boolean.TRUE.equals(provider.getLeft()));
+    }
+
     private static ClientCapabilities clientCapabilities() {
         ClientCapabilities capabilities = new ClientCapabilities();
         WorkspaceClientCapabilities workspace = new WorkspaceClientCapabilities();
@@ -268,7 +392,46 @@ public final class JdtLsSession implements AutoCloseable {
         signatureHelp.setContextSupport(true);
         textDocument.setSignatureHelp(signatureHelp);
         capabilities.setTextDocument(textDocument);
+        addNavigationCapabilities(textDocument);
+        addDiagnosticsCapabilities(textDocument);
+        addCompletionResolveCapabilities(textDocument);
+        addRenameCapabilities(textDocument);
         return capabilities;
+    }
+
+    private static void addNavigationCapabilities(TextDocumentClientCapabilities caps) {
+        DefinitionCapabilities definition = new DefinitionCapabilities();
+        definition.setLinkSupport(true);
+        caps.setDefinition(definition);
+        caps.setReferences(new ReferencesCapabilities());
+    }
+
+    private static void addDiagnosticsCapabilities(TextDocumentClientCapabilities caps) {
+        PublishDiagnosticsCapabilities publishDiagnostics = new PublishDiagnosticsCapabilities(true);
+        caps.setPublishDiagnostics(publishDiagnostics);
+        CodeActionKindCapabilities kind = new CodeActionKindCapabilities(List.of(CodeActionKind.QuickFix,
+                CodeActionKind.Refactor, CodeActionKind.Source));
+        CodeActionCapabilities codeAction = new CodeActionCapabilities(new CodeActionLiteralSupportCapabilities(kind), false);
+        caps.setCodeAction(codeAction);
+    }
+
+    private static void addCompletionResolveCapabilities(TextDocumentClientCapabilities textDocument) {
+        CompletionCapabilities completion = textDocument.getCompletion();
+        if (completion == null) {
+            completion = new CompletionCapabilities();
+            textDocument.setCompletion(completion);
+        }
+        org.eclipse.lsp4j.CompletionItemCapabilities itemCapabilities = new org.eclipse.lsp4j.CompletionItemCapabilities();
+        itemCapabilities.setDocumentationFormat(List.of("markdown", "plaintext"));
+        itemCapabilities.setResolveSupport(new org.eclipse.lsp4j.CompletionItemResolveSupportCapabilities(
+                List.of("documentation", "detail", "additionalTextEdits")));
+        completion.setCompletionItem(itemCapabilities);
+    }
+
+    private static void addRenameCapabilities(TextDocumentClientCapabilities textDocument) {
+        RenameCapabilities rename = new RenameCapabilities();
+        rename.setPrepareSupport(true);
+        textDocument.setRename(rename);
     }
 
     private <T> T await(CompletableFuture<T> operation, Duration timeout, String stage) {
@@ -379,6 +542,8 @@ public final class JdtLsSession implements AutoCloseable {
         private static final int STDERR_LIMIT = 80;
         private final java.nio.file.Path workspace;
         private final Deque<String> stderr = new ArrayDeque<>();
+        private final Map<String, List<Diagnostic>> published = new ConcurrentHashMap<>();
+        private volatile DiagnosticsListener listener;
 
         private JdtLsClient(java.nio.file.Path workspace) {
             this.workspace = workspace;
@@ -390,6 +555,24 @@ public final class JdtLsSession implements AutoCloseable {
 
         @Override
         public void publishDiagnostics(PublishDiagnosticsParams diagnostics) {
+            if (diagnostics == null || diagnostics.getUri() == null || diagnostics.getUri().isBlank()) return;
+            List<Diagnostic> incoming = diagnostics.getDiagnostics();
+            List<Diagnostic> items = incoming == null ? List.of() : incoming.stream().filter(Objects::nonNull).toList();
+            published.put(diagnostics.getUri(), items);
+            DiagnosticsListener current = listener;
+            if (current == null) return;
+            try {
+                current.onPublish(diagnostics.getUri(), items);
+            } catch (RuntimeException ignored) {
+            }
+        }
+
+        private List<Diagnostic> publishedDiagnostics(String uri) {
+            return uri == null ? List.of() : published.getOrDefault(uri, List.of());
+        }
+
+        private void setDiagnosticsListener(DiagnosticsListener value) {
+            this.listener = value;
         }
 
         @Override

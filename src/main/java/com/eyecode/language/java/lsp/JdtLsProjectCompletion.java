@@ -22,19 +22,30 @@ import org.eclipse.lsp4j.jsonrpc.messages.Tuple;
 
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class JdtLsProjectCompletion {
+    private static final int PENDING_RESOLVE_LIMIT = 500;
+
     private final JdtLsSession session;
-    private final Map<String, Integer> openedVersions = new HashMap<>();
-    private final Map<String, String> openedTexts = new HashMap<>();
+    private final JdtLsDocumentSync documents;
+    private final Map<String, CompletionItem> pendingResolves = new HashMap<>();
+    private final AtomicLong resolveSequence = new AtomicLong();
 
     public JdtLsProjectCompletion(JdtLsSession session) {
+        this(session, new JdtLsDocumentSync());
+    }
+
+    public JdtLsProjectCompletion(JdtLsSession session, JdtLsDocumentSync documents) {
         this.session = session;
+        this.documents = documents;
     }
 
     public synchronized Optional<CompletionResult> complete(CompletionRequest request, Duration timeout) {
@@ -44,8 +55,12 @@ public final class JdtLsProjectCompletion {
             String uri = synchronize(file, request.source(), request.version());
             List<CompletionItem> items = session.completion(uri, positionFor(request.source(), request.caretOffset()).getLine(),
                     positionFor(request.source(), request.caretOffset()).getCharacter(), timeout);
-            return Optional.of(new CompletionResult(items.stream().limit(100)
-                    .map(item -> candidate(item, request)).toList()));
+            List<CompletionCandidate> candidates = new ArrayList<>();
+            for (CompletionItem item : items.stream().limit(100).toList()) {
+                String resolveId = registerResolve(item);
+                candidates.add(candidate(item, request, resolveId));
+            }
+            return Optional.of(new CompletionResult(List.copyOf(candidates)));
         } catch (RuntimeException exception) {
             return Optional.empty();
         }
@@ -82,25 +97,66 @@ public final class JdtLsProjectCompletion {
         }
     }
 
+    public synchronized JdtLsCompletionResolveResult resolveCandidate(CompletionCandidate candidate, Duration timeout) {
+        if (candidate == null || candidate.resolveId().isEmpty()) {
+            throw new IllegalArgumentException("candidate sem resolveId nao pode ser resolvido");
+        }
+        if (session.state() != JdtLsLifecycleState.READY) return JdtLsCompletionResolveResult.empty();
+        CompletionItem original = pendingResolves.get(candidate.resolveId());
+        if (original == null) {
+            throw new IllegalStateException("completion resolve desconhecido para resolveId " + candidate.resolveId());
+        }
+        if (!Objects.equals(original.getLabel(), candidate.label())) {
+            throw new IllegalStateException("completion resolve divergiu do candidato selecionado");
+        }
+        CompletionItem resolved = session.completionItemResolve(original, timeout);
+        validateSequence(resolved, original);
+        return new JdtLsCompletionResolveResult(additionalEdits(resolved), documentation(resolved));
+    }
+
+    public synchronized void clearState() {
+        pendingResolves.clear();
+    }
+
+    private String registerResolve(CompletionItem item) {
+        if (pendingResolves.size() >= PENDING_RESOLVE_LIMIT) pendingResolves.clear();
+        String resolveId = Long.toString(resolveSequence.incrementAndGet(), 36);
+        pendingResolves.put(resolveId, item);
+        return resolveId;
+    }
+
+    static void validateSequence(CompletionItem resolved, CompletionItem original) {
+        if (!Objects.equals(resolved.getLabel(), original.getLabel())
+                || !Objects.equals(resolved.getInsertText(), original.getInsertText())
+                || !Objects.equals(resolved.getSortText(), original.getSortText())) {
+            throw new IllegalStateException("completion resolve divergiu do candidato selecionado");
+        }
+    }
+
+    static List<JdtLsTextEdit> additionalEdits(CompletionItem item) {
+        List<org.eclipse.lsp4j.TextEdit> edits = item.getAdditionalTextEdits();
+        if (edits == null) return List.of();
+        List<JdtLsTextEdit> mapped = new ArrayList<>(edits.size());
+        for (org.eclipse.lsp4j.TextEdit edit : edits) {
+            if (edit == null || edit.getRange() == null) continue;
+            org.eclipse.lsp4j.Range range = edit.getRange();
+            mapped.add(new JdtLsTextEdit(range.getStart().getLine(), range.getStart().getCharacter(),
+                    range.getEnd().getLine(), range.getEnd().getCharacter(), edit.getNewText()));
+        }
+        return List.copyOf(mapped);
+    }
+
+    static String resolvedDocumentation(CompletionItem item) {
+        return documentation(item);
+    }
+
     static Position positionFor(String source, int offset) {
         LineMap lines = LineMap.of(source);
         return new Position(lines.lineOfOffset(offset), lines.columnOfOffset(offset));
     }
 
     private String synchronize(Path file, String source, long version) {
-        String uri = file.toAbsolutePath().normalize().toUri().toString();
-        Integer previous = openedVersions.get(uri);
-        if (previous == null) {
-            int lspVersion = lspVersion(version);
-            session.didOpen(uri, source, lspVersion);
-            openedVersions.put(uri, lspVersion);
-        } else if (!source.equals(openedTexts.get(uri))) {
-            int lspVersion = Math.max(previous + 1, lspVersion(version));
-            session.didChange(uri, source, lspVersion);
-            openedVersions.put(uri, lspVersion);
-        }
-        openedTexts.put(uri, source);
-        return uri;
+        return documents.synchronize(session, file, source, version);
     }
 
     static HoverResult toHoverResult(Hover hover, LanguageFeatureRequest request) {
@@ -166,17 +222,14 @@ public final class JdtLsProjectCompletion {
     }
 
     public synchronized void close(Path file) {
-        if (file == null) return;
-        String uri = file.toAbsolutePath().normalize().toUri().toString();
-        openedTexts.remove(uri);
-        if (openedVersions.remove(uri) != null) session.didClose(uri);
+        documents.close(session, file);
     }
 
     static int lspVersion(long version) {
         return (int) Math.min(Integer.MAX_VALUE, Math.max(1L, version + 1));
     }
 
-    private static CompletionCandidate candidate(CompletionItem item, CompletionRequest request) {
+    private static CompletionCandidate candidate(CompletionItem item, CompletionRequest request, String resolveId) {
         String label = item.getLabel();
         String insert = item.getInsertText();
         if (insert == null || insert.isBlank()) insert = label;
@@ -197,7 +250,7 @@ public final class JdtLsProjectCompletion {
         return new CompletionCandidate(label, kind, detail, doc, insert,
                 item.getFilterText(), snippet, request.replaceStart() >= 0 ? request.replaceStart() : request.caretOffset(),
                 request.replaceEnd() >= 0 ? request.replaceEnd() : request.caretOffset(), priority, signature,
-                returnType, owner, "", "", List.of());
+                returnType, owner, "", "", List.of(), resolveId);
     }
 
     private static String signatureFor(String name, String detail, String label) {

@@ -168,7 +168,7 @@ public final class JavaCompletionProvider implements CompletionProvider {
 
         return new CompletionCandidate(raw.label(), raw.kind(), raw.detail(), documentation,
                 raw.insertText(), raw.filterText(), raw.snippet(), start, end, raw.sortKey(),
-                signature, returnType, owner, example, category, matchIndices);
+                signature, returnType, owner, example, category, matchIndices, raw.resolveId());
     }
 
     private static List<Integer> computeMatchIndices(String target, String query) {

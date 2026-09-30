@@ -4,6 +4,10 @@ import com.eyecode.language.completion.CompletionRequest;
 import com.eyecode.language.completion.CompletionResult;
 import com.eyecode.language.LanguageFeatureRequest;
 import com.eyecode.language.hover.HoverResult;
+import com.eyecode.language.navigation.JdtLsNavigationService;
+import com.eyecode.language.navigation.NavigationService;
+import com.eyecode.language.refactor.PrepareRenameResult;
+import com.eyecode.language.refactor.RenamePlan;
 import com.eyecode.language.signature.SignatureHelpResult;
 import com.eyecode.project.ProjectLifecycleService;
 import com.eyecode.project.model.ProjectModel;
@@ -21,6 +25,7 @@ public final class JdtLsProjectService implements AutoCloseable, ProjectLifecycl
     private static final Duration COMPLETION_TIMEOUT = Duration.ofMillis(900);
     private static final Duration FEATURE_TIMEOUT = Duration.ofSeconds(5);
     private final ProjectLifecycleService projects;
+    private final JdtLsDocumentSync documentSync = new JdtLsDocumentSync();
     private final ExecutorService startup = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "eyecode-jdtls-project");
         thread.setDaemon(true);
@@ -28,6 +33,9 @@ public final class JdtLsProjectService implements AutoCloseable, ProjectLifecycl
     });
     private volatile JdtLsSession session;
     private volatile JdtLsProjectCompletion completion;
+    private volatile NavigationService navigation;
+    private volatile JdtLsProjectDiagnostics diagnostics;
+    private volatile JdtLsProjectDiagnostics.Listener jdtDiagnosticsListener;
 
     public JdtLsProjectService(ProjectLifecycleService projects) {
         this.projects = projects;
@@ -63,6 +71,30 @@ public final class JdtLsProjectService implements AutoCloseable, ProjectLifecycl
         return current.signatureHelp(request, FEATURE_TIMEOUT);
     }
 
+    public Optional<NavigationService> navigation() {
+        return Optional.ofNullable(navigation);
+    }
+
+    public JdtLsProjectDiagnostics diagnostics() {
+        return diagnostics;
+    }
+
+    public void onJdtDiagnostics(JdtLsProjectDiagnostics.Listener listener) {
+        this.jdtDiagnosticsListener = listener;
+        JdtLsProjectDiagnostics current = diagnostics;
+        if (current != null) current.setListener(listener);
+    }
+
+    public Optional<JdtLsCompletionResolveResult> resolveCompletion(com.eyecode.language.completion.CompletionCandidate candidate) {
+        JdtLsProjectCompletion current = completion;
+        if (current == null || candidate == null || candidate.resolveId().isEmpty()) return Optional.empty();
+        try {
+            return Optional.ofNullable(current.resolveCandidate(candidate, FEATURE_TIMEOUT));
+        } catch (RuntimeException exception) {
+            return Optional.empty();
+        }
+    }
+
     public synchronized void closeDocument(Path file) {
         JdtLsProjectCompletion current = completion;
         if (current != null) current.close(file);
@@ -82,7 +114,11 @@ public final class JdtLsProjectService implements AutoCloseable, ProjectLifecycl
             created.start();
             created.initialize(INITIALIZE_TIMEOUT);
             synchronized (this) {
-                if (session == created && created.state() == JdtLsLifecycleState.READY) completion = new JdtLsProjectCompletion(created);
+                if (session == created && created.state() == JdtLsLifecycleState.READY) {
+                    completion = new JdtLsProjectCompletion(created, documentSync);
+                    diagnostics = new JdtLsProjectDiagnostics(documentSync);
+                    onSessionReady(created, documentSync);
+                }
                 else created.close();
             }
         } catch (RuntimeException exception) {
@@ -102,10 +138,34 @@ public final class JdtLsProjectService implements AutoCloseable, ProjectLifecycl
     }
 
     private synchronized void closeSession() {
+        JdtLsProjectCompletion previous = completion;
         completion = null;
+        if (previous != null) previous.clearState();
+        documentSync.reset();
+        onSessionClosed();
+        diagnostics = null;
         JdtLsSession current = session;
         session = null;
         if (current != null) current.close();
+    }
+
+    JdtLsDocumentSync documentSync() {
+        return documentSync;
+    }
+
+    void onSessionReady(JdtLsSession session, JdtLsDocumentSync documents) {
+        navigation = new JdtLsNavigationService(session, documentSync());
+        JdtLsProjectDiagnostics current = diagnostics;
+        if (current != null && session != null) {
+            current.attach(session);
+            current.setListener(jdtDiagnosticsListener);
+        }
+    }
+
+    void onSessionClosed() {
+        navigation = null;
+        JdtLsProjectDiagnostics current = diagnostics;
+        if (current != null) current.detach();
     }
 
     private static String identity(Path workspace) {
@@ -115,6 +175,35 @@ public final class JdtLsProjectService implements AutoCloseable, ProjectLifecycl
         } catch (java.security.NoSuchAlgorithmException exception) {
             throw new IllegalStateException(exception);
         }
+    }
+
+    public Optional<PrepareRenameResult> prepareRename(Path file, String source, long version, int caretOffset) {
+        JdtLsSession current = session;
+        if (current == null || !eligible(file, uriOf(file))) return Optional.empty();
+        synchronized (current) {
+            if (current.state() != JdtLsLifecycleState.READY) return Optional.empty();
+            return new JdtLsProjectRefactor(current, projectRoot())
+                    .prepareRename(file, source, version, caretOffset, FEATURE_TIMEOUT);
+        }
+    }
+
+    public Optional<RenamePlan> rename(Path file, String source, long version, int caretOffset, String newName) {
+        JdtLsSession current = session;
+        if (current == null || !eligible(file, uriOf(file))) return Optional.empty();
+        synchronized (current) {
+            if (current.state() != JdtLsLifecycleState.READY) return Optional.empty();
+            return new JdtLsProjectRefactor(current, projectRoot())
+                    .rename(file, source, version, caretOffset, newName, FEATURE_TIMEOUT);
+        }
+    }
+
+    private Path projectRoot() {
+        var project = projects.currentProject();
+        return project == null ? null : project.getRootDir();
+    }
+
+    private static String uriOf(Path file) {
+        return file == null ? "" : file.toAbsolutePath().normalize().toUri().toString();
     }
 
     @Override

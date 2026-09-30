@@ -515,7 +515,9 @@ class WebShellSharedShellSourceTest {
         assertTrue(monaco.contains("snippetController.insert(item.insertText);"));
         assertTrue(monaco.contains("eyecode.completion.snippet-fallback"));
         assertTrue(monaco.contains("function snippetFallbackText"));
-        assertTrue(monaco.contains("editor.executeEdits('eyecode.completion', [{ range, text: item.insertText, forceMoveMarkers: true }]);"));
+        assertTrue(monaco.contains("editor.executeEdits('eyecode.completion', ["));
+        assertTrue(monaco.contains("{ range, text: item.insertText, forceMoveMarkers: true },"));
+        assertTrue(monaco.contains("...additionalEdits"));
     }
 
     @Test

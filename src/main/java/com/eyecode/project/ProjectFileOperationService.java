@@ -1,8 +1,10 @@
 package com.eyecode.project;
 
+import com.eyecode.editor.intelligence.document.LineMap;
 import com.eyecode.language.Token;
 import com.eyecode.language.java.JavaLexer;
 import com.eyecode.language.java.JavaTokenType;
+import com.eyecode.language.refactor.RenamePlan;
 import com.eyecode.project.model.ProjectModel;
 
 import java.io.IOException;
@@ -141,6 +143,59 @@ public final class ProjectFileOperationService {
             Files.move(oldPath, destination);
         }
         return new RenameResult(oldPath, destination, sourceText);
+    }
+
+    public String applyTextEdits(ProjectModel project, Path file, List<RenamePlan.Edit> edits) throws IOException {
+        Path safe = requireTarget(project, file);
+        if (!Files.isRegularFile(safe)) throw new IllegalArgumentException("Target must be a file");
+        if (edits == null || edits.isEmpty()) return Files.readString(safe, StandardCharsets.UTF_8);
+        String original = Files.readString(safe, StandardCharsets.UTF_8);
+        String updated = applyEdits(original, edits);
+        if (!updated.equals(original)) {
+            Files.writeString(safe, updated, StandardCharsets.UTF_8);
+        }
+        return original;
+    }
+
+    private String applyEdits(String source, List<RenamePlan.Edit> edits) {
+        LineMap lines = LineMap.of(source);
+        List<RenamePlan.Edit> ordered = edits.stream()
+                .sorted(Comparator.comparingInt((RenamePlan.Edit edit) -> startOffset(lines, edit))
+                        .thenComparingInt(edit -> endOffset(lines, edit)))
+                .toList();
+        StringBuilder result = new StringBuilder(source);
+        int previousEnd = -1;
+        List<int[]> ranges = new ArrayList<>(ordered.size());
+        for (RenamePlan.Edit edit : ordered) {
+            int start = startOffset(lines, edit);
+            int end = endOffset(lines, edit);
+            if (end < start || start < previousEnd) {
+                throw new IllegalArgumentException("Overlapping text edits");
+            }
+            previousEnd = end;
+            ranges.add(new int[]{start, end});
+        }
+        for (int index = ordered.size() - 1; index >= 0; index--) {
+            int[] range = ranges.get(index);
+            result.replace(range[0], range[1], ordered.get(index).newText());
+        }
+        return result.toString();
+    }
+
+    private int startOffset(LineMap lines, RenamePlan.Edit edit) {
+        return bounded(lines, edit.startLine(), edit.startCharacter());
+    }
+
+    private int endOffset(LineMap lines, RenamePlan.Edit edit) {
+        return bounded(lines, edit.endLine(), edit.endCharacter());
+    }
+
+    private int bounded(LineMap lines, int line, int column) {
+        int last = Math.max(0, lines.lineCount() - 1);
+        int safeLine = Math.max(0, Math.min(line, last));
+        if (safeLine >= lines.lineCount()) return 0;
+        int safeColumn = Math.max(0, Math.min(column, lines.lineEndOffset(safeLine) - lines.lineStartOffset(safeLine)));
+        return lines.offsetOf(safeLine, safeColumn);
     }
 
     public Path requireTarget(ProjectModel project, Path target) {

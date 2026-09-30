@@ -1,10 +1,13 @@
 package com.eyecode.ui.web;
 
 import com.eyecode.application.WorkspaceApplication;
+import com.eyecode.language.java.lsp.JdtLsProjectDiagnostics;
 import com.eyecode.language.java.lsp.JdtLsProjectService;
+import com.eyecode.language.navigation.NavigationService;
 import java.nio.file.Path;
 
 import java.util.Objects;
+import java.util.Optional;
 
 public final class WebShellWorkspaceRuntime implements AutoCloseable {
     private final WorkspaceApplication application;
@@ -17,6 +20,8 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
     private final WebShellLessonsController lessonsController;
     private final WebShellDiagnosticsController diagnosticsController;
     private final WebShellExecutionController executionController;
+    private final WebShellNavigationController navigationController;
+    private final WebShellJdtDiagnosticsController jdtDiagnosticsController;
     private boolean closed;
 
     WebShellWorkspaceRuntime(WorkspaceApplication application,
@@ -27,8 +32,10 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
                              JdtLsProjectService jdt,
                              WebShellLearningController learningController,
                              WebShellLessonsController lessonsController,
-                             WebShellDiagnosticsController diagnosticsController,
-                             WebShellExecutionController executionController) {
+                              WebShellDiagnosticsController diagnosticsController,
+                              WebShellExecutionController executionController,
+                              WebShellNavigationController navigationController,
+                              WebShellJdtDiagnosticsController jdtDiagnosticsController) {
         this.application = Objects.requireNonNull(application, "application");
         this.workspaceController = Objects.requireNonNull(workspaceController, "workspaceController");
         this.documentController = Objects.requireNonNull(documentController, "documentController");
@@ -39,10 +46,22 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
         this.lessonsController = Objects.requireNonNull(lessonsController, "lessonsController");
         this.diagnosticsController = Objects.requireNonNull(diagnosticsController, "diagnosticsController");
         this.executionController = Objects.requireNonNull(executionController, "executionController");
+        this.navigationController = navigationController;
+        this.jdtDiagnosticsController = jdtDiagnosticsController;
+        if (jdtDiagnosticsController != null) {
+            jdt.onJdtDiagnostics((uri, diagnostics) -> jdtDiagnosticsController.publishJdt(uri, diagnostics));
+            JdtLsProjectDiagnostics currentDiagnostics = jdt.diagnostics();
+            if (currentDiagnostics != null) currentDiagnostics.setListener(
+                    (uri, diagnostics) -> jdtDiagnosticsController.publishJdt(uri, diagnostics));
+        }
     }
 
     public void openProjectAtStartup(Path root) {
         workspaceController.openProjectAtStartup(Objects.requireNonNull(root, "root"));
+    }
+
+    Optional<NavigationService> navigation() {
+        return jdt.navigation();
     }
 
     @Override
@@ -58,6 +77,8 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
         lessonsController.closeActiveSession();
         diagnosticsController.dispose();
         executionController.close();
+        if (navigationController != null) navigationController.dispose();
+        if (jdtDiagnosticsController != null) jdtDiagnosticsController.dispose();
         application.close();
     }
 }

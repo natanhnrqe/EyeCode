@@ -25,6 +25,7 @@ public final class WebShellCompletionController {
     private final Map<String, String> latestRequestByUri = new ConcurrentHashMap<>();
     private final CompletionService completionService;
     private volatile boolean disposed;
+    private volatile ResolveGateway resolveGateway;
 
     WebShellCompletionController(WebShellSurface surface, EditorManager manager, CompletionService completionService) {
         this.surface = surface;
@@ -36,6 +37,11 @@ public final class WebShellCompletionController {
             return thread;
         });
         surface.registerHandler("completion", "request", this::request);
+        surface.registerHandler("completion", "resolve", this::resolve);
+    }
+
+    public void setResolveGateway(ResolveGateway resolveGateway) {
+        this.resolveGateway = resolveGateway;
     }
 
     public void dispose() {
@@ -136,6 +142,7 @@ public final class WebShellCompletionController {
             value.put("example", item.example());
             value.put("category", item.category());
             value.put("matchIndices", item.matchIndices());
+            value.put("resolveId", item.resolveId());
             serialized.add(value);
         }
         Map<String, Object> response = new LinkedHashMap<>();
@@ -174,6 +181,60 @@ public final class WebShellCompletionController {
     private static long numberLong(Map<String, Object> payload, String key, long fallback) {
         Object value = payload == null ? null : payload.get(key);
         return value instanceof Number number ? number.longValue() : fallback;
+    }
+
+    public interface ResolveGateway {
+        java.util.Optional<com.eyecode.language.java.lsp.JdtLsCompletionResolveResult> resolve(
+                com.eyecode.language.completion.CompletionCandidate candidate);
+    }
+
+    private WebShellEnvelope resolve(WebShellEnvelope message) {
+        String resolveId = text(message.payload(), "resolveId");
+        String label = text(message.payload(), "label");
+        if (resolveId.isBlank() || label.isBlank() || resolveGateway == null || disposed) {
+            return message.response(Map.of("requestId", message.requestId(), "resolveId", resolveId,
+                    "edits", List.of(), "documentation", ""));
+        }
+        executor.execute(() -> computeResolve(message, resolveId, label));
+        return acknowledgment(message, true);
+    }
+
+    private void computeResolve(WebShellEnvelope message, String resolveId, String label) {
+        if (disposed) return;
+        try {
+            com.eyecode.language.completion.CompletionCandidate candidate =
+                    new com.eyecode.language.completion.CompletionCandidate(label, "VARIABLE", "", "",
+                            label, label, false, 0, 0, 0, "", "", "", "", "", List.of(), resolveId);
+            ResolveGateway gateway = resolveGateway;
+            java.util.Optional<com.eyecode.language.java.lsp.JdtLsCompletionResolveResult> result =
+                    gateway == null ? java.util.Optional.empty() : gateway.resolve(candidate);
+            if (disposed) return;
+            if (result.isEmpty()) {
+                surface.send(message.response(Map.of("requestId", message.requestId(), "resolveId", resolveId,
+                        "edits", List.of(), "documentation", "")));
+                return;
+            }
+            List<Map<String, Object>> edits = new ArrayList<>();
+            for (com.eyecode.language.java.lsp.JdtLsTextEdit edit : result.get().additionalTextEdits()) {
+                Map<String, Object> value = new LinkedHashMap<>();
+                value.put("startLine", edit.startLine());
+                value.put("startCharacter", edit.startCharacter());
+                value.put("endLine", edit.endLine());
+                value.put("endCharacter", edit.endCharacter());
+                value.put("newText", edit.newText());
+                edits.add(value);
+            }
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("requestId", message.requestId());
+            response.put("resolveId", resolveId);
+            response.put("edits", edits);
+            response.put("documentation", result.get().documentation());
+            surface.send(message.response(response));
+        } catch (RuntimeException exception) {
+            if (disposed) return;
+            surface.send(message.error(new WebShellError("COMPLETION_RESOLVE_MISMATCH",
+                    exception.getMessage() == null ? "Falha ao resolver completion" : exception.getMessage(), true)));
+        }
     }
 
 }
