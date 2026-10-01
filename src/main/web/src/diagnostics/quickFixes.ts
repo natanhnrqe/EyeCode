@@ -59,12 +59,7 @@ export function jdtMarkerRange(range: JdtPublishedRange): {
   endLineNumber: number;
   endColumn: number;
 } {
-  return {
-    startLineNumber: range.startLine,
-    startColumn: range.startColumn,
-    endLineNumber: range.endLine,
-    endColumn: range.endColumn
-  };
+  return clampedMonacoPositions(range.startLine, range.startColumn, range.endLine, range.endColumn);
 }
 
 export function quickFixEditRange(edit: JdtQuickFixEdit): {
@@ -73,11 +68,23 @@ export function quickFixEditRange(edit: JdtQuickFixEdit): {
   endLineNumber: number;
   endColumn: number;
 } {
+  return clampedMonacoPositions(edit.startLine, edit.startColumn, edit.endLine, edit.endColumn);
+}
+
+export function clampedMonacoPositions(startLine: number, startColumn: number,
+                                       endLine: number, endColumn: number): {
+  startLineNumber: number;
+  startColumn: number;
+  endLineNumber: number;
+  endColumn: number;
+} {
+  const safeStartLine = Math.max(1, Math.floor(startLine) || 1);
+  const safeEndLine = Math.max(safeStartLine, Math.floor(endLine) || safeStartLine);
   return {
-    startLineNumber: edit.startLine,
-    startColumn: edit.startColumn,
-    endLineNumber: edit.endLine,
-    endColumn: edit.endColumn
+    startLineNumber: safeStartLine,
+    startColumn: Math.max(1, Math.floor(startColumn) || 1),
+    endLineNumber: safeEndLine,
+    endColumn: Math.max(1, Math.floor(endColumn) || 1)
   };
 }
 
@@ -132,10 +139,44 @@ export function toMonacoCodeActions(fixes: readonly JdtQuickFix[], resource: unk
     edit: {
       edits: fix.edits.map(edit => ({
         resource,
-        edit: { range: quickFixEditRange(edit), text: edit.newText }
+        textEdit: { range: quickFixEditRange(edit), text: edit.newText }
       }))
     }
   }));
+}
+
+const JDK_TOOLCHAIN_ERROR_PATTERNS: RegExp[] = [
+  /\bjava\.lang\.[\w$]+ cannot be resolved/i,
+  /is indirectly referenced/i,
+  /^The package java\.[a-z. ]+ is not (?:visible|accessible)/i,
+  /^The type java\.[\w.$]+ is not accessible/i,
+  /^The import java\.[\w.$]+ cannot be resolved/i,
+  /^The type \w+ is not generic; it cannot be parameterized/i
+];
+
+export function isLikelyJdkToolchainError(message: string, severity: string): boolean {
+  if (severity !== 'ERROR') return false;
+  const text = message ?? '';
+  return JDK_TOOLCHAIN_ERROR_PATTERNS.some(pattern => pattern.test(text));
+}
+
+export type LocalDiagnosticSpan = {
+  startLine: number;
+  startColumn: number;
+  endLine: number;
+  endColumn: number;
+  message?: string;
+};
+
+export function filterJdtDiagnostics(diagnostics: readonly JdtPublishedDiagnostic[],
+                                     localDiagnostics: readonly LocalDiagnosticSpan[] = []): JdtPublishedDiagnostic[] {
+  return diagnostics.filter(diagnostic => {
+    if (isLikelyJdkToolchainError(diagnostic.message, diagnostic.severity)) return false;
+    return !localDiagnostics.some(local => rangesOverlap(
+      local.startLine, local.startColumn, local.endLine, local.endColumn,
+      diagnostic.range.startLine, diagnostic.range.startColumn, diagnostic.range.endLine, diagnostic.range.endColumn
+    ));
+  });
 }
 
 function rangesOverlap(aStartLine: number, aStartColumn: number, aEndLine: number, aEndColumn: number,

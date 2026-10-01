@@ -56,7 +56,7 @@ export type MonacoInlayHintList = {
 };
 
 export type MonacoCodeActionContext = { markers: MonacoMarker[] };
-export type MonacoCodeActionEdit = { resource: unknown; edit: { range: MonacoRange; text?: string } };
+export type MonacoCodeActionEdit = { resource: unknown; textEdit: { range: MonacoRange; text?: string } };
 export type MonacoCodeAction = {
   title: string;
   kind?: string;
@@ -64,8 +64,9 @@ export type MonacoCodeAction = {
   diagnostics?: MonacoMarker[];
   isPreferred?: boolean;
 };
+export type MonacoCodeActionList = { actions: MonacoCodeAction[]; dispose: () => void };
 
-export type MonacoRenameLocation = { range: MonacoRange; text?: string; placeholder?: string };
+export type MonacoRenameLocation = { range?: MonacoRange; text?: string; placeholder?: string; rejectReason?: string };
 
 export type MonacoWorkspaceEdit = { edits: Array<{ range: MonacoRange; text: string }> };
 
@@ -94,7 +95,7 @@ export type MonacoLanguageProviders = {
   registerCodeActionProvider: (language: string, provider: {
     provideCodeActions: (model: MonacoModel, range: MonacoRange,
                          context: MonacoCodeActionContext, token: MonacoCancellationToken) =>
-      Promise<MonacoCodeAction[] | null> | MonacoCodeAction[] | null;
+      Promise<MonacoCodeActionList | null> | MonacoCodeActionList | null;
   }) => Disposable | void;
   registerRenameProvider: (language: string, provider: MonacoRenameProvider) => Disposable | void;
 };

@@ -42,6 +42,10 @@ final class JdtLsCompletionResolveIntegrationTest {
                 JdtLsCompletionResolveResult resolved = completion.resolveCandidate(candidate, Duration.ofSeconds(10));
                 org.junit.jupiter.api.Assertions.assertNotNull(resolved.additionalTextEdits());
                 org.junit.jupiter.api.Assertions.assertNotNull(resolved.documentation());
+                org.junit.jupiter.api.Assertions.assertTrue(
+                        resolved.additionalTextEdits().stream().anyMatch(
+                                edit -> edit.newText().contains("java.util.ArrayList")),
+                        () -> "auto-import edit ausente; edits=" + resolved.additionalTextEdits());
                 completion.clearState();
             }
         } finally {

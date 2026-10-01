@@ -11,9 +11,9 @@ import { renderHoverContent } from './hoverContent';
 import { canResolveCandidate, mergeDocumentation, toMonacoEdits } from './autoImportResolve';
 import type { CompletionResolveResult } from './autoImportResolve';
 import type { DiagnosticsViewState, DiagnosticsPublish, WebDiagnostic } from '../diagnostics/protocol';
-import { parseJdtPublish, parseQuickFixes, jdtMarkerRange, overlappingMarkers, quickFixRequestSpan, toMonacoCodeActions } from '../diagnostics/quickFixes';
+import { parseJdtPublish, parseQuickFixes, jdtMarkerRange, overlappingMarkers, quickFixRequestSpan, toMonacoCodeActions, filterJdtDiagnostics } from '../diagnostics/quickFixes';
 import type { JdtQuickFix } from '../diagnostics/quickFixes';
-import type { Disposable, MonacoApi, MonacoCodeAction, MonacoCodeActionContext, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoInlayHint, MonacoInlayHintList, MonacoKeyEvent, MonacoLocation, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoSnippetController, MonacoWorkspaceEdit } from './api';
+import type { Disposable, MonacoApi, MonacoCodeActionContext, MonacoCodeActionList, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoInlayHint, MonacoInlayHintList, MonacoKeyEvent, MonacoLocation, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoRenameLocation, MonacoSnippetController, MonacoWorkspaceEdit } from './api';
 import { isValidJavaIdentifier, renameFailureMessage, toMonacoRenameLocation, type PrepareRenamePayload, type RenameResponsePayload } from '../refactor/applyRename';
 import type { LessonEditorRange, PresentationProgram } from '../lessons/protocol';
 
@@ -1046,7 +1046,9 @@ export class MonacoWorkspaceService {
     const model = this.modelForUri(event.uri);
     const api = this.api;
     if (!model || !api) return;
-    api.editor.setModelMarkers(model, 'eyecode.jdt', event.diagnostics.map(diagnostic => ({
+    const local = this.diagnosticsByUri.get(event.uri)?.diagnostics ?? [];
+    const visible = filterJdtDiagnostics(event.diagnostics, local);
+    api.editor.setModelMarkers(model, 'eyecode.jdt', visible.map(diagnostic => ({
       severity: this.markerSeverity({
         severity: diagnostic.severity, code: '', message: diagnostic.message,
         startLine: diagnostic.range.startLine, startColumn: diagnostic.range.startColumn,
@@ -1058,7 +1060,7 @@ export class MonacoWorkspaceService {
   }
 
   private provideQuickFixActions(model: MonacoModel, range: MonacoRange,
-                                 context?: MonacoCodeActionContext): Promise<MonacoCodeAction[] | null> {
+                                 context?: MonacoCodeActionContext): Promise<MonacoCodeActionList | null> {
     if (this.disposed || !this.isProjectModel(model)) return Promise.resolve(null);
     const uri = this.documentUri(model);
     if (!uri) return Promise.resolve(null);
@@ -1071,7 +1073,7 @@ export class MonacoWorkspaceService {
       let settled = false;
       let timeout = 0;
       let unsubscribe = () => {};
-      const finish = (value: MonacoCodeAction[] | null) => {
+      const finish = (value: MonacoCodeActionList | null) => {
         if (settled) return;
         settled = true;
         window.clearTimeout(timeout);
@@ -1084,7 +1086,7 @@ export class MonacoWorkspaceService {
           return;
         }
         const actions = toMonacoCodeActions(fixes, model.uri, markers);
-        finish(actions.length > 0 ? actions : null);
+        finish(actions.length > 0 ? { actions, dispose: () => {} } : null);
       };
       timeout = window.setTimeout(() => finish(null), 7000);
       unsubscribe = bridge.subscribe(message => {
@@ -1585,13 +1587,13 @@ export class MonacoWorkspaceService {
   }
 
   private async resolveRenameLocation(model: MonacoModel, position: { lineNumber: number; column: number }):
-    Promise<{ range: MonacoRange; placeholder: string }> {
+    Promise<MonacoRenameLocation> {
     if (this.disposed || !this.isProjectModel(model)) {
-      return Promise.reject('Renomeação indisponível (documento fora do projeto).');
+      return { rejectReason: 'Renomeação indisponível (documento fora do projeto).' };
     }
     const uri = this.documentUri(model);
     if (!uri) {
-      return Promise.reject('Renomeação indisponível (documento sem URI).');
+      return { rejectReason: 'Renomeação indisponível (documento sem URI).' };
     }
     const response = await bridge.request<PrepareRenamePayload>('refactor', 'prepareRename', {
       uri,
@@ -1601,13 +1603,21 @@ export class MonacoWorkspaceService {
       language: model.getLanguageId?.() ?? 'java'
     }, { timeoutMs: 8000 }).catch(() => null);
     if (this.disposed || !response) {
-      return Promise.reject('Renomeação indisponível (símbolo inválido ou servidor JDT falhou).');
+      return { rejectReason: 'Renomeação indisponível (símbolo inválido ou servidor JDT falhou).' };
     }
     const location = toMonacoRenameLocation(response);
     if (!location) {
-      return Promise.reject('Renomeação indisponível neste símbolo.');
+      return { rejectReason: 'Renomeação indisponível neste símbolo.' };
     }
-    return location;
+    return {
+      range: {
+        startLineNumber: location.range.startLineNumber,
+        startColumn: location.range.startColumn,
+        endLineNumber: location.range.endLineNumber,
+        endColumn: location.range.endColumn
+      },
+      text: location.placeholder
+    };
   }
 
   private async provideRenameEdits(model: MonacoModel, position: { lineNumber: number; column: number }, newName: string):
@@ -1752,33 +1762,60 @@ export class MonacoWorkspaceService {
 
   private async applyCompletion(item: { label: string; resolveId?: string; documentation: string; insertText: string; snippet: boolean },
                                 model: MonacoModel, editor: MonacoEditor, range: MonacoRange): Promise<void> {
-    const additionalEdits = item.snippet ? [] : await this.fetchCompletionResolveEdits(item, model);
+    if (item.snippet) {
+      this.applySnippetCompletion(item, model, editor, range);
+      return;
+    }
+    const resolvePromise = this.fetchCompletionResolveEdits(item, model);
+    let additionalEdits = await Promise.race([
+      resolvePromise,
+      new Promise<null>(resolve => { window.setTimeout(() => resolve(null), 1500); })
+    ]);
+    if (additionalEdits === null) {
+      additionalEdits = [];
+      void resolvePromise.then(lateEdits => {
+        if (this.disposed || !lateEdits.length || editor.getModel() !== model) return;
+        this.suppressCompletionTrigger = true;
+        try {
+          editor.executeEdits('eyecode.completion.resolve', lateEdits);
+        } finally {
+          this.suppressCompletionTrigger = false;
+        }
+      });
+    }
     if (this.disposed || editor.getModel() !== model) return;
     this.suppressCompletionTrigger = true;
     try {
-      if (item.snippet) {
-        const snippetController = editor.getContribution('snippetController2') as MonacoSnippetController | null;
-        if (snippetController) {
-          editor.setSelection(range);
-          snippetController.insert(item.insertText);
-        } else {
-          console.warn('Monaco SnippetController2 is unavailable; inserting a placeholder-free snippet.');
-          editor.executeEdits('eyecode.completion.snippet-fallback', [{
-            range,
-            text: snippetFallbackText(item.insertText),
-            forceMoveMarkers: true
-          }]);
-        }
+      editor.executeEdits('eyecode.completion', [
+        { range, text: item.insertText, forceMoveMarkers: true },
+        ...additionalEdits
+      ]);
+    } finally {
+      this.suppressCompletionTrigger = false;
+    }
+    editor.focus();
+  }
+
+  private applySnippetCompletion(item: { label: string; resolveId?: string; documentation: string; insertText: string },
+                                 model: MonacoModel, editor: MonacoEditor, range: MonacoRange): void {
+    this.suppressCompletionTrigger = true;
+    try {
+      const snippetController = editor.getContribution('snippetController2') as MonacoSnippetController | null;
+      if (snippetController) {
+        editor.setSelection(range);
+        snippetController.insert(item.insertText);
       } else {
-        editor.executeEdits('eyecode.completion', [
-          { range, text: item.insertText, forceMoveMarkers: true },
-          ...additionalEdits
-        ]);
+        console.warn('Monaco SnippetController2 is unavailable; inserting a placeholder-free snippet.');
+        editor.executeEdits('eyecode.completion.snippet-fallback', [{
+          range,
+          text: snippetFallbackText(item.insertText),
+          forceMoveMarkers: true
+        }]);
       }
     } finally {
       this.suppressCompletionTrigger = false;
     }
-    if (item.snippet) this.resolveCompletionEdits(item, model, editor);
+    this.resolveCompletionEdits(item, model, editor);
     editor.focus();
   }
 

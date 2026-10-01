@@ -29,10 +29,10 @@ export function toMonacoEdits(edits: readonly ResolveTextEdit[]): MonacoLikeEdit
       .filter(edit => !!edit && edit.newText !== undefined)
       .map(edit => ({
         range: {
-          startLineNumber: edit.startLine + 1,
-          startColumn: edit.startCharacter + 1,
-          endLineNumber: edit.endLine + 1,
-          endColumn: edit.endCharacter + 1
+          startLineNumber: Math.max(1, edit.startLine + 1),
+          startColumn: Math.max(1, edit.startCharacter + 1),
+          endLineNumber: Math.max(1, edit.endLine + 1),
+          endColumn: Math.max(1, edit.endCharacter + 1)
         },
         text: edit.newText
       }));

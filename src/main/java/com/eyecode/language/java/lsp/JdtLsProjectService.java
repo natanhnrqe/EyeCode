@@ -47,10 +47,48 @@ public final class JdtLsProjectService implements AutoCloseable, ProjectLifecycl
     public synchronized void onProjectChanged(ProjectModel project) {
         closeSession();
         if (project == null) return;
-        String home = System.getProperty("eyecode.jdtls.home", "").trim();
-        if (home.isEmpty()) return;
+        Optional<Path> installation = resolveInstallation();
+        if (installation.isEmpty()) return;
         Path workspace = project.getRootDir().toAbsolutePath().normalize();
-        startup.execute(() -> start(Path.of(home), workspace));
+        startup.execute(() -> start(installation.get(), workspace));
+    }
+
+    private static Optional<Path> resolveInstallation() {
+        String configured = System.getProperty("eyecode.jdtls.home", "").trim();
+        if (!configured.isEmpty()) return Optional.of(Path.of(configured));
+        String environment = System.getenv("JDTLS_HOME");
+        if (environment != null && !environment.isBlank()) {
+            Path candidate = Path.of(environment.trim());
+            if (isJdtLsInstallation(candidate)) return Optional.of(candidate);
+        }
+        Path userHome = Path.of(System.getProperty("user.home", "."));
+        Path standard = userHome.resolve(".eyecode").resolve("jdtls");
+        if (isJdtLsInstallation(standard)) return Optional.of(standard);
+        Path vscodeExtensions = userHome.resolve(".vscode").resolve("extensions");
+        if (java.nio.file.Files.isDirectory(vscodeExtensions)) {
+            try (java.util.stream.Stream<Path> stream = java.nio.file.Files.list(vscodeExtensions)) {
+                Optional<Path> server = stream
+                        .filter(path -> path.getFileName().toString().startsWith("redhat.java-"))
+                        .map(path -> path.resolve("server"))
+                        .filter(JdtLsProjectService::isJdtLsInstallation)
+                        .max(java.util.Comparator.comparing(path -> path.getParent().getFileName().toString()));
+                if (server.isPresent()) return server;
+            } catch (java.io.IOException ignored) {
+                return Optional.empty();
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static boolean isJdtLsInstallation(Path root) {
+        Path plugins = root.resolve("plugins");
+        if (!java.nio.file.Files.isDirectory(plugins)) return false;
+        try (java.nio.file.DirectoryStream<Path> stream = java.nio.file.Files.newDirectoryStream(
+                plugins, "org.eclipse.equinox.launcher_*.jar")) {
+            return stream.iterator().hasNext();
+        } catch (java.io.IOException ignored) {
+            return false;
+        }
     }
 
     public Optional<CompletionResult> complete(CompletionRequest request) {

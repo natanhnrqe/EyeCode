@@ -42,9 +42,36 @@ final class JdtLsRenameIntegrationTest {
             assertTrue(plan.isPresent());
             assertFalse(plan.get().isEmpty());
             var edits = plan.get().editsByFile().getOrDefault(file, java.util.List.of());
-            assertEquals(3, edits.size(), () -> "edits=" + plan.get().editsByFile());
+            String renamed = applyEdits(source, edits);
+            assertFalse(renamed.contains("value"), () -> "renamed=" + renamed);
+            assertTrue(renamed.contains("total"), () -> "renamed=" + renamed);
         } finally {
             session.close();
         }
+    }
+
+    private static String applyEdits(String source, java.util.List<com.eyecode.language.refactor.RenamePlan.Edit> edits) {
+        String[] lines = source.split("\n", -1);
+        record AbsoluteEdit(int start, int end, String text) {}
+        java.util.List<AbsoluteEdit> absolute = new java.util.ArrayList<>();
+        for (com.eyecode.language.refactor.RenamePlan.Edit edit : edits) {
+            int start = offsetOf(lines, edit.startLine(), edit.startCharacter());
+            int end = offsetOf(lines, edit.endLine(), edit.endCharacter());
+            absolute.add(new AbsoluteEdit(start, end, edit.newText()));
+        }
+        absolute.sort(java.util.Comparator.comparingInt(AbsoluteEdit::start).reversed());
+        StringBuilder result = new StringBuilder(source);
+        for (AbsoluteEdit edit : absolute) {
+            result.replace(edit.start(), edit.end(), edit.text());
+        }
+        return result.toString();
+    }
+
+    private static int offsetOf(String[] lines, int line, int character) {
+        int offset = 0;
+        for (int index = 0; index < line; index++) {
+            offset += lines[index].length() + 1;
+        }
+        return offset + character;
     }
 }

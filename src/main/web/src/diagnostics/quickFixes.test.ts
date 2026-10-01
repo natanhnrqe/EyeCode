@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { jdtMarkerRange, parseJdtPublish, parseQuickFixes, quickFixEditRange, overlappingMarkers, quickFixRequestSpan, toMonacoCodeActions } from './quickFixes';
+import { jdtMarkerRange, parseJdtPublish, parseQuickFixes, quickFixEditRange, overlappingMarkers, quickFixRequestSpan, toMonacoCodeActions, clampedMonacoPositions, filterJdtDiagnostics, isLikelyJdkToolchainError } from './quickFixes';
 
 describe('parseQuickFixes', () => {
   it('parses the documented diagnostics/quickFix response payload', () => {
@@ -206,7 +206,7 @@ describe('toMonacoCodeActions', () => {
     expect(actions[0].kind).toBe('quickfix');
     expect(actions[0].edit?.edits).toEqual([{
       resource,
-      edit: {
+      textEdit: {
         range: { startLineNumber: 3, startColumn: 1, endLineNumber: 3, endColumn: 1 },
         text: 'import java.util.List;\n'
       }
@@ -227,5 +227,68 @@ describe('toMonacoCodeActions', () => {
 
   it('returns an empty list when there are no fixes', () => {
     expect(toMonacoCodeActions([], resource, diagnostics)).toEqual([]);
+  });
+});
+
+describe('clampedMonacoPositions', () => {
+  it('clamps zero-based backend lines to monaco 1-based minimums', () => {
+    expect(clampedMonacoPositions(0, 0, 0, 0)).toEqual({
+      startLineNumber: 1,
+      startColumn: 1,
+      endLineNumber: 1,
+      endColumn: 1
+    });
+  });
+
+  it('keeps end line at or after the start line', () => {
+    expect(clampedMonacoPositions(5, 3, 2, 9).endLineNumber).toBe(5);
+  });
+
+  it('coerces non-finite values to the minimum position', () => {
+    const range = clampedMonacoPositions(Number.NaN, Number.NaN, Number.NaN, Number.NaN);
+    expect(range).toEqual({ startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 });
+  });
+});
+
+describe('filterJdtDiagnostics', () => {
+  const jdtDiag = (message: string, severity: 'ERROR' | 'WARNING' | 'INFO' | 'HINT', line = 3) => ({
+    range: { startLine: line, startColumn: 2, endLine: line, endColumn: 9 },
+    severity,
+    message,
+    source: 'jdt'
+  });
+
+  it('drops JDK toolchain false positives', () => {
+    const all = [
+      jdtDiag('The type java.lang.Object cannot be resolved', 'ERROR'),
+      jdtDiag('ArrayList cannot be resolved to a type. It is indirectly referenced from required .class files', 'ERROR'),
+      jdtDiag('The package java.util is not accessible', 'ERROR'),
+      jdtDiag('The import java.util.List cannot be resolved', 'ERROR'),
+      jdtDiag('The type List is not generic; it cannot be parameterized with arguments <String>', 'ERROR'),
+      jdtDiag('List cannot be resolved to a type', 'ERROR')
+    ];
+    const visible = filterJdtDiagnostics(all);
+    expect(visible).toHaveLength(1);
+    expect(visible[0].message).toBe('List cannot be resolved to a type');
+  });
+
+  it('only filters ERROR severities', () => {
+    expect(isLikelyJdkToolchainError('The type java.lang.Object cannot be resolved', 'WARNING')).toBe(false);
+    expect(isLikelyJdkToolchainError('The type java.lang.Object cannot be resolved', 'ERROR')).toBe(true);
+  });
+
+  it('drops jdt diagnostics already covered by a local parser marker', () => {
+    const local = [{ startLine: 3, startColumn: 1, endLine: 3, endColumn: 10, message: 'syntax error' }];
+    const visible = filterJdtDiagnostics([
+      jdtDiag('Syntax error on token "x"', 'ERROR', 3),
+      jdtDiag('Unused import', 'WARNING', 7)
+    ], local);
+    expect(visible).toHaveLength(1);
+    expect(visible[0].message).toBe('Unused import');
+  });
+
+  it('keeps everything when there is no local diagnostic and no toolchain noise', () => {
+    const input = [jdtDiag('value is never used', 'WARNING', 4)];
+    expect(filterJdtDiagnostics(input)).toEqual(input);
   });
 });
