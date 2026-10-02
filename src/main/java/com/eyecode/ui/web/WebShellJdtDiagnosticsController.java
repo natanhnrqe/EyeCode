@@ -145,8 +145,9 @@ public final class WebShellJdtDiagnosticsController {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("range", range);
         payload.put("severity", diagnostic.severity().name());
+        payload.put("code", diagnostic.code());
         payload.put("message", diagnostic.message());
-        payload.put("source", "jdt");
+        payload.put("source", diagnostic.category());
         return payload;
     }
 

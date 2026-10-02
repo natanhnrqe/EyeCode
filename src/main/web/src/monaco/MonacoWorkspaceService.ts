@@ -8,10 +8,10 @@ import { signatureHoverRegionAt } from '../signature/callContext';
 import { monacoLocations } from '../navigation/navigationTarget';
 import type { NavigationResponsePayload } from '../navigation/navigationTarget';
 import { renderHoverContent } from './hoverContent';
-import { canResolveCandidate, createResolvePrefetchCache, mergeDocumentation, toMonacoEdits } from './autoImportResolve';
+import { canResolveCandidate, createResolvePrefetchCache, mergeDocumentation, toMonacoEdits, truncateDocumentation } from './autoImportResolve';
 import type { CompletionResolveResult, ResolveEdits } from './autoImportResolve';
 import type { DiagnosticsViewState, DiagnosticsPublish, WebDiagnostic } from '../diagnostics/protocol';
-import { parseJdtPublish, parseQuickFixes, overlappingMarkers, quickFixRequestSpan, toMonacoCodeActions } from '../diagnostics/quickFixes';
+import { parseJdtPublish, parseQuickFixes, jdtWebDiagnostics, overlappingMarkers, quickFixRequestSpan, toMonacoCodeActions } from '../diagnostics/quickFixes';
 import type { JdtQuickFix } from '../diagnostics/quickFixes';
 import type { Disposable, MonacoApi, MonacoCodeActionContext, MonacoCodeActionList, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoInlayHint, MonacoInlayHintList, MonacoKeyEvent, MonacoLocation, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoRenameLocation, MonacoSnippetController, MonacoWorkspaceEdit } from './api';
 import { isValidJavaIdentifier, renameFailureMessage, toMonacoRenameLocation, type PrepareRenamePayload, type RenameResponsePayload } from '../refactor/applyRename';
@@ -1066,23 +1066,20 @@ export class MonacoWorkspaceService {
     const model = this.modelForUri(event.uri);
     const api = this.api;
     if (!model || !api) return;
-    const diagnostics = event.diagnostics.map(diagnostic => ({
-      severity: diagnostic.severity, code: '', message: diagnostic.message,
-      startLine: diagnostic.range.startLine, startColumn: diagnostic.range.startColumn,
-      endLine: diagnostic.range.endLine, endColumn: diagnostic.range.endColumn,
-      sourceExcerpt: this.sourceExcerpt(model, {
-        severity: diagnostic.severity, code: '', message: diagnostic.message,
-        startLine: diagnostic.range.startLine, startColumn: diagnostic.range.startColumn,
-        endLine: diagnostic.range.endLine, endColumn: diagnostic.range.endColumn
-      })
-    }));
+    const diagnostics = jdtWebDiagnostics(event.diagnostics)
+      .map(diagnostic => ({ ...diagnostic, sourceExcerpt: this.sourceExcerpt(model, diagnostic) }));
     this.jdtPublishesByUri.set(event.uri, {
       uri: event.uri, requestId: 'jdt', modelVersion: model.getAlternativeVersionId(), diagnostics
     });
-    api.editor.setModelMarkers(model, 'eyecode.jdt', diagnostics.map(diagnostic => ({
-      severity: this.markerSeverity(diagnostic), code: diagnostic.code, message: diagnostic.message,
-      startLineNumber: diagnostic.startLine, startColumn: diagnostic.startColumn,
-      endLineNumber: diagnostic.endLine, endColumn: diagnostic.endColumn
+    api.editor.setModelMarkers(model, 'eyecode.jdt', event.diagnostics.map(diagnostic => ({
+      severity: this.markerSeverity({
+        severity: diagnostic.severity, code: diagnostic.code, message: diagnostic.message,
+        startLine: diagnostic.range.startLine, startColumn: diagnostic.range.startColumn,
+        endLine: diagnostic.range.endLine, endColumn: diagnostic.range.endColumn
+      }),
+      code: diagnostic.code, source: diagnostic.source, message: diagnostic.message,
+      startLineNumber: diagnostic.range.startLine, startColumn: diagnostic.range.startColumn,
+      endLineNumber: diagnostic.range.endLine, endColumn: diagnostic.range.endColumn
     })));
     this.publishDiagnosticsForActiveModel();
   }
@@ -1092,6 +1089,7 @@ export class MonacoWorkspaceService {
     if (this.disposed || !this.isProjectModel(model)) return Promise.resolve(null);
     const uri = this.documentUri(model);
     if (!uri) return Promise.resolve(null);
+    console.log('[QuickFix] Marcadores enviados para CodeAction:', context?.markers ?? []);
     const markers = overlappingMarkers(range, context?.markers ?? []);
     if (markers.length === 0) return Promise.resolve(null);
     const span = quickFixRequestSpan(range, markers);
@@ -1110,17 +1108,23 @@ export class MonacoWorkspaceService {
       };
       const finishIfCurrent = (fixes: JdtQuickFix[]) => {
         if (this.disposed || model.getAlternativeVersionId() !== version) {
+          console.warn('[QuickFix] Resposta descartada: versão do modelo mudou durante o request');
           finish(null);
           return;
         }
+        console.log('[QuickFix] Fixes recebidos do backend:', fixes);
         const actions = toMonacoCodeActions(fixes, model.uri, markers);
         finish(actions.length > 0 ? { actions, dispose: () => {} } : null);
       };
-      timeout = window.setTimeout(() => finish(null), 10000);
+      timeout = window.setTimeout(() => {
+        console.warn('[QuickFix] Timeout aguardando resposta do backend', { uri, span });
+        finish(null);
+      }, 10000);
       unsubscribe = bridge.subscribe(message => {
         if (message.kind !== 'response' || message.channel !== 'diagnostics' || message.name !== 'quickFix'
             || message.requestId !== requestId) return;
         if (message.error) {
+          console.error('[QuickFix] Erro retornado pelo backend:', message.error);
           finish(null);
           return;
         }
@@ -1132,7 +1136,10 @@ export class MonacoWorkspaceService {
         .then(value => {
           if (value !== null && typeof value === 'object' && 'fixes' in value) finishIfCurrent(parseQuickFixes(value));
         })
-        .catch(() => finish(null));
+        .catch(error => {
+          console.error('[QuickFix] Falha na bridge:', error);
+          finish(null);
+        });
     });
   }
 
@@ -1788,12 +1795,19 @@ export class MonacoWorkspaceService {
     void this.applyCompletion(item, model, editor, range);
   }
 
+  private monacoRange(source: MonacoRange | null | undefined): MonacoRange {
+    const RangeCtor = this.api?.Range;
+    const safe = source ?? { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 };
+    return RangeCtor ? new RangeCtor(safe.startLineNumber, safe.startColumn, safe.endLineNumber, safe.endColumn) : safe;
+  }
+
   private async applyCompletion(item: { label: string; resolveId?: string; documentation: string; insertText: string; snippet: boolean },
                                 model: MonacoModel, editor: MonacoEditor, range: MonacoRange): Promise<void> {
     if (item.snippet) {
       this.applySnippetCompletion(item, model, editor, range);
       return;
     }
+    console.log('[AutoImport] Item selecionado:', item);
     const resolvePromise = this.resolvePrefetch.awaitEdits(item);
     let additionalEdits = await Promise.race([
       resolvePromise,
@@ -1803,21 +1817,29 @@ export class MonacoWorkspaceService {
       additionalEdits = [];
       void resolvePromise.then(lateEdits => {
         if (this.disposed || !lateEdits.length || editor.getModel() !== model) return;
+        const operations = lateEdits.map(edit => ({ range: this.monacoRange(edit.range), text: edit.text, forceMoveMarkers: true }));
+        console.log('[AutoImport] Aplicação tardia de additionalTextEdits:', operations);
         this.suppressCompletionTrigger = true;
         try {
-          editor.executeEdits('eyecode.completion.resolve', lateEdits);
+          editor.executeEdits('eyecode.completion.resolve', operations);
+        } catch (error) {
+          console.error('[AutoImport] executeEdits tardio falhou:', error, operations);
         } finally {
           this.suppressCompletionTrigger = false;
         }
       });
     }
     if (this.disposed || editor.getModel() !== model) return;
+    const operations = [
+      { range: this.monacoRange(range), text: item.insertText, forceMoveMarkers: true },
+      ...additionalEdits.map(edit => ({ range: this.monacoRange(edit.range), text: edit.text, forceMoveMarkers: true }))
+    ];
+    console.log('[AutoImport] Edições prontas para o Monaco:', operations);
     this.suppressCompletionTrigger = true;
     try {
-      editor.executeEdits('eyecode.completion', [
-        { range, text: item.insertText, forceMoveMarkers: true },
-        ...additionalEdits
-      ]);
+      editor.executeEdits('eyecode.completion', operations);
+    } catch (error) {
+      console.error('[AutoImport] executeEdits falhou:', error, operations);
     } finally {
       this.suppressCompletionTrigger = false;
     }
@@ -1847,26 +1869,57 @@ export class MonacoWorkspaceService {
     editor.focus();
   }
 
-  private async requestCompletionResolve(item: { label: string; resolveId?: string; documentation?: string }): Promise<ResolveEdits> {
+  private requestCompletionResolve(item: { label: string; resolveId?: string; documentation?: string }): Promise<ResolveEdits> {
     const editor = this.editor;
     const model = editor?.getModel();
     const uri = model ? this.documentUri(model) : null;
-    if (!uri || !canResolveCandidate(item)) return [];
-    let result;
-    try {
-      result = await bridge.request<CompletionResolveResult>('completion', 'resolve', {
+    if (!uri || !canResolveCandidate(item)) return Promise.resolve([]);
+    const requestId = bridge.reserveRequestId();
+    return new Promise(resolve => {
+      let settled = false;
+      let timeout = 0;
+      let unsubscribe = () => {};
+      const finish = (value: ResolveEdits) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        unsubscribe();
+        resolve(value);
+      };
+      const finishIfResult = (payload: unknown) => {
+        if (!payload || typeof payload !== 'object' || !('edits' in payload)) return;
+        const result = payload as CompletionResolveResult;
+        const documentation = truncateDocumentation(mergeDocumentation(item.documentation ?? '', result.documentation ?? ''));
+        if (documentation && documentation !== item.documentation) item.documentation = documentation;
+        const edits = toMonacoEdits(result.edits ?? []).map(edit => ({ ...edit, forceMoveMarkers: true }));
+        console.log('[AutoImport] Resolved Item:', {
+          resolveId: item.resolveId, label: item.label,
+          additionalTextEdits: edits.length, payload: result
+        });
+        finish(edits);
+      };
+      timeout = window.setTimeout(() => finish([]), 6000);
+      unsubscribe = bridge.subscribe(message => {
+        if (message.kind !== 'response' || message.channel !== 'completion' || message.name !== 'resolve'
+            || message.requestId !== requestId) return;
+        if (message.error) {
+          console.error('[AutoImport] Erro retornado pelo backend:', message.error);
+          finish([]);
+          return;
+        }
+        finishIfResult(message.payload);
+      });
+      void bridge.request<CompletionResolveResult>('completion', 'resolve', {
         resolveId: item.resolveId,
         label: item.label,
         uri
-      }, { timeoutMs: 6000 });
-    } catch (error) {
-      console.warn('EyeCode completion resolve failed for', item.label, error);
-      return [];
-    }
-    if (!result) return [];
-    const documentation = mergeDocumentation(item.documentation ?? '', result.documentation ?? '');
-    if (documentation && documentation !== item.documentation) item.documentation = documentation;
-    return toMonacoEdits(result.edits ?? []).map(edit => ({ ...edit, forceMoveMarkers: true }));
+      }, { requestId, timeoutMs: 6000 })
+        .then(value => finishIfResult(value))
+        .catch(error => {
+          console.error('[AutoImport] Falha na bridge:', error);
+          finish([]);
+        });
+    });
   }
 
   private resolveCompletionEdits(item: { label: string; resolveId?: string; documentation: string },
@@ -1893,7 +1946,7 @@ export class MonacoWorkspaceService {
           this.suppressCompletionTrigger = false;
         }
       }
-      const documentation = mergeDocumentation(item.documentation ?? '', result.documentation ?? '');
+      const documentation = truncateDocumentation(mergeDocumentation(item.documentation ?? '', result.documentation ?? ''));
       if (documentation && documentation !== item.documentation) item.documentation = documentation;
     }).catch(() => {
     });

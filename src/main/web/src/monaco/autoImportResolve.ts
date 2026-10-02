@@ -45,6 +45,32 @@ export function mergeDocumentation(current: string, resolved: string): string {
   return currentValue ? `${currentValue}\n\n${resolvedValue}` : resolvedValue;
 }
 
+export const DOCUMENTATION_LINE_LIMIT = 280;
+
+function hasUnbalancedCodeFence(value: string): boolean {
+  const fences = value.match(/```/g);
+  return (fences?.length ?? 0) % 2 === 1;
+}
+
+export function truncateDocumentation(documentation: string, limit = DOCUMENTATION_LINE_LIMIT): string {
+  const text = (documentation ?? '').trim();
+  if (!text || text.length <= limit) return text;
+  const paragraphBreak = text.indexOf('\n\n');
+  if (paragraphBreak > 0 && paragraphBreak <= limit) {
+    const head = text.slice(0, paragraphBreak).trimEnd();
+    if (!hasUnbalancedCodeFence(head)) return `${head}...`;
+  }
+  let head = text.slice(0, limit);
+  if (hasUnbalancedCodeFence(head)) {
+    const fenceStart = head.indexOf('```');
+    head = fenceStart > 0 ? text.slice(0, fenceStart) : '';
+  }
+  const softBreak = Math.max(head.lastIndexOf('\n'), head.lastIndexOf(' '));
+  const cut = softBreak > Math.floor(limit / 2) ? head.slice(0, softBreak) : head;
+  const trimmed = cut.trimEnd();
+  return trimmed ? `${trimmed}...` : `${head.trimEnd()}...`;
+}
+
 export type ResolveEdits = Array<MonacoLikeEdit & { forceMoveMarkers: boolean }>;
 
 export type ResolvePrefetchCache = {

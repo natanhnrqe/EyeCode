@@ -20,6 +20,7 @@ export type JdtPublishedRange = { startLine: number; startColumn: number; endLin
 export type JdtPublishedDiagnostic = {
   range: JdtPublishedRange;
   severity: 'ERROR' | 'WARNING' | 'INFO' | 'HINT';
+  code: string;
   message: string;
   source: string;
 };
@@ -29,7 +30,7 @@ export type JdtPublishEvent = { uri: string; diagnostics: JdtPublishedDiagnostic
 export function jdtWebDiagnostics(diagnostics: readonly JdtPublishedDiagnostic[]): WebDiagnostic[] {
   return (diagnostics ?? []).filter(diagnostic => !!diagnostic).map(diagnostic => ({
     severity: diagnostic.severity,
-    code: '',
+    code: diagnostic.code ?? '',
     message: diagnostic.message,
     startLine: diagnostic.range.startLine,
     startColumn: diagnostic.range.startColumn,
@@ -238,7 +239,7 @@ function parseQuickFixEdit(value: unknown): JdtQuickFixEdit | null {
 
 function parseJdtDiagnostic(value: unknown): JdtPublishedDiagnostic | null {
   if (!value || typeof value !== 'object') return null;
-  const record = value as { range?: unknown; severity?: unknown; message?: unknown; source?: unknown };
+  const record = value as { range?: unknown; severity?: unknown; code?: unknown; message?: unknown; source?: unknown };
   const range = parseRange(record.range);
   if (!range) return null;
   const severity = typeof record.severity === 'string' && SEVERITIES.includes(record.severity as JdtPublishedDiagnostic['severity'])
@@ -247,6 +248,7 @@ function parseJdtDiagnostic(value: unknown): JdtPublishedDiagnostic | null {
   return {
     range,
     severity,
+    code: typeof record.code === 'string' ? record.code : '',
     message: typeof record.message === 'string' ? record.message : '',
     source: typeof record.source === 'string' && record.source.length > 0 ? record.source : 'jdt'
   };

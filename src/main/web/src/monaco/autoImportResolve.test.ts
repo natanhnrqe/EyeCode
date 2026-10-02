@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { canResolveCandidate, createResolvePrefetchCache, mergeDocumentation, toMonacoEdits } from './autoImportResolve';
+import { canResolveCandidate, createResolvePrefetchCache, mergeDocumentation, toMonacoEdits, truncateDocumentation } from './autoImportResolve';
 
 describe('autoImportResolve', () => {
   it('rejects candidates without resolveId', () => {
@@ -33,6 +33,35 @@ describe('autoImportResolve', () => {
     expect(mergeDocumentation('doc', '')).toBe('doc');
     expect(mergeDocumentation('', 'extra')).toBe('extra');
     expect(mergeDocumentation('doc', 'extra')).toBe('doc\n\nextra');
+  });
+});
+
+describe('truncateDocumentation', () => {
+  it('keeps short documentation untouched', () => {
+    const short = 'A resizable-array implementation of the List interface.';
+    expect(truncateDocumentation(short)).toBe(short);
+    expect(truncateDocumentation('')).toBe('');
+  });
+
+  it('cuts at the first paragraph break when it fits the limit', () => {
+    const doc = `${'x'.repeat(120)}\n\n${'y'.repeat(400)}`;
+    const result = truncateDocumentation(doc, 280);
+    expect(result).toBe(`${'x'.repeat(120)}...`);
+  });
+
+  it('falls back to a word-boundary cut for long single paragraphs', () => {
+    const doc = `${'word '.repeat(120)}end`;
+    const result = truncateDocumentation(doc, 100);
+    expect(result.endsWith('...')).toBe(true);
+    expect(result.length).toBeLessThanOrEqual(103);
+  });
+
+  it('never splits an open markdown code fence', () => {
+    const doc = `${'intro '.repeat(10)}${'```java\n'}${'code();\n'.repeat(40)}\`\`\`\ntail`;
+    const result = truncateDocumentation(doc, 120);
+    expect(result.endsWith('...')).toBe(true);
+    const fences = result.match(/```/g)?.length ?? 0;
+    expect(fences % 2).toBe(0);
   });
 });
 

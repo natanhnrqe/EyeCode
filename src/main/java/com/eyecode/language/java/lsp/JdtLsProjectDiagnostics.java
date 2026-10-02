@@ -98,8 +98,9 @@ public final class JdtLsProjectDiagnostics {
         int startColumn = character(span == null ? null : span.getStart()) + 1;
         int endLine = line(span == null ? null : span.getEnd()) + 1;
         int endColumn = character(span == null ? null : span.getEnd()) + 1;
+        String source = item.getSource() == null || item.getSource().isBlank() ? "jdt" : item.getSource();
         return new Diagnostic(severity(item.getSeverity()), code(item.getCode()), message(item.getMessage()),
-                startLine, startColumn, endLine, endColumn, "jdt");
+                startLine, startColumn, endLine, endColumn, source);
     }
 
     static DiagnosticSeverity severity(org.eclipse.lsp4j.DiagnosticSeverity severity) {
@@ -146,7 +147,7 @@ public final class JdtLsProjectDiagnostics {
         if (kind != null && !kind.isBlank() && !kind.startsWith("quickfix")) return null;
         WorkspaceEdit edit = action.getEdit();
         if (edit != null) {
-            QuickFix fix = quickFix(uri, title, kind, editsFor(uri, edit.getChanges()));
+            QuickFix fix = quickFix(uri, title, kind, editsForAction(uri, edit));
             if (fix != null) return fix;
         }
         return quickFix(uri, title, kind, action.getCommand());
@@ -185,14 +186,57 @@ public final class JdtLsProjectDiagnostics {
         List<Object> arguments = command.getArguments();
         if (arguments == null || arguments.isEmpty()) return List.of();
         Object first = arguments.get(0);
-        if (first instanceof WorkspaceEdit edit) return editsFor(uri, edit.getChanges());
-        if (first instanceof Map<?, ?> raw) return editsFor(uri, rawChanges(raw));
+        if (first instanceof WorkspaceEdit edit) return editsForAction(uri, edit);
+        if (first instanceof Map<?, ?> raw) return rawEditsFor(raw, uri);
         return List.of();
     }
 
     private static List<TextEdit> editsFor(String uri, Map<String, List<TextEdit>> changes) {
         if (changes == null) return List.of();
         return changes.get(uri);
+    }
+
+    private static List<TextEdit> editsForAction(String uri, WorkspaceEdit edit) {
+        List<TextEdit> fromChanges = editsFor(uri, edit.getChanges());
+        if (fromChanges != null && !fromChanges.isEmpty()) return fromChanges;
+        return editsFromDocumentChanges(uri, edit.getDocumentChanges());
+    }
+
+    private static List<TextEdit> editsFromDocumentChanges(String uri,
+                                                           List<Either<org.eclipse.lsp4j.TextDocumentEdit, org.eclipse.lsp4j.ResourceOperation>> documentChanges) {
+        if (documentChanges == null) return List.of();
+        List<TextEdit> collected = new ArrayList<>();
+        for (Either<org.eclipse.lsp4j.TextDocumentEdit, org.eclipse.lsp4j.ResourceOperation> change : documentChanges) {
+            if (change == null || !change.isLeft()) continue;
+            org.eclipse.lsp4j.TextDocumentEdit documentEdit = change.getLeft();
+            if (documentEdit == null || documentEdit.getTextDocument() == null
+                    || !uri.equals(documentEdit.getTextDocument().getUri())) continue;
+            if (documentEdit.getEdits() == null) continue;
+            for (Either<TextEdit, ?> entry : documentEdit.getEdits()) {
+                if (entry != null && entry.isLeft() && entry.getLeft() != null) collected.add(entry.getLeft());
+            }
+        }
+        return collected;
+    }
+
+    private static List<TextEdit> rawEditsFor(Map<?, ?> edit, String uri) {
+        List<TextEdit> edits = editsFor(uri, rawChanges(edit));
+        if (edits != null && !edits.isEmpty()) return edits;
+        Object documentChanges = edit.get("documentChanges");
+        if (!(documentChanges instanceof List<?> changes)) return List.of();
+        List<TextEdit> collected = new ArrayList<>();
+        for (Object change : changes) {
+            if (!(change instanceof Map<?, ?> documentEdit)) continue;
+            Object textDocument = documentEdit.get("textDocument");
+            Object editsValue = documentEdit.get("edits");
+            if (!(textDocument instanceof Map<?, ?> document) || !(editsValue instanceof List<?> rawEdits)) continue;
+            if (!uri.equals(String.valueOf(document.get("uri")))) continue;
+            for (Object rawEdit : rawEdits) {
+                TextEdit textEdit = rawTextEdit(rawEdit);
+                if (textEdit != null) collected.add(textEdit);
+            }
+        }
+        return collected;
     }
 
     private static Map<String, List<TextEdit>> rawChanges(Map<?, ?> edit) {

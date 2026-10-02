@@ -21,6 +21,7 @@ export type MonacoModel = {
 export type MonacoMarker = {
   severity: number;
   code?: string;
+  source?: string;
   message: string;
   startLineNumber: number;
   startColumn: number;
@@ -123,7 +124,7 @@ export type MonacoEditor = {
   revealRangeInCenterIfOutsideViewport: (range: Record<string, number>) => void;
   getScrolledVisiblePosition: (position: { lineNumber: number; column: number }) => { left: number; top: number; height: number } | null;
   getDomNode: () => HTMLElement | null;
-  executeEdits: (source: string, edits: Array<{ range: Record<string, number>; text: string; forceMoveMarkers?: boolean }>) => void;
+  executeEdits: (source: string, edits: Array<{ range: MonacoRange; text: string; forceMoveMarkers?: boolean }>) => void;
   focus: () => void;
   dispose: () => void;
 };
@@ -137,6 +138,7 @@ export type MonacoApi = {
   };
   MarkerSeverity: { Hint: number; Info: number; Warning: number; Error: number };
   Uri: { parse: (value: string) => unknown };
+  Range: new (startLineNumber: number, startColumn: number, endLineNumber: number, endColumn: number) => MonacoRange;
   languages: MonacoLanguageProviders;
   KeyMod: { CtrlCmd: number };
   KeyCode: { KeyS: number; Space: number; UpArrow: number; DownArrow: number; Enter: number; Tab: number; Escape: number };

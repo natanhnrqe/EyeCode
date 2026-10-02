@@ -91,6 +91,7 @@ class WebShellJdtDiagnosticsControllerTest {
         assertEquals(1, diagnostics.size());
         Map<?, ?> diagnostic = (Map<?, ?>) diagnostics.getFirst();
         assertEquals("ERROR", diagnostic.get("severity"));
+        assertEquals("67108964", diagnostic.get("code"));
         assertEquals("Foo cannot be resolved to a type", diagnostic.get("message"));
         assertEquals("jdt", diagnostic.get("source"));
         Map<?, ?> range = (Map<?, ?>) diagnostic.get("range");
@@ -163,6 +164,23 @@ class WebShellJdtDiagnosticsControllerTest {
         WebShellEnvelope nonFileUri = surface.handler("diagnostics", "sync").handle(request("sync", "five", Map.of(
                 "uri", "untitled:///scratch", "content", "class A {}")));
         assertEquals("INVALID_SYNC_REQUEST", nonFileUri.error().code());
+        controller.dispose();
+    }
+
+    @Test
+    void jdtPublishPreservesTheOriginalServerSource() {
+        Surface surface = new Surface();
+        WebShellJdtDiagnosticsController controller = new WebShellJdtDiagnosticsController(surface,
+                new JdtLsProjectService(new ProjectLifecycleService()));
+
+        controller.publishJdt("file:///project/src/Main.java", List.of(new Diagnostic(
+                DiagnosticSeverity.ERROR, "67108964", "Foo cannot be resolved to a type", 1, 5, 1, 15, "Java")));
+
+        WebShellEnvelope event = surface.sent.stream()
+                .filter(message -> "diagnostics".equals(message.channel()) && "jdtPublish".equals(message.name()))
+                .toList().getFirst();
+        Map<?, ?> diagnostic = (Map<?, ?>) ((List<?>) event.payload().get("diagnostics")).getFirst();
+        assertEquals("Java", diagnostic.get("source"));
         controller.dispose();
     }
 

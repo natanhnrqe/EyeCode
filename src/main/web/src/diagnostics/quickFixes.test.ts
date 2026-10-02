@@ -72,6 +72,7 @@ describe('parseJdtPublish', () => {
         {
           range: { startLine: 3, startColumn: 9, endLine: 3, endColumn: 20 },
           severity: 'ERROR',
+          code: '67108964',
           message: 'UnknownType cannot be resolved to a type',
           source: 'jdt'
         }
@@ -82,6 +83,7 @@ describe('parseJdtPublish', () => {
     expect(event!.uri).toBe('file:///project/src/Main.java');
     expect(event!.diagnostics).toHaveLength(1);
     expect(event!.diagnostics[0].severity).toBe('ERROR');
+    expect(event!.diagnostics[0].code).toBe('67108964');
     expect(event!.diagnostics[0].message).toBe('UnknownType cannot be resolved to a type');
     expect(event!.diagnostics[0].source).toBe('jdt');
     expect(event!.diagnostics[0].range).toEqual({ startLine: 3, startColumn: 9, endLine: 3, endColumn: 20 });
@@ -254,6 +256,7 @@ describe('filterJdtDiagnostics', () => {
   const jdtDiag = (message: string, severity: 'ERROR' | 'WARNING' | 'INFO' | 'HINT', line = 3) => ({
     range: { startLine: line, startColumn: 2, endLine: line, endColumn: 9 },
     severity,
+    code: '67108964',
     message,
     source: 'jdt'
   });

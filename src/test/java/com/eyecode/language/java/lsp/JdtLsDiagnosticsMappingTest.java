@@ -36,6 +36,46 @@ class JdtLsDiagnosticsMappingTest {
     Path temporaryDirectory;
 
     @Test
+    void documentChangesWorkspaceEditIsAcceptedAsQuickFixEdits() {
+        org.eclipse.lsp4j.TextDocumentEdit documentEdit = new org.eclipse.lsp4j.TextDocumentEdit(
+                new org.eclipse.lsp4j.VersionedTextDocumentIdentifier(URI, 7),
+                List.of(Either.forLeft(new TextEdit(new Range(new Position(0, 0), new Position(0, 0)),
+                        "import java.util.List;\n"))));
+        WorkspaceEdit edit = new WorkspaceEdit();
+        edit.setDocumentChanges(List.of(Either.forLeft(documentEdit)));
+        CodeAction action = new CodeAction("Import 'List' (java.util)");
+        action.setKind("quickfix");
+        action.setEdit(edit);
+
+        QuickFix fix = JdtLsProjectDiagnostics.toQuickFix(URI, action);
+
+        assertEquals("Import 'List' (java.util)", fix.title());
+        assertEquals(1, fix.edits().size());
+        assertEquals("import java.util.List;\n", fix.edits().get(0).newText());
+        assertEquals(1, fix.edits().get(0).startLine());
+        assertEquals(1, fix.edits().get(0).startColumn());
+    }
+
+    @Test
+    void documentChangesInRawCommandArgumentsAreAcceptedAsQuickFixEdits() {
+        Map<String, Object> documentEdit = new LinkedHashMap<>();
+        documentEdit.put("textDocument", Map.of("uri", URI, "version", 0));
+        documentEdit.put("edits", List.of(Map.of(
+                "range", Map.of(
+                        "start", Map.of("line", 0, "character", 0),
+                        "end", Map.of("line", 0, "character", 0)),
+                "newText", "import java.io.FileReader;\n")));
+        Command command = new Command("Import 'FileReader'", "java.apply.workspaceEdit");
+        command.setArguments(List.of(Map.of("documentChanges", List.of(documentEdit))));
+
+        QuickFix fix = JdtLsProjectDiagnostics.toQuickFix(URI, command);
+
+        assertEquals("Import 'FileReader'", fix.title());
+        assertEquals(1, fix.edits().size());
+        assertEquals("import java.io.FileReader;\n", fix.edits().get(0).newText());
+    }
+
+    @Test
     void severityMappingCoversEveryLspSeverity() {
         assertEquals(DiagnosticSeverity.ERROR, JdtLsProjectDiagnostics.severity(org.eclipse.lsp4j.DiagnosticSeverity.Error));
         assertEquals(DiagnosticSeverity.WARNING, JdtLsProjectDiagnostics.severity(org.eclipse.lsp4j.DiagnosticSeverity.Warning));
@@ -57,7 +97,7 @@ class JdtLsDiagnosticsMappingTest {
         assertEquals(5, converted.startColumn());
         assertEquals(1, converted.endLine());
         assertEquals(15, converted.endColumn());
-        assertEquals("jdt", converted.category());
+        assertEquals("Java", converted.category());
     }
 
     @Test
@@ -75,6 +115,7 @@ class JdtLsDiagnosticsMappingTest {
         assertEquals(1, converted.startColumn());
         assertEquals(1, converted.endLine());
         assertEquals(2, converted.endColumn());
+        assertEquals("jdt", converted.category());
     }
 
     @Test
@@ -117,7 +158,7 @@ class JdtLsDiagnosticsMappingTest {
         assertEquals(2, converted.size());
         assertEquals(DiagnosticSeverity.ERROR, converted.get(0).severity());
         assertEquals(DiagnosticSeverity.WARNING, converted.get(1).severity());
-        assertEquals("jdt", converted.get(0).category());
+        assertEquals("Java", converted.get(0).category());
     }
 
     @Test

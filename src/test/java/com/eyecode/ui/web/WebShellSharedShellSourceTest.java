@@ -515,9 +515,13 @@ class WebShellSharedShellSourceTest {
         assertTrue(monaco.contains("snippetController.insert(item.insertText);"));
         assertTrue(monaco.contains("eyecode.completion.snippet-fallback"));
         assertTrue(monaco.contains("function snippetFallbackText"));
-        assertTrue(monaco.contains("editor.executeEdits('eyecode.completion', ["));
-        assertTrue(monaco.contains("{ range, text: item.insertText, forceMoveMarkers: true },"));
+        assertTrue(monaco.contains("editor.executeEdits('eyecode.completion', operations);"));
+        assertTrue(monaco.contains("{ range: this.monacoRange(range), text: item.insertText, forceMoveMarkers: true },"));
         assertTrue(monaco.contains("...additionalEdits"));
+        assertTrue(monaco.contains("console.log('[AutoImport] Item selecionado:', item);"));
+        assertTrue(monaco.contains("console.log('[AutoImport] Edições prontas para o Monaco:', operations);"));
+        assertTrue(monaco.contains("console.log('[QuickFix] Marcadores enviados para CodeAction:', context?.markers ?? []);"));
+        assertTrue(monaco.contains("console.error('[QuickFix] Falha na bridge:', error);"));
     }
 
     @Test

@@ -17,6 +17,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.LockSupport;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -51,8 +52,7 @@ final class WebShellJdtDiagnosticsIntegrationTest {
             assertTrue(diagnostics.stream()
                     .map(item -> (Map<?, ?>) item)
                     .anyMatch(item -> "ERROR".equals(item.get("severity"))
-                            && String.valueOf(item.get("message")).contains("UnknownType")
-                            && "jdt".equals(item.get("source"))), () -> "diagnostics=" + diagnostics);
+                            && String.valueOf(item.get("message")).contains("UnknownType")), () -> "diagnostics=" + diagnostics);
             Map<?, ?> error = diagnostics.stream()
                     .map(item -> (Map<?, ?>) item)
                     .filter(item -> "ERROR".equals(item.get("severity")))
@@ -92,6 +92,16 @@ final class WebShellJdtDiagnosticsIntegrationTest {
                     .map(item -> (Map<?, ?>) item)
                     .anyMatch(item -> "ERROR".equals(item.get("severity"))
                             && String.valueOf(item.get("message")).contains("UnknownType")), () -> "diagnostics=" + diagnostics);
+
+            String quickFixRequestId = UUID.randomUUID().toString();
+            surface.call("diagnostics", "quickFix", Map.of("uri", uri, "requestId", quickFixRequestId,
+                    "range", Map.of("startLine", 3, "startColumn", 9, "endLine", 3, "endColumn", 20)));
+            Map<String, Object> quickFix = waitForResponse(surface, quickFixRequestId, Duration.ofSeconds(10));
+            assertNotNull(quickFix, () -> "No quickFix response; events=" + surface.sent);
+            List<?> fixes = (List<?>) quickFix.get("fixes");
+            assertFalse(fixes.isEmpty(), () -> "quickFix returned empty fixes for published UnknownType diagnostic; events=" + surface.sent);
+            assertTrue(fixes.stream().map(item -> (Map<?, ?>) item).map(item -> String.valueOf(item.get("title")))
+                    .anyMatch(title -> title.contains("UnknownType")), () -> "fixes=" + fixes);
         }
     }
 
