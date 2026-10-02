@@ -8,10 +8,10 @@ import { signatureHoverRegionAt } from '../signature/callContext';
 import { monacoLocations } from '../navigation/navigationTarget';
 import type { NavigationResponsePayload } from '../navigation/navigationTarget';
 import { renderHoverContent } from './hoverContent';
-import { canResolveCandidate, mergeDocumentation, toMonacoEdits } from './autoImportResolve';
-import type { CompletionResolveResult } from './autoImportResolve';
+import { canResolveCandidate, createResolvePrefetchCache, mergeDocumentation, toMonacoEdits } from './autoImportResolve';
+import type { CompletionResolveResult, ResolveEdits } from './autoImportResolve';
 import type { DiagnosticsViewState, DiagnosticsPublish, WebDiagnostic } from '../diagnostics/protocol';
-import { parseJdtPublish, parseQuickFixes, jdtMarkerRange, overlappingMarkers, quickFixRequestSpan, toMonacoCodeActions, filterJdtDiagnostics } from '../diagnostics/quickFixes';
+import { parseJdtPublish, parseQuickFixes, overlappingMarkers, quickFixRequestSpan, toMonacoCodeActions } from '../diagnostics/quickFixes';
 import type { JdtQuickFix } from '../diagnostics/quickFixes';
 import type { Disposable, MonacoApi, MonacoCodeActionContext, MonacoCodeActionList, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoInlayHint, MonacoInlayHintList, MonacoKeyEvent, MonacoLocation, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoRenameLocation, MonacoSnippetController, MonacoWorkspaceEdit } from './api';
 import { isValidJavaIdentifier, renameFailureMessage, toMonacoRenameLocation, type PrepareRenamePayload, type RenameResponsePayload } from '../refactor/applyRename';
@@ -102,6 +102,7 @@ export class MonacoWorkspaceService {
   private onError: ((message: string) => void) | null = null;
   private onDiagnosticsState: ((state: DiagnosticsViewState | null) => void) | null = null;
   private readonly diagnosticsByUri = new Map<string, DiagnosticsPublish>();
+  private readonly jdtPublishesByUri = new Map<string, DiagnosticsPublish>();
   private readonly pendingDiagnostics = new Map<string, PendingDiagnostics>();
   private readonly latestDiagnosticsRequestIds = new Map<string, string>();
   private readonly diagnosticsTimers = new Map<string, number>();
@@ -110,6 +111,8 @@ export class MonacoWorkspaceService {
   private completionState: CompletionPopupState | null = null;
   private readonly pendingCompletions = new Map<string, PendingCompletion>();
   private latestCompletionRequestId: string | null = null;
+  private readonly resolvePrefetch = createResolvePrefetchCache(item => this.requestCompletionResolve(item));
+  private completionResolvePrefetchRequest: string | null = null;
   private completionNavigationFrame: number | null = null;
   private completionNavigationDelta = 0;
   private completionNavigationSession: string | null = null;
@@ -920,6 +923,12 @@ export class MonacoWorkspaceService {
     const scheduled = window.setTimeout(() => {
       this.diagnosticsTimers.delete(uri);
       if (this.disposed || this.modelForUri(uri) !== model) return;
+      if (this.isProjectModel(model) && (model.getLanguageId?.() ?? '') === 'java') {
+        void bridge.request('diagnostics', 'sync', {
+          uri, content: model.getValue(), version: model.getAlternativeVersionId()
+        }, { timeoutMs: 3000 }).catch(() => {});
+        return;
+      }
       const requestId = bridge.reserveRequestId();
       const modelVersion = model.getAlternativeVersionId();
       this.pendingDiagnostics.set(requestId, { uri, model, modelVersion });
@@ -991,11 +1000,14 @@ export class MonacoWorkspaceService {
   private publishDiagnosticsForActiveModel(position = this.editor?.getPosition() ?? null): void {
     const model = this.editor?.getModel() ?? null;
     const uri = this.documentUri(model);
-    const result = uri ? this.diagnosticsByUri.get(uri) : undefined;
+    const result = uri ? (this.jdtPublishesByUri.get(uri) ?? this.diagnosticsByUri.get(uri)) : undefined;
     const active = result && result.diagnostics.length && model
       ? { ...result, selected: this.selectDiagnostic(result.diagnostics, position) }
       : null;
-    this.onDiagnosticsState?.({ activeUri: uri, active, results: [...this.diagnosticsByUri.values()] });
+    this.onDiagnosticsState?.({
+      activeUri: uri, active,
+      results: [...this.diagnosticsByUri.values(), ...this.jdtPublishesByUri.values()]
+    });
   }
 
   private selectDiagnostic(diagnostics: WebDiagnostic[], position: { lineNumber: number; column: number } | null): WebDiagnostic {
@@ -1016,10 +1028,14 @@ export class MonacoWorkspaceService {
   clearDiagnostics(): void {
     this.diagnosticsTimers.forEach(timer => window.clearTimeout(timer));
     this.diagnosticsTimers.clear();
-    this.models.forEach(model => this.api?.editor.setModelMarkers(model, 'eyecode.diagnostics', []));
+    this.models.forEach(model => {
+      this.api?.editor.setModelMarkers(model, 'eyecode.diagnostics', []);
+      this.api?.editor.setModelMarkers(model, 'eyecode.jdt', []);
+    });
     this.pendingDiagnostics.clear();
     this.latestDiagnosticsRequestIds.clear();
     this.diagnosticsByUri.clear();
+    this.jdtPublishesByUri.clear();
     this.onDiagnosticsState?.(null);
   }
 
@@ -1031,7 +1047,11 @@ export class MonacoWorkspaceService {
     if (latest) this.pendingDiagnostics.delete(latest);
     this.latestDiagnosticsRequestIds.delete(uri);
     this.diagnosticsByUri.delete(uri);
-    if (model) this.api?.editor.setModelMarkers(model, 'eyecode.diagnostics', []);
+    this.jdtPublishesByUri.delete(uri);
+    if (model) {
+      this.api?.editor.setModelMarkers(model, 'eyecode.diagnostics', []);
+      this.api?.editor.setModelMarkers(model, 'eyecode.jdt', []);
+    }
     this.publishDiagnosticsForActiveModel();
   }
 
@@ -1046,17 +1066,25 @@ export class MonacoWorkspaceService {
     const model = this.modelForUri(event.uri);
     const api = this.api;
     if (!model || !api) return;
-    const local = this.diagnosticsByUri.get(event.uri)?.diagnostics ?? [];
-    const visible = filterJdtDiagnostics(event.diagnostics, local);
-    api.editor.setModelMarkers(model, 'eyecode.jdt', visible.map(diagnostic => ({
-      severity: this.markerSeverity({
+    const diagnostics = event.diagnostics.map(diagnostic => ({
+      severity: diagnostic.severity, code: '', message: diagnostic.message,
+      startLine: diagnostic.range.startLine, startColumn: diagnostic.range.startColumn,
+      endLine: diagnostic.range.endLine, endColumn: diagnostic.range.endColumn,
+      sourceExcerpt: this.sourceExcerpt(model, {
         severity: diagnostic.severity, code: '', message: diagnostic.message,
         startLine: diagnostic.range.startLine, startColumn: diagnostic.range.startColumn,
         endLine: diagnostic.range.endLine, endColumn: diagnostic.range.endColumn
-      }),
-      message: diagnostic.message,
-      ...jdtMarkerRange(diagnostic.range)
+      })
+    }));
+    this.jdtPublishesByUri.set(event.uri, {
+      uri: event.uri, requestId: 'jdt', modelVersion: model.getAlternativeVersionId(), diagnostics
+    });
+    api.editor.setModelMarkers(model, 'eyecode.jdt', diagnostics.map(diagnostic => ({
+      severity: this.markerSeverity(diagnostic), code: diagnostic.code, message: diagnostic.message,
+      startLineNumber: diagnostic.startLine, startColumn: diagnostic.startColumn,
+      endLineNumber: diagnostic.endLine, endColumn: diagnostic.endColumn
     })));
+    this.publishDiagnosticsForActiveModel();
   }
 
   private provideQuickFixActions(model: MonacoModel, range: MonacoRange,
@@ -1088,7 +1116,7 @@ export class MonacoWorkspaceService {
         const actions = toMonacoCodeActions(fixes, model.uri, markers);
         finish(actions.length > 0 ? { actions, dispose: () => {} } : null);
       };
-      timeout = window.setTimeout(() => finish(null), 7000);
+      timeout = window.setTimeout(() => finish(null), 10000);
       unsubscribe = bridge.subscribe(message => {
         if (message.kind !== 'response' || message.channel !== 'diagnostics' || message.name !== 'quickFix'
             || message.requestId !== requestId) return;
@@ -1100,7 +1128,7 @@ export class MonacoWorkspaceService {
           finishIfCurrent(parseQuickFixes(message.payload));
         }
       });
-      void bridge.request<unknown>('diagnostics', 'quickFix', { uri, range: span }, { requestId, timeoutMs: 6000 })
+      void bridge.request<unknown>('diagnostics', 'quickFix', { uri, range: span }, { requestId, timeoutMs: 9000 })
         .then(value => {
           if (value !== null && typeof value === 'object' && 'fixes' in value) finishIfCurrent(parseQuickFixes(value));
         })
@@ -1766,7 +1794,7 @@ export class MonacoWorkspaceService {
       this.applySnippetCompletion(item, model, editor, range);
       return;
     }
-    const resolvePromise = this.fetchCompletionResolveEdits(item, model);
+    const resolvePromise = this.resolvePrefetch.awaitEdits(item);
     let additionalEdits = await Promise.race([
       resolvePromise,
       new Promise<null>(resolve => { window.setTimeout(() => resolve(null), 1500); })
@@ -1819,21 +1847,26 @@ export class MonacoWorkspaceService {
     editor.focus();
   }
 
-  private fetchCompletionResolveEdits(item: { label: string; resolveId?: string; documentation: string },
-                                      model: MonacoModel): Promise<Array<{ range: MonacoRange; text: string; forceMoveMarkers: boolean }>> {
-    if (!canResolveCandidate(item)) return Promise.resolve([]);
-    const uri = this.documentUri(model);
-    if (!uri) return Promise.resolve([]);
-    return bridge.request<CompletionResolveResult>('completion', 'resolve', {
-      resolveId: item.resolveId,
-      label: item.label,
-      uri
-    }, { timeoutMs: 4000 }).then(result => {
-      if (!result) return [];
-      const documentation = mergeDocumentation(item.documentation ?? '', result.documentation ?? '');
-      if (documentation && documentation !== item.documentation) item.documentation = documentation;
-      return toMonacoEdits(result.edits ?? []).map(edit => ({ ...edit, forceMoveMarkers: true }));
-    }).catch(() => []);
+  private async requestCompletionResolve(item: { label: string; resolveId?: string; documentation?: string }): Promise<ResolveEdits> {
+    const editor = this.editor;
+    const model = editor?.getModel();
+    const uri = model ? this.documentUri(model) : null;
+    if (!uri || !canResolveCandidate(item)) return [];
+    let result;
+    try {
+      result = await bridge.request<CompletionResolveResult>('completion', 'resolve', {
+        resolveId: item.resolveId,
+        label: item.label,
+        uri
+      }, { timeoutMs: 6000 });
+    } catch (error) {
+      console.warn('EyeCode completion resolve failed for', item.label, error);
+      return [];
+    }
+    if (!result) return [];
+    const documentation = mergeDocumentation(item.documentation ?? '', result.documentation ?? '');
+    if (documentation && documentation !== item.documentation) item.documentation = documentation;
+    return toMonacoEdits(result.edits ?? []).map(edit => ({ ...edit, forceMoveMarkers: true }));
   }
 
   private resolveCompletionEdits(item: { label: string; resolveId?: string; documentation: string },
@@ -1916,8 +1949,14 @@ export class MonacoWorkspaceService {
   }
 
   private publishCompletion(state: CompletionPopupState): void {
+    if (state.requestId !== this.completionResolvePrefetchRequest) {
+      this.completionResolvePrefetchRequest = state.requestId;
+      this.resolvePrefetch.clear();
+    }
     this.completionState = state;
     this.onCompletionState?.(state);
+    const selected = state.items[state.selectedIndex];
+    if (selected) this.resolvePrefetch.prefetch(selected);
   }
 
   hideCompletion(invalidatePending = true): void {

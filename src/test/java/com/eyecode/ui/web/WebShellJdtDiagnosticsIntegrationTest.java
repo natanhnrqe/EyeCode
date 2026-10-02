@@ -69,6 +69,74 @@ final class WebShellJdtDiagnosticsIntegrationTest {
         }
     }
 
+    @Test
+    void syncOpAloneDrivesJdtPublishDiagnostics() throws Exception {
+        Path root = Files.createDirectories(temporary.resolve("workspace"));
+        Path file = root.resolve("Main.java");
+        Files.writeString(file, SOURCE);
+        Surface surface = new Surface();
+        try (var runtime = WebShellWorkspaceComposition.create(surface)) {
+            assertNull(surface.call("workspace", "openProject", Map.of("path", root.toString())).error());
+            assertEquals(JdtLsLifecycleState.READY, waitForJdt(runtime, Duration.ofSeconds(30)));
+            Map<String, Object> opened = document(surface.call("workspace", "openFile", Map.of("path", file.toString())));
+            String uri = opened.get("uri").toString();
+
+            String syncRequestId = UUID.randomUUID().toString();
+            surface.call("diagnostics", "sync", Map.of("uri", uri, "content", SOURCE,
+                    "version", 1, "requestId", syncRequestId));
+
+            Map<String, Object> published = waitForJdtPublish(surface, uri, Duration.ofSeconds(60));
+            assertNotNull(published, () -> "No jdtPublish event after sync; events=" + surface.sent);
+            List<?> diagnostics = (List<?>) published.get("diagnostics");
+            assertTrue(diagnostics.stream()
+                    .map(item -> (Map<?, ?>) item)
+                    .anyMatch(item -> "ERROR".equals(item.get("severity"))
+                            && String.valueOf(item.get("message")).contains("UnknownType")), () -> "diagnostics=" + diagnostics);
+        }
+    }
+
+    @Test
+    void syncAlwaysAppliesTheMostRecentText() throws Exception {
+        String first = "public class Main {\n    void run() {\n        UnknownType value;\n    }\n}";
+        String second = "public class Main {\n    void run() {\n        UnknownType value;\n        FileReader reader = null;\n    }\n}";
+        Path root = Files.createDirectories(temporary.resolve("workspace"));
+        Path file = root.resolve("Main.java");
+        Files.writeString(file, first);
+        Surface surface = new Surface();
+        try (var runtime = WebShellWorkspaceComposition.create(surface)) {
+            assertNull(surface.call("workspace", "openProject", Map.of("path", root.toString())).error());
+            assertEquals(JdtLsLifecycleState.READY, waitForJdt(runtime, Duration.ofSeconds(30)));
+            Map<String, Object> opened = document(surface.call("workspace", "openFile", Map.of("path", file.toString())));
+            String uri = opened.get("uri").toString();
+
+            surface.call("diagnostics", "sync", Map.of("uri", uri, "content", first,
+                    "version", 1, "requestId", UUID.randomUUID().toString()));
+            Map<String, Object> firstPublish = waitForJdtPublish(surface, uri, Duration.ofSeconds(60));
+            assertNotNull(firstPublish, () -> "No jdtPublish for v1; events=" + surface.sent);
+
+            surface.call("diagnostics", "sync", Map.of("uri", uri, "content", second,
+                    "version", 2, "requestId", UUID.randomUUID().toString()));
+            Map<String, Object> latest = waitForLatestPublishContaining(surface, uri, "FileReader", Duration.ofSeconds(60));
+            assertNotNull(latest, () -> "Latest text never reached JDT (FileReader diagnostic missing); events=" + surface.sent);
+        }
+    }
+
+    private static Map<String, Object> waitForLatestPublishContaining(Surface surface, String uri,
+                                                                       String messagePart, Duration timeout) {
+        long deadline = System.nanoTime() + timeout.toNanos();
+        while (System.nanoTime() < deadline) {
+            Map<String, Object> latest = surface.lastJdtPublish(uri);
+            if (latest != null) {
+                List<?> diagnostics = (List<?>) latest.get("diagnostics");
+                boolean found = diagnostics.stream().map(item -> (Map<?, ?>) item)
+                        .anyMatch(item -> String.valueOf(item.get("message")).contains(messagePart));
+                if (found) return latest;
+            }
+            LockSupport.parkNanos(50_000_000L);
+        }
+        return null;
+    }
+
     private static JdtLsLifecycleState waitForJdt(WebShellWorkspaceRuntime runtime, Duration timeout)
             throws Exception {
         Field field = WebShellWorkspaceRuntime.class.getDeclaredField("jdt");
@@ -138,6 +206,15 @@ final class WebShellJdtDiagnosticsIntegrationTest {
                     .filter(event -> "diagnostics".equals(event.channel()) && "jdtPublish".equals(event.name())
                             && uri.equals(event.payload().get("uri")))
                     .map(event -> (Map<String, Object>) event.payload()).findFirst().orElse(null);
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> lastJdtPublish(String uri) {
+            return sent.stream()
+                    .filter(event -> "diagnostics".equals(event.channel()) && "jdtPublish".equals(event.name())
+                            && uri.equals(event.payload().get("uri")))
+                    .map(event -> (Map<String, Object>) event.payload())
+                    .reduce((first, second) -> second).orElse(null);
         }
 
         @SuppressWarnings("unchecked")

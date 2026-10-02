@@ -319,7 +319,7 @@ public final class JdtLsSession implements AutoCloseable {
         CodeActionParams params = new CodeActionParams(new TextDocumentIdentifier(uri), range, context);
         event("code action request");
         List<Either<Command, CodeAction>> result = await(server.getTextDocumentService().codeAction(params),
-                Duration.ofSeconds(3), "CODE_ACTION");
+                Duration.ofSeconds(5), "CODE_ACTION");
         return result == null ? List.of() : List.copyOf(result);
     }
 

@@ -19,7 +19,7 @@ export type MonacoLikeEdit = {
 
 export type ResolvableCandidate = { label: string; resolveId?: string };
 
-export function canResolveCandidate(candidate: ResolvableCandidate | null | undefined): candidate is ResolvableCandidate & { resolveId: string } {
+export function canResolveCandidate<T extends ResolvableCandidate>(candidate: T | null | undefined): candidate is T & { resolveId: string } {
   return !!candidate && typeof candidate.resolveId === 'string' && candidate.resolveId.length > 0
       && !!candidate.label;
 }
@@ -43,4 +43,35 @@ export function mergeDocumentation(current: string, resolved: string): string {
   if (!resolvedValue) return current ?? '';
   const currentValue = (current ?? '').trim();
   return currentValue ? `${currentValue}\n\n${resolvedValue}` : resolvedValue;
+}
+
+export type ResolveEdits = Array<MonacoLikeEdit & { forceMoveMarkers: boolean }>;
+
+export type ResolvePrefetchCache = {
+  prefetch(item: ResolvableCandidate): void;
+  awaitEdits(item: ResolvableCandidate): Promise<ResolveEdits>;
+  clear(): void;
+};
+
+export function createResolvePrefetchCache(fetch: (item: ResolvableCandidate & { resolveId: string }) => Promise<ResolveEdits>): ResolvePrefetchCache {
+  const pending = new Map<string, Promise<ResolveEdits>>();
+  const editsOf = (item: ResolvableCandidate & { resolveId: string }) => {
+    let promise = pending.get(item.resolveId);
+    if (!promise) {
+      promise = fetch(item).catch(() => []);
+      pending.set(item.resolveId, promise);
+    }
+    return promise;
+  };
+  return {
+    prefetch(item) {
+      if (canResolveCandidate(item)) void editsOf(item);
+    },
+    async awaitEdits(item) {
+      return canResolveCandidate(item) ? editsOf(item) : [];
+    },
+    clear() {
+      pending.clear();
+    }
+  };
 }

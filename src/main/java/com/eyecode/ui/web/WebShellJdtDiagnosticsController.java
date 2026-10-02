@@ -5,10 +5,13 @@ import com.eyecode.language.diagnostics.QuickFix;
 import com.eyecode.language.diagnostics.QuickFixEdit;
 import com.eyecode.language.java.lsp.JdtLsProjectDiagnostics;
 import com.eyecode.language.java.lsp.JdtLsProjectService;
+import com.eyecode.ui.web.monaco.MonacoModelId;
 
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -17,27 +20,36 @@ public final class WebShellJdtDiagnosticsController {
 
     private final WebShellSurface surface;
     private final JdtLsProjectService jdt;
-    private final ThreadPoolExecutor executor;
+    private final ThreadPoolExecutor quickFixExecutor;
+    private final ThreadPoolExecutor syncExecutor;
     private volatile boolean disposed;
 
     WebShellJdtDiagnosticsController(WebShellSurface surface, JdtLsProjectService jdt) {
         this.surface = surface;
         this.jdt = jdt;
-        this.executor = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1),
+        this.quickFixExecutor = singleThreadExecutor("eyecode-jdt-diagnostics");
+        this.syncExecutor = singleThreadExecutor("eyecode-jdt-sync");
+        surface.registerHandler("diagnostics", "quickFix", this::quickFix);
+        surface.registerHandler("diagnostics", "sync", this::sync);
+        jdt.onJdtDiagnostics(this::publishJdt);
+    }
+
+    private static ThreadPoolExecutor singleThreadExecutor(String threadName) {
+        return new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1),
                 runnable -> {
-                    Thread thread = new Thread(runnable, "eyecode-jdt-diagnostics");
+                    Thread thread = new Thread(runnable, threadName);
                     thread.setDaemon(true);
                     return thread;
                 }, new ThreadPoolExecutor.DiscardOldestPolicy());
-        surface.registerHandler("diagnostics", "quickFix", this::quickFix);
-        jdt.onJdtDiagnostics(this::publishJdt);
     }
 
     public void dispose() {
         if (disposed) return;
         disposed = true;
-        executor.getQueue().clear();
-        executor.shutdownNow();
+        quickFixExecutor.getQueue().clear();
+        quickFixExecutor.shutdownNow();
+        syncExecutor.getQueue().clear();
+        syncExecutor.shutdownNow();
     }
 
     private WebShellEnvelope quickFix(WebShellEnvelope message) {
@@ -46,7 +58,31 @@ public final class WebShellJdtDiagnosticsController {
             return message.error(new WebShellError("INVALID_QUICKFIX_REQUEST",
                     "Quick fixes require a document URI and request id", true));
         }
-        executor.execute(() -> respond(message));
+        quickFixExecutor.execute(() -> respond(message));
+        return message.response(Map.of("accepted", true, "requestId", message.requestId()));
+    }
+
+    private WebShellEnvelope sync(WebShellEnvelope message) {
+        String uri = text(message.payload(), "uri");
+        String content = text(message.payload(), "content");
+        if (uri.isBlank() || content.isEmpty()) {
+            return message.error(new WebShellError("INVALID_SYNC_REQUEST",
+                    "JDT sync requires a document URI and content", true));
+        }
+        Optional<Path> file = MonacoModelId.pathForModel(uri);
+        if (file.isEmpty()) {
+            return message.error(new WebShellError("INVALID_SYNC_REQUEST",
+                    "JDT sync requires a file URI inside the workspace", true));
+        }
+        long version = numberLong(message.payload(), "version", 0);
+        Path target = file.get();
+        syncExecutor.execute(() -> {
+            if (disposed) return;
+            try {
+                jdt.synchronizeDocument(target, content, version);
+            } catch (RuntimeException ignored) {
+            }
+        });
         return message.response(Map.of("accepted", true, "requestId", message.requestId()));
     }
 
@@ -122,5 +158,10 @@ public final class WebShellJdtDiagnosticsController {
     private static int line(Map<String, Object> payload, String key) {
         Object value = payload == null ? null : payload.get(key);
         return value instanceof Number number ? number.intValue() : 0;
+    }
+
+    private static long numberLong(Map<String, Object> payload, String key, long fallback) {
+        Object value = payload == null ? null : payload.get(key);
+        return value instanceof Number number ? number.longValue() : fallback;
     }
 }

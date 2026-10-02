@@ -126,8 +126,52 @@ class WebShellJdtDiagnosticsControllerTest {
         controller.dispose();
     }
 
+    @Test
+    void syncRequestIsAcceptedEvenWithoutAJdtSession() {
+        Surface surface = new Surface();
+        WebShellJdtDiagnosticsController controller = new WebShellJdtDiagnosticsController(surface,
+                new JdtLsProjectService(new ProjectLifecycleService()));
+
+        WebShellEnvelope ack = surface.handler("diagnostics", "sync").handle(request("sync", "two", Map.of(
+                "uri", "file:///project/src/Main.java",
+                "content", "public class Main { void run() { } }",
+                "version", 3)));
+
+        assertEquals("RESPONSE", ack.kind().name());
+        assertEquals("diagnostics", ack.channel());
+        assertEquals("sync", ack.name());
+        assertEquals(Boolean.TRUE, ack.payload().get("accepted"));
+        assertEquals("two", ack.payload().get("requestId"));
+        controller.dispose();
+    }
+
+    @Test
+    void syncRequiresAFileUriAndContent() {
+        Surface surface = new Surface();
+        WebShellJdtDiagnosticsController controller = new WebShellJdtDiagnosticsController(surface,
+                new JdtLsProjectService(new ProjectLifecycleService()));
+
+        WebShellEnvelope missingUri = surface.handler("diagnostics", "sync").handle(request("sync", "three", Map.of(
+                "content", "class A {}")));
+        assertEquals("INVALID_SYNC_REQUEST", missingUri.error().code());
+        assertTrue(missingUri.error().recoverable());
+
+        WebShellEnvelope missingContent = surface.handler("diagnostics", "sync").handle(request("sync", "four", Map.of(
+                "uri", "file:///project/src/Main.java")));
+        assertEquals("INVALID_SYNC_REQUEST", missingContent.error().code());
+
+        WebShellEnvelope nonFileUri = surface.handler("diagnostics", "sync").handle(request("sync", "five", Map.of(
+                "uri", "untitled:///scratch", "content", "class A {}")));
+        assertEquals("INVALID_SYNC_REQUEST", nonFileUri.error().code());
+        controller.dispose();
+    }
+
     private static WebShellEnvelope request(String requestId, Map<String, Object> payload) {
-        return WebShellEnvelope.request("diagnostics", "quickFix", requestId, payload);
+        return request("quickFix", requestId, payload);
+    }
+
+    private static WebShellEnvelope request(String operation, String requestId, Map<String, Object> payload) {
+        return WebShellEnvelope.request("diagnostics", operation, requestId, payload);
     }
 
     private static Map<String, Object> waitForFixes(Surface surface, String requestId) {

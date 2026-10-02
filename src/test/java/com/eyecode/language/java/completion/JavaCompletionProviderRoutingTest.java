@@ -10,6 +10,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class JavaCompletionProviderRoutingTest {
     @Test
@@ -59,6 +60,86 @@ final class JavaCompletionProviderRoutingTest {
         assertEquals("code example", merged.candidates().get(1).example());
         assertEquals("jdt docs", merged.candidates().get(1).documentation());
         assertEquals(List.of(0), merged.candidates().get(1).matchIndices());
+    }
+
+    @Test
+    void generalMergeJdtWinsIdentityCollisionsAndKeepsResolveId() {
+        CompletionCandidate localType = candidate("LinkedList", "CLASS", "java.util.LinkedList");
+        CompletionCandidate localOnly = candidate("LinkedQueue", "CLASS", "LinkedQueue");
+        CompletionCandidate jdtType = resolveCandidate("LinkedList", "CLASS", "java.util.LinkedList", "x1");
+
+        CompletionResult merged = JavaCompletionProvider.mergeGeneralResults(
+                new CompletionResult(List.of(localType, localOnly)),
+                new CompletionResult(List.of(jdtType)), "Linke", 20, 25);
+
+        long linkedListCount = merged.candidates().stream()
+                .filter(candidate -> candidate.label().equals("LinkedList")).count();
+        assertEquals(1, linkedListCount, () -> "candidates=" + merged.candidates());
+        CompletionCandidate winner = merged.candidates().stream()
+                .filter(candidate -> candidate.label().equals("LinkedList")).findFirst().orElseThrow();
+        assertNotSame(localType, winner);
+        assertEquals("x1", winner.resolveId(), () -> "JDT candidate must win to keep auto-import");
+        assertTrue(merged.candidates().stream().anyMatch(candidate -> candidate.label().equals("LinkedQueue")),
+                () -> "local-only candidates must survive; candidates=" + merged.candidates());
+    }
+
+    @Test
+    void generalMergeFiltersJdtCandidatesByPrefixSubsequence() {
+        CompletionCandidate matching = resolveCandidate("LinkedHashSet", "CLASS", "java.util.LinkedHashSet", "x2");
+        CompletionCandidate unrelated = resolveCandidate("StringBuilder", "CLASS", "java.lang.StringBuilder", "x3");
+
+        CompletionResult merged = JavaCompletionProvider.mergeGeneralResults(
+                CompletionResult.empty(), new CompletionResult(List.of(matching, unrelated)), "Linke");
+
+        assertEquals(List.of("LinkedHashSet"), merged.candidates().stream()
+                .map(CompletionCandidate::label).toList());
+        assertEquals("x2", merged.candidates().get(0).resolveId());
+    }
+
+    @Test
+    void generalMergeWithoutJdtCandidatesKeepsEveryLocalCandidate() {
+        CompletionCandidate localType = candidate("LinkedList", "CLASS", "java.util.LinkedList");
+
+        CompletionResult merged = JavaCompletionProvider.mergeGeneralResults(
+                new CompletionResult(List.of(localType)), CompletionResult.empty(), "Linke");
+
+        assertEquals(1, merged.candidates().size());
+        assertSame(localType, merged.candidates().get(0));
+    }
+
+    @Test
+    void generalMergeDeduplicatesJdtPackageSuffixAgainstLocalType() {
+        CompletionCandidate localType = candidate("ArrayList", "CLASS", "java.util.ArrayList");
+        CompletionCandidate jdtType = resolveCandidate("ArrayList - java.util", "CLASS", "java.util.ArrayList", "x9");
+
+        CompletionResult merged = JavaCompletionProvider.mergeGeneralResults(
+                new CompletionResult(List.of(localType)),
+                new CompletionResult(List.of(jdtType)), "Arra", 45, 49);
+
+        assertEquals(1, merged.candidates().size(), () -> "candidates=" + merged.candidates());
+        assertEquals("ArrayList - java.util", merged.candidates().get(0).label());
+        assertEquals("x9", merged.candidates().get(0).resolveId());
+        assertEquals("ArrayList", merged.candidates().get(0).insertText());
+    }
+
+    @Test
+    void generalMergeFiltersInternalJdkTypes() {
+        CompletionCandidate internal = resolveCandidate("ArrayCacheConst - sun.java2d.marlin", "CLASS",
+                "sun.java2d.marlin.ArrayCacheConst", "x1");
+        CompletionCandidate publicType = resolveCandidate("ArrayList - java.util", "CLASS",
+                "java.util.ArrayList", "x2");
+
+        CompletionResult merged = JavaCompletionProvider.mergeGeneralResults(
+                CompletionResult.empty(), new CompletionResult(List.of(internal, publicType)), "Arra");
+
+        assertEquals(List.of("ArrayList - java.util"), merged.candidates().stream()
+                .map(CompletionCandidate::label).toList());
+    }
+
+    private static CompletionCandidate resolveCandidate(String label, String kind, String detail, String resolveId) {
+        String insert = label.contains(" - ") ? label.substring(0, label.indexOf(" - ")) : label;
+        return new CompletionCandidate(label, kind, detail, "documentation", insert, label, false,
+                0, 0, 0, detail, "", "String", "example", "java", java.util.List.of(), resolveId);
     }
 
     private static CompletionCandidate candidate(String label, String kind, String detail) {

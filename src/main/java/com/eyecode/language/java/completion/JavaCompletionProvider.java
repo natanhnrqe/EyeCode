@@ -87,13 +87,16 @@ public final class JavaCompletionProvider implements CompletionProvider {
         CompletionResult local = new CompletionResult(snapshot.getItems().stream()
                 .limit(100)
                 .map(item -> candidate(item, boundedStart, boundedEnd, prefix)).toList());
-        CompletionContextKind contextKind = CompletionContextResolver.resolve(context);
-        if (contextKind != CompletionContextKind.MEMBER_ACCESS || jdt == null) {
+        if (jdt == null) {
             return local;
         }
         Optional<CompletionResult> semantic = jdt.complete(request);
         if (semantic.isEmpty()) return local;
-        return mergeMemberResults(local, semantic.get(), prefix, boundedStart, boundedEnd);
+        CompletionContextKind contextKind = CompletionContextResolver.resolve(context);
+        if (contextKind == CompletionContextKind.MEMBER_ACCESS) {
+            return mergeMemberResults(local, semantic.get(), prefix, boundedStart, boundedEnd);
+        }
+        return mergeGeneralResults(local, semantic.get(), prefix, boundedStart, boundedEnd);
     }
 
     static CompletionResult selectJdtOrFallback(Optional<CompletionResult> jdtResult,
@@ -101,8 +104,51 @@ public final class JavaCompletionProvider implements CompletionProvider {
         return jdtResult.filter(result -> !result.candidates().isEmpty()).orElse(fallback);
     }
 
+    static CompletionResult mergeGeneralResults(CompletionResult local, CompletionResult semantic,
+                                                 String prefix) {
+        return mergeGeneralResults(local, semantic, prefix, 0, 0);
+    }
+
+    static CompletionResult mergeGeneralResults(CompletionResult local, CompletionResult semantic,
+                                                String prefix, int replaceStart, int replaceEnd) {
+        List<CompletionCandidate> merged = new ArrayList<>();
+        Set<String> identities = new HashSet<>();
+        for (CompletionCandidate candidate : semantic.candidates()) {
+            if (internalJdkType(candidate)) continue;
+            if (!prefix.isEmpty() && !isSubsequence(prefix, baseLabel(candidate.label()))) continue;
+            if (identities.add(identity(candidate))) {
+                merged.add(enrichCandidate(candidate, prefix, replaceStart, replaceEnd));
+            }
+        }
+        for (CompletionCandidate candidate : local.candidates()) {
+            if (identities.add(identity(candidate))) merged.add(candidate);
+        }
+        return rank(merged, prefix);
+    }
+
+    private static boolean internalJdkType(CompletionCandidate candidate) {
+        String detail = candidate.detail();
+        return detail.startsWith("sun.") || detail.startsWith("com.sun.") || detail.startsWith("jdk.internal.");
+    }
+
+    private static CompletionResult rank(List<CompletionCandidate> merged, String prefix) {
+        com.eyecode.editor.v2.completion.CompletionRanking ranking =
+                new com.eyecode.editor.v2.completion.CompletionRanking();
+        Map<CompletionItem, CompletionCandidate> originals = new IdentityHashMap<>();
+        List<CompletionItem> rankable = new ArrayList<>(merged.size());
+        for (CompletionCandidate candidate : merged) {
+            CompletionItem item = new CompletionItem(candidate.label(), candidate.insertText(), candidate.detail(),
+                    completionKind(candidate.kind()), candidate.signature(), candidate.returnType(), candidate.owner(),
+                    candidate.documentation(), candidate.example(), candidate.category(), candidate.sortKey());
+            rankable.add(item);
+            originals.put(item, candidate);
+        }
+        return new CompletionResult(ranking.rank(rankable, prefix, true).stream()
+                .map(originals::get).toList());
+    }
+
     static CompletionResult mergeMemberResults(CompletionResult local, CompletionResult semantic,
-                                               String prefix) {
+                                                String prefix) {
         return mergeMemberResults(local, semantic, prefix, 0, 0);
     }
 
@@ -117,19 +163,7 @@ public final class JavaCompletionProvider implements CompletionProvider {
                 merged.add(enrichCandidate(candidate, prefix, replaceStart, replaceEnd));
             }
         }
-        com.eyecode.editor.v2.completion.CompletionRanking ranking =
-                new com.eyecode.editor.v2.completion.CompletionRanking();
-        Map<CompletionItem, CompletionCandidate> originals = new IdentityHashMap<>();
-        List<CompletionItem> rankable = new ArrayList<>(merged.size());
-        for (CompletionCandidate candidate : merged) {
-            CompletionItem item = new CompletionItem(candidate.label(), candidate.insertText(), candidate.detail(),
-                    completionKind(candidate.kind()), candidate.signature(), candidate.returnType(), candidate.owner(),
-                    candidate.documentation(), candidate.example(), candidate.category(), candidate.sortKey());
-            rankable.add(item);
-            originals.put(item, candidate);
-        }
-        return new CompletionResult(ranking.rank(rankable, prefix, true).stream()
-                .map(originals::get).toList());
+        return rank(merged, prefix);
     }
 
     private static com.eyecode.editor.v2.completion.CompletionItemKind completionKind(String kind) {
@@ -191,8 +225,12 @@ public final class JavaCompletionProvider implements CompletionProvider {
     }
 
     private static String baseLabel(String label) {
-        int open = label.indexOf('(');
-        return open > 0 ? label.substring(0, open) : label;
+        String base = label;
+        int open = base.indexOf('(');
+        if (open > 0) base = base.substring(0, open);
+        int suffix = base.indexOf(" - ");
+        if (suffix > 0) base = base.substring(0, suffix);
+        return base;
     }
 
     private static boolean isSubsequence(String query, String candidate) {

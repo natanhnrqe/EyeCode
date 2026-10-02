@@ -1,4 +1,5 @@
 import type { MonacoCodeAction, MonacoMarker, MonacoRange } from '../monaco/api';
+import type { WebDiagnostic } from './protocol';
 
 export type JdtQuickFixEdit = {
   startLine: number;
@@ -24,6 +25,18 @@ export type JdtPublishedDiagnostic = {
 };
 
 export type JdtPublishEvent = { uri: string; diagnostics: JdtPublishedDiagnostic[] };
+
+export function jdtWebDiagnostics(diagnostics: readonly JdtPublishedDiagnostic[]): WebDiagnostic[] {
+  return (diagnostics ?? []).filter(diagnostic => !!diagnostic).map(diagnostic => ({
+    severity: diagnostic.severity,
+    code: '',
+    message: diagnostic.message,
+    startLine: diagnostic.range.startLine,
+    startColumn: diagnostic.range.startColumn,
+    endLine: diagnostic.range.endLine,
+    endColumn: diagnostic.range.endColumn
+  }));
+}
 
 const SEVERITIES: JdtPublishedDiagnostic['severity'][] = ['ERROR', 'WARNING', 'INFO', 'HINT'];
 

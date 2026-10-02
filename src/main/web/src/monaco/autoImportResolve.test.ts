@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { canResolveCandidate, mergeDocumentation, toMonacoEdits } from './autoImportResolve';
+import { describe, expect, it, vi } from 'vitest';
+import { canResolveCandidate, createResolvePrefetchCache, mergeDocumentation, toMonacoEdits } from './autoImportResolve';
 
 describe('autoImportResolve', () => {
   it('rejects candidates without resolveId', () => {
@@ -33,5 +33,44 @@ describe('autoImportResolve', () => {
     expect(mergeDocumentation('doc', '')).toBe('doc');
     expect(mergeDocumentation('', 'extra')).toBe('extra');
     expect(mergeDocumentation('doc', 'extra')).toBe('doc\n\nextra');
+  });
+});
+
+describe('createResolvePrefetchCache', () => {
+  const edit = { range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 }, text: 'import java.util.List;\n' };
+  const resolvable = { label: 'List', resolveId: 'a1' };
+
+  it('prefetches on selection and reuses the in-flight promise on accept', async () => {
+    const fetch = vi.fn().mockResolvedValue([edit]);
+    const cache = createResolvePrefetchCache(fetch);
+    cache.prefetch(resolvable);
+    cache.prefetch(resolvable);
+    const edits = await cache.awaitEdits(resolvable);
+    expect(edits).toEqual([edit]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns empty edits for candidates without resolveId and skips the fetch', async () => {
+    const fetch = vi.fn();
+    const cache = createResolvePrefetchCache(fetch);
+    expect(await cache.awaitEdits({ label: 'Local' })).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('never rejects when the underlying fetch fails', async () => {
+    const fetch = vi.fn().mockRejectedValue(new Error('bridge timeout'));
+    const cache = createResolvePrefetchCache(fetch);
+    expect(await cache.awaitEdits(resolvable)).toEqual([]);
+    expect(await cache.awaitEdits(resolvable)).toEqual([]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('clear drops in-flight entries so the next popup refetches', async () => {
+    const fetch = vi.fn().mockResolvedValue([edit]);
+    const cache = createResolvePrefetchCache(fetch);
+    await cache.awaitEdits(resolvable);
+    cache.clear();
+    await cache.awaitEdits(resolvable);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });

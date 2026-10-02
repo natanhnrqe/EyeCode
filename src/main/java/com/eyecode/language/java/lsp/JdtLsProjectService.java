@@ -22,7 +22,7 @@ import java.util.concurrent.Executors;
 
 public final class JdtLsProjectService implements AutoCloseable, ProjectLifecycleService.Listener {
     private static final Duration INITIALIZE_TIMEOUT = Duration.ofSeconds(60);
-    private static final Duration COMPLETION_TIMEOUT = Duration.ofMillis(900);
+    private static final Duration COMPLETION_TIMEOUT = Duration.ofMillis(2500);
     private static final Duration FEATURE_TIMEOUT = Duration.ofSeconds(5);
     private final ProjectLifecycleService projects;
     private final JdtLsDocumentSync documentSync = new JdtLsDocumentSync();
@@ -95,6 +95,16 @@ public final class JdtLsProjectService implements AutoCloseable, ProjectLifecycl
         JdtLsProjectCompletion current = completion;
         if (current == null || !eligible(request)) return Optional.empty();
         return current.complete(request, COMPLETION_TIMEOUT);
+    }
+
+    public void synchronizeDocument(Path file, String source, long version) {
+        JdtLsSession current = session;
+        if (current == null || file == null || source == null) return;
+        if (!eligible(file, uriOf(file))) return;
+        try {
+            documentSync.synchronize(current, file, source, version);
+        } catch (RuntimeException ignored) {
+        }
     }
 
     public Optional<HoverResult> hover(LanguageFeatureRequest request) {
