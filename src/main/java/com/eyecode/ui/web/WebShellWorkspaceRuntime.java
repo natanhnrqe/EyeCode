@@ -22,6 +22,7 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
     private final WebShellExecutionController executionController;
     private final WebShellNavigationController navigationController;
     private final WebShellJdtDiagnosticsController jdtDiagnosticsController;
+    private final WebShellChallengesController challengesController;
     private boolean closed;
 
     WebShellWorkspaceRuntime(WorkspaceApplication application,
@@ -36,6 +37,24 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
                               WebShellExecutionController executionController,
                               WebShellNavigationController navigationController,
                               WebShellJdtDiagnosticsController jdtDiagnosticsController) {
+        this(application, workspaceController, documentController, completionController, languageFeatureController,
+                jdt, learningController, lessonsController, diagnosticsController, executionController,
+                navigationController, jdtDiagnosticsController, null);
+    }
+
+    WebShellWorkspaceRuntime(WorkspaceApplication application,
+                             WebShellWorkspaceController workspaceController,
+                             WebShellDocumentController documentController,
+                             WebShellCompletionController completionController,
+                             WebShellLanguageFeatureController languageFeatureController,
+                             JdtLsProjectService jdt,
+                             WebShellLearningController learningController,
+                             WebShellLessonsController lessonsController,
+                              WebShellDiagnosticsController diagnosticsController,
+                              WebShellExecutionController executionController,
+                              WebShellNavigationController navigationController,
+                              WebShellJdtDiagnosticsController jdtDiagnosticsController,
+                              WebShellChallengesController challengesController) {
         this.application = Objects.requireNonNull(application, "application");
         this.workspaceController = Objects.requireNonNull(workspaceController, "workspaceController");
         this.documentController = Objects.requireNonNull(documentController, "documentController");
@@ -48,6 +67,7 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
         this.executionController = Objects.requireNonNull(executionController, "executionController");
         this.navigationController = navigationController;
         this.jdtDiagnosticsController = jdtDiagnosticsController;
+        this.challengesController = challengesController;
         if (jdtDiagnosticsController != null) {
             jdt.onJdtDiagnostics((uri, diagnostics) -> jdtDiagnosticsController.publishJdt(uri, diagnostics));
             JdtLsProjectDiagnostics currentDiagnostics = jdt.diagnostics();
@@ -79,6 +99,7 @@ public final class WebShellWorkspaceRuntime implements AutoCloseable {
         executionController.close();
         if (navigationController != null) navigationController.dispose();
         if (jdtDiagnosticsController != null) jdtDiagnosticsController.dispose();
+        if (challengesController != null) challengesController.dispose();
         application.close();
     }
 }

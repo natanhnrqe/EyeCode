@@ -194,7 +194,29 @@ export class MonacoWorkspaceService {
 
   layout(): void {
     this.editor?.layout();
-    this.notifyViewportListeners();
+  }
+
+  createSplitEditor(container: HTMLElement, uri: string): { dispose(): void } | null {
+    if (this.disposed || !this.editor || !this.api) return null;
+    const model = this.models.get(uri) ?? this.ephemeralModels.get(uri) ?? null;
+    if (!model) return null;
+    const splitEditor = this.api.editor.create(container, {
+      theme: 'eyecode-dark',
+      automaticLayout: true,
+      minimap: { enabled: false },
+      fontFamily: 'JetBrains Mono, monospace',
+      fontSize: 13,
+      fontLigatures: false,
+      scrollBeyondLastLine: false,
+      smoothScrolling: false,
+      guides: { indentation: true, highlightActiveIndentation: false, bracketPairs: true, bracketPairsHorizontal: false },
+      quickSuggestions: false,
+      wordBasedSuggestions: false,
+      suggestOnTriggerCharacters: false,
+      readOnly: true,
+      model
+    });
+    return { dispose: () => splitEditor.dispose() };
   }
 
   mountEphemeralModel(uri: string, content: string, language: string, readOnly: boolean, activate = true): void {

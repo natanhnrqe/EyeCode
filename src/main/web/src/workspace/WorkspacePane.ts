@@ -53,6 +53,11 @@ export const learnPracticeDockRules: DockRules = {
   dockablePaneIds: ['explorer', 'editor', 'lesson', 'bottom']
 };
 
+export const challengeDockRules: DockRules = {
+  requiredPaneIds: ['explorer', 'editor', 'lesson', 'bottom'],
+  dockablePaneIds: ['explorer', 'editor', 'lesson', 'bottom']
+};
+
 export const projectDockTree: DockNode = {
   type: 'split', orientation: 'vertical', ratio: 0.7,
   first: {
@@ -85,6 +90,20 @@ export const theoryDockTree: DockNode = {
     first: { type: 'pane', paneId: 'editor' },
     second: { type: 'pane', paneId: 'lesson' }
   }
+};
+
+export const challengeDockTree: DockNode = {
+  type: 'split', orientation: 'vertical', ratio: 0.7,
+  first: {
+    type: 'split', orientation: 'horizontal', ratio: 0.28,
+    first: { type: 'pane', paneId: 'explorer' },
+    second: {
+      type: 'split', orientation: 'horizontal', ratio: 0.62,
+      first: { type: 'pane', paneId: 'editor' },
+      second: { type: 'pane', paneId: 'lesson' }
+    }
+  },
+  second: { type: 'pane', paneId: 'bottom' }
 };
 
 export function dockNodeMinimum(node: DockNode): DockPaneMinimum {

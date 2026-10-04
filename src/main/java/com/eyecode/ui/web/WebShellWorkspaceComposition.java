@@ -107,12 +107,14 @@ public final class WebShellWorkspaceComposition {
         new WebShellDocumentationController(surface);
         WebShellNavigationController navigationController = new WebShellNavigationController(surface, editorManager, jdt);
         WebShellJdtDiagnosticsController jdtDiagnosticsController = new WebShellJdtDiagnosticsController(surface, jdt);
+        WebShellChallengesController challengesController = new WebShellChallengesController(surface,
+                new com.eyecode.challenge.ChallengeWorkspaceService());
         completionController.setResolveGateway(jdt::resolveCompletion);
         WebShellRefactorController refactorController = new WebShellRefactorController(surface, editorManager,
                 projectLifecycleService, jdt, new ProjectRenameService(fileOperations));
         return new WebShellWorkspaceRuntime(application, workspaceController, documentController, completionController,
                 languageFeatureController, jdt,
                 learningController, lessonsController, diagnosticsController, executionController,
-                navigationController, jdtDiagnosticsController);
+                navigationController, jdtDiagnosticsController, challengesController);
     }
 }

@@ -251,10 +251,14 @@ class WebShellSharedShellSourceTest {
         assertTrue(pane.contains("export const projectDockTree"));
         assertTrue(pane.contains("export const learnPracticeDockTree"));
         assertTrue(pane.contains("export const theoryDockTree"));
-        assertEquals(3, occurrences(pane, "paneId: 'explorer'"));
-        assertEquals(3, occurrences(pane, "paneId: 'editor'"));
-        assertEquals(2, occurrences(pane, "paneId: 'bottom'"));
-        assertEquals(2, occurrences(pane, "paneId: 'lesson'"));
+        assertTrue(pane.contains("export const challengeDockTree"));
+        assertEquals(4, occurrences(pane, "paneId: 'explorer'"));
+        assertEquals(4, occurrences(pane, "paneId: 'editor'"));
+        assertEquals(3, occurrences(pane, "paneId: 'bottom'"));
+        assertEquals(3, occurrences(pane, "paneId: 'lesson'"));
+        assertFalse(pane.contains("challenge-statement"),
+                "challenge panes must not be loose dock citizens");
+        assertFalse(pane.contains("challenge-tests"));
         assertTrue(layout.contains("dock-split-${node.orientation}"));
         assertTrue(layout.contains("const draggablePaneIds = new Set(dockPaneIds(tree).filter"));
         assertTrue(layout.contains("const rootBounds = active.element.getBoundingClientRect()"));
@@ -263,6 +267,7 @@ class WebShellSharedShellSourceTest {
         assertEquals(1, occurrences(workspace, "<MonacoHost"));
         assertTrue(workspace.contains("const [projectDockLayout, setProjectDockLayout]"));
         assertTrue(workspace.contains("const [learnPracticeDockLayout, setLearnPracticeDockLayout]"));
+        assertTrue(workspace.contains("const [challengeDockLayout, setChallengeDockLayout]"));
         assertTrue(workspace.contains("layoutKind === 'LEARN' ? learnPracticeDockLayout : projectDockLayout"));
         assertTrue(workspace.indexOf("<DockLayout") < workspace.indexOf("<div className=\"overlay-root\">"));
         assertFalse(workspace.contains("<DockPane paneId=\"editor\""));

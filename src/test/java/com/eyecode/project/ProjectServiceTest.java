@@ -130,6 +130,43 @@ class ProjectServiceTest {
         assertEquals(10, service.getRecentProjects().size());
     }
 
+    @Test
+    void challengeWorkspacesAreNeverRecordedAsRecentProjects() throws Exception {
+        Path storage = tempDir.resolve("recent.dat");
+        Path challengeRoot = Path.of(System.getProperty("user.home"), ".eyecode", "challenges")
+                .toAbsolutePath().normalize();
+        Path challengeProject = challengeRoot.resolve("recent-filter-check-" + UUID.randomUUID());
+        if (Files.exists(challengeProject)) {
+            return;
+        }
+        Files.createDirectories(challengeProject.resolve("src/main/java"));
+        try {
+            Path regularProject = createProjectRoot("regular-project");
+
+            ProjectService writer = new ProjectService(storage);
+            writer.addRecent(info(challengeProject));
+            writer.addRecent(info(regularProject));
+            writer.save();
+
+            ProjectService loaded = new ProjectService(storage);
+            assertEquals(1, loaded.getRecentProjects().size());
+            assertTrue(loaded.getRecentProjects().stream()
+                    .noneMatch(project -> project.getPath().startsWith(challengeRoot.toString())));
+            assertTrue(ProjectService.isChallengeWorkspace(challengeProject));
+            assertFalse(ProjectService.isChallengeWorkspace(regularProject.toAbsolutePath().normalize()));
+        } finally {
+            try (var paths = Files.walk(challengeProject)) {
+                for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
+            }
+        }
+    }
+
+    @Test
+    void challengeWorkspacePredicateHandlesNullAndForeignPaths() {
+        assertFalse(ProjectService.isChallengeWorkspace(null));
+        assertFalse(ProjectService.isChallengeWorkspace(Path.of("C:/projects/regular")));
+    }
+
     private Path createProjectRoot(String name) throws Exception {
         Path target = Path.of("target").toAbsolutePath().normalize();
         Files.createDirectories(target);

@@ -14,6 +14,8 @@ public class ProjectService {
 
     private static final int MAX_RECENT = 10;
     private static final String STORAGE_FILE = ".eyecode/recent-projects.dat";
+    private static final Path CHALLENGES_ROOT = Paths.get(System.getProperty("user.home"), ".eyecode", "challenges")
+            .toAbsolutePath().normalize();
     private static final Set<String> LEGACY_TEST_FIXTURE_PREFIXES = Set.of(
             "eyecode-run-java",
             "eyecode-run-maven",
@@ -200,6 +202,13 @@ public class ProjectService {
         }
     }
 
+    static boolean isChallengeWorkspace(Path path) {
+        if (path == null) {
+            return false;
+        }
+        return path.toAbsolutePath().normalize().startsWith(CHALLENGES_ROOT);
+    }
+
     static boolean isLegacyEyeCodeTestFixture(Path path) {
         if (path == null || path.getFileName() == null) {
             return false;
@@ -233,7 +242,8 @@ public class ProjectService {
             return Files.isDirectory(normalized)
                     && hasWorkspaceContent(normalized)
                     && !normalized.startsWith(tempRoot)
-                    && !isLegacyEyeCodeTestFixture(normalized);
+                    && !isLegacyEyeCodeTestFixture(normalized)
+                    && !isChallengeWorkspace(normalized);
         } catch (IOException | RuntimeException ignored) {
             return false;
         }

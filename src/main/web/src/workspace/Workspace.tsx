@@ -17,12 +17,15 @@ import { LessonEditorController } from '../lessons/LessonEditorController';
 import { LearningPanel } from '../lessons/LearningPanel';
 import { LearnContextPanel, type LearnContextTab } from '../lessons/LearnContextPanel';
 import type { LessonDescriptor, LessonFile, LessonSession, LessonVerificationResponse, PracticeVerificationResult } from '../lessons/protocol';
+import { ChallengeProvider } from '../challenge/useChallenge';
+import { ChallengeRightPanel } from '../challenge/ChallengeRightPanel';
 import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
 import { SignaturePopup } from '../signature/SignaturePopup';
 import type { SignaturePopupState } from '../signature/protocol';
 import { BottomPanel } from './BottomPanel';
 import { DockLayout } from './DockLayout';
 import { DocumentationTab } from './DocumentationTab';
+import { EditorSplitGroup, type EditorSplitGroupState } from './EditorSplitGroup';
 import { EditorTabs } from './EditorTabs';
 import { EyeCodeIcon } from './EyeCodeIcon';
 import { MonacoHost } from './MonacoHost';
@@ -32,7 +35,7 @@ import { ProjectExplorer } from './ProjectExplorer';
 import { StatusBar } from './StatusBar';
 import { TopToolbar } from './TopToolbar';
 import { WelcomeScreen } from './WelcomeScreen';
-import { learnPracticeDockRules, learnPracticeDockTree, moveDockPane, projectDockRules, projectDockTree, theoryDockTree, updateDockSplitRatio, type DockNode, type DockRules, type WorkspacePaneId } from './WorkspacePane';
+import { challengeDockRules, challengeDockTree, learnPracticeDockRules, learnPracticeDockTree, moveDockPane, projectDockRules, projectDockTree, theoryDockTree, updateDockSplitRatio, type DockNode, type DockRules, type WorkspacePaneId } from './WorkspacePane';
 import type { ProjectNode, RunOutputChunk, RunState, TerminalState, WorkspaceSnapshot } from './protocol';
 
 type DocumentTab = Omit<DocumentSnapshot, 'content'>;
@@ -42,11 +45,14 @@ type AppMode = 'WELCOME' | 'PROJECT' | 'LEARN';
 type ExplorerOperation = 'createFile' | 'createDirectory' | 'createJavaClass' | 'createPackage' | 'rename' | 'delete' | 'duplicate';
 type ExplorerOperationResult = { path?: string; parent?: string; openFile?: boolean; ancestors?: string[] };
 type EditorSurfaceBounds = { key: string; left: number; top: number; width: number; height: number };
+type EditorSplitDirection = 'right' | 'down';
 
 const emptyRunState: RunState = { running: false, phase: 'IDLE', finished: false, exitCode: null, stopped: false, rerunAvailable: false, configurations: [], selectedConfigurationId: '' };
 const emptyTerminalState: TerminalState = { requested: false, running: false, workingDirectory: '' };
 
-export function Workspace() {
+export type WorkspaceChallengeContext = { id: string; path: string; mainFilePath?: string; onExit(): void };
+
+export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: () => void; challenge?: WorkspaceChallengeContext | null } = {}) {
   const service = useRef(new MonacoWorkspaceService()).current;
   const lessonEditor = useRef(new LessonEditorController(service)).current;
   const selectCompletion = useRef((index: number) => service.selectCompletion(index)).current;
@@ -93,7 +99,12 @@ export function Workspace() {
   const [practiceVerifying, setPracticeVerifying] = useState(false);
   const [projectDockLayout, setProjectDockLayout] = useState<DockNode>(() => projectDockTree);
   const [learnPracticeDockLayout, setLearnPracticeDockLayout] = useState<DockNode>(() => learnPracticeDockTree);
+  const [challengeDockLayout, setChallengeDockLayout] = useState<DockNode>(() => challengeDockTree);
   const [learnExplorerCollapsed, setLearnExplorerCollapsed] = useState(false);
+  const [challengePanelCollapsed, setChallengePanelCollapsed] = useState(false);
+  const [editorSplitGroups, setEditorSplitGroups] = useState<EditorSplitGroupState[]>([]);
+  const [editorSplitDirection, setEditorSplitDirection] = useState<EditorSplitDirection>('right');
+  const editorSplitGroupId = useRef(0);
   const [docsFullscreen, setDocsFullscreen] = useState(false);
   const shellWorkspace = useRef<HTMLDivElement>(null);
   const [editorSurfaceBounds, setEditorSurfaceBounds] = useState<EditorSurfaceBounds | null>(null);
@@ -328,6 +339,21 @@ export function Workspace() {
     }
   }
 
+  const challengeOpenPath = useRef<string | null>(null);
+  useEffect(() => {
+    const path = challenge?.path;
+    if (!path || challengeOpenPath.current === path) return;
+    challengeOpenPath.current = path;
+    void openProject(path);
+  }, [challenge?.path]);
+
+  const challengeEntryOpened = useRef(false);
+  useEffect(() => {
+    if (!challenge || !workspace.project || challengeEntryOpened.current) return;
+    challengeEntryOpened.current = true;
+    if (challenge.mainFilePath) void openFile(challenge.mainFilePath);
+  }, [challenge, workspace.project]);
+
   async function chooseProjectLocation(): Promise<string | undefined> {
     const response = await bridge.request<{ path?: string; cancelled?: boolean }>('workspace', 'chooseDirectory', {}, { timeoutMs: null });
     return response.path;
@@ -418,6 +444,25 @@ export function Workspace() {
   async function navigateProblem(uri: string, diagnostic: WebDiagnostic) {
     if (await activate(uri)) service.revealDiagnostic(uri, diagnostic);
   }
+
+  function splitEditorTab(uri: string, direction: EditorSplitDirection) {
+    setEditorSplitDirection(direction);
+    setEditorSplitGroups(groups => groups.some(group => group.uri === uri)
+      ? groups
+      : [...groups, { id: ++editorSplitGroupId.current, uri }]);
+  }
+
+  function closeEditorSplitGroup(id: number) {
+    setEditorSplitGroups(groups => groups.filter(group => group.id !== id));
+  }
+
+  useEffect(() => {
+    setEditorSplitGroups(groups => {
+      const remaining = groups.filter(group => documents.some(document => document.uri === group.uri));
+      return remaining.length === groups.length ? groups : remaining;
+    });
+  }, [documents]);
+
   async function close(uri: string) {
     if (uri.startsWith('guide://')) {
       const remaining = documents.filter(item => item.uri !== uri);
@@ -658,7 +703,7 @@ export function Workspace() {
   const runAvailable = projectMode ? runState.configurations.length > 0 : lessonRunAvailable;
   const toolbar = <TopToolbar learnMode={learnMode} projectName={projectMode ? workspace.project?.name : undefined} projectPath={projectMode ? workspace.project?.path : undefined} recentProjects={workspace.recentProjects} runState={runState} runAvailable={runAvailable}
     onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()}
-    onOpenRecentProject={path => void openProject(path)} onRemoveRecentProject={path => void removeRecentProject(path)} onWelcome={() => void leaveProject()} onRun={() => void run('run')} onRerun={() => void run('rerun')}
+    onOpenRecentProject={path => void openProject(path)} onRemoveRecentProject={path => void removeRecentProject(path)} onWelcome={() => challenge ? challenge.onExit() : void leaveProject()} onRun={() => void run('run')} onRerun={() => void run('rerun')}
     onStop={() => void run('stop')} onSelectConfiguration={id => void selectConfiguration(id)}
     onOpenSearch={() => setSidePanel('search')} onOpenSettings={() => setSidePanel('settings')}
     onWindowAction={action => void windowAction(action)} />;
@@ -678,32 +723,52 @@ export function Workspace() {
     </aside>;
     if (paneId === 'editor') return <section className="main-workspace" data-pane-id="editor">
       <div className="editor-stack">
-        {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)} /> : lessonSession?.kind === 'PRACTICE' && lessonSession.workspace ? <>
+        {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)}
+          onSplitRight={uri => splitEditorTab(uri, 'right')} onSplitDown={uri => splitEditorTab(uri, 'down')} /> : lessonSession?.kind === 'PRACTICE' && lessonSession.workspace ? <>
           <EditorTabs documents={lessonDocuments} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={() => undefined} closable={false} />
         </> : <header className="document-tabs learn-editor-tabs" data-dock-handle>{learnPath.join(' / ')}</header>}
-        <section className="editor-region" data-editor-region-slot>
-          {projectMode && activeDocument?.kind === 'documentation' && <DocumentationTab document={activeDocument} />}
-          {projectMode && activeDocument?.kind === 'guide' && !docsFullscreenActive && renderGuideArticle}
-          {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
-            <span>Open a file from Project panel or create something new.</span><div><button type="button" className="primary-action" onClick={() => setNewJavaClassOpen(true)}>New Java Class</button></div></div>}
-          {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
-          {projectMode && <EditorDiagnosticStrip state={diagnostics} onNavigate={navigateProblem} />}
-        </section>
+        <div className={`editor-split-root${editorSplitDirection === 'down' ? ' is-vertical' : ''}`}>
+          <section className="editor-region" data-editor-region-slot>
+            {projectMode && activeDocument?.kind === 'documentation' && <DocumentationTab document={activeDocument} />}
+            {projectMode && activeDocument?.kind === 'guide' && !docsFullscreenActive && renderGuideArticle}
+            {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
+              <span>Open a file from Project panel or create something new.</span><div><button type="button" className="primary-action" onClick={() => setNewJavaClassOpen(true)}>New Java Class</button></div></div>}
+            {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
+            {projectMode && <EditorDiagnosticStrip state={diagnostics} onNavigate={navigateProblem} />}
+          </section>
+          {projectMode && editorSplitGroups.map(group => <EditorSplitGroup key={group.id} group={group} documents={documents}
+            guidePages={guidePages} service={service} onOpenRelated={id => void openDocumentationPage(id)}
+            onClose={() => closeEditorSplitGroup(group.id)} />)}
+        </div>
       </div>
     </section>;
     if (paneId === 'bottom') return learnMode ? <LearnContextPanel active={learnContextTab} output={runOutput} runState={runState} diagnostics={diagnostics} documents={documents} onSelect={selectLearnContextTab}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} /> : <BottomPanel active={bottomPanel} output={runOutput} runState={runState} terminalState={terminalState}
       diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />;
-    return lessonSession ? <LearningPanel session={lessonSession} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} onPrevious={() => void changeLessonStep('previous')}
-      onNext={() => void changeLessonStep('next')} onExit={() => void returnToLearnTopic()} hasDiagnostics={(diagnostics?.results ?? []).some(result => result.diagnostics.length > 0)}
-      onShowProblems={() => selectLearnContextTab('problems')} /> : null;
+    if (paneId === 'lesson') {
+      if (challenge && layoutKind === 'CHALLENGE') {
+        return <ChallengeProvider challengeId={challenge.id}>
+          {challengePanelCollapsed
+            ? <nav className="challenge-rail" aria-label="Painel do desafio recolhido">
+                <button type="button" className="challenge-rail-expand" onClick={() => setChallengePanelCollapsed(false)}
+                  aria-label="Mostrar painel do desafio" title="Mostrar painel do desafio"><span aria-hidden="true">❮</span></button>
+              </nav>
+            : <ChallengeRightPanel onExit={challenge.onExit} onCollapse={() => setChallengePanelCollapsed(true)} />}
+        </ChallengeProvider>;
+      }
+      return lessonSession ? <LearningPanel session={lessonSession} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} onPrevious={() => void changeLessonStep('previous')}
+        onNext={() => void changeLessonStep('next')} onExit={() => void returnToLearnTopic()} hasDiagnostics={(diagnostics?.results ?? []).some(result => result.diagnostics.length > 0)}
+        onShowProblems={() => selectLearnContextTab('problems')} /> : null;
+    }
+    return null;
   };
-  const layoutKind = learnMode && lessonSession?.kind === 'THEORY' ? 'THEORY' : learnMode ? 'LEARN' : 'PROJECT';
-  const dockTree = layoutKind === 'THEORY' ? theoryDockTree : layoutKind === 'LEARN' ? learnPracticeDockLayout : projectDockLayout;
-  const dockRules: DockRules | null = layoutKind === 'LEARN' ? learnPracticeDockRules : layoutKind === 'PROJECT' ? projectDockRules : null;
+  const layoutKind = learnMode && lessonSession?.kind === 'THEORY' ? 'THEORY' : learnMode ? 'LEARN' : challenge ? 'CHALLENGE' : 'PROJECT';
+  const dockTree = layoutKind === 'CHALLENGE' ? challengeDockLayout : layoutKind === 'THEORY' ? theoryDockTree : layoutKind === 'LEARN' ? learnPracticeDockLayout : projectDockLayout;
+  const dockRules: DockRules | null = layoutKind === 'CHALLENGE' ? challengeDockRules : layoutKind === 'LEARN' ? learnPracticeDockRules : layoutKind === 'PROJECT' ? projectDockRules : null;
   const updateDockRatio = (splitId: string, ratio: number) => {
     if (layoutKind === 'LEARN') setLearnPracticeDockLayout(current => updateDockSplitRatio(current, splitId, ratio));
+    if (layoutKind === 'CHALLENGE') setChallengeDockLayout(current => updateDockSplitRatio(current, splitId, ratio));
     if (layoutKind === 'PROJECT') setProjectDockLayout(current => updateDockSplitRatio(current, splitId, ratio));
   };
  const editorSurfaceKey = `${mode}:${learnNavigation.screen}:${layoutKind}`;
@@ -726,6 +791,7 @@ export function Workspace() {
   const handleDockDrop = (paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM', ratio: number) => {
     if (!dockRules) return;
     if (layoutKind === 'LEARN') setLearnPracticeDockLayout(current => moveDockPane(current, paneId, targetId, side, learnPracticeDockRules, ratio) ?? current);
+    if (layoutKind === 'CHALLENGE') setChallengeDockLayout(current => moveDockPane(current, paneId, targetId, side, challengeDockRules, ratio) ?? current);
     if (layoutKind === 'PROJECT') setProjectDockLayout(current => moveDockPane(current, paneId, targetId, side, projectDockRules, ratio) ?? current);
   };
   useLayoutEffect(() => {
@@ -775,6 +841,12 @@ export function Workspace() {
       observer.disconnect();
     };
   }, [dockTree, editorSurfaceKey, editorVisible, service]);
+  if (challenge && (!workspace.project || mode === 'WELCOME')) {
+    return <main className="challenge-arena-gate" role={message ? 'alert' : undefined} aria-busy={!message}>
+      {!message && <span className="challenge-spinner" aria-hidden="true" />}
+      <p>{message || 'Preparando o ambiente do desafio...'}</p>
+    </main>;
+  }
   return <main className="app-shell">
     {toolbar}
     <div ref={shellWorkspace} className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}`} aria-hidden={mode === 'WELCOME'}>
@@ -786,7 +858,8 @@ export function Workspace() {
         onOpenRoadmap={categoryId => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'ROADMAP', categoryId }); }}
         onOpenTopic={(categoryId, topicId) => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'TOPIC', categoryId, topicId }); }}
         onOpenLesson={openLearnLesson} />}
-      <DockLayout tree={dockTree} renderPane={renderPane} layoutKind={layoutKind} className={learnExplorerCollapsed && learnMode ? 'is-learn-explorer-collapsed' : undefined}
+      <DockLayout tree={dockTree} renderPane={renderPane} layoutKind={layoutKind}
+        className={learnExplorerCollapsed && learnMode ? 'is-learn-explorer-collapsed' : layoutKind === 'CHALLENGE' && challengePanelCollapsed ? 'is-challenge-panel-collapsed' : undefined}
         canDockDrop={dockRules ? canDockDrop : undefined} resolveDockPreview={dockRules ? resolveDockPreview : undefined} onDockDrop={handleDockDrop}
         onRatioChange={updateDockRatio} onEditorGeometryChange={() => service.layout()} />
       <section className={`persistent-editor-surface${editorSurfaceVisible ? '' : ' is-hidden'}`} style={editorSurfaceBounds ? {
@@ -803,6 +876,7 @@ export function Workspace() {
       : learnMode && lessonSession ? <StatusBar breadcrumbs={learnStatusBreadcrumbs} caret={caret} message={message} runState={runState} /> : <div className="shell-status-spacer" />}
     {mode === 'WELCOME' && <section className="welcome-mode"><WelcomeScreen recentProjects={workspace.recentProjects} onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()}
       onOpenRecentProject={path => void openProject(path)} onRemoveRecentProject={path => void removeRecentProject(path)} onLessons={openLessons}
+      onChallenges={onOpenChallenges}
       onDocumentation={() => { void openDocumentationPage('java/jdk/fundamentos/variables').then(opened => { if (opened) setDocsFullscreen(true); }); }} /></section>}
     <div className="overlay-root">
       {signature && !completion && <SignaturePopup state={signature} />}

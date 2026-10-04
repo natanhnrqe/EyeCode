@@ -7,7 +7,7 @@ type Props = {
   renderPane(paneId: WorkspacePaneId): ReactNode;
   onRatioChange(splitId: string, ratio: number): void;
   onEditorGeometryChange(): void;
-  layoutKind?: 'PROJECT' | 'LEARN' | 'THEORY';
+  layoutKind?: 'PROJECT' | 'LEARN' | 'THEORY' | 'CHALLENGE';
   canDockDrop?(paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: DockSide): boolean;
   resolveDockPreview?(paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: DockSide, ratio: number): DockNode | null;
   onDockDrop?(paneId: WorkspacePaneId, targetId: WorkspacePaneId, side: DockSide, ratio: number): void;
