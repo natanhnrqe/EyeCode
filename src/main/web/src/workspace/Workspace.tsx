@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { bridge, WebShellRequestError } from '../bridge/EyeCodeBridge';
 import type { ShellBootstrap, WebShellEnvelope } from '../bridge/protocol';
 import type { CompletionPopupState } from '../completion/protocol';
@@ -25,8 +26,10 @@ import type { SignaturePopupState } from '../signature/protocol';
 import { BottomPanel } from './BottomPanel';
 import { DockLayout } from './DockLayout';
 import { DocumentationTab } from './DocumentationTab';
-import { EditorSplitGroup, type EditorSplitGroupState } from './EditorSplitGroup';
+import { EditorGroupPane } from './EditorGroupPane';
 import { EditorTabs } from './EditorTabs';
+import { PRIMARY_EDITOR_GROUP_ID, insertEditorGroup, primaryEditorGroup, pruneEditorGroups, removeEditorGroup, setEditorGroupUri, type EditorGroupNode } from './editorGroups';
+import type { EditorGroupDropTarget } from './editorSplitDnd';
 import { EyeCodeIcon } from './EyeCodeIcon';
 import { MonacoHost } from './MonacoHost';
 import { NewProjectDialog } from './NewProjectDialog';
@@ -45,7 +48,6 @@ type AppMode = 'WELCOME' | 'PROJECT' | 'LEARN';
 type ExplorerOperation = 'createFile' | 'createDirectory' | 'createJavaClass' | 'createPackage' | 'rename' | 'delete' | 'duplicate';
 type ExplorerOperationResult = { path?: string; parent?: string; openFile?: boolean; ancestors?: string[] };
 type EditorSurfaceBounds = { key: string; left: number; top: number; width: number; height: number };
-type EditorSplitDirection = 'right' | 'down';
 
 const emptyRunState: RunState = { running: false, phase: 'IDLE', finished: false, exitCode: null, stopped: false, rerunAvailable: false, configurations: [], selectedConfigurationId: '' };
 const emptyTerminalState: TerminalState = { requested: false, running: false, workingDirectory: '' };
@@ -102,9 +104,8 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   const [challengeDockLayout, setChallengeDockLayout] = useState<DockNode>(() => challengeDockTree);
   const [learnExplorerCollapsed, setLearnExplorerCollapsed] = useState(false);
   const [challengePanelCollapsed, setChallengePanelCollapsed] = useState(false);
-  const [editorSplitGroups, setEditorSplitGroups] = useState<EditorSplitGroupState[]>([]);
-  const [editorSplitDirection, setEditorSplitDirection] = useState<EditorSplitDirection>('right');
-  const editorSplitGroupId = useRef(0);
+  const [editorGroupTree, setEditorGroupTree] = useState<EditorGroupNode>(primaryEditorGroup);
+  const editorGroupCounter = useRef(0);
   const [docsFullscreen, setDocsFullscreen] = useState(false);
   const shellWorkspace = useRef<HTMLDivElement>(null);
   const [editorSurfaceBounds, setEditorSurfaceBounds] = useState<EditorSurfaceBounds | null>(null);
@@ -445,22 +446,26 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
     if (await activate(uri)) service.revealDiagnostic(uri, diagnostic);
   }
 
-  function splitEditorTab(uri: string, direction: EditorSplitDirection) {
-    setEditorSplitDirection(direction);
-    setEditorSplitGroups(groups => groups.some(group => group.uri === uri)
-      ? groups
-      : [...groups, { id: ++editorSplitGroupId.current, uri }]);
+  function splitEditorTab(uri: string, side: 'RIGHT' | 'BOTTOM') {
+    setEditorGroupTree(tree => insertEditorGroup(tree, PRIMARY_EDITOR_GROUP_ID, side, ++editorGroupCounter.current, uri) ?? tree);
   }
 
-  function closeEditorSplitGroup(id: number) {
-    setEditorSplitGroups(groups => groups.filter(group => group.id !== id));
+  function handleTabSplitDrop(uri: string, drop: EditorGroupDropTarget) {
+    if (drop.zone === 'CENTER' && drop.groupId === PRIMARY_EDITOR_GROUP_ID) {
+      void activate(uri);
+      return;
+    }
+    setEditorGroupTree(tree => drop.zone === 'CENTER'
+      ? setEditorGroupUri(tree, drop.groupId, uri)
+      : insertEditorGroup(tree, drop.groupId, drop.zone, ++editorGroupCounter.current, uri) ?? tree);
+  }
+
+  function closeEditorGroup(groupId: number) {
+    setEditorGroupTree(tree => removeEditorGroup(tree, groupId));
   }
 
   useEffect(() => {
-    setEditorSplitGroups(groups => {
-      const remaining = groups.filter(group => documents.some(document => document.uri === group.uri));
-      return remaining.length === groups.length ? groups : remaining;
-    });
+    setEditorGroupTree(tree => pruneEditorGroups(tree, uri => documents.some(document => document.uri === uri)));
   }, [documents]);
 
   async function close(uri: string) {
@@ -721,27 +726,39 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
           <span>This shell view is composed and ready for its dedicated service integration.</span></div>
       </section>}
     </aside>;
-    if (paneId === 'editor') return <section className="main-workspace" data-pane-id="editor">
-      <div className="editor-stack">
-        {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)}
-          onSplitRight={uri => splitEditorTab(uri, 'right')} onSplitDown={uri => splitEditorTab(uri, 'down')} /> : lessonSession?.kind === 'PRACTICE' && lessonSession.workspace ? <>
-          <EditorTabs documents={lessonDocuments} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={() => undefined} closable={false} />
-        </> : <header className="document-tabs learn-editor-tabs" data-dock-handle>{learnPath.join(' / ')}</header>}
-        <div className={`editor-split-root${editorSplitDirection === 'down' ? ' is-vertical' : ''}`}>
-          <section className="editor-region" data-editor-region-slot>
-            {projectMode && activeDocument?.kind === 'documentation' && <DocumentationTab document={activeDocument} />}
-            {projectMode && activeDocument?.kind === 'guide' && !docsFullscreenActive && renderGuideArticle}
-            {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
-              <span>Open a file from Project panel or create something new.</span><div><button type="button" className="primary-action" onClick={() => setNewJavaClassOpen(true)}>New Java Class</button></div></div>}
-            {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
-            {projectMode && <EditorDiagnosticStrip state={diagnostics} onNavigate={navigateProblem} />}
-          </section>
-          {projectMode && editorSplitGroups.map(group => <EditorSplitGroup key={group.id} group={group} documents={documents}
+    if (paneId === 'editor') {
+      const primaryRegion = <section className="editor-region" data-editor-group-id={PRIMARY_EDITOR_GROUP_ID} data-editor-region-slot>
+        {projectMode && activeDocument?.kind === 'documentation' && <DocumentationTab document={activeDocument} />}
+        {projectMode && activeDocument?.kind === 'guide' && !docsFullscreenActive && renderGuideArticle}
+        {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
+          <span>Open a file from Project panel or create something new.</span><div><button type="button" className="primary-action" onClick={() => setNewJavaClassOpen(true)}>New Java Class</button></div></div>}
+        {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
+        {projectMode && <EditorDiagnosticStrip state={diagnostics} onNavigate={navigateProblem} />}
+      </section>;
+      const renderGroupNode = (node: EditorGroupNode): ReactNode => {
+        if (node.type === 'group') {
+          return node.groupId === PRIMARY_EDITOR_GROUP_ID ? primaryRegion : <EditorGroupPane group={node} documents={documents}
             guidePages={guidePages} service={service} onOpenRelated={id => void openDocumentationPage(id)}
-            onClose={() => closeEditorSplitGroup(group.id)} />)}
+            onCloseGroup={() => closeEditorGroup(node.groupId)} />;
+        }
+        return <div className={`editor-group-split is-${node.orientation}`}>
+          <div className="editor-group-split-child" style={{ flexGrow: node.ratio, flexBasis: 0 }}>{renderGroupNode(node.first)}</div>
+          <div className="editor-group-split-child" style={{ flexGrow: 1 - node.ratio, flexBasis: 0 }}>{renderGroupNode(node.second)}</div>
+        </div>;
+      };
+      return <section className="main-workspace" data-pane-id="editor">
+        <div className="editor-stack">
+          {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)}
+            onSplitRight={uri => splitEditorTab(uri, 'RIGHT')} onSplitDown={uri => splitEditorTab(uri, 'BOTTOM')}
+            onTabSplitDrop={handleTabSplitDrop} /> : lessonSession?.kind === 'PRACTICE' && lessonSession.workspace ? <>
+            <EditorTabs documents={lessonDocuments} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={() => undefined} closable={false} />
+          </> : <header className="document-tabs learn-editor-tabs" data-dock-handle>{learnPath.join(' / ')}</header>}
+          <div className="editor-groups">
+            {renderGroupNode(editorGroupTree)}
+          </div>
         </div>
-      </div>
-    </section>;
+      </section>;
+    }
     if (paneId === 'bottom') return learnMode ? <LearnContextPanel active={learnContextTab} output={runOutput} runState={runState} diagnostics={diagnostics} documents={documents} onSelect={selectLearnContextTab}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} /> : <BottomPanel active={bottomPanel} output={runOutput} runState={runState} terminalState={terminalState}
       diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}

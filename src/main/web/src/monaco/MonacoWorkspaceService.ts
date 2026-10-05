@@ -75,9 +75,9 @@ export class MonacoWorkspaceService {
   private readonly confirmedVersions = new Map<string, number>();
   private readonly readOnly = new Map<string, boolean>();
   private readonly changeQueues = new Map<string, Promise<void>>();
+  private readonly modelContentListeners = new Map<string, Disposable>();
   private editor: MonacoEditor | null = null;
   private api: MonacoApi | null = null;
-  private contentListener: Disposable | null = null;
   private keyListener: Disposable | null = null;
   private cursorListener: Disposable | null = null;
   private mouseMoveListener: Disposable | null = null;
@@ -196,11 +196,12 @@ export class MonacoWorkspaceService {
     this.editor?.layout();
   }
 
-  createSplitEditor(container: HTMLElement, uri: string): { dispose(): void } | null {
-    if (this.disposed || !this.editor || !this.api) return null;
+  attachGroupEditor(container: HTMLElement, uri: string): { dispose(): void } | null {
+    if (this.disposed || !this.api) return null;
     const model = this.models.get(uri) ?? this.ephemeralModels.get(uri) ?? null;
     if (!model) return null;
-    const splitEditor = this.api.editor.create(container, {
+    const readOnly = this.readOnly.get(uri) ?? this.ephemeralReadOnly.get(uri) ?? false;
+    const groupEditor = this.api.editor.create(container, {
       theme: 'eyecode-dark',
       automaticLayout: true,
       minimap: { enabled: false },
@@ -210,13 +211,14 @@ export class MonacoWorkspaceService {
       scrollBeyondLastLine: false,
       smoothScrolling: false,
       guides: { indentation: true, highlightActiveIndentation: false, bracketPairs: true, bracketPairsHorizontal: false },
+      inlayHints: { enabled: 'on' },
       quickSuggestions: false,
       wordBasedSuggestions: false,
       suggestOnTriggerCharacters: false,
-      readOnly: true,
+      readOnly,
       model
     });
-    return { dispose: () => splitEditor.dispose() };
+    return { dispose: () => groupEditor.dispose() };
   }
 
   mountEphemeralModel(uri: string, content: string, language: string, readOnly: boolean, activate = true): void {
@@ -257,6 +259,7 @@ export class MonacoWorkspaceService {
     const model = this.ephemeralModels.get(uri) ?? this.api.editor.createModel(content, language, this.api.Uri.parse(uri));
     this.ephemeralModels.set(uri, model);
     this.ephemeralReadOnly.set(uri, readOnly);
+    this.attachModelContentListener(uri, model);
     if (!activate) return;
     const current = this.editor.getModel();
     const currentUri = this.documentUri(current);
@@ -488,6 +491,7 @@ export class MonacoWorkspaceService {
     if (this.pendingEphemeralActiveUri === uri) this.pendingEphemeralActiveUri = null;
     const model = this.ephemeralModels.get(uri);
     if (!model) return;
+    this.detachModelContentListener(uri);
     this.clearEphemeralDecorations(uri);
     if (this.editor?.getModel() === model) this.editor.setModel(null);
     model.dispose();
@@ -610,10 +614,6 @@ export class MonacoWorkspaceService {
         this.receiveDiagnosticsMessage(message);
       });
     this.jdtMessageUnsubscribe = bridge.subscribe(message => this.receiveJdtDiagnosticsMessage(message));
-    this.contentListener = this.editor.onDidChangeModelContent(event => {
-      this.forwardContentChange();
-      if (!this.suppressContentChange && !this.suppressCompletionTrigger) this.handleContentChange(event);
-    });
     this.keyListener = this.editor.onKeyDown(event => this.handleCompletionKey(event));
     this.cursorListener = this.editor.onDidChangeCursorPosition(event => this.handleCursorChange(event));
     this.mouseMoveListener = this.editor.onMouseMove(event => this.handleLearningMouseMove(event));
@@ -686,6 +686,7 @@ export class MonacoWorkspaceService {
     const model = this.models.get(document.uri) ?? this.api.editor.createModel(
       document.content, document.language || 'java', this.api.Uri.parse(document.uri));
     this.models.set(document.uri, model);
+    this.attachModelContentListener(document.uri, model);
     if (document.revealLine && document.revealColumn) {
       this.pendingReveals.set(document.uri, { line: document.revealLine, column: document.revealColumn });
     }
@@ -758,6 +759,7 @@ export class MonacoWorkspaceService {
     const model = this.models.get(uri);
     this.invalidateDiagnostics(uri, model ?? null);
     if (!model) return;
+    this.detachModelContentListener(uri);
     if (this.editor?.getModel() === model) {
       this.editor.setModel(null);
     }
@@ -775,6 +777,8 @@ export class MonacoWorkspaceService {
     this.hideCompletion();
     this.hideLearning();
     this.clearDiagnostics();
+    this.modelContentListeners.forEach(listener => listener.dispose());
+    this.modelContentListeners.clear();
     this.editor?.setModel(null);
     this.models.forEach(model => model.dispose());
     this.models.clear();
@@ -799,6 +803,7 @@ export class MonacoWorkspaceService {
     if (this.learningState?.uri === previousUri) this.hideLearning();
     const model = this.models.get(previousUri);
     this.invalidateDiagnostics(previousUri, model ?? null);
+    this.detachModelContentListener(previousUri);
     const active = this.editor?.getModel() === model;
     const viewState = active ? this.editor?.saveViewState() : this.viewStates.get(previousUri);
     if (active) this.editor?.setModel(null);
@@ -821,8 +826,8 @@ export class MonacoWorkspaceService {
     this.cancelLearningHide();
     this.cancelLearningOpen();
     this.disposed = true;
-    this.contentListener?.dispose();
-    this.contentListener = null;
+    this.modelContentListeners.forEach(listener => listener.dispose());
+    this.modelContentListeners.clear();
     this.keyListener?.dispose();
     this.keyListener = null;
     this.cursorListener?.dispose();
@@ -886,13 +891,25 @@ export class MonacoWorkspaceService {
     }
   }
 
-  private forwardContentChange(): void {
-    if (this.suppressContentChange || !this.editor) return;
-    const model = this.editor.getModel();
-    if (!model) return;
-    if ([...this.ephemeralModels.values()].includes(model)) return;
-    const uri = this.documentUri(model);
-    if (!uri) return;
+  private attachModelContentListener(uri: string, model: MonacoModel): void {
+    if (this.modelContentListeners.has(uri)) return;
+    const onDidChangeContent = model.onDidChangeContent;
+    if (!onDidChangeContent) return;
+    const listener = onDidChangeContent(event => {
+      this.forwardContentChange(uri, model);
+      if (!this.suppressContentChange && !this.suppressCompletionTrigger) this.handleModelContentChange(uri, model, event);
+    });
+    this.modelContentListeners.set(uri, listener);
+  }
+
+  private detachModelContentListener(uri: string): void {
+    this.modelContentListeners.get(uri)?.dispose();
+    this.modelContentListeners.delete(uri);
+  }
+
+  private forwardContentChange(uri: string, model: MonacoModel): void {
+    if (this.suppressContentChange) return;
+    if (this.ephemeralModels.get(uri) === model) return;
     const content = model.getValue();
     const language = model.getLanguageId?.() ?? 'plaintext';
     const previous = this.changeQueues.get(uri) ?? Promise.resolve();
@@ -919,12 +936,14 @@ export class MonacoWorkspaceService {
     }));
   }
 
-  private handleContentChange(event: MonacoContentChangeEvent): void {
-    const model = this.editor?.getModel() ?? null;
-    const uri = this.documentUri(model);
-    if (model && uri) this.scheduleDiagnostics(uri, model);
+  private handleModelContentChange(uri: string, model: MonacoModel, event: MonacoContentChangeEvent): void {
+    this.scheduleDiagnostics(uri, model);
     this.hideLearning();
     const changes = event.changes ?? [];
+    if (this.editor?.getModel() !== model) {
+      this.hideCompletion();
+      return;
+    }
     if (!changes.some(change => {
       const text = change.text ?? '';
       return text.includes('.') || /[\p{L}\p{N}_]/u.test(text);

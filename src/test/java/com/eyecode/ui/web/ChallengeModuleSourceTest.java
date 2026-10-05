@@ -105,7 +105,9 @@ class ChallengeModuleSourceTest {
     void editorTabsSupportSplitViewGroups() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String tabs = Files.readString(Path.of("src/main/web/src/workspace/EditorTabs.tsx"));
-        String splitGroup = Files.readString(Path.of("src/main/web/src/workspace/EditorSplitGroup.tsx"));
+        String groupPane = Files.readString(Path.of("src/main/web/src/workspace/EditorGroupPane.tsx"));
+        String groups = Files.readString(Path.of("src/main/web/src/workspace/editorGroups.ts"));
+        String dnd = Files.readString(Path.of("src/main/web/src/workspace/editorSplitDnd.ts"));
         String service = Files.readString(Path.of("src/main/web/src/monaco/MonacoWorkspaceService.ts"));
 
         assertTrue(tabs.contains("onSplitRight"));
@@ -114,12 +116,40 @@ class ChallengeModuleSourceTest {
         assertTrue(tabs.contains("Split Right"));
         assertTrue(tabs.contains("Split Down"));
         assertTrue(tabs.contains("editor-context-menu"));
+        assertTrue(tabs.contains("onTabSplitDrop"));
+        assertTrue(tabs.contains("editor-tab-drag-ghost"));
+        assertTrue(tabs.contains("editor-tab-drop-preview"));
+        assertTrue(tabs.contains("is-editor-tab-dragging"));
+        assertTrue(tabs.contains("[data-editor-group-id]"),
+                "tab drop zones must be resolved from group rects, like the dock leaf hit-test");
+        assertFalse(tabs.contains("elementFromPoint"),
+                "elementFromPoint is blind to the persistent editor surface overlay; rect iteration is the dock pattern");
         assertTrue(workspace.contains("splitEditorTab"));
-        assertTrue(workspace.contains("editor-split-root"));
-        assertTrue(workspace.contains("EditorSplitGroup"));
-        assertTrue(splitGroup.contains("EditorSplitMirror"));
-        assertTrue(service.contains("createSplitEditor"),
-                "the Monaco service must expose read-only split editor mirrors");
+        assertTrue(workspace.contains("handleTabSplitDrop"));
+        assertTrue(workspace.contains("closeEditorGroup"));
+        assertTrue(workspace.contains("editor-group-split"));
+        assertTrue(workspace.contains("EditorGroupPane"));
+        assertTrue(workspace.contains("insertEditorGroup"));
+        assertTrue(workspace.contains("pruneEditorGroups"));
+        assertTrue(groupPane.contains("attachGroupEditor"),
+                "secondary groups must be real editable Monaco editors sharing the model");
+        assertTrue(groupPane.contains("data-editor-group-id"));
+        assertTrue(groups.contains("PRIMARY_EDITOR_GROUP_ID"));
+        assertTrue(groups.contains("insertEditorGroup"));
+        assertTrue(groups.contains("removeEditorGroup"));
+        assertTrue(groups.contains("setEditorGroupUri"));
+        assertTrue(dnd.contains("resolveGroupDropTarget"));
+        assertTrue(dnd.contains("zonePreviewRect"));
+        assertTrue(dnd.contains("'CENTER'"),
+                "the VS Code five-zone drop model must include CENTER (open into the group)");
+        assertTrue(service.contains("attachGroupEditor"));
+        assertTrue(service.contains("attachModelContentListener"),
+                "content sync must live on the MODEL (JDT rule), not on the editor widget");
+        assertTrue(service.contains("onDidChangeContent"));
+        assertFalse(service.contains("createSplitEditor"),
+                "read-only mirrors are gone; groups are real editors");
+        assertFalse(service.contains("this.editor.onDidChangeModelContent"),
+                "the widget-level content listener is forbidden once sync is model-level (single sync channel)");
     }
 
     @Test
@@ -147,9 +177,6 @@ class ChallengeModuleSourceTest {
         assertTrue(styles.contains(".dock-layout.is-challenge-panel-collapsed"),
                 "collapse must be driven by the dock layout manager pattern");
         assertTrue(styles.contains(".challenge-rail"));
-        assertTrue(styles.contains(".editor-split-root"));
-        assertTrue(styles.contains(".editor-split-group"));
-        assertTrue(styles.contains(".editor-context-menu"));
         assertTrue(styles.contains(".challenge-lobby"));
         assertTrue(styles.contains(".challenge-arena-gate"));
         assertTrue(styles.contains(".challenge-spinner"));
@@ -157,6 +184,14 @@ class ChallengeModuleSourceTest {
                 "statement meta must live inside the scrollable statement flow");
         assertFalse(styles.contains(".challenge-header {"),
                 "the fixed statement header must not exist; the header scrolls away with the content");
+        assertTrue(styles.contains(".editor-groups"));
+        assertTrue(styles.contains(".editor-group-split"));
+        assertTrue(styles.contains(".editor-group-pane"));
+        assertTrue(styles.contains(".editor-groups > .editor-region { flex: 1 1 0;"),
+                "the editor region must stretch inside the groups tree or the Monaco surface measures zero and hides");
+        assertTrue(styles.contains(".editor-context-menu"));
+        assertFalse(styles.contains(".editor-split-root"),
+                "the linear split layout is replaced by the editor group tree");
         assertFalse(styles.contains(".shell-workspace.is-challenge"),
                 "the global shell grid must not carry challenge columns");
         assertFalse(styles.contains(".challenge-statement-pane"),

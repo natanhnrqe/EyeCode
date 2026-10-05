@@ -4894,24 +4894,34 @@ img.learning-icon {
 @keyframes challenge-spin { to { transform: rotate(360deg); } }
 
 /* ========================================================================== */
-/* Editor split view (grupos de editor)                                        */
+/* Editor split view (grid de grupos de editor)                                */
 /* ========================================================================== */
-.editor-split-root { flex: 1; min-width: 0; min-height: 0; display: flex; }
-.editor-split-root.is-vertical { flex-direction: column; }
-.editor-split-group { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--border); background: var(--surface-panel); }
-.editor-split-root.is-vertical .editor-split-group { border-left: 0; border-top: 1px solid var(--border); }
-.editor-split-group-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px; height: 30px; flex: 0 0 auto; border-bottom: 1px solid var(--border); }
-.editor-split-group-title { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-muted); min-width: 0; overflow: hidden; }
-.editor-split-group-title .eyecode-icon { width: 13px; height: 13px; flex: 0 0 auto; }
-.editor-split-group-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.editor-split-group-close { width: 22px; height: 22px; display: grid; place-items: center; background: transparent; border: 0; color: var(--text-muted); border-radius: var(--radius-sm); font-size: 14px; line-height: 1; cursor: pointer; }
-.editor-split-group-close:hover { color: var(--text); background: var(--surface-hover); }
-.editor-split-group-body { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.editor-split-mirror { flex: 1; min-height: 0; min-width: 0; }
+.editor-groups { flex: 1; min-width: 0; min-height: 0; display: flex; }
+.editor-groups > .editor-region { flex: 1 1 0; min-width: 0; min-height: 0; }
+.editor-group-split { flex: 1; min-width: 0; min-height: 0; display: flex; }
+.editor-group-split.is-vertical { flex-direction: column; }
+.editor-group-split-child { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.editor-group-split-child > .editor-region { flex: 1 1 0; min-width: 0; min-height: 0; }
+.editor-group-split.is-horizontal .editor-group-split-child + .editor-group-split-child { border-left: 1px solid var(--border); }
+.editor-group-split.is-vertical .editor-group-split-child + .editor-group-split-child { border-top: 1px solid var(--border); }
+.editor-group-pane { display: flex; flex-direction: column; width: 100%; height: 100%; min-width: 0; min-height: 0; background: var(--surface-editor); }
+.editor-group-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px; height: 30px; flex: 0 0 auto; border-bottom: 1px solid var(--border); background: var(--surface-panel); }
+.editor-group-title { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-muted); min-width: 0; overflow: hidden; }
+.editor-group-title .eyecode-icon { width: 13px; height: 13px; flex: 0 0 auto; }
+.editor-group-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.editor-group-close { width: 22px; height: 22px; display: grid; place-items: center; background: transparent; border: 0; color: var(--text-muted); border-radius: var(--radius-sm); font-size: 14px; line-height: 1; cursor: pointer; }
+.editor-group-close:hover { color: var(--text); background: var(--surface-hover); }
+.editor-group-body { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.editor-group-monaco { flex: 1; min-height: 0; min-width: 0; }
+.editor-group-fallback { flex: 1; display: grid; place-content: center; gap: 8px; padding: 24px; color: var(--text-muted); font-size: 12px; text-align: center; }
 .editor-context-menu { position: fixed; z-index: 70; min-width: 170px; background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 4px; box-shadow: 0 10px 28px rgba(0, 0, 0, .45); }
 .editor-context-menu button { display: block; width: 100%; text-align: left; background: transparent; border: 0; color: var(--text); font: inherit; font-size: 12.5px; padding: 7px 10px; border-radius: var(--radius-sm); cursor: pointer; }
 .editor-context-menu button:hover:not(:disabled) { background: var(--surface-hover); }
 .editor-context-menu button:disabled { color: var(--text-muted); cursor: default; }
+.is-editor-tab-dragging, .is-editor-tab-dragging * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+.editor-tab.is-drag-source { opacity: .55; }
+.editor-tab-drag-ghost { position: fixed; z-index: 72; display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid rgba(230, 225, 255, .88); border-radius: var(--radius-sm); background: rgba(169, 146, 255, .16); color: var(--text); font-size: 12px; box-shadow: 0 12px 28px rgba(0, 0, 0, .32); pointer-events: none; }
+.editor-tab-drop-preview { position: fixed; z-index: 71; border: 2px solid var(--eyecode-accent-bright); border-radius: var(--radius-sm); background: rgba(169, 146, 255, .05); box-shadow: inset 0 0 0 1px rgba(230, 225, 255, .22), 0 0 16px rgba(169, 146, 255, .18); pointer-events: none; }
 
 .challenge-lobby { min-height: 100vh; background: var(--background); color: var(--text); padding: 32px 40px 56px; box-sizing: border-box; overflow-y: auto; }
 .challenge-lobby-header { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }

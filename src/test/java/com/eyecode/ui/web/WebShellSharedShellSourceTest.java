@@ -123,8 +123,8 @@ class WebShellSharedShellSourceTest {
         String controller = Files.readString(Path.of("src/main/web/src/lessons/LessonEditorController.ts"));
         String monaco = Files.readString(Path.of("src/main/web/src/monaco/MonacoWorkspaceService.ts"));
 
-        assertTrue(monaco.contains("if ([...this.ephemeralModels.values()].includes(model)) return;"));
-        assertTrue(monaco.indexOf("if ([...this.ephemeralModels.values()].includes(model)) return;")
+        assertTrue(monaco.contains("if (this.ephemeralModels.get(uri) === model) return;"));
+        assertTrue(monaco.indexOf("if (this.ephemeralModels.get(uri) === model) return;")
                 < monaco.indexOf("bridge.request<{ document: DocumentSnapshot }>('document', 'change'"));
         assertTrue(controller.contains("if (session.phase === 'PRACTICE') this.enterPractice();\n    else this.applyPresentation(session);"));
         assertTrue(workspace.contains("else if (!lessonEditor.lessonUri() && session.workspace)"));
@@ -162,7 +162,7 @@ class WebShellSharedShellSourceTest {
         assertTrue(monaco.contains("uri.startsWith('lesson://') && !lessonPractice"));
         assertTrue(monaco.contains("lessonPractice,"));
         assertTrue(monaco.contains("lessonPractice: this.lessonPracticeUris.has(target.uri),"));
-        assertTrue(monaco.contains("if ([...this.ephemeralModels.values()].includes(model)) return;"));
+        assertTrue(monaco.contains("if (this.ephemeralModels.get(uri) === model) return;"));
         assertTrue(completion.contains("boolean lessonPractice = isLessonPracticeRequest(message.payload(), modelId);"));
         assertTrue(completion.contains("new LanguageDocument(modelId, session == null ? null : session.getFile(),"));
         assertTrue(completion.contains("new CompletionRequest(document,"));
