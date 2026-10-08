@@ -82,6 +82,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   const [bottomPanel, setBottomPanel] = useState<BottomPanelId>('terminal');
   const [learnContextTab, setLearnContextTab] = useState<LearnContextTab>('problems');
   const [sidePanel, setSidePanel] = useState<SidePanelId>('project');
+  const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
   const [caret, setCaret] = useState({ line: 1, column: 1 });
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [newJavaClassOpen, setNewJavaClassOpen] = useState(false);
@@ -595,7 +596,12 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
 
   function selectSidePanel(id: SidePanelId) {
     if (lessonSession) void closeLesson();
+    if (id === sidePanel && !sidePanelCollapsed) {
+      setSidePanelCollapsed(true);
+      return;
+    }
     setSidePanel(id);
+    setSidePanelCollapsed(false);
   }
 
   async function startLesson(lesson: LessonDescriptor) {
@@ -943,14 +949,16 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
     <div ref={shellWorkspace} className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}`} aria-hidden={mode === 'WELCOME'}>
       {projectMode ? <nav className="activity-bar" aria-label="Workspace views">
         {(['project', 'search', 'documentation', 'settings'] as SidePanelId[]).map(id => <button key={id}
-          type="button" className={sidePanel === id ? 'is-active' : ''} onClick={() => selectSidePanel(id)} aria-label={id}><EyeCodeIcon name={sideIcon(id)} /></button>)}
+          type="button" className={sidePanel === id && !sidePanelCollapsed ? 'is-active' : ''} onClick={() => selectSidePanel(id)}
+          aria-label={id} aria-expanded={sidePanel === id ? !sidePanelCollapsed : undefined}><EyeCodeIcon name={sideIcon(id)} /></button>)}
       </nav> : !learnNavigationVisible && <nav className="activity-bar learn-activity-bar" aria-label="Navegação da aula"><button type="button" className={!learnExplorerCollapsed ? 'is-active' : ''} onClick={() => setLearnExplorerCollapsed(value => !value)} aria-label={learnExplorerCollapsed ? 'Mostrar aulas' : 'Ocultar aulas'} aria-expanded={!learnExplorerCollapsed}><EyeCodeIcon name="markdown" /></button></nav>}
       {learnNavigationVisible && <LearnWorkspace navigation={learnNavigation} onHome={() => { setActiveLearnTrackId(null); setLearnNavigation({ screen: 'HOME' }); }}
         onOpenRoadmap={categoryId => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'ROADMAP', categoryId }); }}
         onOpenTopic={(categoryId, topicId) => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'TOPIC', categoryId, topicId }); }}
         onOpenLesson={openLearnLesson} />}
       <DockLayout tree={dockTree} renderPane={renderPane} layoutKind={layoutKind}
-        className={learnExplorerCollapsed && learnMode ? 'is-learn-explorer-collapsed' : layoutKind === 'CHALLENGE' && challengePanelCollapsed ? 'is-challenge-panel-collapsed' : undefined}
+        className={[(learnExplorerCollapsed && learnMode) || (projectMode && sidePanelCollapsed) ? 'is-learn-explorer-collapsed' : undefined,
+          layoutKind === 'CHALLENGE' && challengePanelCollapsed ? 'is-challenge-panel-collapsed' : undefined].filter(Boolean).join(' ') || undefined}
         canDockDrop={dockRules ? canDockDrop : undefined} resolveDockPreview={dockRules ? resolveDockPreview : undefined} onDockDrop={handleDockDrop}
         onRatioChange={updateDockRatio} onEditorGeometryChange={() => service.layout()} />
       <section className={`persistent-editor-surface${editorSurfaceVisible ? '' : ' is-hidden'}`} style={editorSurfaceBounds ? {

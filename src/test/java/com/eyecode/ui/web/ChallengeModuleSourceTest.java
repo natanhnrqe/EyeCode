@@ -50,8 +50,12 @@ class ChallengeModuleSourceTest {
     void arenaDelegatesRenderingToTheStandardWorkspace() throws IOException {
         String arena = Files.readString(Path.of("src/main/web/src/challenge/ChallengeArena.tsx"));
 
-        assertTrue(arena.contains("<Workspace key={challengeId} challenge={context} />"),
+        assertTrue(arena.contains("<Workspace key={challengeId} challenge={context} onOpenChallenges={onBack} />"),
                 "ChallengeArena must delegate the layout to the standard Workspace with a fresh instance per challenge");
+        assertTrue(arena.contains("<Workspace key={challengeId} challenge={null} onOpenChallenges={onBack} />"),
+                "leaving the challenge must keep the same Workspace instance with the challenge context cleared");
+        assertTrue(arena.contains("onLeave: () => setLeft(true)"),
+                "the challenge context must expose onLeave so openProject/createProject can clear it");
         assertTrue(arena.contains("mainFilePath"),
                 "the arena must carry the main file path for auto-open");
         assertTrue(arena.contains("challenge-spinner"),

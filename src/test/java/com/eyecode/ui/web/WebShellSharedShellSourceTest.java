@@ -444,6 +444,23 @@ class WebShellSharedShellSourceTest {
     }
 
     @Test
+    void sidePanelCollapseReusesTheLearnExplorerDockCollapse() throws IOException {
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+
+        assertTrue(workspace.contains("const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);"));
+        assertTrue(workspace.contains("if (id === sidePanel && !sidePanelCollapsed) {"),
+                "clicking the active activity-bar button must collapse the side dock");
+        assertTrue(workspace.contains("setSidePanelCollapsed(false);"),
+                "selecting a different panel or re-clicking must expand the dock again");
+        assertTrue(workspace.contains("sidePanel === id && !sidePanelCollapsed ? 'is-active'"),
+                "the activity-bar button must reflect the collapsed state");
+        assertTrue(workspace.contains("(projectMode && sidePanelCollapsed) ? 'is-learn-explorer-collapsed'"),
+                "project-mode collapse must reuse the learn explorer dock collapse CSS instead of a second rule");
+        assertTrue(workspace.contains("layoutKind === 'CHALLENGE' && challengePanelCollapsed ? 'is-challenge-panel-collapsed'"),
+                "the challenge right-panel collapse must stay independent of the left dock collapse");
+    }
+
+    @Test
     void dockDragUsesStableSlotsAndKeepsTheEditorMounted() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String pane = Files.readString(Path.of("src/main/web/src/workspace/WorkspacePane.ts"));
