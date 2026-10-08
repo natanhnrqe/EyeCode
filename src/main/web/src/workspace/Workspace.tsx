@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { bridge, WebShellRequestError } from '../bridge/EyeCodeBridge';
 import type { ShellBootstrap, WebShellEnvelope } from '../bridge/protocol';
 import type { CompletionPopupState } from '../completion/protocol';
@@ -28,7 +28,7 @@ import { DockLayout } from './DockLayout';
 import { DocumentationTab } from './DocumentationTab';
 import { EditorGroupPane } from './EditorGroupPane';
 import { EditorTabs } from './EditorTabs';
-import { PRIMARY_EDITOR_GROUP_ID, insertEditorGroup, primaryEditorGroup, pruneEditorGroups, removeEditorGroup, setEditorGroupUri, type EditorGroupNode } from './editorGroups';
+import { PRIMARY_EDITOR_GROUP_ID, editorGroupResizeRatio, editorGroupSeparatorSize, insertEditorGroup, primaryEditorGroup, pruneEditorGroups, removeEditorGroup, setEditorGroupUri, updateEditorGroupRatio, type EditorGroupNode, type EditorGroupOrientation } from './editorGroups';
 import type { EditorGroupDropTarget } from './editorSplitDnd';
 import { EyeCodeIcon } from './EyeCodeIcon';
 import { MonacoHost } from './MonacoHost';
@@ -52,7 +52,7 @@ type EditorSurfaceBounds = { key: string; left: number; top: number; width: numb
 const emptyRunState: RunState = { running: false, phase: 'IDLE', finished: false, exitCode: null, stopped: false, rerunAvailable: false, configurations: [], selectedConfigurationId: '' };
 const emptyTerminalState: TerminalState = { requested: false, running: false, workingDirectory: '' };
 
-export type WorkspaceChallengeContext = { id: string; path: string; mainFilePath?: string; onExit(): void };
+export type WorkspaceChallengeContext = { id: string; path: string; mainFilePath?: string; onExit(): void; onLeave(): void };
 
 export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: () => void; challenge?: WorkspaceChallengeContext | null } = {}) {
   const service = useRef(new MonacoWorkspaceService()).current;
@@ -106,6 +106,8 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   const [challengePanelCollapsed, setChallengePanelCollapsed] = useState(false);
   const [editorGroupTree, setEditorGroupTree] = useState<EditorGroupNode>(primaryEditorGroup);
   const editorGroupCounter = useRef(0);
+  const activeSplitResize = useRef<{ pointerId: number; splitPath: string; orientation: EditorGroupOrientation; bounds: DOMRect; separator: HTMLDivElement; pendingRatio: number | null; frame: number | null } | null>(null);
+  const [activeSplitPath, setActiveSplitPath] = useState<string | null>(null);
   const [docsFullscreen, setDocsFullscreen] = useState(false);
   const shellWorkspace = useRef<HTMLDivElement>(null);
   const [editorSurfaceBounds, setEditorSurfaceBounds] = useState<EditorSurfaceBounds | null>(null);
@@ -327,11 +329,12 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
         setChildrenByPath({});
         setTreeChangedPath(undefined);
         setTreeRefreshRevision(0);
-        service.clearDiagnostics();
-        setMode('PROJECT');
-      }
-      setMessage('');
-    } catch (error) {
+      service.clearDiagnostics();
+      setMode('PROJECT');
+      if (challenge && !isSameProjectPath(challenge.path, snapshot.project.root.path)) challenge.onLeave();
+    }
+    setMessage('');
+  } catch (error) {
       if (path && error instanceof WebShellRequestError && error.code === 'INVALID_PROJECT') {
         try { setWorkspace(await bridge.request<WorkspaceSnapshot>('workspace', 'removeRecent', { path })); }
         catch { setMessage(formatError(error)); }
@@ -373,6 +376,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       setMode('PROJECT');
       setNewProjectOpen(false);
       setMessage('');
+      if (challenge && !isSameProjectPath(challenge.path, snapshot.project.root.path)) challenge.onLeave();
     }
   }
 
@@ -462,6 +466,61 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
 
   function closeEditorGroup(groupId: number) {
     setEditorGroupTree(tree => removeEditorGroup(tree, groupId));
+  }
+
+  useEffect(() => () => {
+    const active = activeSplitResize.current;
+    if (active && active.frame !== null) cancelAnimationFrame(active.frame);
+  }, []);
+
+  function beginSplitResize(event: ReactPointerEvent<HTMLDivElement>, splitPath: string, orientation: EditorGroupOrientation) {
+    if (event.button !== 0) return;
+    const separator = event.currentTarget;
+    const bounds = separator.parentElement?.getBoundingClientRect();
+    if (!bounds) return;
+    event.preventDefault();
+    separator.setPointerCapture(event.pointerId);
+    activeSplitResize.current = { pointerId: event.pointerId, splitPath, orientation, bounds, separator, pendingRatio: null, frame: null };
+    setActiveSplitPath(splitPath);
+  }
+
+  function scheduleSplitRatio(active: NonNullable<typeof activeSplitResize.current>, ratio: number) {
+    active.pendingRatio = ratio;
+    if (active.frame !== null) return;
+    active.frame = requestAnimationFrame(() => {
+      active.frame = null;
+      if (active.pendingRatio === null) return;
+      const pending = active.pendingRatio;
+      active.pendingRatio = null;
+      setEditorGroupTree(tree => updateEditorGroupRatio(tree, active.splitPath, pending));
+    });
+  }
+
+  function moveSplitResize(event: ReactPointerEvent<HTMLDivElement>) {
+    const active = activeSplitResize.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    const horizontal = active.orientation === 'horizontal';
+    const size = horizontal ? active.bounds.width : active.bounds.height;
+    const pointer = horizontal ? event.clientX - active.bounds.left : event.clientY - active.bounds.top;
+    scheduleSplitRatio(active, editorGroupResizeRatio(pointer, size));
+  }
+
+  function finishSplitResize(event: ReactPointerEvent<HTMLDivElement>) {
+    const active = activeSplitResize.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    if (active.frame !== null) {
+      cancelAnimationFrame(active.frame);
+      active.frame = null;
+    }
+    if (active.pendingRatio !== null) {
+      const pending = active.pendingRatio;
+      active.pendingRatio = null;
+      setEditorGroupTree(tree => updateEditorGroupRatio(tree, active.splitPath, pending));
+    }
+    if (active.separator.hasPointerCapture(event.pointerId)) active.separator.releasePointerCapture(event.pointerId);
+    activeSplitResize.current = null;
+    setActiveSplitPath(null);
+    service.layout();
   }
 
   useEffect(() => {
@@ -735,15 +794,25 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
         {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
         {projectMode && <EditorDiagnosticStrip state={diagnostics} onNavigate={navigateProblem} />}
       </section>;
-      const renderGroupNode = (node: EditorGroupNode): ReactNode => {
+      const renderGroupNode = (node: EditorGroupNode, splitPath: string): ReactNode => {
         if (node.type === 'group') {
           return node.groupId === PRIMARY_EDITOR_GROUP_ID ? primaryRegion : <EditorGroupPane group={node} documents={documents}
             guidePages={guidePages} service={service} onOpenRelated={id => void openDocumentationPage(id)}
             onCloseGroup={() => closeEditorGroup(node.groupId)} />;
         }
-        return <div className={`editor-group-split is-${node.orientation}`}>
-          <div className="editor-group-split-child" style={{ flexGrow: node.ratio, flexBasis: 0 }}>{renderGroupNode(node.first)}</div>
-          <div className="editor-group-split-child" style={{ flexGrow: 1 - node.ratio, flexBasis: 0 }}>{renderGroupNode(node.second)}</div>
+        const splitStyle = node.orientation === 'horizontal'
+          ? { gridTemplateColumns: `${node.ratio}fr ${editorGroupSeparatorSize}px ${1 - node.ratio}fr` }
+          : { gridTemplateRows: `${node.ratio}fr ${editorGroupSeparatorSize}px ${1 - node.ratio}fr` };
+        return <div className={`editor-group-split is-${node.orientation}`} style={splitStyle}>
+          <div className="editor-group-split-child">{renderGroupNode(node.first, splitPath ? `${splitPath}/first` : 'first')}</div>
+          <div className={`dock-split-separator dock-split-separator-${node.orientation}${activeSplitPath === splitPath ? ' is-active' : ''} editor-group-separator`}
+            role="separator" aria-orientation={node.orientation === 'horizontal' ? 'vertical' : 'horizontal'}
+            aria-valuenow={Math.round(node.ratio * 100)}
+            onPointerDown={event => beginSplitResize(event, splitPath, node.orientation)} onPointerMove={moveSplitResize}
+            onPointerUp={finishSplitResize} onPointerCancel={finishSplitResize}>
+            <span className="dock-split-grip" aria-hidden="true" />
+          </div>
+          <div className="editor-group-split-child">{renderGroupNode(node.second, splitPath ? `${splitPath}/second` : 'second')}</div>
         </div>;
       };
       return <section className="main-workspace" data-pane-id="editor">
@@ -754,7 +823,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
             <EditorTabs documents={lessonDocuments} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={() => undefined} closable={false} />
           </> : <header className="document-tabs learn-editor-tabs" data-dock-handle>{learnPath.join(' / ')}</header>}
           <div className="editor-groups">
-            {renderGroupNode(editorGroupTree)}
+            {renderGroupNode(editorGroupTree, '')}
           </div>
         </div>
       </section>;
@@ -813,14 +882,18 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   };
   useLayoutEffect(() => {
     const shell = shellWorkspace.current;
-    const slot = shell?.querySelector<HTMLElement>('[data-editor-region-slot]');
-    if (!shell || !slot) {
+    if (!shell) {
       setEditorSurfaceBounds(null);
       return;
     }
     let frame: number | null = null;
     let layoutFrame: number | null = null;
     const measure = () => {
+      const slot = shell.querySelector<HTMLElement>('[data-editor-region-slot]');
+      if (!slot) {
+        setEditorSurfaceBounds(null);
+        return;
+      }
       const shellBounds = shell.getBoundingClientRect();
       const slotBounds = slot.getBoundingClientRect();
       const next = {
@@ -850,14 +923,15 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
     };
     const observer = new ResizeObserver(schedule);
     observer.observe(shell);
-    observer.observe(slot);
+    const slot = shell.querySelector<HTMLElement>('[data-editor-region-slot]');
+    if (slot) observer.observe(slot);
     measure();
     return () => {
       if (frame !== null) cancelAnimationFrame(frame);
       if (layoutFrame !== null) cancelAnimationFrame(layoutFrame);
       observer.disconnect();
     };
-  }, [dockTree, editorSurfaceKey, editorVisible, service]);
+  }, [dockTree, editorSurfaceKey, editorVisible, service, editorGroupTree]);
   if (challenge && (!workspace.project || mode === 'WELCOME')) {
     return <main className="challenge-arena-gate" role={message ? 'alert' : undefined} aria-busy={!message}>
       {!message && <span className="challenge-spinner" aria-hidden="true" />}
@@ -918,6 +992,11 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       </button>
     </section>}
   </main>;
+}
+
+function isSameProjectPath(a: string, b: string): boolean {
+  const normalize = (path: string) => path.replace(/\//g, '\\').toLowerCase();
+  return normalize(a) === normalize(b);
 }
 
 function sideIcon(id: SidePanelId): string {

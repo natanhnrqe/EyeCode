@@ -4898,12 +4898,10 @@ img.learning-icon {
 /* ========================================================================== */
 .editor-groups { flex: 1; min-width: 0; min-height: 0; display: flex; }
 .editor-groups > .editor-region { flex: 1 1 0; min-width: 0; min-height: 0; }
-.editor-group-split { flex: 1; min-width: 0; min-height: 0; display: flex; }
-.editor-group-split.is-vertical { flex-direction: column; }
+.editor-group-split { flex: 1; min-width: 0; min-height: 0; display: grid; }
 .editor-group-split-child { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .editor-group-split-child > .editor-region { flex: 1 1 0; min-width: 0; min-height: 0; }
-.editor-group-split.is-horizontal .editor-group-split-child + .editor-group-split-child { border-left: 1px solid var(--border); }
-.editor-group-split.is-vertical .editor-group-split-child + .editor-group-split-child { border-top: 1px solid var(--border); }
+.editor-group-separator { background: transparent; border: 0; }
 .editor-group-pane { display: flex; flex-direction: column; width: 100%; height: 100%; min-width: 0; min-height: 0; background: var(--surface-editor); }
 .editor-group-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px; height: 30px; flex: 0 0 auto; border-bottom: 1px solid var(--border); background: var(--surface-panel); }
 .editor-group-title { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-muted); min-width: 0; overflow: hidden; }

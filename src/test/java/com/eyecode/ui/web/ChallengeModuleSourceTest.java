@@ -124,6 +124,16 @@ class ChallengeModuleSourceTest {
                 "tab drop zones must be resolved from group rects, like the dock leaf hit-test");
         assertFalse(tabs.contains("elementFromPoint"),
                 "elementFromPoint is blind to the persistent editor surface overlay; rect iteration is the dock pattern");
+        int pointerUpStart = tabs.indexOf("const onPointerUp");
+        int listenersStart = tabs.indexOf("window.addEventListener('pointermove'", pointerUpStart);
+        assertTrue(pointerUpStart > 0 && listenersStart > pointerUpStart);
+        String pointerUpBlock = tabs.substring(pointerUpStart, listenersStart);
+        assertFalse(pointerUpBlock.contains("removeEventListener"),
+                "window drag listeners are added once at mount; pointerup may only reset drag state, "
+                        + "otherwise every earlier click permanently disables tab dragging");
+        int lastAddKey = tabs.lastIndexOf("window.addEventListener('keydown', onKeyDown);");
+        assertTrue(lastAddKey > 0 && tabs.substring(lastAddKey).contains("removeEventListener('pointermove', onPointerMove);"),
+                "drag listeners must be removed only in the effect cleanup on unmount");
         assertTrue(workspace.contains("splitEditorTab"));
         assertTrue(workspace.contains("handleTabSplitDrop"));
         assertTrue(workspace.contains("closeEditorGroup"));

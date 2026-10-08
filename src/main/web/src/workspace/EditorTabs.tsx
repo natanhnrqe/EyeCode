@@ -48,13 +48,16 @@ export function EditorTabs({ documents, activeUri, onActivate, onClose, closable
       if (event?.type === 'mousedown' && event.target instanceof Node && contextMenuRef.current?.contains(event.target)) return;
       setContextMenu(null);
     };
+    const closeOnBlur = () => {
+      if (!document.hasFocus()) setContextMenu(null);
+    };
     window.addEventListener('mousedown', close, true);
     window.addEventListener('keydown', close, true);
-    window.addEventListener('blur', close, true);
+    window.addEventListener('blur', closeOnBlur, true);
     return () => {
       window.removeEventListener('mousedown', close, true);
       window.removeEventListener('keydown', close, true);
-      window.removeEventListener('blur', close, true);
+      window.removeEventListener('blur', closeOnBlur, true);
     };
   }, [contextMenu]);
 
@@ -62,19 +65,14 @@ export function EditorTabs({ documents, activeUri, onActivate, onClose, closable
   useEffect(() => { onTabSplitDropRef.current = onTabSplitDrop; }, [onTabSplitDrop]);
 
   useEffect(() => {
-    const cleanupDrag = () => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('pointercancel', onPointerUp);
-      window.removeEventListener('blur', onPointerUp);
-      window.removeEventListener('keydown', onKeyDown);
+    const resetDrag = () => {
       document.body.classList.remove('is-editor-tab-dragging');
       dragCandidate.current = null;
       setTabDrag(null);
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') cleanupDrag();
+      if (event.key === 'Escape') resetDrag();
     };
 
     const onPointerMove = (event: PointerEvent) => {
@@ -102,14 +100,14 @@ export function EditorTabs({ documents, activeUri, onActivate, onClose, closable
     const onPointerUp = (event: Event) => {
       const active = dragCandidate.current;
       if (!active) {
-        cleanupDrag();
+        resetDrag();
         return;
       }
       const pointerId = (event as Partial<PointerEvent>).pointerId;
       if (typeof pointerId === 'number' && active.pointerId !== pointerId) return;
       const { started, target, uri } = active;
       if (started) suppressClickRef.current = true;
-      cleanupDrag();
+      resetDrag();
       if (started && target) onTabSplitDropRef.current?.(uri, target);
     };
 
@@ -118,7 +116,14 @@ export function EditorTabs({ documents, activeUri, onActivate, onClose, closable
     window.addEventListener('pointercancel', onPointerUp);
     window.addEventListener('blur', onPointerUp);
     window.addEventListener('keydown', onKeyDown);
-    return cleanupDrag;
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+      window.removeEventListener('blur', onPointerUp);
+      window.removeEventListener('keydown', onKeyDown);
+      resetDrag();
+    };
   }, []);
 
   const beginTabDrag = (document: DocumentTab, event: React.PointerEvent<HTMLButtonElement>) => {

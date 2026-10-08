@@ -117,6 +117,43 @@ test('menu items stay clickable: mousedown inside the menu does not close it', (
   expect(document.querySelector('.editor-context-menu')).not.toBeNull();
 });
 
+test('blur keeps the menu open while the document retains focus', () => {
+  const onSplitRight = vi.fn();
+  const { root, container } = renderTabs({ onSplitRight });
+  track(root);
+
+  const tab = container.querySelector('.editor-tab')!;
+  fire(tab, 'contextmenu', { button: 2, clientX: 40, clientY: 12 });
+  expect(document.querySelector('.editor-context-menu')).not.toBeNull();
+
+  const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+  try {
+    act(() => { window.dispatchEvent(new Event('blur')); });
+  } finally {
+    hasFocus.mockRestore();
+  }
+  expect(document.querySelector('.editor-context-menu')).not.toBeNull();
+});
+
+test('blur closes the menu when the document loses focus', () => {
+  const onSplitRight = vi.fn();
+  const { root, container } = renderTabs({ onSplitRight });
+  track(root);
+
+  const tab = container.querySelector('.editor-tab')!;
+  fire(tab, 'contextmenu', { button: 2, clientX: 40, clientY: 12 });
+  expect(document.querySelector('.editor-context-menu')).not.toBeNull();
+
+  const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+  try {
+    act(() => { window.dispatchEvent(new Event('blur')); });
+  } finally {
+    hasFocus.mockRestore();
+  }
+  expect(document.querySelector('.editor-context-menu')).toBeNull();
+  expect(onSplitRight).not.toHaveBeenCalled();
+});
+
 test('dragging a tab past the threshold shows the ghost and suppresses the activation click', () => {
   const onActivate = vi.fn();
   const onTabSplitDrop = vi.fn();

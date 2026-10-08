@@ -893,9 +893,8 @@ export class MonacoWorkspaceService {
 
   private attachModelContentListener(uri: string, model: MonacoModel): void {
     if (this.modelContentListeners.has(uri)) return;
-    const onDidChangeContent = model.onDidChangeContent;
-    if (!onDidChangeContent) return;
-    const listener = onDidChangeContent(event => {
+    if (!model.onDidChangeContent) return;
+    const listener = model.onDidChangeContent(event => {
       this.forwardContentChange(uri, model);
       if (!this.suppressContentChange && !this.suppressCompletionTrigger) this.handleModelContentChange(uri, model, event);
     });

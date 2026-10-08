@@ -1,4 +1,7 @@
 export const PRIMARY_EDITOR_GROUP_ID = 0;
+export const editorGroupSeparatorSize = 11;
+export const editorGroupMinRatio = .2;
+export const editorGroupMaxRatio = .8;
 
 export type EditorGroupSide = 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM' | 'CENTER';
 export type EditorGroupOrientation = 'horizontal' | 'vertical';
@@ -27,7 +30,7 @@ export function insertEditorGroup(node: EditorGroupNode, targetGroupId: number, 
   if (editorGroupIds(node).includes(groupId)) return null;
   const target = findEditorGroup(node, targetGroupId);
   if (!target) return null;
-  const clamped = Math.min(.8, Math.max(.2, ratio));
+  const clamped = clampEditorGroupRatio(ratio);
   const orientation: EditorGroupOrientation = side === 'LEFT' || side === 'RIGHT' ? 'horizontal' : 'vertical';
   const before = side === 'LEFT' || side === 'TOP';
   const inserted: EditorGroupLeaf = { type: 'group', groupId, uri };
@@ -51,6 +54,35 @@ export function setEditorGroupUri(node: EditorGroupNode, groupId: number, uri: s
   if (!target) return node;
   if (target.uri === uri) return node;
   return replaceEditorGroup(node, target, { ...target, uri }) ?? node;
+}
+
+export function clampEditorGroupRatio(ratio: number): number {
+  return Math.min(editorGroupMaxRatio, Math.max(editorGroupMinRatio, ratio));
+}
+
+export function editorGroupResizeRatio(pointerOffset: number, containerSize: number): number {
+  const available = Math.max(1, containerSize - editorGroupSeparatorSize);
+  return clampEditorGroupRatio(pointerOffset / available);
+}
+
+export function updateEditorGroupRatio(node: EditorGroupNode, splitPath: string, ratio: number): EditorGroupNode {
+  if (node.type === 'group') return node;
+  if (splitPath === '') {
+    const next = clampEditorGroupRatio(ratio);
+    return next === node.ratio ? node : { ...node, ratio: next };
+  }
+  const separator = splitPath.indexOf('/');
+  const head = separator < 0 ? splitPath : splitPath.slice(0, separator);
+  const rest = separator < 0 ? '' : splitPath.slice(separator + 1);
+  if (head === 'first') {
+    const first = updateEditorGroupRatio(node.first, rest, ratio);
+    return first === node.first ? node : { ...node, first };
+  }
+  if (head === 'second') {
+    const second = updateEditorGroupRatio(node.second, rest, ratio);
+    return second === node.second ? node : { ...node, second };
+  }
+  return node;
 }
 
 export function pruneEditorGroups(node: EditorGroupNode, isDocumentOpen: (uri: string) => boolean): EditorGroupNode {

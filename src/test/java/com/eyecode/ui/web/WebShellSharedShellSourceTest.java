@@ -435,6 +435,8 @@ class WebShellSharedShellSourceTest {
         assertTrue(toolbar.contains("{!learnMode && <select"));
         assertTrue(workspace.contains("onClick={() => setLearnExplorerCollapsed(value => !value)}"));
         assertTrue(workspace.contains("const editorSurfaceKey = `${mode}:${learnNavigation.screen}:${layoutKind}`;"));
+        assertTrue(workspace.contains("const slot = shell.querySelector<HTMLElement>('[data-editor-region-slot]');"));
+        assertTrue(workspace.contains("}, [dockTree, editorSurfaceKey, editorVisible, service, editorGroupTree]);"));
         assertEquals(1, occurrences(workspace, "<MonacoHost"));
         assertTrue(styles.contains(".toolbar-mode-indicator"));
         assertTrue(styles.contains(".dock-layout.is-learn-explorer-collapsed"));

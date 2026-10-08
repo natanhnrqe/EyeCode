@@ -49,18 +49,20 @@ class LocalWebSocketTransport {
       while (this.queue.length) this.socket.send(this.queue.shift()!);
     };
     this.socket.onmessage = event => {
+      let message: WebShellEnvelope;
       try {
-        const message = JSON.parse(String(event.data)) as WebShellEnvelope;
-        const pending = message.requestId ? this.pending.get(message.requestId) : undefined;
-        if (pending) {
-          this.pending.delete(message.requestId);
-          if (pending.timeout !== null) window.clearTimeout(pending.timeout);
-          pending.resolve(message);
-        } else {
-          this.receive(message);
-        }
+        message = JSON.parse(String(event.data)) as WebShellEnvelope;
       } catch {
         this.closeWithError(new Error('Invalid Local WebShell message'));
+        return;
+      }
+      const pending = message.requestId ? this.pending.get(message.requestId) : undefined;
+      if (pending) {
+        this.pending.delete(message.requestId);
+        if (pending.timeout !== null) window.clearTimeout(pending.timeout);
+        pending.resolve(message);
+      } else {
+        this.receive(message);
       }
     };
     this.socket.onerror = () => this.closeWithError(new Error('Local WebShell socket failed'));
@@ -171,7 +173,7 @@ export class WebShellBridge {
   }
 
   private requestLocal<T>(message: WebShellEnvelope, options: WebShellRequestOptions): Promise<T> {
-    return this.localTransport!.request(message, options.timeoutMs ?? 3000).then(envelope => {
+    return this.localTransport!.request(message, options.timeoutMs === undefined ? 3000 : options.timeoutMs).then(envelope => {
       if (envelope.error) throw new WebShellRequestError(envelope.error.code, envelope.error.message);
       return envelope.payload as T;
     });

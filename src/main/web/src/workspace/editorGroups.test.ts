@@ -1,13 +1,17 @@
 import { describe, expect, test } from 'vitest';
 import {
   PRIMARY_EDITOR_GROUP_ID,
+  clampEditorGroupRatio,
   editorGroupIds,
+  editorGroupResizeRatio,
+  editorGroupSeparatorSize,
   findEditorGroup,
   insertEditorGroup,
   primaryEditorGroup,
   pruneEditorGroups,
   removeEditorGroup,
-  setEditorGroupUri
+  setEditorGroupUri,
+  updateEditorGroupRatio
 } from './editorGroups';
 
 describe('primaryEditorGroup', () => {
@@ -113,5 +117,67 @@ describe('pruneEditorGroups', () => {
   test('collapses to the primary when all groups are pruned', () => {
     const tree = insertEditorGroup(primaryEditorGroup(), 0, 'RIGHT', 1, 'file:///A.java')!;
     expect(pruneEditorGroups(tree, () => false)).toEqual(primaryEditorGroup());
+  });
+});
+
+describe('updateEditorGroupRatio', () => {
+  test('updates the root split and keeps children identity', () => {
+    const tree = insertEditorGroup(primaryEditorGroup(), 0, 'RIGHT', 1, 'file:///A.java')!;
+    const updated = updateEditorGroupRatio(tree, '', .7) as Extract<typeof tree, { type: 'split' }>;
+    expect(updated).not.toBe(tree);
+    expect(updated.ratio).toBe(.7);
+    expect(updated.first).toBe((tree as Extract<typeof tree, { type: 'split' }>).first);
+    expect(updated.second).toBe((tree as Extract<typeof tree, { type: 'split' }>).second);
+  });
+
+  test('ratio is clamped to the configured bounds', () => {
+    const tree = insertEditorGroup(primaryEditorGroup(), 0, 'RIGHT', 1, 'file:///A.java')!;
+    expect((updateEditorGroupRatio(tree, '', .95) as { ratio: number }).ratio).toBe(.8);
+    expect((updateEditorGroupRatio(tree, '', .01) as { ratio: number }).ratio).toBe(.2);
+  });
+
+  test('unknown split path returns the same tree', () => {
+    const tree = insertEditorGroup(primaryEditorGroup(), 0, 'RIGHT', 1, 'file:///A.java')!;
+    expect(updateEditorGroupRatio(tree, 'third', .6)).toBe(tree);
+    expect(updateEditorGroupRatio(tree, 'first/second', .6)).toBe(tree);
+  });
+
+  test('returns the same tree when the ratio is unchanged', () => {
+    const tree = insertEditorGroup(primaryEditorGroup(), 0, 'RIGHT', 1, 'file:///A.java')!;
+    const split = tree as Extract<typeof tree, { type: 'split' }>;
+    expect(updateEditorGroupRatio(tree, '', split.ratio)).toBe(tree);
+  });
+
+  test('updates a nested split without touching the outer ratio', () => {
+    let tree = insertEditorGroup(primaryEditorGroup(), 0, 'RIGHT', 1, 'file:///A.java')!;
+    const outerRatio = (tree as Extract<typeof tree, { type: 'split' }>).ratio;
+    tree = insertEditorGroup(tree, 1, 'BOTTOM', 2, 'file:///B.java')!;
+    const updated = updateEditorGroupRatio(tree, 'second', .65) as Extract<typeof tree, { type: 'split' }>;
+    expect(updated.ratio).toBe(outerRatio);
+    expect(updated.second.type === 'split' && updated.second.ratio).toBe(.65);
+  });
+});
+
+describe('editorGroupResizeRatio', () => {
+  test('pointer at the midpoint yields an even split', () => {
+    const container = 811;
+    const expected = (container - editorGroupSeparatorSize) / 2;
+    expect(editorGroupResizeRatio(expected, container)).toBeCloseTo(.5, 5);
+  });
+
+  test('pointer near the edges clamps to the bounds', () => {
+    expect(editorGroupResizeRatio(0, 811)).toBe(.2);
+    expect(editorGroupResizeRatio(811, 811)).toBe(.8);
+  });
+
+  test('degenerate containers stay within bounds', () => {
+    expect(editorGroupResizeRatio(0, 0)).toBe(.2);
+    expect(editorGroupResizeRatio(100, 0)).toBe(.8);
+  });
+
+  test('clamp helper enforces the bounds', () => {
+    expect(clampEditorGroupRatio(.5)).toBe(.5);
+    expect(clampEditorGroupRatio(-1)).toBe(.2);
+    expect(clampEditorGroupRatio(2)).toBe(.8);
   });
 });
