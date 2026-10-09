@@ -112,6 +112,34 @@ test('Java fundamentals topics are covered by challenges with instructions, exam
   }
 });
 
+test('object-oriented programming topics are covered by challenges with instructions, examples, and starter code', () => {
+  const objectOriented = CHALLENGE_CATALOG.filter(item => item.trackId === 'object-oriented-programming');
+  const track = CHALLENGE_TRACKS.find(item => item.id === 'object-oriented-programming');
+  expect(track).toBeDefined();
+  expect(objectOriented.length).toBeGreaterThan(0);
+  for (const topic of track!.topics) {
+    expect(objectOriented.some(item => item.topicId === topic.id), `${topic.title} has a challenge`).toBe(true);
+  }
+  for (const item of objectOriented) {
+    const resolved = challengeFor(item.id);
+    expect(resolved.statement?.instructions).toBeTruthy();
+    expect(resolved.starterCode).toContain('public class');
+    expect(resolved.starterCode).toContain('TODO');
+    const view = render(resolved);
+    expect(view.textContent).toContain('O que implementar');
+    expect(view.querySelectorAll('.challenge-example').length).toBeGreaterThan(0);
+    act(() => root!.unmount());
+    container!.remove();
+    root = null;
+    container = null;
+  }
+});
+
+test('object-oriented programming track is listed before algorithms and data structures', () => {
+  const ids = CHALLENGE_TRACKS.map(track => track.id);
+  expect(ids.indexOf('object-oriented-programming')).toBeLessThan(ids.indexOf('algorithms-data-structures'));
+});
+
 test('multiple documentation references open their internal article IDs', () => {
   const opened: string[] = [];
   const view = render(challenge({ metadata: { documentationReferences: [

@@ -58,6 +58,17 @@ export const CHALLENGE_TRACKS: ChallengeTrack[] = [
     ]
   },
   {
+    id: 'object-oriented-programming',
+    title: 'Orientação a objetos',
+    description: 'Modele problemas utilizando objetos e relações entre classes.',
+    icon: 'challengeTrackOop',
+    topics: [
+      { id: 'classes-objects', title: 'Classes e objetos', description: 'Estado, comportamento, construtores e encapsulamento.' },
+      { id: 'interfaces-inheritance', title: 'Interfaces e herança', description: 'Contratos, especialização e polimorfismo.' },
+      { id: 'composition-design', title: 'Composição e design', description: 'Responsabilidades e colaboração entre objetos.' }
+    ]
+  },
+  {
     id: 'algorithms-data-structures',
     title: 'Algoritmos e estruturas de dados',
     description: 'Aprenda a resolver problemas e escolher estruturas de dados adequadas.',
@@ -69,17 +80,6 @@ export const CHALLENGE_TRACKS: ChallengeTrack[] = [
       { id: 'two-pointers-window', title: 'Two Pointers e Sliding Window', description: 'Técnicas para percorrer sequências com eficiência.' },
       { id: 'recursion-dp', title: 'Recursão e programação dinâmica', description: 'Decomposição recursiva e reaproveitamento de resultados.' },
       { id: 'graphs', title: 'Grafos e caminhos mínimos', description: 'Representação de grafos, percursos e algoritmos de caminhos.' }
-    ]
-  },
-  {
-    id: 'object-oriented-programming',
-    title: 'Orientação a objetos',
-    description: 'Modele problemas utilizando objetos e relações entre classes.',
-    icon: 'challengeTrackOop',
-    topics: [
-      { id: 'classes-objects', title: 'Classes e objetos', description: 'Estado, comportamento, construtores e encapsulamento.' },
-      { id: 'interfaces-inheritance', title: 'Interfaces e herança', description: 'Contratos, especialização e polimorfismo.' },
-      { id: 'composition-design', title: 'Composição e design', description: 'Responsabilidades e colaboração entre objetos.' }
     ]
   },
   {
@@ -302,6 +302,89 @@ export const CHALLENGE_CATALOG: ChallengeCatalogItem[] = [
       { id: 'java/jdk/java.util/map', title: 'Map', relevance: 'Revise o mapeamento de vértices para distâncias ou vizinhos.' },
       { id: 'java/jdk/java.util/queue', title: 'Queue', relevance: 'Consulte filas de prioridade e processamento ordenado de elementos.' },
       { id: 'java/jdk/java.util/comparator', title: 'Comparator', relevance: 'Veja como definir a ordem de prioridade entre elementos.' }
+    ]
+  },
+  {
+    id: 'conta-bancaria',
+    title: 'Conta Bancária',
+    summary: 'Encapsule o saldo em uma classe com depósitos, saques e consulta segura.',
+    tags: ['POO', 'Encapsulamento'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'object-oriented-programming',
+    topicId: 'classes-objects',
+    documentationReferences: [
+      { id: 'java/jdk/fundamentos/classes', title: 'Classes e Objetos', relevance: 'Revise atributos privados, construtores e métodos de comportamento.' }
+    ]
+  },
+  {
+    id: 'relogio-digital',
+    title: 'Relógio Digital',
+    summary: 'Mantenha o estado de hora e minuto com avanço e retorno à meia-noite.',
+    tags: ['POO', 'Estado'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'object-oriented-programming',
+    topicId: 'classes-objects',
+    documentationReferences: [
+      { id: 'java/jdk/fundamentos/classes', title: 'Classes e Objetos', relevance: 'Modele o estado do relógio em atributos e comportamento da instância.' },
+      { id: 'java/jdk/java.lang/object', title: 'Object', relevance: 'Consulte a sobrescrita de toString para formatar a exibição.' }
+    ]
+  },
+  {
+    id: 'formas-geometricas',
+    title: 'Formas Geométricas',
+    summary: 'Implemente a interface Forma em círculo e retângulo e use as formas de forma polimórfica.',
+    tags: ['POO', 'Interfaces'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'object-oriented-programming',
+    topicId: 'interfaces-inheritance',
+    documentationReferences: [
+      { id: 'java/jdk/fundamentos/interfaces', title: 'Interfaces', relevance: 'Revise contratos de comportamento e a implementação por classes.' },
+      { id: 'java/jdk/fundamentos/classes', title: 'Classes e Objetos', relevance: 'Consulte construtores e métodos de instância das formas.' }
+    ]
+  },
+  {
+    id: 'folha-pagamento',
+    title: 'Folha de Pagamento',
+    summary: 'Modele funcionários com herança abstrata e calcule o total da folha polimorficamente.',
+    tags: ['POO', 'Herança', 'Polimorfismo'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'object-oriented-programming',
+    topicId: 'interfaces-inheritance',
+    documentationReferences: [
+      { id: 'java/jdk/fundamentos/classes', title: 'Classes e Objetos', relevance: 'Revise herança de estado e métodos sobrescritos.' },
+      { id: 'java/jdk/fundamentos/interfaces', title: 'Interfaces', relevance: 'Compare contratos abstratos com classes base abstratas.' }
+    ]
+  },
+  {
+    id: 'biblioteca',
+    title: 'Biblioteca',
+    summary: 'Componha livros dentro de uma biblioteca e consulte páginas e títulos.',
+    tags: ['POO', 'Composição'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'object-oriented-programming',
+    topicId: 'composition-design',
+    documentationReferences: [
+      { id: 'java/jdk/fundamentos/classes', title: 'Classes e Objetos', relevance: 'Modele a colaboração entre biblioteca e livros.' },
+      { id: 'java/jdk/java.util/list', title: 'List', relevance: 'Consulte a lista interna que compõe a biblioteca.' }
+    ]
+  },
+  {
+    id: 'estoque-produtos',
+    title: 'Estoque de Produtos',
+    summary: 'Componha produtos em um estoque com entrada, retirada e valor total.',
+    tags: ['POO', 'Composição'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'object-oriented-programming',
+    topicId: 'composition-design',
+    documentationReferences: [
+      { id: 'java/jdk/fundamentos/classes', title: 'Classes e Objetos', relevance: 'Componha objetos produtos dentro do estoque.' },
+      { id: 'java/jdk/java.util/list', title: 'List', relevance: 'Revise adição, busca e cópia de elementos na lista interna.' }
     ]
   }
 ];

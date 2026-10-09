@@ -310,6 +310,292 @@ public final class ChallengeWorkspaceService {
             case "ano-bissexto" -> source(className, "public boolean isLeapYear(int year) {\n        return false;\n    }");
             case "media-aprovacao" -> source(className, "public boolean isApproved(double[] grades) {\n        return false;\n    }");
             case "palindromo" -> source(className, "public boolean isPalindrome(String text) {\n        return false;\n    }");
+            case "conta-bancaria" -> """
+                    package br.com.eyecode.challenge;
+
+                    public class %s {
+
+                        private double saldo;
+
+                        public %s(double saldoInicial) {
+                            // TODO: inicialize o saldo com o valor informado
+                        }
+
+                        public void depositar(double valor) {
+                            // TODO: some valores positivos ao saldo
+                        }
+
+                        public boolean sacar(double valor) {
+                            // TODO: devolva false quando o valor for inválido ou maior que o saldo
+                            return false;
+                        }
+
+                        public double getSaldo() {
+                            return saldo;
+                        }
+                    }
+                    """.formatted(className, className);
+            case "relogio-digital" -> """
+                    package br.com.eyecode.challenge;
+
+                    public class %s {
+
+                        private int hora;
+                        private int minuto;
+
+                        public %s() {
+                            // TODO: inicie o relógio às 00:00
+                        }
+
+                        public %s(int hora, int minuto) {
+                            // TODO: valide hora (0..23) e minuto (0..59) e armazene o estado
+                        }
+
+                        public void avancarMinutos(int minutos) {
+                            // TODO: avance o relógio com retorno à meia-noite (ciclo de 24h)
+                        }
+
+                        @Override
+                        public String toString() {
+                            // TODO: formate o horário como HH:MM
+                            return "00:00";
+                        }
+                    }
+                    """.formatted(className, className, className);
+            case "formas-geometricas" -> """
+                    package br.com.eyecode.challenge;
+
+                    public class %s {
+
+                        public interface Forma {
+                            double area();
+                            double perimetro();
+                        }
+
+                        public static class Circulo implements Forma {
+
+                            private final double raio;
+
+                            public Circulo(double raio) {
+                                this.raio = raio;
+                            }
+
+                            @Override
+                            public double area() {
+                                // TODO: use Math.PI * raio * raio
+                                return 0.0;
+                            }
+
+                            @Override
+                            public double perimetro() {
+                                // TODO: use 2 * Math.PI * raio
+                                return 0.0;
+                            }
+                        }
+
+                        public static class Retangulo implements Forma {
+
+                            private final double largura;
+                            private final double altura;
+
+                            public Retangulo(double largura, double altura) {
+                                this.largura = largura;
+                                this.altura = altura;
+                            }
+
+                            @Override
+                            public double area() {
+                                // TODO: use largura * altura
+                                return 0.0;
+                            }
+
+                            @Override
+                            public double perimetro() {
+                                // TODO: use 2 * (largura + altura)
+                                return 0.0;
+                            }
+                        }
+                    }
+                    """.formatted(className);
+            case "folha-pagamento" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.ArrayList;
+                    import java.util.List;
+
+                    public class %s {
+
+                        public abstract static class Funcionario {
+
+                            private final String nome;
+
+                            protected Funcionario(String nome) {
+                                this.nome = nome;
+                            }
+
+                            public String getNome() {
+                                return nome;
+                            }
+
+                            public abstract double salario();
+                        }
+
+                        public static class Horista extends Funcionario {
+
+                            private final int horas;
+                            private final double valorHora;
+
+                            public Horista(String nome, int horas, double valorHora) {
+                                super(nome);
+                                this.horas = horas;
+                                this.valorHora = valorHora;
+                            }
+
+                            @Override
+                            public double salario() {
+                                // TODO: devolva horas * valorHora
+                                return 0.0;
+                            }
+                        }
+
+                        public static class Assalariado extends Funcionario {
+
+                            private final double salarioMensal;
+
+                            public Assalariado(String nome, double salarioMensal) {
+                                super(nome);
+                                this.salarioMensal = salarioMensal;
+                            }
+
+                            @Override
+                            public double salario() {
+                                // TODO: devolva o salário mensal fixo
+                                return 0.0;
+                            }
+                        }
+
+                        private final List<Funcionario> funcionarios = new ArrayList<>();
+
+                        public void contratar(Funcionario funcionario) {
+                            funcionarios.add(funcionario);
+                        }
+
+                        public double totalDaFolha() {
+                            // TODO: some salario() de cada funcionário contratado
+                            return 0.0;
+                        }
+                    }
+                    """.formatted(className);
+            case "biblioteca" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.ArrayList;
+                    import java.util.List;
+
+                    public class %s {
+
+                        public static class Livro {
+
+                            private final String titulo;
+                            private final int paginas;
+
+                            public Livro(String titulo, int paginas) {
+                                this.titulo = titulo;
+                                this.paginas = paginas;
+                            }
+
+                            public String getTitulo() {
+                                return titulo;
+                            }
+
+                            public int getPaginas() {
+                                return paginas;
+                            }
+                        }
+
+                        private final List<Livro> livros = new ArrayList<>();
+
+                        public void adicionar(String titulo, int paginas) {
+                            // TODO: crie um Livro e guarde na lista interna
+                        }
+
+                        public int totalDePaginas() {
+                            // TODO: some as páginas de todos os livros
+                            return 0;
+                        }
+
+                        public boolean possui(String titulo) {
+                            // TODO: procure um livro com o título exato
+                            return false;
+                        }
+
+                        public int quantidadeDeLivros() {
+                            return livros.size();
+                        }
+                    }
+                    """.formatted(className);
+            case "estoque-produtos" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.ArrayList;
+                    import java.util.List;
+
+                    public class %s {
+
+                        public static class Produto {
+
+                            private final String nome;
+                            private final double preco;
+                            private int quantidade;
+
+                            public Produto(String nome, double preco, int quantidade) {
+                                this.nome = nome;
+                                this.preco = preco;
+                                this.quantidade = quantidade;
+                            }
+
+                            public String getNome() {
+                                return nome;
+                            }
+
+                            public double getPreco() {
+                                return preco;
+                            }
+
+                            public int getQuantidade() {
+                                return quantidade;
+                            }
+
+                            public void reduzir(int quantidade) {
+                                if (quantidade > this.quantidade) {
+                                    throw new IllegalArgumentException("quantidade insuficiente");
+                                }
+                                this.quantidade -= quantidade;
+                            }
+                        }
+
+                        private final List<Produto> produtos = new ArrayList<>();
+
+                        public void registrar(String nome, double preco, int quantidade) {
+                            // TODO: adicione um novo Produto à lista interna
+                        }
+
+                        public List<Produto> getProdutos() {
+                            // TODO: devolva uma cópia defensiva da lista de produtos
+                            return List.of();
+                        }
+
+                        public boolean retirar(String nome, int quantidade) {
+                            // TODO: encontre o produto, confira o saldo e chame reduzir
+                            return false;
+                        }
+
+                        public double valorEmEstoque() {
+                            // TODO: some preco * quantidade de cada produto
+                            return 0.0;
+                        }
+                    }
+                    """.formatted(className);
             default -> starterSource(className);
         };
     }
@@ -352,6 +638,44 @@ public final class ChallengeWorkspaceService {
                     @Test void rejectsNonPalindrome() { assertFalse(new %s().isPalindrome("EyeCode")); }
                     @Test void rejectsNullAndNoLetters() { assertFalse(new %s().isPalindrome(null)); assertFalse(new %s().isPalindrome(" !!! ")); }
                     """.formatted(className, className, className, className, className);
+            case "conta-bancaria" -> """
+                    @Test void startingBalanceIsPreserved() { assertEquals(100.0, new %s(100.0).getSaldo()); }
+                    @Test void depositIncreasesBalance() { %s conta = new %s(0.0); conta.depositar(50.0); assertEquals(50.0, conta.getSaldo()); }
+                    @Test void withdrawalBelowBalanceSucceeds() { %s conta = new %s(100.0); assertTrue(conta.sacar(30.0)); assertEquals(70.0, conta.getSaldo()); }
+                    @Test void withdrawalExceedingBalanceIsRejected() { %s conta = new %s(100.0); assertFalse(conta.sacar(200.0)); assertEquals(100.0, conta.getSaldo()); }
+                    @Test void invalidAmountsDoNotChangeBalance() { %s conta = new %s(100.0); conta.depositar(-50.0); assertFalse(conta.sacar(0.0)); assertEquals(100.0, conta.getSaldo()); }
+                    """.formatted(className, className, className, className, className, className, className, className, className);
+            case "relogio-digital" -> """
+                    @Test void defaultStartsAtMidnight() { assertEquals("00:00", new %s().toString()); }
+                    @Test void formatsTwoDigits() { assertEquals("09:05", new %s(9, 5).toString()); }
+                    @Test void advancesAcrossHourBoundary() { %s relogio = new %s(9, 55); relogio.avancarMinutos(10); assertEquals("10:05", relogio.toString()); }
+                    @Test void wrapsAfterMidnight() { %s relogio = new %s(23, 50); relogio.avancarMinutos(20); assertEquals("00:10", relogio.toString()); }
+                    @Test void rejectsInvalidTimeAndNegativeAdvance() { assertThrows(IllegalArgumentException.class, () -> new %s(24, 0)); assertThrows(IllegalArgumentException.class, () -> new %s(9, 60)); assertThrows(IllegalArgumentException.class, () -> new %s(9, 0).avancarMinutos(-1)); }
+                    """.formatted(className, className, className, className, className, className, className, className, className);
+            case "formas-geometricas" -> """
+                    @Test void circleMeasuresUsePi() { %s.Circulo circulo = new %s.Circulo(1.0); assertEquals(Math.PI, circulo.area(), 1e-9); assertEquals(2 * Math.PI, circulo.perimetro(), 1e-9); }
+                    @Test void rectangleMeasuresAreExact() { %s.Retangulo retangulo = new %s.Retangulo(3.0, 4.0); assertEquals(12.0, retangulo.area(), 1e-9); assertEquals(14.0, retangulo.perimetro(), 1e-9); }
+                    @Test void sumsAreasThroughTheInterface() { java.util.List<%s.Forma> formas = java.util.List.of(new %s.Circulo(1.0), new %s.Retangulo(3.0, 4.0)); double total = 0.0; for (%s.Forma forma : formas) { total += forma.area(); } assertEquals(Math.PI + 12.0, total, 1e-9); }
+                    @Test void scalesMeasuresWithRadius() { %s.Circulo circulo = new %s.Circulo(2.0); assertEquals(4 * Math.PI, circulo.area(), 1e-9); assertEquals(4 * Math.PI, circulo.perimetro(), 1e-9); }
+                    """.formatted(className, className, className, className, className, className, className, className, className, className);
+            case "folha-pagamento" -> """
+                    @Test void horistaSalaryIsHoursTimesRate() { assertEquals(1000.0, new %s.Horista("Ana", 40, 25.0).salario(), 1e-9); }
+                    @Test void assalariadoSalaryIsMonthlyValue() { assertEquals(3500.0, new %s.Assalariado("Bia", 3500.0).salario(), 1e-9); }
+                    @Test void totalSumsEveryContractedEmployee() { %s folha = new %s(); folha.contratar(new %s.Horista("Ana", 40, 25.0)); folha.contratar(new %s.Assalariado("Bia", 3500.0)); assertEquals(4500.0, folha.totalDaFolha(), 1e-9); }
+                    @Test void emptyPayrollTotalsZero() { assertEquals(0.0, new %s().totalDaFolha(), 1e-9); }
+                    """.formatted(className, className, className, className, className, className, className);
+            case "biblioteca" -> """
+                    @Test void addedBooksAreCounted() { %s biblioteca = new %s(); biblioteca.adicionar("Clean Code", 400); biblioteca.adicionar("Refatoração", 440); assertEquals(2, biblioteca.quantidadeDeLivros()); }
+                    @Test void totalPagesSumsEveryBook() { %s biblioteca = new %s(); biblioteca.adicionar("Clean Code", 400); biblioteca.adicionar("Refatoração", 440); assertEquals(840, biblioteca.totalDePaginas()); }
+                    @Test void findsBookByExactTitle() { %s biblioteca = new %s(); biblioteca.adicionar("Clean Code", 400); assertTrue(biblioteca.possui("Clean Code")); assertFalse(biblioteca.possui("clean code")); }
+                    @Test void emptyLibraryHasNoBooks() { %s biblioteca = new %s(); assertEquals(0, biblioteca.quantidadeDeLivros()); assertEquals(0, biblioteca.totalDePaginas()); assertFalse(biblioteca.possui("Clean Code")); }
+                    """.formatted(className, className, className, className, className, className, className, className);
+            case "estoque-produtos" -> """
+                    @Test void registrarAddsProductToList() { %s estoque = new %s(); estoque.registrar("Arroz", 2.5, 4); assertEquals(1, estoque.getProdutos().size()); assertEquals("Arroz", estoque.getProdutos().get(0).getNome()); }
+                    @Test void valorEmEstoqueSumsPriceTimesQuantity() { %s estoque = new %s(); estoque.registrar("Arroz", 2.5, 4); estoque.registrar("Feijão", 4.0, 2); assertEquals(18.0, estoque.valorEmEstoque(), 1e-9); }
+                    @Test void retirarReducesStockWhenSufficient() { %s estoque = new %s(); estoque.registrar("Arroz", 2.5, 4); assertTrue(estoque.retirar("Arroz", 1)); assertEquals(3, estoque.getProdutos().get(0).getQuantidade()); }
+                    @Test void retirarRejectsInsufficientStockOrUnknownProduct() { %s estoque = new %s(); estoque.registrar("Arroz", 2.5, 4); assertFalse(estoque.retirar("Arroz", 10)); assertFalse(estoque.retirar("Feijão", 1)); assertEquals(4, estoque.getProdutos().get(0).getQuantidade()); }
+                    """.formatted(className, className, className, className, className, className, className, className);
             default -> "@Test void starterCompiles() { assertNotNull(new %s()); }".formatted(className);
         };
         return "package br.com.eyecode.challenge;\n\nimport org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.*;\n\nclass " + className + "Test {\n    " + tests.replace("\n", "\n    ") + "\n}\n";

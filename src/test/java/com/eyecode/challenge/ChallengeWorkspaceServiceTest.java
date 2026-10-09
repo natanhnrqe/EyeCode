@@ -127,4 +127,46 @@ class ChallengeWorkspaceServiceTest {
                     suite.getKey() + " should compile its starter and tests");
         }
     }
+
+    @Test
+    void objectOrientedChallengesCreateTaskSpecificStarterAndJUnitExamples() throws IOException {
+        ChallengeWorkspaceService service = new ChallengeWorkspaceService(temporary);
+        Map<String, String> contracts = Map.of(
+                "conta-bancaria", "public boolean sacar(double valor)",
+                "relogio-digital", "public void avancarMinutos(int minutos)",
+                "formas-geometricas", "public interface Forma",
+                "folha-pagamento", "abstract double salario()",
+                "biblioteca", "public boolean possui(String titulo)",
+                "estoque-produtos", "public boolean retirar(String nome, int quantidade)");
+
+        for (Map.Entry<String, String> entry : contracts.entrySet()) {
+            Path project = service.ensure(entry.getKey()).path();
+            String className = ChallengeWorkspaceService.classNameOf(entry.getKey());
+            String source = Files.readString(project.resolve("src/main/java/br/com/eyecode/challenge/" + className + ".java"));
+            String tests = Files.readString(project.resolve("src/test/java/br/com/eyecode/challenge/" + className + "Test.java"));
+            assertTrue(source.contains(entry.getValue()), entry.getKey() + " should have its documented method contract");
+            assertTrue(source.contains("TODO"), entry.getKey() + " should guide the learner with TODO markers");
+            assertTrue(tests.contains("org.junit.jupiter.api.Test"), entry.getKey() + " should include JUnit examples");
+            assertFalse(tests.contains("hiddenTestCase"), entry.getKey() + " should not use the empty placeholder test");
+        }
+    }
+
+    @Test
+    void runTestsExecutesEveryObjectOrientedJUnitSuite() {
+        ChallengeWorkspaceService service = new ChallengeWorkspaceService(temporary);
+        Map<String, Integer> suites = Map.of(
+                "conta-bancaria", 5,
+                "relogio-digital", 5,
+                "formas-geometricas", 4,
+                "folha-pagamento", 4,
+                "biblioteca", 4,
+                "estoque-produtos", 4);
+
+        for (Map.Entry<String, Integer> suite : suites.entrySet()) {
+            ChallengeTestRun result = service.runTests(suite.getKey());
+            assertEquals(suite.getValue(), result.tests().size(), suite.getKey() + " should execute its JUnit examples");
+            assertTrue(result.tests().stream().noneMatch(test -> "test-build".equals(test.id())),
+                    suite.getKey() + " should compile its starter and tests");
+        }
+    }
 }
