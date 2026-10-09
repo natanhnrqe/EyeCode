@@ -1,21 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import { bridge } from '../bridge/EyeCodeBridge';
-import { CNPJ_VALIDATOR_CHALLENGE, HIDDEN_TESTS } from './challengeData';
-import { runMockSubmission, summarize } from './mockRunner';
+import { challengeFor } from './challengeData';
 import type { Challenge, ChallengeController, ChallengeSummary, ChallengeTab, TestResult } from './types';
 
 const ChallengeContext = createContext<ChallengeController | null>(null);
 
 function createPendingTests(): TestResult[] {
-  return HIDDEN_TESTS.map(test => ({ ...test, status: 'pending' }));
+  return [];
 }
 
-export function ChallengeProvider({ children, challengeId = 'cnpj-validator' }: {
+export function ChallengeProvider({ children, challengeId = 'cnpj-validator', beforeRun }: {
   children: React.ReactNode;
   challengeId?: string | null;
+  beforeRun?: () => Promise<boolean>;
 }): React.ReactElement {
-  const challenge: Challenge = CNPJ_VALIDATOR_CHALLENGE;
+  const challenge: Challenge = challengeFor(challengeId);
   const [tests, setTests] = useState<TestResult[]>(createPendingTests);
   const [activeTab, setActiveTab] = useState<ChallengeTab>('statement');
   const [running, setRunning] = useState(false);
@@ -57,18 +57,22 @@ export function ChallengeProvider({ children, challengeId = 'cnpj-validator' }: 
     setRunning(true);
     setTests(createPendingTests());
 
-    const results = await runMockSubmission(createPendingTests(), 2000, progress => {
-      if (mountedRef.current) {
-        setTests(progress);
-      }
-    });
-
-    if (mountedRef.current) {
-      setTests(results);
-      setRunning(false);
+    try {
+      if (beforeRun && !await beforeRun()) throw new Error('Salve os arquivos do desafio antes de executar os testes.');
+      const result = await bridge.request<{ tests: TestResult[] }>(
+        'challenges', 'run', { id: challenge.id }, { timeoutMs: 190000 }
+      );
+      if (mountedRef.current) setTests(result.tests ?? []);
+    } catch (error) {
+      if (mountedRef.current) setTests([{
+        id: 'test-runner', name: 'Falha ao executar os testes', status: 'failure',
+        errorMessage: error instanceof Error ? error.message : 'Não foi possível executar os testes.'
+      }]);
+    } finally {
+      if (mountedRef.current) setRunning(false);
+      runningRef.current = false;
     }
-    runningRef.current = false;
-  }, []);
+  }, [beforeRun, challenge.id]);
 
   const restoreStarter = useCallback(async (): Promise<void> => {
     if (!challengeId || restoringRef.current) {
@@ -91,7 +95,15 @@ export function ChallengeProvider({ children, challengeId = 'cnpj-validator' }: 
     setRunning(false);
   }, []);
 
-  const summary: ChallengeSummary = useMemo(() => summarize(tests), [tests]);
+  const summary: ChallengeSummary = useMemo(() => {
+    let passed = 0;
+    let failed = 0;
+    for (const test of tests) {
+      if (test.status === 'success') passed += 1;
+      else if (test.status === 'failure') failed += 1;
+    }
+    return { passed, failed, total: tests.length };
+  }, [tests]);
 
   const value = useMemo<ChallengeController>(
     () => ({

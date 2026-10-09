@@ -196,6 +196,14 @@ export class MonacoWorkspaceService {
     this.editor?.layout();
   }
 
+  async saveWorkspaceDocuments(): Promise<boolean> {
+    const uris = [...this.models.keys()].filter(uri => uri.startsWith('eyecode://workspace/') || uri.startsWith('file:'));
+    const results = await Promise.all(uris.map(uri =>
+      bridge.request('document', 'save', { uri }, { timeoutMs: null }).then(() => true).catch(() => false)
+    ));
+    return results.every(Boolean);
+  }
+
   attachGroupEditor(container: HTMLElement, uri: string): { dispose(): void } | null {
     if (this.disposed || !this.api) return null;
     const model = this.models.get(uri) ?? this.ephemeralModels.get(uri) ?? null;

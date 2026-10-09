@@ -61,6 +61,18 @@ class WebShellChallengesControllerTest {
     }
 
     @Test
+    void runRejectsMissingChallengeId() {
+        Surface surface = new Surface();
+        WebShellChallengesController controller = new WebShellChallengesController(surface,
+                new ChallengeWorkspaceService(temporary));
+
+        WebShellEnvelope response = surface.handler("challenges", "run").handle(request("run", "run", Map.of()));
+
+        assertEquals("INVALID_CHALLENGE_REQUEST", response.error().code());
+        controller.dispose();
+    }
+
+    @Test
     void disposedControllerRejectsRequests() {
         Surface surface = new Surface();
         WebShellChallengesController controller = new WebShellChallengesController(surface,
@@ -74,7 +86,11 @@ class WebShellChallengesControllerTest {
     }
 
     private static WebShellEnvelope request(String requestId, Map<String, Object> payload) {
-        return WebShellEnvelope.request("challenges", "ensure", requestId, payload);
+        return request("ensure", requestId, payload);
+    }
+
+    private static WebShellEnvelope request(String name, String requestId, Map<String, Object> payload) {
+        return WebShellEnvelope.request("challenges", name, requestId, payload);
     }
 
     private static final class Surface implements WebShellSurface {

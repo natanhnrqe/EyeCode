@@ -848,13 +848,14 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />;
     if (paneId === 'lesson') {
       if (challenge && layoutKind === 'CHALLENGE') {
-        return <ChallengeProvider challengeId={challenge.id}>
+        return <ChallengeProvider challengeId={challenge.id} beforeRun={() => service.saveWorkspaceDocuments()}>
           {challengePanelCollapsed
             ? <nav className="challenge-rail" aria-label="Painel do desafio recolhido">
                 <button type="button" className="challenge-rail-expand" onClick={() => setChallengePanelCollapsed(false)}
                   aria-label="Mostrar painel do desafio" title="Mostrar painel do desafio"><span aria-hidden="true">❮</span></button>
               </nav>
-            : <ChallengeRightPanel onExit={challenge.onExit} onCollapse={() => setChallengePanelCollapsed(true)} />}
+            : <ChallengeRightPanel onExit={challenge.onExit} onCollapse={() => setChallengePanelCollapsed(true)}
+                onOpenDocumentation={id => { void openDocumentationPage(id); }} />}
         </ChallengeProvider>;
       }
       return lessonSession ? <LearningPanel session={lessonSession} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} onPrevious={() => void changeLessonStep('previous')}

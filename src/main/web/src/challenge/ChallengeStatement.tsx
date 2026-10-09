@@ -1,10 +1,10 @@
 import type React from 'react';
-import { catalogItem, CHALLENGE_DIFFICULTY_LABEL } from './catalog';
+import { catalogItem, CHALLENGE_DIFFICULTY_LABEL, CHALLENGE_TRACKS } from './catalog';
 import { parseInline } from './ChallengeMarkdown';
 import { legacyStatementFor, validDocumentationReference } from './statement';
 import type { Challenge } from './types';
 
-export function ChallengeStatement({ challenge }: { challenge: Challenge }): React.ReactElement {
+export function ChallengeStatement({ challenge, onOpenDocumentation }: { challenge: Challenge; onOpenDocumentation(id: string): void }): React.ReactElement {
   const legacy = legacyStatementFor(challenge);
   const content = challenge.statement;
   const metadata = challenge.metadata;
@@ -17,11 +17,13 @@ export function ChallengeStatement({ challenge }: { challenge: Challenge }): Rea
   const constraints = (content?.constraints ?? legacy.constraints).filter(item => item.trim());
   const hints = (content?.hints ?? legacy.hints).filter(item => item.trim());
   const catalog = catalogItem(challenge.id);
+  const track = catalog && CHALLENGE_TRACKS.find(item => item.id === catalog.trackId);
+  const topic = track?.topics.find(item => item.id === catalog?.topicId);
   const difficulty = catalog ? CHALLENGE_DIFFICULTY_LABEL[catalog.difficulty] : undefined;
-  const badges = [metadata?.track, metadata?.topic, metadata?.language, difficulty,
+  const badges = [metadata?.track ?? track?.title, metadata?.topic ?? topic?.title, metadata?.language, difficulty,
     metadata?.estimatedMinutes ? `${metadata.estimatedMinutes} min` : undefined]
     .filter((badge): badge is string => !!badge);
-  const references = (metadata?.documentationReferences || []).map(validDocumentationReference)
+  const references = (metadata?.documentationReferences ?? catalog?.documentationReferences ?? []).map(validDocumentationReference)
     .filter((reference): reference is NonNullable<typeof reference> => !!reference);
 
   return <>
@@ -48,21 +50,19 @@ export function ChallengeStatement({ challenge }: { challenge: Challenge }): Rea
                 Documentação relacionada
               </h2>
               <p>
-                {references[0].relevance ||
-                  'Consulte a documentação oficial relacionada a este desafio.'}
+                {references[0].relevance || 'Consulte este artigo da documentação do EyeCode.'}
               </p>
             </div>
           </div>
 
-          <a
+          <button
+            type="button"
             className="challenge-documentation-link"
-            href={references[0].href}
-            target="_blank"
-            rel="noopener noreferrer"
+            onClick={() => onOpenDocumentation(references[0].id)}
           >
-            <span>Abrir documentação oficial</span>
+            <span>Abrir documentação no editor</span>
             <span aria-hidden="true">↗</span>
-          </a>
+          </button>
         </div>
       )}
 
@@ -84,14 +84,10 @@ export function ChallengeStatement({ challenge }: { challenge: Challenge }): Rea
 
           <ul>
             {references.map(reference => (
-              <li key={reference.href}>
-                <a
-                  href={reference.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+              <li key={reference.id}>
+                <button type="button" onClick={() => onOpenDocumentation(reference.id)}>
                   {reference.title}
-                </a>
+                </button>
                 {reference.relevance && <p>{reference.relevance}</p>}
               </li>
             ))}

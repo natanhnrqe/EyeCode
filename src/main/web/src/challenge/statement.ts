@@ -67,17 +67,11 @@ export function parseLegacyStatement(markdown: string): LegacyStatement {
   };
 }
 
-export function validDocumentationReference(reference: ChallengeDocumentationReference): { href: string; title: string; relevance?: string } | undefined {
-  try {
-    const parsed = new URL(reference.url);
-    if (parsed.protocol !== 'https:' || !parsed.hostname || parsed.username || parsed.password) return undefined;
-    if (reference.section?.trim()) parsed.hash = reference.section.trim();
-    const title = reference.title.trim();
-    if (!title) return undefined;
-    return { href: parsed.toString(), title, relevance: reference.relevance?.trim() || undefined };
-  } catch {
-    return undefined;
-  }
+export function validDocumentationReference(reference: ChallengeDocumentationReference): { id: string; title: string; section?: string; relevance?: string } | undefined {
+  const id = reference.id.trim();
+  const title = reference.title.trim();
+  if (!/^[a-z0-9][a-z0-9/._-]*$/.test(id) || id.includes('..') || !title) return undefined;
+  return { id, title, section: reference.section?.trim() || undefined, relevance: reference.relevance?.trim() || undefined };
 }
 
 export function legacyStatementFor(challenge: Challenge): LegacyStatement {

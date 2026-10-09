@@ -16,6 +16,7 @@ public final class WebShellChallengesController {
         register("ensure", this::ensure);
         register("state", this::state);
         register("reset", this::reset);
+        register("run", this::run);
     }
 
     public void dispose() {
@@ -77,6 +78,32 @@ public final class WebShellChallengesController {
         } catch (RuntimeException exception) {
             return message.error(new WebShellError("INVALID_CHALLENGE_REQUEST",
                     exception.getMessage() == null ? "Challenge workspace failed" : exception.getMessage(), true));
+        }
+    }
+
+    private WebShellEnvelope run(WebShellEnvelope message) {
+        String id = text(message.payload(), "id");
+        if (id.isBlank()) {
+            return message.error(new WebShellError("INVALID_CHALLENGE_REQUEST",
+                    "Challenges require an id", true));
+        }
+        try {
+            var result = challenges.runTests(id);
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("message", result.message());
+            response.put("tests", result.tests().stream().map(test -> {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("id", test.id());
+                item.put("name", test.name());
+                item.put("status", test.status());
+                item.put("errorMessage", test.errorMessage());
+                item.put("stackTrace", test.stackTrace());
+                return item;
+            }).toList());
+            return message.response(response);
+        } catch (RuntimeException exception) {
+            return message.error(new WebShellError("CHALLENGE_TESTS_FAILED",
+                    exception.getMessage() == null ? "Challenge tests failed" : exception.getMessage(), true));
         }
     }
 

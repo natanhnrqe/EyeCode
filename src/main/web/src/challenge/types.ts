@@ -21,8 +21,8 @@ export type Challenge = {
 export type ChallengeExample = { input: string; output: string; language?: string };
 
 export type ChallengeDocumentationReference = {
+  id: string;
   title: string;
-  url: string;
   section?: string;
   relevance?: string;
 };

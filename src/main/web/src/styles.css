@@ -5236,6 +5236,10 @@ img.learning-icon {
   font-size: 12px;
   font-weight: 600;
   text-decoration: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .challenge-documentation-link:hover {
@@ -5272,9 +5276,14 @@ img.learning-icon {
   overflow-wrap: anywhere;
 }
 
-.challenge-documentation-list li a {
+.challenge-documentation-list li button {
   color: var(--eyecode-accent);
   font-size: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 /* Exemplos */

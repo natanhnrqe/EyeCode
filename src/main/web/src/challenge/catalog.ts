@@ -35,6 +35,7 @@ export type ChallengeCatalogItem = {
   solved: boolean;
   trackId: ChallengeTrackId;
   topicId: string;
+  documentationReferences: Array<{ id: string; title: string; relevance: string }>;
 };
 
 export const CHALLENGE_DIFFICULTY_LABEL: Record<ChallengeDifficulty, string> = {
@@ -164,17 +165,82 @@ export const CHALLENGE_CATALOG: ChallengeCatalogItem[] = [
     difficulty: 'easy',
     solved: false,
     trackId: 'java-fundamentals',
-    topicId: 'strings-validation'
+    topicId: 'strings-validation',
+    documentationReferences: [
+      { id: 'java/jdk/java.lang/string', title: 'String', relevance: 'Revise limpeza, inspeção e transformação do texto recebido.' },
+      { id: 'java/jdk/java.util/regex', title: 'Regex (Pattern e Matcher)', relevance: 'Consulte padrões e validação de formato; a validação dos dígitos continua sendo parte do desafio.' }
+    ]
   },
   {
     id: 'fizzbuzz',
     title: 'FizzBuzz Clássico',
-    summary: 'Percorra um intervalo aplicando as regras de divisibilidade.',
+    summary: 'Gere a sequência FizzBuzz para um intervalo inteiro aplicando as regras de divisibilidade.',
     tags: ['Lógica', 'Loops'],
     difficulty: 'easy',
     solved: true,
     trackId: 'java-fundamentals',
-    topicId: 'conditionals-loops'
+    topicId: 'conditionals-loops',
+    documentationReferences: [
+      { id: 'java/jdk/fundamentos/variables', title: 'Tipos e variáveis', relevance: 'Revise os tipos numéricos e operadores usados nas condições.' },
+      { id: 'java/jdk/java.lang/math', title: 'Math', relevance: 'Consulte operações numéricas da biblioteca padrão.' }
+    ]
+  },
+  {
+    id: 'conversor-temperatura',
+    title: 'Conversor de Temperatura',
+    summary: 'Converta temperaturas entre Celsius e Fahrenheit usando métodos e operações numéricas.',
+    tags: ['Variáveis', 'Métodos', 'Aritmética'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'java-fundamentals',
+    topicId: 'types-variables',
+    documentationReferences: [
+      { id: 'java/jdk/fundamentos/variables', title: 'Tipos e variáveis', relevance: 'Revise tipos numéricos e atribuição de valores.' },
+      { id: 'java/jdk/java.lang/math', title: 'Math', relevance: 'Consulte operações numéricas da biblioteca padrão.' }
+    ]
+  },
+  {
+    id: 'ano-bissexto',
+    title: 'Verificador de Ano Bissexto',
+    summary: 'Determine se um ano é bissexto aplicando as regras do calendário gregoriano.',
+    tags: ['Condicionais', 'Operadores'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'java-fundamentals',
+    topicId: 'conditionals-loops',
+    documentationReferences: [
+      { id: 'java/jdk/fundamentos/variables', title: 'Tipos e variáveis', relevance: 'Revise valores inteiros e operadores aritméticos.' },
+      { id: 'java/jdk/java.lang/math', title: 'Math', relevance: 'Consulte operações numéricas disponíveis no JDK.' }
+    ]
+  },
+  {
+    id: 'media-aprovacao',
+    title: 'Média para Aprovação',
+    summary: 'Calcule a média de notas informadas e determine se atingem a nota mínima.',
+    tags: ['Métodos', 'Entrada', 'Condicionais'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'java-fundamentals',
+    topicId: 'methods',
+    documentationReferences: [
+      { id: 'java/jdk/fundamentos/variables', title: 'Tipos e variáveis', relevance: 'Revise os tipos numéricos usados em cálculos.' },
+      { id: 'java/jdk/java.util/scanner', title: 'Scanner', relevance: 'Consulte leitura e conversão de valores textuais.' },
+      { id: 'java/jdk/java.lang/math', title: 'Math', relevance: 'Veja operações numéricas auxiliares.' }
+    ]
+  },
+  {
+    id: 'palindromo',
+    title: 'Verificador de Palíndromo',
+    summary: 'Verifique se um texto permanece igual quando lido de trás para frente.',
+    tags: ['Strings', 'Métodos'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'java-fundamentals',
+    topicId: 'strings-validation',
+    documentationReferences: [
+      { id: 'java/jdk/java.lang/string', title: 'String', relevance: 'Revise comparação, acesso a caracteres e normalização de texto.' },
+      { id: 'java/jdk/java.lang/stringbuilder', title: 'StringBuilder', relevance: 'Consulte a construção eficiente de texto.' }
+    ]
   },
   {
     id: 'anagramas',
@@ -184,7 +250,12 @@ export const CHALLENGE_CATALOG: ChallengeCatalogItem[] = [
     difficulty: 'medium',
     solved: false,
     trackId: 'algorithms-data-structures',
-    topicId: 'strings-maps'
+    topicId: 'strings-maps',
+    documentationReferences: [
+      { id: 'java/jdk/java.lang/string', title: 'String', relevance: 'Revise comparação e transformação de palavras.' },
+      { id: 'java/jdk/java.util/map', title: 'Map', relevance: 'Consulte o armazenamento e a consulta de frequências por chave.' },
+      { id: 'java/jdk/java.util/collections', title: 'Collections', relevance: 'Veja operações úteis para organizar coleções.' }
+    ]
   },
   {
     id: 'carrinho-compras',
@@ -194,7 +265,12 @@ export const CHALLENGE_CATALOG: ChallengeCatalogItem[] = [
     difficulty: 'medium',
     solved: false,
     trackId: 'spring-boot',
-    topicId: 'controllers-services'
+    topicId: 'controllers-services',
+    documentationReferences: [
+      { id: 'java/spring/boot-basics', title: 'Spring Boot', relevance: 'Conheça a estrutura básica de uma aplicação Spring Boot.' },
+      { id: 'java/spring/core/dependency-injection', title: 'Injeção de dependência', relevance: 'Revise como serviços colaboram por meio de dependências injetadas.' },
+      { id: 'java/jdk/fundamentos/classes', title: 'Classes e objetos', relevance: 'Consulte os fundamentos de modelagem com classes.' }
+    ]
   },
   {
     id: 'api-pedidos',
@@ -204,7 +280,13 @@ export const CHALLENGE_CATALOG: ChallengeCatalogItem[] = [
     difficulty: 'hard',
     solved: false,
     trackId: 'web-apis',
-    topicId: 'http-rest'
+    topicId: 'http-rest',
+    documentationReferences: [
+      { id: 'java/spring/web/rest-controller', title: 'Controllers REST', relevance: 'Revise a exposição de recursos por endpoints HTTP.' },
+      { id: 'java/spring/web/validation', title: 'Validação Web', relevance: 'Consulte validação de dados recebidos nas requisições.' },
+      { id: 'java/spring/data/jpa-repository', title: 'Repositórios JPA', relevance: 'Veja como persistir e consultar entidades.' },
+      { id: 'java/spring/data/transactions', title: 'Transações', relevance: 'Revise como manter operações de persistência consistentes.' }
+    ]
   },
   {
     id: 'menor-caminho',
@@ -214,7 +296,13 @@ export const CHALLENGE_CATALOG: ChallengeCatalogItem[] = [
     difficulty: 'hard',
     solved: false,
     trackId: 'algorithms-data-structures',
-    topicId: 'graphs'
+    topicId: 'graphs',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/list', title: 'List', relevance: 'Consulte listas para representar sequências de vértices ou caminhos.' },
+      { id: 'java/jdk/java.util/map', title: 'Map', relevance: 'Revise o mapeamento de vértices para distâncias ou vizinhos.' },
+      { id: 'java/jdk/java.util/queue', title: 'Queue', relevance: 'Consulte filas de prioridade e processamento ordenado de elementos.' },
+      { id: 'java/jdk/java.util/comparator', title: 'Comparator', relevance: 'Veja como definir a ordem de prioridade entre elementos.' }
+    ]
   }
 ];
 

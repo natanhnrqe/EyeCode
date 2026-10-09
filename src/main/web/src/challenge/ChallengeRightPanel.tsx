@@ -7,11 +7,13 @@ import { useChallenge } from './useChallenge';
 type Props = {
   onExit(): void;
   onCollapse(): void;
+  onOpenDocumentation(id: string): void;
 };
 
 export function ChallengeRightPanel({
   onExit,
-  onCollapse
+  onCollapse,
+  onOpenDocumentation
 }: Props): React.ReactElement {
   const controller = useChallenge();
 
@@ -71,7 +73,7 @@ export function ChallengeRightPanel({
             <h2>{controller.challenge.title}</h2>
           </div>
 
-          <ChallengeStatement challenge={controller.challenge} />
+          <ChallengeStatement challenge={controller.challenge} onOpenDocumentation={onOpenDocumentation} />
 
           <div
             className="challenge-assistant is-disabled"
@@ -150,10 +152,10 @@ function ChallengeTestRow({ test }: { test: TestResult }): React.ReactElement {
   return <div className="challenge-test-row">
     <ChallengeTestStatus status={test.status} />
     <span className="challenge-test-name">{test.name}</span>
-    {test.status === 'failure' && test.stackTrace && (
+    {test.status === 'failure' && (test.errorMessage || test.stackTrace) && (
       <details className="challenge-stacktrace">
         <summary>{test.errorMessage ? `Detalhes do erro: ${test.errorMessage}` : 'Detalhes do erro'}</summary>
-        <pre>{test.stackTrace}</pre>
+        <pre>{test.stackTrace || test.errorMessage}</pre>
       </details>
     )}
   </div>;
