@@ -4,6 +4,17 @@ export const CNPJ_VALIDATOR_CHALLENGE: Challenge = {
   id: 'cnpj-validator',
   title: 'Validador de CNPJ',
   entryClassName: 'CnpjValidator',
+  metadata: {
+    track: 'Fundamentos de Java',
+    topic: 'Strings e validação',
+    language: 'Java',
+    documentationReferences: [{
+      title: 'Java SE 21 — String',
+      url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html',
+      relevance: 'Referência para operações com cadeias usadas no tratamento do CNPJ.'
+    }]
+  },
+  statement: { objective: 'Confira os dígitos verificadores e valide documentos com ou sem máscara.' },
   descriptionMarkdown: [
     '# Validador de CNPJ',
     '',

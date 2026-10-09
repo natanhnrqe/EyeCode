@@ -14,6 +14,34 @@ export type Challenge = {
   descriptionMarkdown: string;
   starterCode: string;
   entryClassName: string;
+  statement?: ChallengeStatementContent;
+  metadata?: ChallengeStatementMetadata;
+};
+
+export type ChallengeExample = { input: string; output: string; language?: string };
+
+export type ChallengeDocumentationReference = {
+  title: string;
+  url: string;
+  section?: string;
+  relevance?: string;
+};
+
+export type ChallengeStatementContent = {
+  objective?: string;
+  instructions?: string;
+  businessRules?: string[];
+  examples?: ChallengeExample[];
+  constraints?: string[];
+  hints?: string[];
+};
+
+export type ChallengeStatementMetadata = {
+  track?: string;
+  topic?: string;
+  language?: string;
+  estimatedMinutes?: number;
+  documentationReferences?: ChallengeDocumentationReference[];
 };
 
 export type ChallengeTab = 'statement' | 'tests' | 'assistant';

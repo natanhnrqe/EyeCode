@@ -2,7 +2,7 @@ import type React from 'react';
 
 const INLINE_PATTERN = /`([^`]+)`|\*\*([^*]+)\*\*/g;
 
-function parseInline(text: string): React.ReactNode[] {
+export function parseInline(text: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
