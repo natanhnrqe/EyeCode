@@ -56,6 +56,14 @@ public final class WorkspaceProjects {
         return open(creation.create(request).projectRoot());
     }
 
+    public void close() {
+        execution.stop();
+        lifecycle.close();
+        editor.closeAllSessions();
+        editor.unwatchProject();
+        execution.refreshConfigurations();
+    }
+
     public ProjectModel current() {
         return lifecycle.currentProject();
     }

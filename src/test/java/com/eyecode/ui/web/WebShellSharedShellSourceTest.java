@@ -693,6 +693,23 @@ class WebShellSharedShellSourceTest {
         assertFalse(article.contains("IntersectionObserver"));
     }
 
+    @Test
+    void challengeExitClosesTheScaffoldProjectThroughAPathGuardedClose() throws IOException {
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+        String controller = Files.readString(Path.of("src/main/java/com/eyecode/ui/web/WebShellWorkspaceController.java"));
+        String projects = Files.readString(Path.of("src/main/java/com/eyecode/application/WorkspaceProjects.java"));
+
+        assertTrue(workspace.contains("return () => {"));
+        assertTrue(workspace.contains("void bridge.request('workspace', 'closeProject', { path: challengePath }).catch(() => undefined);"));
+        assertEquals(2, occurrences(workspace, "}, [challenge?.path]);"));
+        assertTrue(controller.contains("surface.registerHandler(\"workspace\", \"closeProject\", this::closeProject);"));
+        assertTrue(controller.contains("&& !project.getRootDir().equals(Path.of(expectedPath).toAbsolutePath().normalize())"));
+        assertTrue(controller.contains("projects.close();"));
+        assertTrue(controller.contains("WebShellEnvelope.event(\"workspace\", \"reset\", Map.of())"));
+        assertTrue(projects.contains("public void close()"));
+        assertTrue(projects.contains("editor.unwatchProject();"));
+    }
+
     private static int occurrences(String text, String target) {
         return text.split(java.util.regex.Pattern.quote(target), -1).length - 1;
     }

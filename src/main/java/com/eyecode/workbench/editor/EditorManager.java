@@ -326,6 +326,11 @@ public final class EditorManager {
         }
     }
 
+    public void unwatchProject() {
+        if (externalFileWatcher == null) return;
+        externalFileWatcher.clearRoots();
+    }
+
     public void addSaveListener(Consumer<SavedEvent> listener) {
         autoSaveManager.addSaveListener(listener);
     }

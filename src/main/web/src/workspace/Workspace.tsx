@@ -352,6 +352,14 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
     void openProject(path);
   }, [challenge?.path]);
 
+  useEffect(() => {
+    const challengePath = challenge?.path;
+    if (!challengePath) return undefined;
+    return () => {
+      void bridge.request('workspace', 'closeProject', { path: challengePath }).catch(() => undefined);
+    };
+  }, [challenge?.path]);
+
   const challengeEntryOpened = useRef(false);
   useEffect(() => {
     if (!challenge || !workspace.project || challengeEntryOpened.current) return;

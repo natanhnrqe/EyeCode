@@ -25,10 +25,11 @@ class WebShellWorkspaceDocumentsTest {
         Surface surface = new Surface();
         try (var runtime = WebShellWorkspaceComposition.create(surface)) {
             assertEquals(7, surface.handlers.keySet().stream().filter(key -> key.startsWith("document/")).count());
-            assertEquals(15, surface.handlers.keySet().stream().filter(key -> key.startsWith("workspace/")).count());
+            assertEquals(16, surface.handlers.keySet().stream().filter(key -> key.startsWith("workspace/")).count());
             assertNull(surface.call("workspace", "snapshot", Map.of()).error());
             assertEquals("NATIVE_UI_UNAVAILABLE", surface.call("workspace", "chooseDirectory", Map.of()).error().code());
             assertNull(surface.call("workspace", "removeRecent", Map.of("path", temp.toString())).error());
+            assertNull(surface.call("workspace", "closeProject", Map.of()).error());
         }
     }
 

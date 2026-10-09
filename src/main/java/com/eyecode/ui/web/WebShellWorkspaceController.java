@@ -49,6 +49,7 @@ public final class WebShellWorkspaceController {
         surface.registerHandler("workspace", "snapshot", this::workspaceSnapshot);
         surface.registerHandler("workspace", "removeRecent", this::removeRecent);
         surface.registerHandler("workspace", "openProject", this::openProject);
+        surface.registerHandler("workspace", "closeProject", this::closeProject);
         surface.registerHandler("workspace", "createProject", this::createProject);
         surface.registerHandler("workspace", "chooseDirectory", this::chooseDirectory);
         surface.registerHandler("workspace", "refresh", this::refreshWorkspace);
@@ -141,6 +142,23 @@ public final class WebShellWorkspaceController {
 
     private Map<String, Object> openWorkspace(Path root) {
         return workspaceOpened(projects.open(root));
+    }
+
+    private WebShellEnvelope closeProject(WebShellEnvelope message) {
+        ProjectModel project = projects.current();
+        if (project == null) return message.response(workspacePayload());
+        String expectedPath = text(message.payload(), "path");
+        if (!expectedPath.isBlank()
+                && !project.getRootDir().equals(Path.of(expectedPath).toAbsolutePath().normalize())) {
+            return message.response(workspacePayload());
+        }
+        projects.close();
+        documents.reset();
+        surface.send(WebShellEnvelope.event("workspace", "reset", Map.of()));
+        Map<String, Object> payload = workspacePayload();
+        surface.send(WebShellEnvelope.event("workspace", "changed", payload));
+        executionController.publishWorkspaceState();
+        return message.response(payload);
     }
 
     void openProjectAtStartup(Path root) {

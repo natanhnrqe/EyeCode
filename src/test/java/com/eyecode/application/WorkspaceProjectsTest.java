@@ -139,4 +139,28 @@ class WorkspaceProjectsTest {
         assertTrue(editor.isExistingFile(source));
         assertFalse(editor.isExistingFile(temp));
     }
+
+    @Test
+    void closingClearsTheCurrentProjectAndSessionsAndIsIdempotent() throws Exception {
+        Path root = Files.createDirectory(temp.resolve("closable"));
+        Files.writeString(root.resolve("pom.xml"), "<project/>");
+        projects.open(root);
+        Path source = Files.writeString(root.resolve("Main.java"), "class Main {}");
+        editor.openDocument(source);
+
+        projects.close();
+
+        assertNull(projects.current());
+        assertNull(lifecycle.currentProject());
+        assertTrue(editor.getSessions().isEmpty());
+        assertDoesNotThrow(() -> projects.close());
+        assertNull(projects.current());
+    }
+
+    @Test
+    void closingWithoutAnOpenProjectIsANoOp() {
+        assertNull(projects.current());
+        assertDoesNotThrow(() -> projects.close());
+        assertNull(projects.current());
+    }
 }

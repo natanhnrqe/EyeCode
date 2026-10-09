@@ -114,6 +114,56 @@ class LocalWebShellRuntimeTest {
     }
 
     @Test
+    void newConnectionSupersedesThePreviousOneSoReloadsDoNotBrickTheBridge() throws Exception {
+        try (LocalWebShellSurface surface = new LocalWebShellSurface()) {
+            WebShellWorkspaceRuntime workspace = WebShellWorkspaceComposition.create(surface);
+            try {
+                HttpResponse<String> entry = HttpClient.newHttpClient().send(HttpRequest.newBuilder(
+                        URI.create(surface.entryUrl())).build(), HttpResponse.BodyHandlers.ofString());
+                Matcher matcher = SOCKET_URL.matcher(entry.body());
+                assertTrue(matcher.find());
+                String socketUrl = matcher.group(1);
+
+                CountDownLatch firstClosedRemotely = new CountDownLatch(1);
+                WebSocketClient first = openClient(socketUrl, surface.backendUrl(), firstClosedRemotely, new AtomicReference<>());
+                assertTrue(first.connectBlocking(2, TimeUnit.SECONDS));
+
+                AtomicReference<String> received = new AtomicReference<>();
+                CountDownLatch response = new CountDownLatch(1);
+                WebSocketClient second = openClient(socketUrl, surface.backendUrl(), response, received);
+                assertTrue(second.connectBlocking(2, TimeUnit.SECONDS));
+                assertTrue(firstClosedRemotely.await(2, TimeUnit.SECONDS),
+                        "The superseded connection must be closed by the server");
+
+                second.send(new WebShellProtocolCodec().encode(
+                        WebShellEnvelope.request("shell", "ping", "ping-2", Map.of())));
+                assertTrue(response.await(2, TimeUnit.SECONDS));
+                assertEquals("ping-2", new WebShellProtocolCodec().decode(received.get()).requestId());
+                first.closeBlocking();
+                second.closeBlocking();
+            } finally {
+                workspace.close();
+            }
+        }
+    }
+
+    private static WebSocketClient openClient(String socketUrl, String origin, CountDownLatch closed,
+                                              AtomicReference<String> received) {
+        return new WebSocketClient(URI.create(socketUrl)) {
+            { addHeader("Origin", origin); }
+            @Override public void onOpen(ServerHandshake handshake) { }
+            @Override public void onMessage(String message) {
+                received.set(message);
+                closed.countDown();
+            }
+            @Override public void onClose(int code, String reason, boolean remote) {
+                if (remote) closed.countDown();
+            }
+            @Override public void onError(Exception exception) { }
+        };
+    }
+
+    @Test
     void webRuntimeReportsNativePickerOperationsAsUnavailable() {
         CapturingSurface surface = new CapturingSurface();
         WebShellWorkspaceRuntime workspace = WebShellWorkspaceComposition.create(surface);

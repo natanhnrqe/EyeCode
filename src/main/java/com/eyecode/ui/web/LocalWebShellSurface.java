@@ -207,16 +207,26 @@ public final class LocalWebShellSurface implements WebShellSurface, AutoCloseabl
 
         @Override
         public void onOpen(WebSocket candidate, ClientHandshake handshake) {
-            boolean rejected;
+            boolean accepted;
+            WebSocket previous;
             synchronized (connectionLock) {
-                rejected = closed || !accepts(handshake) || (connection != null && connection.isOpen());
-                if (!rejected) {
+                accepted = !closed && accepts(handshake);
+                if (accepted) {
+                    previous = connection;
+                    if (previous == candidate) {
+                        previous = null;
+                    }
                     connection = candidate;
+                } else {
+                    previous = null;
                 }
             }
-            if (rejected) {
+            if (!accepted) {
                 candidate.close(1008, "Unauthorized WebShell connection");
                 return;
+            }
+            if (previous != null && previous.isOpen()) {
+                previous.close(1012, "Superseded by a newer WebShell connection");
             }
             System.out.println("[LOCAL-WEBSHELL] connected");
         }
