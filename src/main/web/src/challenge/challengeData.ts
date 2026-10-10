@@ -490,14 +490,363 @@ const OOP_CHALLENGES: Record<string, Pick<Challenge, 'statement' | 'descriptionM
   }
 };
 
+const DATA_STRUCTURE_CHALLENGES: Record<string, Pick<Challenge, 'statement' | 'descriptionMarkdown' | 'starterCode'>> = {
+  'busca-binaria': {
+    statement: {
+      objective: 'Encontre a posição de um valor em um array ordenado com a técnica da busca binária.',
+      instructions: 'Implemente `buscaBinaria(int[] numeros, int alvo)` para arrays em ordem crescente. Retorne o índice do alvo ou `-1` quando não existir.',
+      businessRules: [
+        'Compare o elemento do meio e descarte metade do intervalo a cada passo.',
+        'O array chega ordenado em ordem crescente.',
+        'Retorne `-1` quando o alvo não estiver presente.'
+      ],
+      examples: [
+        { input: 'numeros = [1, 3, 5, 7, 9], alvo = 7', output: '3' },
+        { input: 'numeros = [1, 3, 5], alvo = 4', output: '-1' }
+      ],
+      constraints: ['Um array vazio devolve `-1`.', 'A busca deve custar O(log n) — sem percorrer o array inteiro.']
+    },
+    descriptionMarkdown: '# Busca Binária',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'public class BuscaBinaria {',
+      '',
+      '    public int buscaBinaria(int[] numeros, int alvo) {',
+      '        // TODO: compare o meio e siga apenas metade do intervalo',
+      '        return -1;',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'ordenacao-bolha': {
+    statement: {
+      objective: 'Ordene uma cópia dos valores em ordem crescente usando a ordenação por bolha.',
+      instructions: 'Implemente `ordenarCrescente(int[] numeros)` devolvendo um NOVO array com os valores em ordem crescente — a entrada não pode ser alterada.',
+      businessRules: [
+        'Compare vizinhos e troque quando o da esquerda for maior.',
+        'Repita as passadas até uma rodada completa sem nenhuma troca.',
+        'Devolva um array novo — não modifique a entrada.'
+      ],
+      examples: [
+        { input: '[5, 1, 4, 2]', output: '[1, 2, 4, 5]' },
+        { input: '[3, -1, 3, 0]', output: '[-1, 0, 3, 3]' }
+      ],
+      constraints: ['Arrays vazios e com um elemento já saem prontos.', 'Valores repetidos mantêm a contagem original.']
+    },
+    descriptionMarkdown: '# Ordenação por Bolha',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'public class OrdenacaoBolha {',
+      '',
+      '    public int[] ordenarCrescente(int[] numeros) {',
+      '        // TODO: compare vizinhos, troque e repita até ordenar; devolva um array novo',
+      '        return numeros;',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'remover-duplicados': {
+    statement: {
+      objective: 'Remova valores repetidos de uma lista ordenada preservando a ordem.',
+      instructions: 'Implemente `removerDuplicados(List<Integer> numeros)` devolvendo uma NOVA lista com cada valor apenas uma vez. A entrada chega ordenada em ordem crescente.',
+      businessRules: [
+        'Compare cada valor com o anterior mantido no resultado.',
+        'Repetições consecutivas aparecem só uma vez.',
+        'Devolva uma lista nova — não altere a entrada.'
+      ],
+      examples: [
+        { input: '[1, 1, 2, 3, 3]', output: '[1, 2, 3]' },
+        { input: '[1, 2, 3]', output: '[1, 2, 3]' }
+      ],
+      constraints: ['Listas vazias devolvem lista vazia.', 'A ordem crescente original é mantida.']
+    },
+    descriptionMarkdown: '# Remover Duplicados',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.List;',
+      '',
+      'public class RemoverDuplicados {',
+      '',
+      '    public List<Integer> removerDuplicados(List<Integer> numeros) {',
+      '        // TODO: mantenha apenas o primeiro valor de cada sequência repetida',
+      '        return numeros;',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'interseccao-listas': {
+    statement: {
+      objective: 'Extraia os valores comuns de duas listas sem repetir resultados.',
+      instructions: 'Implemente `interseccao(List<Integer> a, List<Integer> b)` devolvendo uma lista com os valores presentes nas duas entradas, na ordem da primeira ocorrência em `a`, sem duplicar.',
+      businessRules: [
+        'Um valor de `a` entra no resultado somente se também aparece em `b`.',
+        'Repetições dentro de `a` não duplicam o resultado.',
+        'A ordem segue a primeira ocorrência em `a`.'
+      ],
+      examples: [
+        { input: 'a = [1, 2, 3], b = [2, 3, 4]', output: '[2, 3]' },
+        { input: 'a = [2, 2, 3], b = [2]', output: '[2]' }
+      ],
+      constraints: ['Qualquer lista vazia resulta em lista vazia.', 'Valores iguais em posições diferentes contam uma única vez.']
+    },
+    descriptionMarkdown: '# Interseção de Listas',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.List;',
+      '',
+      'public class InterseccaoListas {',
+      '',
+      '    public List<Integer> interseccao(List<Integer> a, List<Integer> b) {',
+      '        // TODO: percorra a mantendo apenas valores presentes em b, sem repetir',
+      '        return List.of();',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'contagem-caracteres': {
+    statement: {
+      objective: 'Calcule a frequência de cada caractere de um texto com um mapa.',
+      instructions: 'Implemente `contarCaracteres(String texto)` devolvendo um `Map<Character, Integer>` com quantas vezes cada caractere aparece — espaços contam e maiúsculas são diferentes de minúsculas.',
+      businessRules: [
+        'Cada caractere é contado individualmente, inclusive espaços.',
+        'A comparação diferencia maiúsculas de minúsculas.',
+        'Texto vazio devolve mapa vazio.'
+      ],
+      examples: [
+        { input: '"aab"', output: '{a=2, b=1}' },
+        { input: '"Aa"', output: '{A=1, a=1}' }
+      ],
+      constraints: ['Não descarte nenhum caractere.', 'A chave do mapa é o próprio caractere.']
+    },
+    descriptionMarkdown: '# Contagem de Caracteres',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.Map;',
+      '',
+      'public class ContagemCaracteres {',
+      '',
+      '    public Map<Character, Integer> contarCaracteres(String texto) {',
+      '        // TODO: acumule a frequência de cada caractere no mapa',
+      '        return Map.of();',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  anagramas: {
+    statement: {
+      objective: 'Agrupe palavras que são anagramas entre si preservando a ordem original.',
+      instructions: 'Implemente `agruparAnagramas(List<String> palavras)` devolvendo uma lista de grupos: cada grupo reúne palavras com exatamente as mesmas letras, na ordem em que aparecem na entrada.',
+      businessRules: [
+        'A comparação é exata quanto a maiúsculas e minúsculas.',
+        'Os grupos seguem a ordem da primeira ocorrência de cada palavra.',
+        'Dentro de um grupo, mantenha a ordem original das palavras.'
+      ],
+      examples: [
+        { input: '["eat", "tea", "tan"]', output: '[["eat", "tea"], ["tan"]]' },
+        { input: '["abc"]', output: '[["abc"]]' }
+      ],
+      constraints: ['Lista vazia devolve lista vazia.', 'Normalize a chave de agrupamento (ex.: ordenando os caracteres).']
+    },
+    descriptionMarkdown: '# Detector de Anagramas',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.List;',
+      '',
+      'public class Anagramas {',
+      '',
+      '    public List<List<String>> agruparAnagramas(List<String> palavras) {',
+      '        // TODO: normalize cada palavra (ex.: ordene os caracteres) e agrupe por chave',
+      '        return List.of();',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'par-com-soma': {
+    statement: {
+      objective: 'Encontre dois elementos de um array ordenado que somam o valor alvo.',
+      instructions: 'Implemente `parComSoma(int[] numerosOrdenados, int alvo)` devolvendo um array com os DOIS ÍNDICES `i < j` cujos valores somam o alvo. Havendo mais de um par, devolva o de menor `i` (e menor `j`); sem par, devolva `new int[0]`.',
+      businessRules: [
+        'O array chega ordenado em ordem crescente.',
+        'Use dois ponteiros: um no início e um no fim, movendo conforme a soma.',
+        'Os índices devem ser crescentes (`i < j`).'
+      ],
+      examples: [
+        { input: 'numeros = [1, 2, 3, 4], alvo = 5', output: '[0, 3] (1 + 4)' },
+        { input: 'numeros = [1, 2, 3], alvo = 100', output: '[]' }
+      ],
+      constraints: ['Arrays de um elemento não têm par.', 'O par de menor índice inicial tem prioridade.']
+    },
+    descriptionMarkdown: '# Par com Soma',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'public class ParComSoma {',
+      '',
+      '    public int[] parComSoma(int[] numerosOrdenados, int alvo) {',
+      '        // TODO: mova ponteiros do início e do fim conforme a soma cresça ou decresça',
+      '        return new int[0];',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'janela-maior-soma': {
+    statement: {
+      objective: 'Encontre a maior soma entre janelas contíguas de tamanho fixo.',
+      instructions: 'Implemente `maiorSomaJanela(int[] numeros, int tamanho)` retornando a maior soma de qualquer subarray contíguo com exatamente `tamanho` elementos. Lance `IllegalArgumentException` quando `tamanho < 1` ou `tamanho > numeros.length`.',
+      businessRules: [
+        'A janela tem tamanho fixo e percorre o array da esquerda para a direita.',
+        'Valores negativos participam — a maior soma pode ser negativa.',
+        'Tamanho inválido lança `IllegalArgumentException`.'
+      ],
+      examples: [
+        { input: 'numeros = [1, 2, 3, 4], tamanho = 2', output: '7 (3 + 4)' },
+        { input: 'numeros = [-1, -2, -3, -4], tamanho = 2', output: '-3 (-1 + -2)' }
+      ],
+      constraints: ['Reaproveite a soma da janela anterior (sliding window).', 'Só valide depois de conferir `tamanho` contra o array.']
+    },
+    descriptionMarkdown: '# Janela de Maior Soma',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'public class JanelaMaiorSoma {',
+      '',
+      '    public int maiorSomaJanela(int[] numeros, int tamanho) {',
+      '        // TODO: valide a janela, calcule a soma inicial e deslize somando o novo e saindo o antigo',
+      '        return 0;',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  fibonacci: {
+    statement: {
+      objective: 'Calcule o n-ésimo número de Fibonacci por recursão validando a entrada.',
+      instructions: 'Implemente `fibonacci(int n)` recursivamente: `fibonacci(0) = 0`, `fibonacci(1) = 1` e `fibonacci(n) = fibonacci(n - 1) + fibonacci(n - 2)`. Lance `IllegalArgumentException` para `n < 0`.',
+      businessRules: [
+        'Casos-base: 0 devolve 0 e 1 devolve 1.',
+        'Cada chamada soma as duas anteriores.',
+        '`n` negativo lança `IllegalArgumentException`.'
+      ],
+      examples: [
+        { input: '10', output: '55' },
+        { input: '0', output: '0' }
+      ],
+      constraints: ['Use recursão — sem laços.', 'Valores até 20 cabem em `long`.']
+    },
+    descriptionMarkdown: '# Fibonacci Recursivo',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'public class Fibonacci {',
+      '',
+      '    public long fibonacci(int n) {',
+      '        // TODO: trate os casos-base e some as duas chamadas anteriores',
+      '        return 0;',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'caminhos-escada': {
+    statement: {
+      objective: 'Conte quantos caminhos existem para subir uma escada avançando 1 ou 2 degraus.',
+      instructions: 'Implemente `caminhosEscada(int degraus)` devolvendo o número de modos de chegar ao topo. `caminhosEscada(0)` é 1 (o caminho vazio) e degraus negativos lançam `IllegalArgumentException`.',
+      businessRules: [
+        'De cada posição você avança 1 ou 2 passos.',
+        'A relação é a de Fibonacci: `f(n) = f(n - 1) + f(n - 2)`.',
+        'Zero degraus tem exatamente 1 caminho.'
+      ],
+      examples: [
+        { input: '2', output: '2 (1+1 ou 2)' },
+        { input: '5', output: '8' }
+      ],
+      constraints: ['Resolva com recursão.', 'Valores negativos lançam `IllegalArgumentException`.']
+    },
+    descriptionMarkdown: '# Caminhos na Escada',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'public class CaminhosEscada {',
+      '',
+      '    public long caminhosEscada(int degraus) {',
+      '        // TODO: some os caminhos de (degraus - 1) e (degraus - 2) com casos-base',
+      '        return 0;',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'busca-largura': {
+    statement: {
+      objective: 'Meça a menor distância em arestas entre dois vértices de um grafo não ponderado.',
+      instructions: 'Implemente `distancia(int vertices, int[][] arestas, int origem, int destino)` com BFS: cada aresta `[de, para]` é bidirecional. Retorne o número de arestas do caminho mais curto, `0` quando origem = destino e `-1` quando inalcançável.',
+      businessRules: [
+        'O grafo é não ponderado — cada aresta vale 1 passo.',
+        'Arestas são bidirecionais.',
+        'Vértices são identificados de 0 a `vertices - 1`.'
+      ],
+      examples: [
+        { input: 'vértices = 4, arestas = [[0,1],[1,2],[2,3]], origem = 0, destino = 3', output: '3' },
+        { input: 'vértices = 3, arestas = [[0,1]], origem = 0, destino = 2', output: '-1' }
+      ],
+      constraints: ['Use uma fila (BFS), não recursão.', 'Visite cada vértice no máximo uma vez.']
+    },
+    descriptionMarkdown: '# Busca em Largura',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'public class BuscaLargura {',
+      '',
+      '    public int distancia(int vertices, int[][] arestas, int origem, int destino) {',
+      '        // TODO: faça BFS a partir da origem registrando a distância de cada vértice',
+      '        return -1;',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'menor-caminho': {
+    statement: {
+      objective: 'Implemente Dijkstra para devolver a sequência de vértices do caminho de menor custo.',
+      instructions: 'Implemente `menorCaminho(int vertices, int[][] arestas, int origem, int destino)` onde cada aresta é `[de, para, peso]` com peso não negativo, ligando os dois vértices nos dois sentidos. Devolva a lista de vértices percorridos, incluindo origem e destino.',
+      businessRules: [
+        'Pesos são não negativos — Dijkstra é válido.',
+        'Sem caminho até o destino devolve lista vazia.',
+        'Origem igual ao destino devolve a lista com um único vértice.'
+      ],
+      examples: [
+        { input: 'vértices = 3, arestas = [[0,1,1],[1,2,1],[0,2,10]], origem = 0, destino = 2', output: '[0, 1, 2] (custo 2)' },
+        { input: 'vértices = 3, arestas = [[0,1,1]], origem = 0, destino = 2', output: '[]' }
+      ],
+      constraints: ['Use uma fila de prioridade ordenada pela distância acumulada.', 'Pesos negativos não são suportados — não faça validação extra.', 'Caminhos ótimos com mesmo custo podem devolver qualquer ordem válida.']
+    },
+    descriptionMarkdown: '# Menor Caminho em Grafo',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.List;',
+      '',
+      'public class MenorCaminho {',
+      '',
+      '    public List<Integer> menorCaminho(int vertices, int[][] arestas, int origem, int destino) {',
+      '        // TODO: execute Dijkstra com fila de prioridade pela distância acumulada',
+      '        return List.of();',
+      '    }',
+      '}'
+    ].join('\n')
+  }
+};
+
 export function challengeFor(id: string | null | undefined): Challenge {
   if (!id || id === CNPJ_VALIDATOR_CHALLENGE.id) return CNPJ_VALIDATOR_CHALLENGE;
   const catalog = CHALLENGE_CATALOG.find(item => item.id === id);
   if (!catalog) return CNPJ_VALIDATOR_CHALLENGE;
   const title = catalog.title;
   const className = id.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
-  const details = FUNDAMENTALS_CHALLENGES[id] ?? OOP_CHALLENGES[id];
-  const oopStarter = OOP_CHALLENGES[id]?.starterCode;
+  const details = FUNDAMENTALS_CHALLENGES[id] ?? OOP_CHALLENGES[id] ?? DATA_STRUCTURE_CHALLENGES[id];
+  const oopStarter = OOP_CHALLENGES[id]?.starterCode ?? DATA_STRUCTURE_CHALLENGES[id]?.starterCode;
   const starterCode = oopStarter ?? (id === 'fizzbuzz'
     ? `package br.com.eyecode.challenge;\n\nimport java.util.List;\n\npublic class ${className} {\n    public List<String> fizzBuzz(int start, int end) {\n        return List.of();\n    }\n}`
     : id === 'conversor-temperatura'

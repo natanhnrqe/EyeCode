@@ -596,6 +596,78 @@ public final class ChallengeWorkspaceService {
                         }
                     }
                     """.formatted(className);
+            case "busca-binaria" -> source(className, "public int buscaBinaria(int[] numeros, int alvo) {\n        // TODO: compare o meio e siga apenas metade do intervalo\n        return -1;\n    }");
+            case "ordenacao-bolha" -> source(className, "public int[] ordenarCrescente(int[] numeros) {\n        // TODO: compare vizinhos, troque e repita até ordenar; devolva um array novo\n        return numeros;\n    }");
+            case "remover-duplicados" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.List;
+
+                    public class %s {
+
+                        public List<Integer> removerDuplicados(List<Integer> numeros) {
+                            // TODO: mantenha apenas o primeiro valor de cada sequência repetida
+                            return numeros;
+                        }
+                    }
+                    """.formatted(className);
+            case "interseccao-listas" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.List;
+
+                    public class %s {
+
+                        public List<Integer> interseccao(List<Integer> a, List<Integer> b) {
+                            // TODO: percorra a mantendo apenas valores presentes em b, sem repetir
+                            return List.of();
+                        }
+                    }
+                    """.formatted(className);
+            case "contagem-caracteres" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.Map;
+
+                    public class %s {
+
+                        public Map<Character, Integer> contarCaracteres(String texto) {
+                            // TODO: acumule a frequência de cada caractere no mapa
+                            return Map.of();
+                        }
+                    }
+                    """.formatted(className);
+            case "anagramas" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.List;
+
+                    public class %s {
+
+                        public List<List<String>> agruparAnagramas(List<String> palavras) {
+                            // TODO: normalize cada palavra (ex.: ordene os caracteres) e agrupe por chave
+                            return List.of();
+                        }
+                    }
+                    """.formatted(className);
+            case "par-com-soma" -> source(className, "public int[] parComSoma(int[] numerosOrdenados, int alvo) {\n        // TODO: mova ponteiros do início e do fim conforme a soma cresça ou decresça\n        return new int[0];\n    }");
+            case "janela-maior-soma" -> source(className, "public int maiorSomaJanela(int[] numeros, int tamanho) {\n        // TODO: valide a janela, calcule a soma inicial e deslize somando o novo e saindo o antigo\n        return 0;\n    }");
+            case "fibonacci" -> source(className, "public long fibonacci(int n) {\n        // TODO: trate os casos-base e some as duas chamadas anteriores\n        return 0;\n    }");
+            case "caminhos-escada" -> source(className, "public long caminhosEscada(int degraus) {\n        // TODO: some os caminhos de (degraus - 1) e (degraus - 2) com casos-base\n        return 0;\n    }");
+            case "busca-largura" -> source(className, "public int distancia(int vertices, int[][] arestas, int origem, int destino) {\n        // TODO: faça BFS a partir da origem registrando a distância de cada vértice\n        return -1;\n    }");
+            case "menor-caminho" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.List;
+
+                    public class %s {
+
+                        public List<Integer> menorCaminho(int vertices, int[][] arestas, int origem, int destino) {
+                            // TODO: execute Dijkstra com fila de prioridade pela distância acumulada
+                            return List.of();
+                        }
+                    }
+                    """.formatted(className);
             default -> starterSource(className);
         };
     }
@@ -676,6 +748,79 @@ public final class ChallengeWorkspaceService {
                     @Test void retirarReducesStockWhenSufficient() { %s estoque = new %s(); estoque.registrar("Arroz", 2.5, 4); assertTrue(estoque.retirar("Arroz", 1)); assertEquals(3, estoque.getProdutos().get(0).getQuantidade()); }
                     @Test void retirarRejectsInsufficientStockOrUnknownProduct() { %s estoque = new %s(); estoque.registrar("Arroz", 2.5, 4); assertFalse(estoque.retirar("Arroz", 10)); assertFalse(estoque.retirar("Feijão", 1)); assertEquals(4, estoque.getProdutos().get(0).getQuantidade()); }
                     """.formatted(className, className, className, className, className, className, className, className);
+            case "busca-binaria" -> """
+                    @Test void findsTargetInTheMiddle() { assertEquals(3, new %s().buscaBinaria(new int[]{1, 3, 5, 7, 9}, 7)); }
+                    @Test void returnsMinusOneWhenTargetIsAbsent() { assertEquals(-1, new %s().buscaBinaria(new int[]{1, 3, 5}, 4)); }
+                    @Test void handlesSingleElementArray() { assertEquals(0, new %s().buscaBinaria(new int[]{5}, 5)); assertEquals(-1, new %s().buscaBinaria(new int[]{5}, 2)); }
+                    @Test void emptyArrayReturnsMinusOne() { assertEquals(-1, new %s().buscaBinaria(new int[0], 1)); }
+                    """.formatted(className, className, className, className, className);
+            case "ordenacao-bolha" -> """
+                    @Test void sortsUnsortedValues() { assertArrayEquals(new int[]{1, 2, 4, 5}, new %s().ordenarCrescente(new int[]{5, 1, 4, 2})); }
+                    @Test void keepsAlreadySortedValues() { assertArrayEquals(new int[]{1, 2, 3}, new %s().ordenarCrescente(new int[]{1, 2, 3})); }
+                    @Test void handlesNegativesAndDuplicates() { assertArrayEquals(new int[]{-1, 0, 3, 3}, new %s().ordenarCrescente(new int[]{3, -1, 3, 0})); }
+                    @Test void emptyAndSingleElementArrays() { assertArrayEquals(new int[0], new %s().ordenarCrescente(new int[0])); assertArrayEquals(new int[]{7}, new %s().ordenarCrescente(new int[]{7})); }
+                    """.formatted(className, className, className, className, className);
+            case "remover-duplicados" -> """
+                    @Test void removesConsecutiveDuplicates() { assertEquals(java.util.List.of(1, 2, 3), new %s().removerDuplicados(java.util.List.of(1, 1, 2, 3, 3))); }
+                    @Test void keepsAlreadyUniqueList() { assertEquals(java.util.List.of(1, 2, 3), new %s().removerDuplicados(java.util.List.of(1, 2, 3))); }
+                    @Test void singleElementListStaysSame() { assertEquals(java.util.List.of(5), new %s().removerDuplicados(java.util.List.of(5))); }
+                    @Test void emptyListYieldsEmptyResult() { assertEquals(java.util.List.of(), new %s().removerDuplicados(java.util.List.of())); }
+                    """.formatted(className, className, className, className);
+            case "interseccao-listas" -> """
+                    @Test void keepsValuesPresentInBothLists() { assertEquals(java.util.List.of(2, 3), new %s().interseccao(java.util.List.of(1, 2, 3), java.util.List.of(2, 3, 4))); }
+                    @Test void returnsEmptyWhenNoCommonValues() { assertEquals(java.util.List.of(), new %s().interseccao(java.util.List.of(1, 2), java.util.List.of(3))); }
+                    @Test void ignoresDuplicatesFromFirstList() { assertEquals(java.util.List.of(2), new %s().interseccao(java.util.List.of(2, 2, 3), java.util.List.of(2))); }
+                    @Test void emptyInputYieldsEmptyResult() { assertEquals(java.util.List.of(), new %s().interseccao(java.util.List.of(), java.util.List.of(1))); }
+                    """.formatted(className, className, className, className);
+            case "contagem-caracteres" -> """
+                    @Test void countsEveryCharacter() { assertEquals(java.util.Map.of('a', 2, 'b', 1), new %s().contarCaracteres("aab")); }
+                    @Test void emptyTextYieldsEmptyMap() { assertEquals(java.util.Map.of(), new %s().contarCaracteres("")); }
+                    @Test void distinguishesLetterCase() { assertEquals(java.util.Map.of('A', 1, 'a', 1), new %s().contarCaracteres("Aa")); }
+                    @Test void countsSpacesToo() { assertEquals(java.util.Map.of('a', 1, ' ', 1, 'b', 1), new %s().contarCaracteres("a b")); }
+                    """.formatted(className, className, className, className);
+            case "anagramas" -> """
+                    @Test void groupsWordsWithSameLetters() { assertEquals(java.util.List.of(java.util.List.of("eat", "tea"), java.util.List.of("tan")), new %s().agruparAnagramas(java.util.List.of("eat", "tea", "tan"))); }
+                    @Test void singleWordFormsSingleGroup() { assertEquals(java.util.List.of(java.util.List.of("abc")), new %s().agruparAnagramas(java.util.List.of("abc"))); }
+                    @Test void wordsWithoutAnagramsStayAlone() { assertEquals(java.util.List.of(java.util.List.of("abc"), java.util.List.of("def")), new %s().agruparAnagramas(java.util.List.of("abc", "def"))); }
+                    @Test void emptyInputYieldsEmptyResult() { assertEquals(java.util.List.of(), new %s().agruparAnagramas(java.util.List.of())); }
+                    """.formatted(className, className, className, className);
+            case "par-com-soma" -> """
+                    @Test void findsPairWithSum() { assertArrayEquals(new int[]{1, 3}, new %s().parComSoma(new int[]{1, 2, 3, 4}, 6)); }
+                    @Test void returnsEmptyArrayWhenNoPairExists() { assertEquals(0, new %s().parComSoma(new int[]{1, 2, 3}, 100).length); }
+                    @Test void prefersTheLeftmostStartingIndex() { assertArrayEquals(new int[]{0, 3}, new %s().parComSoma(new int[]{1, 2, 3, 4}, 5)); }
+                    @Test void singleElementHasNoPair() { assertEquals(0, new %s().parComSoma(new int[]{5}, 10).length); }
+                    """.formatted(className, className, className, className);
+            case "janela-maior-soma" -> """
+                    @Test void findsBestWindowSum() { assertEquals(7, new %s().maiorSomaJanela(new int[]{1, 2, 3, 4}, 2)); }
+                    @Test void largestSumCanBeNegative() { assertEquals(-3, new %s().maiorSomaJanela(new int[]{-1, -2, -3, -4}, 2)); }
+                    @Test void windowCoveringWholeArray() { assertEquals(6, new %s().maiorSomaJanela(new int[]{2, 1, 3}, 3)); }
+                    @Test void rejectsInvalidWindowSizes() { assertThrows(IllegalArgumentException.class, () -> new %s().maiorSomaJanela(new int[]{1, 2, 3}, 0)); assertThrows(IllegalArgumentException.class, () -> new %s().maiorSomaJanela(new int[]{1, 2, 3}, 4)); }
+                    """.formatted(className, className, className, className, className, className);
+            case "fibonacci" -> """
+                    @Test void baseCases() { assertEquals(0L, new %s().fibonacci(0)); assertEquals(1L, new %s().fibonacci(1)); }
+                    @Test void computesTenthNumber() { assertEquals(55L, new %s().fibonacci(10)); }
+                    @Test void computesTwentiethNumber() { assertEquals(6765L, new %s().fibonacci(20)); }
+                    @Test void negativeInputIsRejected() { assertThrows(IllegalArgumentException.class, () -> new %s().fibonacci(-1)); }
+                    """.formatted(className, className, className, className, className);
+            case "caminhos-escada" -> """
+                    @Test void emptyStaircaseHasOnePath() { assertEquals(1L, new %s().caminhosEscada(0)); }
+                    @Test void singleStepHasOnePath() { assertEquals(1L, new %s().caminhosEscada(1)); }
+                    @Test void twoStepsHaveTwoPaths() { assertEquals(2L, new %s().caminhosEscada(2)); }
+                    @Test void fiveStepStaircaseHasEightPaths() { assertEquals(8L, new %s().caminhosEscada(5)); }
+                    @Test void negativeStepsAreRejected() { assertThrows(IllegalArgumentException.class, () -> new %s().caminhosEscada(-1)); }
+                    """.formatted(className, className, className, className, className);
+            case "busca-largura" -> """
+                    @Test void directNeighborHasDistanceOne() { assertEquals(1, new %s().distancia(3, new int[][]{{0, 1}}, 0, 1)); }
+                    @Test void sameVertexHasDistanceZero() { assertEquals(0, new %s().distancia(2, new int[][]{{0, 1}}, 1, 1)); }
+                    @Test void unreachableVertexReturnsMinusOne() { assertEquals(-1, new %s().distancia(3, new int[][]{{0, 1}}, 0, 2)); }
+                    @Test void multiHopPathUsesEveryEdge() { assertEquals(3, new %s().distancia(4, new int[][]{{0, 1}, {1, 2}, {2, 3}}, 0, 3)); }
+                    """.formatted(className, className, className, className);
+            case "menor-caminho" -> """
+                    @Test void onlyPathFollowsTheSingleEdge() { assertEquals(java.util.List.of(0, 1), new %s().menorCaminho(2, new int[][]{{0, 1, 5}}, 0, 1)); }
+                    @Test void cheaperIndirectRouteWins() { assertEquals(java.util.List.of(0, 1, 2), new %s().menorCaminho(3, new int[][]{{0, 1, 1}, {1, 2, 1}, {0, 2, 10}}, 0, 2)); }
+                    @Test void unreachableDestinationYieldsEmptyList() { assertEquals(java.util.List.of(), new %s().menorCaminho(3, new int[][]{{0, 1, 1}}, 0, 2)); }
+                    @Test void originEqualsDestinationYieldsSingleVertex() { assertEquals(java.util.List.of(1), new %s().menorCaminho(2, new int[][]{{0, 1, 3}}, 1, 1)); }
+                    """.formatted(className, className, className, className);
             default -> "@Test void starterCompiles() { assertNotNull(new %s()); }".formatted(className);
         };
         return "package br.com.eyecode.challenge;\n\nimport org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.*;\n\nclass " + className + "Test {\n    " + tests.replace("\n", "\n    ") + "\n}\n";

@@ -386,6 +386,146 @@ export const CHALLENGE_CATALOG: ChallengeCatalogItem[] = [
       { id: 'java/jdk/fundamentos/classes', title: 'Classes e Objetos', relevance: 'Componha objetos produtos dentro do estoque.' },
       { id: 'java/jdk/java.util/list', title: 'List', relevance: 'Revise adição, busca e cópia de elementos na lista interna.' }
     ]
+  },
+  {
+    id: 'busca-binaria',
+    title: 'Busca Binária',
+    summary: 'Encontre um valor em um array ordenado dividindo o intervalo pela metade a cada passo.',
+    tags: ['Algoritmos', 'Busca'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'algorithms-data-structures',
+    topicId: 'search-sorting',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/arrays', title: 'Arrays', relevance: 'Compare com Arrays.binarySearch e revise o acesso por índice.' },
+      { id: 'java/jdk/java.util/list', title: 'List', relevance: 'Consulte listas indexadas para o mesmo raciocínio de acesso no meio.' }
+    ]
+  },
+  {
+    id: 'ordenacao-bolha',
+    title: 'Ordenação por Bolha',
+    summary: 'Ordene um array com repetições de comparação e troca até que nada mais mude.',
+    tags: ['Algoritmos', 'Ordenação'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'algorithms-data-structures',
+    topicId: 'search-sorting',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/arrays', title: 'Arrays', relevance: 'Revise criação e cópia de arrays para devolver o resultado ordenado.' },
+      { id: 'java/jdk/java.lang/comparable', title: 'Comparable', relevance: 'Compare a ideia de ordem natural com a ordenação pronta da API.' }
+    ]
+  },
+  {
+    id: 'remover-duplicados',
+    title: 'Remover Duplicados',
+    summary: 'Percorra uma lista ordenada mantendo apenas a primeira ocorrência de cada valor.',
+    tags: ['Coleções', 'Arrays'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'algorithms-data-structures',
+    topicId: 'arrays-collections',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/list', title: 'List', relevance: 'Consulte cópias, comparação de listas e leitura por índice.' },
+      { id: 'java/jdk/java.util/collections', title: 'Collections', relevance: 'Revise utilitários de coleções e o custo de inserções.' }
+    ]
+  },
+  {
+    id: 'interseccao-listas',
+    title: 'Interseção de Listas',
+    summary: 'Combine duas listas mantendo apenas os valores comuns, sem repetições.',
+    tags: ['Coleções', 'Sets'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'algorithms-data-structures',
+    topicId: 'arrays-collections',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/list', title: 'List', relevance: 'Monte o resultado preservando a ordem da primeira lista.' },
+      { id: 'java/jdk/java.util/set', title: 'Set', relevance: 'Use um conjunto para testar pertencimento sem duplicar valores.' }
+    ]
+  },
+  {
+    id: 'contagem-caracteres',
+    title: 'Contagem de Caracteres',
+    summary: 'Some a frequência de cada caractere de um texto usando um mapa.',
+    tags: ['Strings', 'Mapas'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'algorithms-data-structures',
+    topicId: 'strings-maps',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/map', title: 'Map', relevance: 'Revise getOrDefault e a frequência acumulada por chave.' },
+      { id: 'java/jdk/java.lang/string', title: 'String', relevance: 'Consulte percorrer caracteres com charAt e o tamanho do texto.' }
+    ]
+  },
+  {
+    id: 'par-com-soma',
+    title: 'Par com Soma',
+    summary: 'Ache dois índices de um array ordenado cujos valores somam um alvo.',
+    tags: ['Dois Ponteiros', 'Arrays'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'algorithms-data-structures',
+    topicId: 'two-pointers-window',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/arrays', title: 'Arrays', relevance: 'Trabalhe com índices do início e do fim do array ordenado.' },
+      { id: 'java/jdk/java.util/list', title: 'List', relevance: 'Compare a abordagem de dois ponteiros com buscas por índice.' }
+    ]
+  },
+  {
+    id: 'janela-maior-soma',
+    title: 'Janela de Maior Soma',
+    summary: 'Encontre a maior soma entre subarrays contíguos de tamanho fixo com sliding window.',
+    tags: ['Sliding Window', 'Arrays'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'algorithms-data-structures',
+    topicId: 'two-pointers-window',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/arrays', title: 'Arrays', relevance: 'Some janelas contíguas sem recalcular tudo do zero.' },
+      { id: 'java/jdk/java.lang/exceptions', title: 'Exceções', relevance: 'Valide o tamanho da janela lançando uma exceção adequada.' }
+    ]
+  },
+  {
+    id: 'fibonacci',
+    title: 'Fibonacci Recursivo',
+    summary: 'Calcule a sequência de Fibonacci com recursão e valide a entrada.',
+    tags: ['Recursão', 'Programação Dinâmica'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'algorithms-data-structures',
+    topicId: 'recursion-dp',
+    documentationReferences: [
+      { id: 'java/jdk/java.lang/math', title: 'Math', relevance: 'Compare com Math e considere o crescimento rápido do valor.' },
+      { id: 'java/jdk/java.lang/exceptions', title: 'Exceções', relevance: 'Lance IllegalArgumentException para índices negativos.' }
+    ]
+  },
+  {
+    id: 'caminhos-escada',
+    title: 'Caminhos na Escada',
+    summary: 'Conte os modos de subir uma escada avançando de um ou dois degraus por vez.',
+    tags: ['Recursão', 'Programação Dinâmica'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'algorithms-data-structures',
+    topicId: 'recursion-dp',
+    documentationReferences: [
+      { id: 'java/jdk/java.lang/math', title: 'Math', relevance: 'Observe a relação com a sequência de Fibonacci.' },
+      { id: 'java/jdk/fundamentos/classes', title: 'Classes e Objetos', relevance: 'Organize a recursão como método de instância com estado válido.' }
+    ]
+  },
+  {
+    id: 'busca-largura',
+    title: 'Busca em Largura',
+    summary: 'Meça a menor distância entre vértices em um grafo não ponderado usando BFS.',
+    tags: ['Grafos', 'BFS'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'algorithms-data-structures',
+    topicId: 'graphs',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/queue', title: 'Queue e Deque', relevance: 'A fila é a estrutura central da busca em largura.' },
+      { id: 'java/jdk/java.util/list', title: 'List', relevance: 'Represente a lista de adjacência e a visita por vértice.' }
+    ]
   }
 ];
 

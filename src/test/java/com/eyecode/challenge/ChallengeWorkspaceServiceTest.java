@@ -169,4 +169,58 @@ class ChallengeWorkspaceServiceTest {
                     suite.getKey() + " should compile its starter and tests");
         }
     }
+
+    @Test
+    void dataStructureChallengesCreateTaskSpecificStarterAndJUnitExamples() throws IOException {
+        ChallengeWorkspaceService service = new ChallengeWorkspaceService(temporary);
+        Map<String, String> contracts = Map.ofEntries(
+                Map.entry("busca-binaria", "public int buscaBinaria(int[] numeros, int alvo)"),
+                Map.entry("ordenacao-bolha", "public int[] ordenarCrescente(int[] numeros)"),
+                Map.entry("remover-duplicados", "public List<Integer> removerDuplicados(List<Integer> numeros)"),
+                Map.entry("interseccao-listas", "public List<Integer> interseccao(List<Integer> a, List<Integer> b)"),
+                Map.entry("contagem-caracteres", "public Map<Character, Integer> contarCaracteres(String texto)"),
+                Map.entry("anagramas", "public List<List<String>> agruparAnagramas(List<String> palavras)"),
+                Map.entry("par-com-soma", "public int[] parComSoma(int[] numerosOrdenados, int alvo)"),
+                Map.entry("janela-maior-soma", "public int maiorSomaJanela(int[] numeros, int tamanho)"),
+                Map.entry("fibonacci", "public long fibonacci(int n)"),
+                Map.entry("caminhos-escada", "public long caminhosEscada(int degraus)"),
+                Map.entry("busca-largura", "public int distancia(int vertices, int[][] arestas, int origem, int destino)"),
+                Map.entry("menor-caminho", "public List<Integer> menorCaminho(int vertices, int[][] arestas, int origem, int destino)"));
+
+        for (Map.Entry<String, String> entry : contracts.entrySet()) {
+            Path project = service.ensure(entry.getKey()).path();
+            String className = ChallengeWorkspaceService.classNameOf(entry.getKey());
+            String source = Files.readString(project.resolve("src/main/java/br/com/eyecode/challenge/" + className + ".java"));
+            String tests = Files.readString(project.resolve("src/test/java/br/com/eyecode/challenge/" + className + "Test.java"));
+            assertTrue(source.contains(entry.getValue()), entry.getKey() + " should have its documented method contract");
+            assertTrue(source.contains("TODO"), entry.getKey() + " should guide the learner with TODO markers");
+            assertTrue(tests.contains("org.junit.jupiter.api.Test"), entry.getKey() + " should include JUnit examples");
+            assertFalse(tests.contains("hiddenTestCase"), entry.getKey() + " should not use the empty placeholder test");
+        }
+    }
+
+    @Test
+    void runTestsExecutesEveryDataStructureJUnitSuite() {
+        ChallengeWorkspaceService service = new ChallengeWorkspaceService(temporary);
+        Map<String, Integer> suites = Map.ofEntries(
+                Map.entry("busca-binaria", 4),
+                Map.entry("ordenacao-bolha", 4),
+                Map.entry("remover-duplicados", 4),
+                Map.entry("interseccao-listas", 4),
+                Map.entry("contagem-caracteres", 4),
+                Map.entry("anagramas", 4),
+                Map.entry("par-com-soma", 4),
+                Map.entry("janela-maior-soma", 4),
+                Map.entry("fibonacci", 4),
+                Map.entry("caminhos-escada", 5),
+                Map.entry("busca-largura", 4),
+                Map.entry("menor-caminho", 4));
+
+        for (Map.Entry<String, Integer> suite : suites.entrySet()) {
+            ChallengeTestRun result = service.runTests(suite.getKey());
+            assertEquals(suite.getValue(), result.tests().size(), suite.getKey() + " should execute its JUnit examples");
+            assertTrue(result.tests().stream().noneMatch(test -> "test-build".equals(test.id())),
+                    suite.getKey() + " should compile its starter and tests");
+        }
+    }
 }
