@@ -668,6 +668,315 @@ public final class ChallengeWorkspaceService {
                         }
                     }
                     """.formatted(className);
+            case "caixa-generica" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.Optional;
+                    import java.util.function.Function;
+
+                    public class %s {
+
+                        public static class Caixa<T> {
+
+                            private T valor;
+
+                            public Caixa(T valor) {
+                                // TODO: armazene o valor informado
+                            }
+
+                            public T get() {
+                                // TODO: devolva o valor armazenado
+                                return null;
+                            }
+
+                            public <R> Caixa<R> map(Function<T, R> transformador) {
+                                // TODO: aplique a função sobre o valor e devolva uma nova Caixa
+                                return null;
+                            }
+
+                            public Optional<T> optional() {
+                                // TODO: devolva Optional.ofNullable do valor
+                                return Optional.empty();
+                            }
+                        }
+                    }
+                    """.formatted(className);
+            case "processamento-pedidos" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.List;
+                    import java.util.Map;
+
+                    public class %s {
+
+                        public record Pedido(String cliente, String categoria, double valor) {
+                        }
+
+                        public List<Pedido> filtrarPorCategoria(List<Pedido> pedidos, String categoria) {
+                            // TODO: use stream().filter(...) para manter apenas a categoria
+                            return List.of();
+                        }
+
+                        public double totalValor(List<Pedido> pedidos) {
+                            // TODO: use mapToDouble(Pedido::valor).sum()
+                            return 0.0;
+                        }
+
+                        public List<Pedido> ordenarMaisCarosPrimeiro(List<Pedido> pedidos) {
+                            // TODO: use sorted com comparator decrescente por valor
+                            return List.of();
+                        }
+
+                        public Map<String, Double> totalPorCategoria(List<Pedido> pedidos) {
+                            // TODO: use collect(Collectors.groupingBy + summingDouble)
+                            return Map.of();
+                        }
+                    }
+                    """.formatted(className);
+            case "transformacao-dados" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.List;
+                    import java.util.Map;
+                    import java.util.Optional;
+
+                    public class %s {
+
+                        public List<String> palavrasMaiusculasOrdenadas(String texto) {
+                            // TODO: split por espaços, filtre vazias, maiúsculas, ordenadas
+                            return List.of();
+                        }
+
+                        public Optional<String> primeiraPalavraAcimaDe(String texto, int tamanho) {
+                            // TODO: filtre por length > tamanho e use findFirst
+                            return Optional.empty();
+                        }
+
+                        public Map<Integer, Long> contagemPorTamanho(String texto) {
+                            // TODO: use Collectors.groupingBy(String::length, counting())
+                            return Map.of();
+                        }
+                    }
+                    """.formatted(className);
+            case "consulta-opcional" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.HashMap;
+                    import java.util.Map;
+                    import java.util.Optional;
+                    import java.util.function.Supplier;
+                    import java.util.function.UnaryOperator;
+
+                    public class %s {
+
+                        private final Map<String, String> repositorio = new HashMap<>();
+
+                        public void adicionar(String chave, String valor) {
+                            repositorio.put(chave, valor);
+                        }
+
+                        public Optional<String> buscar(String chave) {
+                            // TODO: Optional.ofNullable(repositorio.get(chave))
+                            return Optional.empty();
+                        }
+
+                        public String buscarOuPadrao(String chave, String padrao) {
+                            // TODO: use buscar(chave).orElse(padrao)
+                            return padrao;
+                        }
+
+                        public String buscarOuCriar(String chave, Supplier<String> fabrica) {
+                            // TODO: use buscar(chave).orElseGet(fabrica)
+                            return null;
+                        }
+
+                        public Optional<String> valorProcessado(String chave, UnaryOperator<String> processador) {
+                            // TODO: use buscar(chave).map(processador)
+                            return Optional.empty();
+                        }
+                    }
+                    """.formatted(className);
+            case "contador-seguro" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.concurrent.atomic.AtomicInteger;
+
+                    public class %s {
+
+                        private final AtomicInteger valor = new AtomicInteger();
+
+                        public void incrementar() {
+                            // TODO: valor.incrementAndGet()
+                        }
+
+                        public void incrementarVezes(int vezes) {
+                            // TODO: repita incrementar() a quantidade informada
+                        }
+
+                        public int get() {
+                            return valor.get();
+                        }
+                    }
+                    """.formatted(className);
+            case "mapeador-campos" -> """
+                    package br.com.eyecode.challenge;
+
+                    public class %s {
+
+                        public void copiar(Object origem, Object destino) {
+                            // TODO: percorra origem.getClass().getDeclaredFields()
+                            // para cada field com nome e tipo iguais no destino, copie o valor via reflexão
+                            // lance IllegalArgumentException para origem ou destino nulos
+                        }
+                    }
+                    """.formatted(className);
+            case "validador-senha" -> """
+                    package br.com.eyecode.challenge;
+
+                    public class %s {
+
+                        public boolean valida(String senha) {
+                            // TODO: ≥8 chars, letra, dígito e especial (!@#$%%&*), sem espaços
+                            return false;
+                        }
+
+                        public int pontuacao(String senha) {
+                            // TODO: 1 ponto por regra atendida (máx 4)
+                            return 0;
+                        }
+                    }
+                    """.formatted(className);
+            case "extrato-conta" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.ArrayList;
+                    import java.util.List;
+
+                    public class %s {
+
+                        private final List<String> linhas = new ArrayList<>();
+                        private double saldo;
+
+                        public void registrar(String descricao, double valor) {
+                            // TODO: valide descrição e valor, acumule saldo e guarde "descricao: valor"
+                        }
+
+                        public double getSaldo() {
+                            return saldo;
+                        }
+
+                        public List<String> getExtrato() {
+                            // TODO: devolva List.copyOf das linhas registradas
+                            return List.of();
+                        }
+                    }
+                    """.formatted(className);
+            case "processador-pagamento" -> """
+                    package br.com.eyecode.challenge;
+
+                    public class %s {
+
+                        public interface Gateway {
+                            boolean autorizar(String id, double valor);
+                        }
+
+                        private final Gateway gateway;
+                        private int aprovados;
+                        private int reprovados;
+
+                        public ProcessadorPagamento(Gateway gateway) {
+                            // TODO: guarde o gateway (lance IllegalArgumentException se nulo)
+                            this.gateway = gateway;
+                        }
+
+                        public boolean processar(String id, double valor) {
+                            // TODO: valide id/valor, chame gateway.autorizar e atualize contadores
+                            return false;
+                        }
+
+                        public int getAprovados() {
+                            return aprovados;
+                        }
+
+                        public int getReprovados() {
+                            return reprovados;
+                        }
+                    }
+                    """.formatted(className, className);
+            case "calculadora-robusta" -> """
+                    package br.com.eyecode.challenge;
+
+                    public class %s {
+
+                        public double dividir(double numerador, double denominador) {
+                            // TODO: lance ArithmeticException quando denominador for 0
+                            return 0.0;
+                        }
+
+                        public double raizQuadrada(double valor) {
+                            // TODO: lance IllegalArgumentException para valor negativo
+                            return 0.0;
+                        }
+
+                        public double media(double[] valores) {
+                            // TODO: lance IllegalArgumentException para array nulo ou vazio
+                            return 0.0;
+                        }
+                    }
+                    """.formatted(className);
+            case "analise-notas" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.List;
+                    import java.util.Optional;
+
+                    public class %s {
+
+                        public double media(List<Double> notas) {
+                            // TODO: lance IllegalArgumentException para null/vazio, calcule a média
+                            return 0.0;
+                        }
+
+                        public boolean aprovado(double nota) {
+                            // TODO: lance IllegalArgumentException fora de 0–10; aprovado com nota >= 7
+                            return false;
+                        }
+
+                        public Optional<Double> menorNota(List<Double> notas) {
+                            // TODO: vazio para lista vazia; IllegalArgumentException para null
+                            return Optional.empty();
+                        }
+                    }
+                    """.formatted(className);
+            case "refatorar-relatorio" -> """
+                    package br.com.eyecode.challenge;
+
+                    import java.util.List;
+
+                    public class %s {
+
+                        public String resumo(List<String> linhas) {
+                            // TODO: refatore este método em auxiliares privados e corrija os casos-limite
+                            if (linhas == null) {
+                                throw new IllegalArgumentException("linhas nulas");
+                            }
+                            double total = 0;
+                            int contadas = 0;
+                            for (int i = 0; i < linhas.size(); i++) {
+                                String linha = linhas.get(i);
+                                if (linha == null || linha.isBlank()) {
+                                    continue;
+                                }
+                                total += Double.parseDouble(linha.trim());
+                                contadas++;
+                            }
+                            if (contadas == 0) {
+                                return "0 linhas";
+                            }
+                            return contadas + " linhas; total=" + total + "; media=" + (total / contadas);
+                        }
+                    }
+                    """.formatted(className);
             default -> starterSource(className);
         };
     }
@@ -821,6 +1130,84 @@ public final class ChallengeWorkspaceService {
                     @Test void unreachableDestinationYieldsEmptyList() { assertEquals(java.util.List.of(), new %s().menorCaminho(3, new int[][]{{0, 1, 1}}, 0, 2)); }
                     @Test void originEqualsDestinationYieldsSingleVertex() { assertEquals(java.util.List.of(1), new %s().menorCaminho(2, new int[][]{{0, 1, 3}}, 1, 1)); }
                     """.formatted(className, className, className, className);
+            case "caixa-generica" -> """
+                    @Test void storesAndReturnsTheValue() { assertEquals("abc", new %s.Caixa<>("abc").get()); }
+                    @Test void mapTransformsTheValueIntoANewBox() { assertEquals(3, new %s.Caixa<>("abc").map(String::length).get()); }
+                    @Test void originalBoxSurvivesMap() { %s.Caixa<String> caixa = new %s.Caixa<>("abc"); caixa.map(String::length); assertEquals("abc", caixa.get()); }
+                    @Test void optionalReflectsNullValue() { assertTrue(new %s.Caixa<>(null).optional().isEmpty()); assertEquals("x", new %s.Caixa<>("x").optional().orElse(null)); }
+                    """.formatted(className, className, className, className, className, className);
+            case "processamento-pedidos" -> """
+                    @Test void filtersByCategoryKeepingOrder() { %s.Pedido p1 = new %s.Pedido("Ana", "livros", 50.0); %s.Pedido p2 = new %s.Pedido("Bia", "brinquedos", 30.0); %s.Pedido p3 = new %s.Pedido("Caio", "livros", 20.0); assertEquals(java.util.List.of(p1, p3), new %s().filtrarPorCategoria(java.util.List.of(p1, p2, p3), "livros")); }
+                    @Test void totalsEveryOrderValue() { %s.Pedido p1 = new %s.Pedido("Ana", "livros", 50.0); %s.Pedido p2 = new %s.Pedido("Bia", "brinquedos", 30.0); assertEquals(80.0, new %s().totalValor(java.util.List.of(p1, p2)), 1e-9); }
+                    @Test void sortsByValueDescending() { %s.Pedido barato = new %s.Pedido("Ana", "livros", 10.0); %s.Pedido caro = new %s.Pedido("Bia", "livros", 90.0); assertEquals(java.util.List.of(caro, barato), new %s().ordenarMaisCarosPrimeiro(java.util.List.of(barato, caro))); }
+                    @Test void groupsTotalsByCategory() { %s.Pedido p1 = new %s.Pedido("Ana", "livros", 50.0); %s.Pedido p2 = new %s.Pedido("Bia", "brinquedos", 30.0); %s.Pedido p3 = new %s.Pedido("Caio", "livros", 20.0); assertEquals(java.util.Map.of("livros", 70.0, "brinquedos", 30.0), new %s().totalPorCategoria(java.util.List.of(p1, p2, p3))); }
+                    """.formatted(className, className, className, className, className, className, className, className, className, className, className, className, className, className, className, className, className, className, className, className, className, className, className, className);
+            case "transformacao-dados" -> """
+                    @Test void uppercasesAndSortsWords() { assertEquals(java.util.List.of("AVE", "CACHORRO", "GATO"), new %s().palavrasMaiusculasOrdenadas("gato cachorro ave")); }
+                    @Test void ignoresExtraSpaces() { assertEquals(java.util.List.of("AB"), new %s().palavrasMaiusculasOrdenadas("  ab ")); }
+                    @Test void findsFirstLongWord() { assertEquals("baleia", new %s().primeiraPalavraAcimaDe("um baleia azul", 4).orElse(null)); }
+                    @Test void firstLongWordEmptyWhenNoneMatches() { assertTrue(new %s().primeiraPalavraAcimaDe("um gato", 10).isEmpty()); }
+                    @Test void countsWordsByLength() { assertEquals(java.util.Map.of(2, 2L, 4, 1L), new %s().contagemPorTamanho("um gato")); }
+                    """.formatted(className, className, className, className, className);
+            case "consulta-opcional" -> """
+                    @Test void findsStoredValue() { %s repo = new %s(); repo.adicionar("user", "ana"); assertEquals("ana", repo.buscar("user").orElse(null)); }
+                    @Test void absentKeyYieldsEmptyOptional() { assertTrue(new %s().buscar("nope").isEmpty()); }
+                    @Test void orElseProvidesDefault() { assertEquals("guest", new %s().buscarOuPadrao("nope", "guest")); }
+                    @Test void orElseGetRunsFactoryOnlyWhenAbsent() { %s repo = new %s(); repo.adicionar("k", "v"); java.util.concurrent.atomic.AtomicBoolean ran = new java.util.concurrent.atomic.AtomicBoolean(); assertEquals("v", repo.buscarOuCriar("k", () -> { ran.set(true); return "novo"; })); assertFalse(ran.get()); assertEquals("novo", repo.buscarOuCriar("other", () -> "novo")); }
+                    @Test void mapProcessesPresentValue() { %s repo = new %s(); repo.adicionar("user", "ana"); assertEquals("ANA", repo.valorProcessado("user", String::toUpperCase).orElse(null)); assertTrue(repo.valorProcessado("nope", String::toUpperCase).isEmpty()); }
+                    """.formatted(className, className, className, className, className, className, className, className);
+            case "contador-seguro" -> """
+                    @Test void incrementsAccumulate() { %s contador = new %s(); contador.incrementar(); contador.incrementar(); assertEquals(2, contador.get()); }
+                    @Test void incrementarVezesAddsMany() { %s contador = new %s(); contador.incrementarVezes(5); assertEquals(5, contador.get()); }
+                    @Test void concurrentIncrementsLoseNothing() throws InterruptedException { %s contador = new %s(); Thread[] threads = new Thread[8]; for (int i = 0; i < threads.length; i++) { threads[i] = new Thread(() -> contador.incrementarVezes(1000)); } for (Thread t : threads) { t.start(); } for (Thread t : threads) { t.join(); } assertEquals(8000, contador.get()); }
+                    """.formatted(className, className, className, className, className, className);
+            case "mapeador-campos" -> """
+                    static class OrigemPessoa { private String nome = "Ana"; private int idade = 30; public String getNome() { return nome; } public int getIdade() { return idade; } }
+                    static class DestinoPessoa { private String nome; private int idade; public String getNome() { return nome; } public int getIdade() { return idade; } }
+                    @Test void copiesMatchingFieldsByNameAndType() { OrigemPessoa origem = new OrigemPessoa(); DestinoPessoa destino = new DestinoPessoa(); new %s().copiar(origem, destino); assertEquals("Ana", destino.getNome()); assertEquals(30, destino.getIdade()); }
+                    @Test void nonMatchingFieldsStayUnchanged() { OrigemPessoa origem = new OrigemPessoa(); DestinoPessoa destino = new DestinoPessoa(); new %s().copiar(origem, destino); assertNotNull(destino.getNome()); }
+                    @Test void nullArgumentsAreRejected() { assertThrows(IllegalArgumentException.class, () -> new %s().copiar(null, new DestinoPessoa())); assertThrows(IllegalArgumentException.class, () -> new %s().copiar(new OrigemPessoa(), null)); }
+                    """.formatted(className, className, className, className);
+            case "validador-senha" -> """
+                    @Test void acceptsStrongPassword() { assertTrue(new %s().valida("Abcdefg1!")); }
+                    @Test void rejectsShortPassword() { assertFalse(new %s().valida("Ab1!abc")); }
+                    @Test void rejectsMissingDigitOrSpecial() { assertFalse(new %s().valida("abcdefghij")); assertFalse(new %s().valida("abcdefg1ij")); }
+                    @Test void rejectsNullOrBlankOrSpaces() { assertFalse(new %s().valida(null)); assertFalse(new %s().valida(" ")); assertFalse(new %s().valida("Abcd1 ef!")); }
+                    @Test void scoresEachRule() { assertEquals(4, new %s().pontuacao("Abcdefg1!")); assertEquals(2, new %s().pontuacao("Abc1")); assertEquals(0, new %s().pontuacao(null)); }
+                    """.formatted(className, className, className, className, className, className, className, className, className, className);
+            case "extrato-conta" -> """
+                    @Test void accumulatesPositiveAndNegativeTransactions() { %s conta = new %s(); conta.registrar("Depósito", 100.0); conta.registrar("Saque", -30.0); assertEquals(70.0, conta.getSaldo(), 1e-9); }
+                    @Test void extratoRecordsLinesInOrder() { %s conta = new %s(); conta.registrar("Depósito", 100.0); conta.registrar("Saque", -30.0); assertEquals(java.util.List.of("Depósito: 100.0", "Saque: -30.0"), conta.getExtrato()); }
+                    @Test void blankOrZeroEntriesAreRejected() { %s conta = new %s(); assertThrows(IllegalArgumentException.class, () -> conta.registrar("", 10.0)); assertThrows(IllegalArgumentException.class, () -> conta.registrar("ok", 0.0)); }
+                    @Test void exposedExtratoIsImmutable() { %s conta = new %s(); conta.registrar("Depósito", 1.0); assertThrows(UnsupportedOperationException.class, () -> conta.getExtrato().add("hack")); }
+                    """.formatted(className, className, className, className, className, className, className, className);
+            case "processador-pagamento" -> """
+                    static class GatewayFalso implements %s.Gateway { int chamadas; boolean resultado = true; public boolean autorizar(String id, double valor) { chamadas++; return resultado; } }
+                    @Test void approvedPaymentIncrementsCounter() { GatewayFalso gateway = new GatewayFalso(); %s processador = new %s(gateway); assertTrue(processador.processar("ORD-1", 99.9)); assertEquals(1, processador.getAprovados()); assertEquals(1, gateway.chamadas); }
+                    @Test void rejectedPaymentCountsAsRefused() { GatewayFalso gateway = new GatewayFalso(); gateway.resultado = false; %s processador = new %s(gateway); assertFalse(processador.processar("ORD-2", 10.0)); assertEquals(1, processador.getReprovados()); }
+                    @Test void invalidInputNeverReachesTheGateway() { GatewayFalso gateway = new GatewayFalso(); %s processador = new %s(gateway); assertThrows(IllegalArgumentException.class, () -> processador.processar("", 10.0)); assertThrows(IllegalArgumentException.class, () -> processador.processar("ORD", -1.0)); assertEquals(0, gateway.chamadas); }
+                    @Test void nullGatewayIsRejected() { assertThrows(IllegalArgumentException.class, () -> new %s(null)); }
+                    """.formatted(className, className, className, className, className, className, className, className);
+            case "calculadora-robusta" -> """
+                    @Test void dividesNormally() { assertEquals(5.0, new %s().dividir(10.0, 2.0), 1e-9); }
+                    @Test void divisionByZeroThrows() { assertThrows(ArithmeticException.class, () -> new %s().dividir(1.0, 0.0)); }
+                    @Test void squareRootOfNegativeThrows() { assertThrows(IllegalArgumentException.class, () -> new %s().raizQuadrada(-1.0)); assertEquals(3.0, new %s().raizQuadrada(9.0), 1e-9); }
+                    @Test void averageOfEmptyOrNullThrows() { assertThrows(IllegalArgumentException.class, () -> new %s().media(null)); assertThrows(IllegalArgumentException.class, () -> new %s().media(new double[]{})); assertEquals(2.0, new %s().media(new double[]{1.0, 3.0}), 1e-9); }
+                    """.formatted(className, className, className, className, className, className, className);
+            case "analise-notas" -> """
+                    @Test void computesSimpleAverage() { assertEquals(7.0, new %s().media(java.util.List.of(8.0, 6.0)), 1e-9); }
+                    @Test void emptyOrNullListThrowsOnAverage() { assertThrows(IllegalArgumentException.class, () -> new %s().media(null)); assertThrows(IllegalArgumentException.class, () -> new %s().media(java.util.List.of())); }
+                    @Test void approvalThresholdIsSeven() { %s analise = new %s(); assertTrue(analise.aprovado(7.0)); assertFalse(analise.aprovado(6.9)); }
+                    @Test void outOfScaleGradeThrows() { assertThrows(IllegalArgumentException.class, () -> new %s().aprovado(11.0)); assertThrows(IllegalArgumentException.class, () -> new %s().aprovado(-0.5)); }
+                    @Test void menorNotaHandlesEmptyAndValues() { assertTrue(new %s().menorNota(java.util.List.of()).isEmpty()); assertEquals(6.0, new %s().menorNota(java.util.List.of(8.0, 6.0)).orElse(null), 1e-9); assertThrows(IllegalArgumentException.class, () -> new %s().menorNota(null)); }
+                    """.formatted(className, className, className, className, className, className, className, className, className, className);
+            case "refatorar-relatorio" -> """
+                    @Test void formatsSummaryWithTotalAndAverage() { assertEquals("3 linhas; total=6.0; media=2.0", new %s().resumo(java.util.List.of("1", "2", "3"))); }
+                    @Test void blankLinesAreIgnored() { assertEquals("2 linhas; total=3.0; media=1.5", new %s().resumo(java.util.List.of("1", " ", "2"))); }
+                    @Test void nullListThrows() { assertThrows(IllegalArgumentException.class, () -> new %s().resumo(null)); }
+                    @Test void emptyListThrows() { assertThrows(IllegalArgumentException.class, () -> new %s().resumo(java.util.List.of())); }
+                    @Test void allBlankListThrows() { assertThrows(IllegalArgumentException.class, () -> new %s().resumo(java.util.List.of(" ", ""))); }
+                    """.formatted(className, className, className, className, className, className);
             default -> "@Test void starterCompiles() { assertNotNull(new %s()); }".formatted(className);
         };
         return "package br.com.eyecode.challenge;\n\nimport org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.*;\n\nclass " + className + "Test {\n    " + tests.replace("\n", "\n    ") + "\n}\n";

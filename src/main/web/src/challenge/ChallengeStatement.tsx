@@ -33,7 +33,7 @@ export function ChallengeStatement({ challenge, onOpenDocumentation }: { challen
       </div>}
       {objective && <section className="challenge-statement-section">
         <h2>Objetivo</h2>
-        <p>{objective}</p>
+        <p>{parseInline(objective)}</p>
       </section>}
       {references.length === 1 && (
         <div className="challenge-documentation-card">
@@ -97,7 +97,7 @@ export function ChallengeStatement({ challenge, onOpenDocumentation }: { challen
     </div>}
     {instructions && <section className="challenge-statement-section">
       <h2>O que implementar</h2>
-      <p>{instructions}</p>
+      <p>{parseInline(instructions)}</p>
     </section>}
     {rules.length > 0 && <section className="challenge-statement-section">
       <h2>Regras de negócio</h2>
@@ -111,10 +111,10 @@ export function ChallengeStatement({ challenge, onOpenDocumentation }: { challen
       </div>)}
     </section>}
     {constraints.length > 0 && <section className="challenge-statement-section">
-      <h2>Restrições e casos-limite</h2><ul>{constraints.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
+      <h2>Restrições e casos-limite</h2><ul>{constraints.map((item, index) => <li key={`${index}-${item}`}>{parseInline(item)}</li>)}</ul>
     </section>}
     {hints.length > 0 && <section className="challenge-statement-section">
-      <h2>Dicas</h2><ul>{hints.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
+      <h2>Dicas</h2><ul>{hints.map((item, index) => <li key={`${index}-${item}`}>{parseInline(item)}</li>)}</ul>
     </section>}
   </>;
 }

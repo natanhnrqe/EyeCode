@@ -526,6 +526,174 @@ export const CHALLENGE_CATALOG: ChallengeCatalogItem[] = [
       { id: 'java/jdk/java.util/queue', title: 'Queue e Deque', relevance: 'A fila é a estrutura central da busca em largura.' },
       { id: 'java/jdk/java.util/list', title: 'List', relevance: 'Represente a lista de adjacência e a visita por vértice.' }
     ]
+  },
+  {
+    id: 'caixa-generica',
+    title: 'Caixa Genérica',
+    summary: 'Implemente um contêiner parametrizado por tipo que transforma seu valor com funções.',
+    tags: ['Generics', 'API Design'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'advanced-java',
+    topicId: 'generics',
+    documentationReferences: [
+      { id: 'java/jdk/fundamentos/generics', title: 'Generics', relevance: 'Revise tipos parametrizados e o curinga em assinaturas de método.' },
+      { id: 'java/jdk/java.util/function', title: 'Function', relevance: 'A transformação de mapa usa Function<T, R> da API de funções.' }
+    ]
+  },
+  {
+    id: 'processamento-pedidos',
+    title: 'Processamento de Pedidos',
+    summary: 'Filtre, some, ordene e agrupe pedidos com a API de streams.',
+    tags: ['Streams', 'Lambdas'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'advanced-java',
+    topicId: 'streams-lambdas',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/stream', title: 'Stream', relevance: 'Use filter, mapToDouble, sorted e collect no pipeline.' },
+      { id: 'java/jdk/fundamentos/records', title: 'Records', relevance: 'O pedido é modelado como record imutável de componentes nomeados.' }
+    ]
+  },
+  {
+    id: 'transformacao-dados',
+    title: 'Transformação de Dados',
+    summary: 'Transforme texto em listas, opcionais e mapas usando streams pontuais.',
+    tags: ['Streams', 'Collectors'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'advanced-java',
+    topicId: 'streams-lambdas',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/stream', title: 'Stream', relevance: 'Pratique split, map, sorted, findFirst e collectors de contagem.' },
+      { id: 'java/jdk/java.util/optional', title: 'Optional', relevance: 'findFirst devolve Optional — trate presença e ausência.' }
+    ]
+  },
+  {
+    id: 'consulta-opcional',
+    title: 'Consulta Opcional',
+    summary: 'Exponha consultas a um repositório com Optional, evitando nulls explícitos.',
+    tags: ['Optional', 'API Design'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'advanced-java',
+    topicId: 'optional',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/optional', title: 'Optional', relevance: 'Pratique ofNullable, orElse, orElseGet e map.' },
+      { id: 'java/jdk/java.util/map', title: 'Map', relevance: 'O repositório interno usa get que devolve null para chaves ausentes.' }
+    ]
+  },
+  {
+    id: 'contador-seguro',
+    title: 'Contador Seguro',
+    summary: 'Mantenha um contador íntegro sob múltiplas threads com AtomicInteger.',
+    tags: ['Concorrência', 'AtomicInteger'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'advanced-java',
+    topicId: 'concurrency-jvm',
+    documentationReferences: [
+      { id: 'java/jdk/java.lang/thread', title: 'Thread', relevance: 'O teste dispara várias threads — entenda join e execução paralela.' },
+      { id: 'java/jdk/fundamentos/classes', title: 'Classes e Objetos', relevance: 'AtomicInteger encapsula o estado compartilhado da instância.' }
+    ]
+  },
+  {
+    id: 'mapeador-campos',
+    title: 'Mapeador de Campos',
+    summary: 'Copie campos entre objetos de tipos diferentes inspecionando o tipo em tempo de execução.',
+    tags: ['Reflexão', 'Reflection API'],
+    difficulty: 'hard',
+    solved: false,
+    trackId: 'advanced-java',
+    topicId: 'reflection',
+    documentationReferences: [
+      { id: 'java/jdk/java.lang/object', title: 'Object', relevance: 'getClass(), getName() e a inspeção de membros partem de Object.' },
+      { id: 'java/jdk/fundamentos/classes', title: 'Classes e Objetos', relevance: 'Fields privados exigem setAccessible — revise o modelo de membros.' }
+    ]
+  },
+  {
+    id: 'validador-senha',
+    title: 'Validador de Senha',
+    summary: 'Valide senhas fortes e pontue regras atendidas com uma suíte JUnit esmiuçando casos-limite.',
+    tags: ['JUnit', 'Validação'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'testing-quality',
+    topicId: 'junit',
+    documentationReferences: [
+      { id: 'java/junit/first-test', title: 'Primeiro teste JUnit', relevance: 'A suíte escondida usa assertTrue/False — leia o contrato como especificação.' },
+      { id: 'java/jdk/java.lang/string', title: 'String', relevance: 'CharAt, length e laços sustentam a verificação caractere a caractere.' }
+    ]
+  },
+  {
+    id: 'extrato-conta',
+    title: 'Extrato da Conta',
+    summary: 'Registre transações com validação imutável — a suíte JUnit trava o comportamento público.',
+    tags: ['JUnit', 'Imutabilidade'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'testing-quality',
+    topicId: 'junit',
+    documentationReferences: [
+      { id: 'java/junit/first-test', title: 'Primeiro teste JUnit', relevance: 'assertThrows e assertEquals guiam o contrato do extrato.' },
+      { id: 'java/jdk/java.util/list', title: 'List', relevance: 'Exija List.copyOf para que a lista exposta seja imutável.' }
+    ]
+  },
+  {
+    id: 'processador-pagamento',
+    title: 'Processador de Pagamento',
+    summary: 'Isole o gateway de pagamentos atrás de uma interface para que os testes injetem um falso.',
+    tags: ['Mocks', 'Injeção de Dependência'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'testing-quality',
+    topicId: 'mocks',
+    documentationReferences: [
+      { id: 'java/libs/mockito/mocking', title: 'Mockito e mocking', relevance: 'A técnica de substituir o gateway por um falso é a mesma usada com mocks.' },
+      { id: 'java/jdk/fundamentos/interfaces', title: 'Interfaces', relevance: 'Gateway é uma interface — o processador depende da abstração.' }
+    ]
+  },
+  {
+    id: 'calculadora-robusta',
+    title: 'Calculadora Robusta',
+    summary: 'Trate divisão por zero, raiz de negativos e médias vazias com exceções corretas.',
+    tags: ['Casos-Limite', 'Exceções'],
+    difficulty: 'medium',
+    solved: false,
+    trackId: 'testing-quality',
+    topicId: 'edge-cases',
+    documentationReferences: [
+      { id: 'java/jdk/java.lang/exceptions', title: 'Exceções', relevance: 'assertThrows verifica ArithmeticException e IllegalArgumentException.' },
+      { id: 'java/jdk/java.lang/math', title: 'Math', relevance: 'Math.sqrt define o comportamento esperado da raiz quadrada.' }
+    ]
+  },
+  {
+    id: 'analise-notas',
+    title: 'Análise de Notas',
+    summary: 'Calcule média, aprovação e menor nota tratando listas vazias e notas fora da escala.',
+    tags: ['Casos-Limite', 'Validação'],
+    difficulty: 'easy',
+    solved: false,
+    trackId: 'testing-quality',
+    topicId: 'edge-cases',
+    documentationReferences: [
+      { id: 'java/jdk/java.util/list', title: 'List', relevance: 'Percorra a lista com null-safety antes de acumular.' },
+      { id: 'java/jdk/java.util/optional', title: 'Optional', relevance: 'menorNota devolve Optional — vazio quando não há notas.' }
+    ]
+  },
+  {
+    id: 'refatorar-relatorio',
+    title: 'Refatorar Relatório',
+    summary: 'Achate um método duplicado em métodos pequenos sem alterar o comportamento travado pelos testes.',
+    tags: ['Refatoração', 'Legibilidade'],
+    difficulty: 'hard',
+    solved: false,
+    trackId: 'testing-quality',
+    topicId: 'refactoring',
+    documentationReferences: [
+      { id: 'java/junit/first-test', title: 'Primeiro teste JUnit', relevance: 'A suíte é a rede de segurança que permite refatorar com confiança.' },
+      { id: 'java/jdk/fundamentos/classes', title: 'Classes e Objetos', relevance: 'Extração de métodos claros mantém a classe coesa e legível.' }
+    ]
   }
 ];
 

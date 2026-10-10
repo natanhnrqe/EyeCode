@@ -839,14 +839,550 @@ const DATA_STRUCTURE_CHALLENGES: Record<string, Pick<Challenge, 'statement' | 'd
   }
 };
 
+const ADVANCED_CHALLENGES: Record<string, Pick<Challenge, 'statement' | 'descriptionMarkdown' | 'starterCode'>> = {
+  'caixa-generica': {
+    statement: {
+      objective: 'Implemente um contêiner genérico que encapsula um valor e o transforma com funções.',
+      instructions: 'Implemente a classe estática `Caixa<T>` dentro de `CaixaGenerica` com `get()`, `map(Function<T, R>)` (devolve nova `Caixa<R>` com o valor transformado) e `optional()` (devolve `Optional` do valor).',
+      businessRules: [
+        '`map` não altera a caixa original — devolve uma nova instância com o resultado da função.',
+        '`optional()` usa `Optional.ofNullable` para cobrir valores nulos.',
+        'A caixa aceita qualquer tipo, inclusive nulo.'
+      ],
+      examples: [
+        { input: 'new Caixa<>("abc").map(String::length).get()', output: '3' },
+        { input: 'new Caixa<>(null).optional().isPresent()', output: 'false' }
+      ],
+      constraints: ['Use `java.util.function.Function` na assinatura de `map`.', 'A classe `Caixa` deve ser pública e estática dentro de `CaixaGenerica`.']
+    },
+    descriptionMarkdown: '# Caixa Genérica',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.Optional;',
+      'import java.util.function.Function;',
+      '',
+      'public class CaixaGenerica {',
+      '',
+      '    public static class Caixa<T> {',
+      '',
+      '        private T valor;',
+      '',
+      '        public Caixa(T valor) {',
+      '            // TODO: armazene o valor informado',
+      '        }',
+      '',
+      '        public T get() {',
+      '            // TODO: devolva o valor armazenado',
+      '            return null;',
+      '        }',
+      '',
+      '        public <R> Caixa<R> map(Function<T, R> transformador) {',
+      '            // TODO: aplique a função sobre o valor e devolva uma nova Caixa',
+      '            return null;',
+      '        }',
+      '',
+      '        public Optional<T> optional() {',
+      '            // TODO: devolva Optional.ofNullable do valor',
+      '            return Optional.empty();',
+      '        }',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'processamento-pedidos': {
+    statement: {
+      objective: 'Processe uma lista de pedidos com pipelines de streams: filtrar, somar, ordenar e agrupar.',
+      instructions: 'Implemente `filtrarPorCategoria(List<Pedido>, String)`, `totalValor(List<Pedido>)`, `ordenarMaisCarosPrimeiro(List<Pedido>)` e `totalPorCategoria(List<Pedido>)` usando `java.util.stream`.',
+      businessRules: [
+        '`filtrarPorCategoria` devolve apenas os pedidos da categoria informada, na ordem original.',
+        '`totalValor` soma os valores de todos os pedidos.',
+        '`ordenarMaisCarosPrimeiro` devolve uma lista nova ordenada por valor decrescente.',
+        '`totalPorCategoria` devolve um mapa categoria → soma dos valores.'
+      ],
+      examples: [
+        { input: 'pedidos = [Pedido("Ana", "livros", 50.0), Pedido("Bia", "livros", 30.0)], categoria = "livros"', output: '[Pedido[Ana, livros, 50.0], Pedido[Bia, livros, 30.0]]' },
+        { input: 'totalPorCategoria([Pedido("Ana", "livros", 50.0), Pedido("Bia", "brinquedos", 30.0)])', output: '{livros=50.0, brinquedos=30.0}' }
+      ],
+      constraints: ['O record `Pedido(String cliente, String categoria, double valor)` já está definido — não altere.', 'Não modifique a lista de entrada — devolva listas e mapas novos.']
+    },
+    descriptionMarkdown: '# Processamento de Pedidos',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.List;',
+      'import java.util.Map;',
+      '',
+      'public class ProcessamentoPedidos {',
+      '',
+      '    public record Pedido(String cliente, String categoria, double valor) {',
+      '    }',
+      '',
+      '    public List<Pedido> filtrarPorCategoria(List<Pedido> pedidos, String categoria) {',
+      '        // TODO: use stream().filter(...) para manter apenas a categoria',
+      '        return List.of();',
+      '    }',
+      '',
+      '    public double totalValor(List<Pedido> pedidos) {',
+      '        // TODO: use mapToDouble(Pedido::valor).sum()',
+      '        return 0.0;',
+      '    }',
+      '',
+      '    public List<Pedido> ordenarMaisCarosPrimeiro(List<Pedido> pedidos) {',
+      '        // TODO: use sorted com comparator decrescente por valor',
+      '        return List.of();',
+      '    }',
+      '',
+      '    public Map<String, Double> totalPorCategoria(List<Pedido> pedidos) {',
+      '        // TODO: use collect(Collectors.groupingBy + summingDouble)',
+      '        return Map.of();',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'transformacao-dados': {
+    statement: {
+      objective: 'Transforme texto bruto em listas ordenadas, opcionais e mapas de contagem com streams.',
+      instructions: 'Implemente `palavrasMaiusculasOrdenadas(String)` (separa por espaços, descarta vazias, maiúsculas, ordena alfabeticamente), `primeiraPalavraAcimaDe(String, int)` (primeira palavra com mais de N caracteres via `findFirst`) e `contagemPorTamanho(String)` (mapa tamanho → quantidade).',
+      businessRules: [
+        'Espaços consecutivos não geram palavras vazias no resultado.',
+        'A ordenação é alfabética ignorando maiúsculas (use String.CASE_INSENSITIVE_ORDER ou equivalente).',
+        '`primeiraPalavraAcimaDe` devolve `Optional` vazio quando nenhuma palavra atende.',
+        '`contagemPorTamanho` conta palavras pelo número de caracteres.'
+      ],
+      examples: [
+        { input: 'palavrasMaiusculasOrdenadas("gato cachorro ave")', output: '[AVE, CACHORRO, GATO]' },
+        { input: 'primeiraPalavraAcimaDe("um baleia azul", 4)', output: 'Optional[baleia]' },
+        { input: 'contagemPorTamanho("um gato")', output: '{2=2, 4=1}' }
+      ],
+      constraints: ['Não use laços `for` tradicionais — pratique streams.', 'Não altere a string de entrada.']
+    },
+    descriptionMarkdown: '# Transformação de Dados',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.List;',
+      'import java.util.Map;',
+      'import java.util.Optional;',
+      '',
+      'public class TransformacaoDados {',
+      '',
+      '    public List<String> palavrasMaiusculasOrdenadas(String texto) {',
+      '        // TODO: split por espaços, filtre vazias, maiúsculas, ordenadas',
+      '        return List.of();',
+      '    }',
+      '',
+      '    public Optional<String> primeiraPalavraAcimaDe(String texto, int tamanho) {',
+      '        // TODO: filtre por length > tamanho e use findFirst',
+      '        return Optional.empty();',
+      '    }',
+      '',
+      '    public Map<Integer, Long> contagemPorTamanho(String texto) {',
+      '        // TODO: use Collectors.groupingBy(String::length, counting())',
+      '        return Map.of();',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'consulta-opcional': {
+    statement: {
+      objective: 'Exponha consultas a um repositório em memória devolvendo Optional em vez de null.',
+      instructions: 'Implemente `buscar(String)` (`Optional.ofNullable` do valor), `buscarOuPadrao(String, String)` (`orElse`), `buscarOuCriar(String, Supplier)` (`orElseGet` — a fábrica só roda quando ausente) e `valorProcessado(String, UnaryOperator)` (`map`).',
+      businessRules: [
+        'Chave ausente devolve `Optional.empty()` — nunca nulo.',
+        '`buscarOuCriar` NÃO executa o `Supplier` quando o valor está presente.',
+        '`valorProcessado` aplica a função apenas quando o valor existe.',
+        'Chaves e valores aceitam qualquer string, inclusive nula via `adicionar`.'
+      ],
+      examples: [
+        { input: 'adicionar("user", "ana"); buscarOuPadrao("user", "guest")', output: '"ana"' },
+        { input: 'buscarOuCriar("novo", () -> "criado")', output: '"criado"' },
+        { input: 'valorProcessado("user", String::toUpperCase)', output: 'Optional[ANA]' }
+      ],
+      constraints: ['Use a API de Optional (orElse, orElseGet, map) — não use isPresent + get.', 'O mapa interno `repositorio` já está declarado — não remova.']
+    },
+    descriptionMarkdown: '# Consulta Opcional',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.HashMap;',
+      'import java.util.Map;',
+      'import java.util.Optional;',
+      'import java.util.function.Supplier;',
+      'import java.util.function.UnaryOperator;',
+      '',
+      'public class ConsultaOpcional {',
+      '',
+      '    private final Map<String, String> repositorio = new HashMap<>();',
+      '',
+      '    public void adicionar(String chave, String valor) {',
+      '        repositorio.put(chave, valor);',
+      '    }',
+      '',
+      '    public Optional<String> buscar(String chave) {',
+      '        // TODO: Optional.ofNullable(repositorio.get(chave))',
+      '        return Optional.empty();',
+      '    }',
+      '',
+      '    public String buscarOuPadrao(String chave, String padrao) {',
+      '        // TODO: use buscar(chave).orElse(padrao)',
+      '        return padrao;',
+      '    }',
+      '',
+      '    public String buscarOuCriar(String chave, Supplier<String> fabrica) {',
+      '        // TODO: use buscar(chave).orElseGet(fabrica)',
+      '        return null;',
+      '    }',
+      '',
+      '    public Optional<String> valorProcessado(String chave, UnaryOperator<String> processador) {',
+      '        // TODO: use buscar(chave).map(processador)',
+      '        return Optional.empty();',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'contador-seguro': {
+    statement: {
+      objective: 'Mantenha um contador íntegro enquanto várias threads incrementam em paralelo.',
+      instructions: 'Implemente `incrementar()` com `AtomicInteger.incrementAndGet()`, `incrementarVezes(int)` repetindo o incremento e `get()` devolvendo o valor atual.',
+      businessRules: [
+        'Nenhum incremento pode ser perdido sob concorrência.',
+        '`incrementarVezes` aceita qualquer quantidade positiva.',
+        '`get()` devolve o total acumulado no AtomicInteger.'
+      ],
+      examples: [
+        { input: 'incrementar(); incrementar(); get()', output: '2' },
+        { input: '8 threads × incrementarVezes(1000); get()', output: '8000' }
+      ],
+      constraints: ['Use `java.util.concurrent.atomic.AtomicInteger` — não use `synchronized` nem `volatile` manual.', 'O campo `valor` já está declarado como AtomicInteger — não remova.']
+    },
+    descriptionMarkdown: '# Contador Seguro',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.concurrent.atomic.AtomicInteger;',
+      '',
+      'public class ContadorSeguro {',
+      '',
+      '    private final AtomicInteger valor = new AtomicInteger();',
+      '',
+      '    public void incrementar() {',
+      '        // TODO: valor.incrementAndGet()',
+      '    }',
+      '',
+      '    public void incrementarVezes(int vezes) {',
+      '        // TODO: repita incrementar() a quantidade informada',
+      '    }',
+      '',
+      '    public int get() {',
+      '        return valor.get();',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'mapeador-campos': {
+    statement: {
+      objective: 'Copie campos de um objeto de origem para um objeto de destino de tipo diferente usando reflexão.',
+      instructions: 'Implemente `copiar(Object origem, Object destino)`: percorra os campos declarados da classe da origem e, para cada campo com nome E tipo iguais no destino, copie o valor com `Field.get`/`Field.set` (use `setAccessible(true)`).',
+      businessRules: [
+        'Apenas campos com nome e tipo idênticos são copiados — ignore os demais.',
+        'A origem e o destino podem ser de classes diferentes.',
+        'Campos do destino sem correspondente na origem permanecem inalterados.',
+        '`origem` ou `destino` nulos devem lançar `IllegalArgumentException`.'
+      ],
+      examples: [
+        { input: 'origem(nome="Ana", idade=30) → destino()', output: 'destino.nome="Ana", destino.idade=30' },
+        { input: 'origem com campo extra "email" → destino sem email', output: 'campo extra ignorado' }
+      ],
+      constraints: ['Use `java.lang.reflect.Field` — não use serialização.', 'Não altere as classes de teste usadas pelos testes ocultos.']
+    },
+    descriptionMarkdown: '# Mapeador de Campos',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'public class MapeadorCampos {',
+      '',
+      '    public void copiar(Object origem, Object destino) {',
+      '        // TODO: percorra origem.getClass().getDeclaredFields()',
+      '        // para cada field com nome e tipo iguais no destino, copie o valor via reflexão',
+      '        // lance IllegalArgumentException para origem ou destino nulos',
+      '    }',
+      '}'
+    ].join('\n')
+  }
+};
+
+const TESTING_CHALLENGES: Record<string, Pick<Challenge, 'statement' | 'descriptionMarkdown' | 'starterCode'>> = {
+  'validador-senha': {
+    statement: {
+      objective: 'Valide senhas fortas e pontue regras atendidas, satisfazendo uma suíte JUnit de casos-limite.',
+      instructions: 'Implemente `valida(String)` (regras: ≥ 8 caracteres, ao menos uma letra, um dígito e um especial de `!@#$%&*`) e `pontuacao(String)` (1 ponto por regra atendida, máximo 4).',
+      businessRules: [
+        'Senha `null`, vazia ou com espaços é inválida.',
+        'Cada regra vale 1 ponto na pontuação (comprimento, letra, dígito, especial).',
+        '`valida` é true somente quando as 4 regras são atendidas.'
+      ],
+      examples: [
+        { input: 'valida("Abcdefg1!")', output: 'true' },
+        { input: 'valida("abcdefgh")', output: 'false (sem dígito nem especial)' },
+        { input: 'pontuacao("Abc1")', output: '2 (falta comprimento e especial)' }
+      ],
+      constraints: ['Não use regex — verifique caractere a caractere.', 'Especiais válidos: apenas `!@#$%&*`.']
+    },
+    descriptionMarkdown: '# Validador de Senha',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'public class ValidadorSenha {',
+      '',
+      '    public boolean valida(String senha) {',
+      '        // TODO: ≥8 chars, letra, dígito e especial (!@#$%&*), sem espaços',
+      '        return false;',
+      '    }',
+      '',
+      '    public int pontuacao(String senha) {',
+      '        // TODO: 1 ponto por regra atendida (máx 4)',
+      '        return 0;',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'extrato-conta': {
+    statement: {
+      objective: 'Registre transações de uma conta com saldo acumulado e extrato imutável.',
+      instructions: 'Implemente `registrar(String descricao, double valor)` (valida e acumula no saldo), `getSaldo()` e `getExtrato()` (devolve `List.copyOf` das linhas no formato `descricao: valor`).',
+      businessRules: [
+        'Descrição em branco ou nula lança `IllegalArgumentException`.',
+        'Valor igual a zero lança `IllegalArgumentException`.',
+        'O saldo começa em zero e acumula valores positivos e negativos.',
+        'O extrato é imutável: tentar modificar a lista devolve `UnsupportedOperationException`.'
+      ],
+      examples: [
+        { input: 'registrar("Depósito", 100.0); registrar("Saque", -30.0); getSaldo()', output: '70.0' },
+        { input: 'registrar("", 10.0)', output: 'IllegalArgumentException' }
+      ],
+      constraints: ['Use `List.copyOf` para expor o extrato.', 'Não exponha a lista interna mutável.']
+    },
+    descriptionMarkdown: '# Extrato da Conta',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.ArrayList;',
+      'import java.util.List;',
+      '',
+      'public class ExtratoConta {',
+      '',
+      '    private final List<String> linhas = new ArrayList<>();',
+      '    private double saldo;',
+      '',
+      '    public void registrar(String descricao, double valor) {',
+      '        // TODO: valide descrição e valor, acumule saldo e guarde "descricao: valor"',
+      '    }',
+      '',
+      '    public double getSaldo() {',
+      '        return saldo;',
+      '    }',
+      '',
+      '    public List<String> getExtrato() {',
+      '        // TODO: devolva List.copyOf das linhas registradas',
+      '        return List.of();',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'processador-pagamento': {
+    statement: {
+      objective: 'Processe pagamentos através de um gateway injetado por interface, isolando a dependência para teste.',
+      instructions: 'Implemente o construtor (guarda o gateway), `processar(String id, double valor)` (valida, delega ao gateway e conta aprovados/reprovados) e os getters.',
+      businessRules: [
+        '`id` em branco/nulo ou `valor` ≤ 0 lança `IllegalArgumentException` sem chamar o gateway.',
+        'Quando o gateway devolve `true` incrementa aprovados; `false` incrementa reprovados.',
+        '`processar` devolve o resultado do gateway.',
+        'Contadores começam em zero.'
+      ],
+      examples: [
+        { input: 'gateway.autorizar → true; processar("ORD-1", 99.9)', output: 'true (aprovados=1)' },
+        { input: 'processar("", 10.0)', output: 'IllegalArgumentException (gateway não é chamado)' }
+      ],
+      constraints: ['A interface `Gateway` já está definida — não altere.', 'Não crie dependência de bibliotecas de mock — o construtor aceita qualquer implementação.']
+    },
+    descriptionMarkdown: '# Processador de Pagamento',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'public class ProcessadorPagamento {',
+      '',
+      '    public interface Gateway {',
+      '        boolean autorizar(String id, double valor);',
+      '    }',
+      '',
+      '    private final Gateway gateway;',
+      '    private int aprovados;',
+      '    private int reprovados;',
+      '',
+      '    public ProcessadorPagamento(Gateway gateway) {',
+      '        // TODO: guarde o gateway (lance IllegalArgumentException se nulo)',
+      '        this.gateway = gateway;',
+      '    }',
+      '',
+      '    public boolean processar(String id, double valor) {',
+      '        // TODO: valide id/valor, chame gateway.autorizar e atualize contadores',
+      '        return false;',
+      '    }',
+      '',
+      '    public int getAprovados() {',
+      '        return aprovados;',
+      '    }',
+      '',
+      '    public int getReprovados() {',
+      '        return reprovados;',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'calculadora-robusta': {
+    statement: {
+      objective: 'Proteja uma calculadora de entradas inválidas lançando as exceções corretas.',
+      instructions: 'Implemente `dividir(double, double)` (`ArithmeticException` no denominador zero), `raizQuadrada(double)` (`IllegalArgumentException` em valor negativo) e `media(double[])` (`IllegalArgumentException` em array nulo ou vazio).',
+      businessRules: [
+        'Divisão por zero lança `ArithmeticException` — não devolva Infinity.',
+        'Raiz de número negativo lança `IllegalArgumentException` — não devolva NaN.',
+        'Média de array nulo ou vazio lança `IllegalArgumentException`.',
+        'Casos válidos usam `Math.sqrt` e aritmética normal.'
+      ],
+      examples: [
+        { input: 'dividir(10.0, 2.0)', output: '5.0' },
+        { input: 'dividir(1.0, 0.0)', output: 'ArithmeticException' },
+        { input: 'media(new double[]{})', output: 'IllegalArgumentException' }
+      ],
+      constraints: ['Não devolva valores sentinelos (Infinity, NaN) — lance exceções.', 'Não altere as assinaturas dos métodos.']
+    },
+    descriptionMarkdown: '# Calculadora Robusta',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'public class CalculadoraRobusta {',
+      '',
+      '    public double dividir(double numerador, double denominador) {',
+      '        // TODO: lance ArithmeticException quando denominador for 0',
+      '        return 0.0;',
+      '    }',
+      '',
+      '    public double raizQuadrada(double valor) {',
+      '        // TODO: lance IllegalArgumentException para valor negativo',
+      '        return 0.0;',
+      '    }',
+      '',
+      '    public double media(double[] valores) {',
+      '        // TODO: lance IllegalArgumentException para array nulo ou vazio',
+      '        return 0.0;',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'analise-notas': {
+    statement: {
+      objective: 'Analise notas de alunos tratando listas vazias, nulas e valores fora da escala 0–10.',
+      instructions: 'Implemente `media(List<Double>)` (lança `IllegalArgumentException` em null/vazio), `aprovado(double)` (`IllegalArgumentException` fora de 0–10; aprovado com nota ≥ 7) e `menorNota(List<Double>)` (`Optional`; vazio para lista vazia; `IllegalArgumentException` para null).',
+      businessRules: [
+        'Média aritmética simples das notas válidas.',
+        'Nota mínima de aprovação: 7.0 (incluente).',
+        'Notas fora de 0–10 em `aprovado` lançam `IllegalArgumentException`.',
+        '`menorNota` devolve `Optional.empty()` para lista vazia.'
+      ],
+      examples: [
+        { input: 'media(List.of(8.0, 6.0))', output: '7.0' },
+        { input: 'aprovado(7.0)', output: 'true' },
+        { input: 'menorNota(List.of())', output: 'Optional.empty' }
+      ],
+      constraints: ['Não copie a lista de entrada para contornar null — valide antes.', 'Use `Optional` sem `isPresent` + `get`.']
+    },
+    descriptionMarkdown: '# Análise de Notas',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.List;',
+      'import java.util.Optional;',
+      '',
+      'public class AnaliseNotas {',
+      '',
+      '    public double media(List<Double> notas) {',
+      '        // TODO: lance IllegalArgumentException para null/vazio, calcule a média',
+      '        return 0.0;',
+      '    }',
+      '',
+      '    public boolean aprovado(double nota) {',
+      '        // TODO: lance IllegalArgumentException fora de 0–10; aprovado com nota >= 7',
+      '        return false;',
+      '    }',
+      '',
+      '    public Optional<Double> menorNota(List<Double> notas) {',
+      '        // TODO: vazio para lista vazia; IllegalArgumentException para null',
+      '        return Optional.empty();',
+      '    }',
+      '}'
+    ].join('\n')
+  },
+  'refatorar-relatorio': {
+    statement: {
+      objective: 'Refatore um método duplicado em trechos pequenos, corrigindo os casos-limite sem alterar o comportamento esperado.',
+      instructions: 'O método `resumo(List<String> linhas)` já calcula total e média de números em strings, mas é duplicado e falha em casos-limite. Extraia métodos privados auxiliares e corrija: lista `null`, vazia ou somente em branco deve lançar `IllegalArgumentException`.',
+      businessRules: [
+        'Linhas em branco são ignoradas (não entram no total nem na contagem).',
+        'Formato de saída: `"<N> linhas; total=<total>; media=<media>"` com `Double.toString` dos valores.',
+        'Lista `null`, vazia ou com todas as linhas em branco lança `IllegalArgumentException`.',
+        'Linha com número inválido propaga `NumberFormatException` (não trate).'
+      ],
+      examples: [
+        { input: 'resumo(["1", "2", "3"])', output: '"3 linhas; total=6.0; media=2.0"' },
+        { input: 'resumo(["1", " ", "2"])', output: '"2 linhas; total=3.0; media=1.5"' },
+        { input: 'resumo(List.of())', output: 'IllegalArgumentException' }
+      ],
+      constraints: ['Mantenha a assinatura pública `String resumo(List<String>)`.', 'Extraia pelo menos dois métodos privados para remover a duplicação.', 'Não use streams — pratique extração de métodos clássica.']
+    },
+    descriptionMarkdown: '# Refatorar Relatório',
+    starterCode: [
+      'package br.com.eyecode.challenge;',
+      '',
+      'import java.util.List;',
+      '',
+      'public class RefatorarRelatorio {',
+      '',
+      '    public String resumo(List<String> linhas) {',
+      '        // TODO: refatore este método em auxiliares privados e corrija os casos-limite',
+      '        if (linhas == null) {',
+      '            throw new IllegalArgumentException("linhas nulas");',
+      '        }',
+      '        double total = 0;',
+      '        int contadas = 0;',
+      '        for (int i = 0; i < linhas.size(); i++) {',
+      '            String linha = linhas.get(i);',
+      '            if (linha == null || linha.isBlank()) {',
+      '                continue;',
+      '            }',
+      '            total += Double.parseDouble(linha.trim());',
+      '            contadas++;',
+      '        }',
+      '        if (contadas == 0) {',
+      '            return "0 linhas";',
+      '        }',
+      '        return contadas + " linhas; total=" + total + "; media=" + (total / contadas);',
+      '    }',
+      '}'
+    ].join('\n')
+  }
+};
+
 export function challengeFor(id: string | null | undefined): Challenge {
   if (!id || id === CNPJ_VALIDATOR_CHALLENGE.id) return CNPJ_VALIDATOR_CHALLENGE;
   const catalog = CHALLENGE_CATALOG.find(item => item.id === id);
   if (!catalog) return CNPJ_VALIDATOR_CHALLENGE;
   const title = catalog.title;
   const className = id.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
-  const details = FUNDAMENTALS_CHALLENGES[id] ?? OOP_CHALLENGES[id] ?? DATA_STRUCTURE_CHALLENGES[id];
-  const oopStarter = OOP_CHALLENGES[id]?.starterCode ?? DATA_STRUCTURE_CHALLENGES[id]?.starterCode;
+  const details = FUNDAMENTALS_CHALLENGES[id] ?? OOP_CHALLENGES[id] ?? DATA_STRUCTURE_CHALLENGES[id]
+    ?? ADVANCED_CHALLENGES[id] ?? TESTING_CHALLENGES[id];
+  const oopStarter = OOP_CHALLENGES[id]?.starterCode ?? DATA_STRUCTURE_CHALLENGES[id]?.starterCode
+    ?? ADVANCED_CHALLENGES[id]?.starterCode ?? TESTING_CHALLENGES[id]?.starterCode;
   const starterCode = oopStarter ?? (id === 'fizzbuzz'
     ? `package br.com.eyecode.challenge;\n\nimport java.util.List;\n\npublic class ${className} {\n    public List<String> fizzBuzz(int start, int end) {\n        return List.of();\n    }\n}`
     : id === 'conversor-temperatura'
