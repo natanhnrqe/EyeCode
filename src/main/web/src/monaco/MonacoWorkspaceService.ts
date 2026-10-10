@@ -959,7 +959,21 @@ export class MonacoWorkspaceService {
       return;
     }
     const trigger = changes.some(change => (change.text ?? '').includes('.')) ? '.' : null;
-    this.requestCompletion(false, trigger);
+    this.requestCompletion(false, trigger, this.resultingCaretPosition(model, changes));
+  }
+
+  private resultingCaretPosition(
+    model: MonacoModel,
+    changes: NonNullable<MonacoContentChangeEvent['changes']>
+  ): { lineNumber: number; column: number } | null {
+    if (changes.length !== 1) return null;
+    const change = changes[0];
+    if (typeof change.rangeOffset !== 'number' || typeof change.text !== 'string') return null;
+    try {
+      return model.getPositionAt(change.rangeOffset + change.text.length);
+    } catch {
+      return null;
+    }
   }
 
   private scheduleDiagnostics(uri: string, model: MonacoModel): void {
@@ -1228,10 +1242,10 @@ export class MonacoWorkspaceService {
     });
   }
 
-  private requestCompletion(explicit: boolean, triggerCharacter: string | null): void {
+  private requestCompletion(explicit: boolean, triggerCharacter: string | null, positionOverride?: { lineNumber: number; column: number } | null): void {
     const editor = this.editor;
     const model = editor?.getModel();
-    const position = editor?.getPosition();
+    const position = positionOverride ?? editor?.getPosition();
     const uri = this.documentUri(model ?? null);
     const lessonPractice = uri ? this.lessonPracticeUris.has(uri) : false;
     if (!editor || !model || !position || !uri || uri.startsWith('jdk://') || (uri.startsWith('lesson://') && !lessonPractice)) return;
@@ -1774,6 +1788,11 @@ export class MonacoWorkspaceService {
     const editor = this.editor;
     const model = editor?.getModel() ?? null;
     const position = event.position ?? editor?.getPosition() ?? null;
+    const current = editor?.getPosition() ?? null;
+    if (position && current && model
+        && model.getOffsetAt(position) !== model.getOffsetAt(current)) {
+      return;
+    }
     if (position) {
       this.onCaretPosition?.({ line: position.lineNumber, column: position.column });
       this.publishDiagnosticsForActiveModel(position);

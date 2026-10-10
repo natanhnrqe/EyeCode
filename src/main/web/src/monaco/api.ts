@@ -29,7 +29,7 @@ export type MonacoMarker = {
   endColumn: number;
 };
 
-export type MonacoContentChangeEvent = { changes?: Array<{ text?: string; rangeLength?: number; range?: { startLineNumber?: number; startColumn?: number; endLineNumber?: number; endColumn?: number } }> };
+export type MonacoContentChangeEvent = { changes?: Array<{ text?: string; rangeLength?: number; rangeOffset?: number; range?: { startLineNumber?: number; startColumn?: number; endLineNumber?: number; endColumn?: number } }> };
 export type MonacoKeyEvent = { keyCode: number; browserEvent?: KeyboardEvent; preventDefault?: () => void; stopPropagation?: () => void };
 export type MonacoCursorPositionEvent = { position?: { lineNumber: number; column: number } | null };
 export type MonacoMouseEvent = { target?: { position?: { lineNumber: number; column: number } | null; range?: { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number } | null } | null };
