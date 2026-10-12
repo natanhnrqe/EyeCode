@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { bridge } from '../bridge/EyeCodeBridge';
 import type { RecentProject, RunState } from './protocol';
 import { EyeCodeIcon } from './EyeCodeIcon';
@@ -28,7 +28,14 @@ type Props = {
 export function TopToolbar({ learnMode = false, projectName, projectPath, recentProjects, runState, runAvailable, onNewProject, onOpenProject, onNewFile, onOpenRecentProject, onRemoveRecentProject, onWelcome, onRun, onRerun, onStop, onSelectConfiguration, onOpenSearch, onOpenSettings, onWindowAction }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [maximized, setMaximized] = useState(false);
   const dragPointer = useRef<number | null>(null);
+  useEffect(() => {
+    const electron = window.electronAPI;
+    if (!electron) return;
+    void electron.isMaximized().then(setMaximized);
+    return electron.onMaximizeChange(setMaximized);
+  }, []);
   const otherRecentProjects = recentProjects.filter(project => project.path !== projectPath);
   const startDrag = (event: React.PointerEvent<HTMLElement>) => {
     if ((event.target as HTMLElement).closest('button,a,input,select,textarea,[role="button"],[role="tab"]')) return;
@@ -103,7 +110,7 @@ export function TopToolbar({ learnMode = false, projectName, projectPath, recent
       <span className="toolbar-separator" />
       <div className="toolbar-window-controls">
         <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowMinimize')} aria-label="Minimize"><EyeCodeIcon name="minimize" /></button>
-        <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowToggleMaximize')} aria-label="Maximize or restore"><EyeCodeIcon name="maximize" /></button>
+        <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowToggleMaximize')} aria-label={maximized ? 'Restore' : 'Maximize'}><EyeCodeIcon name={maximized ? 'restore' : 'maximize'} /></button>
         <button type="button" className="toolbar-icon window-close" onClick={() => onWindowAction('windowClose')} aria-label="Close"><EyeCodeIcon name="close" /></button>
       </div>
     </div>

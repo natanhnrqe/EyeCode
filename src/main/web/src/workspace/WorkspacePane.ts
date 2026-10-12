@@ -69,12 +69,12 @@ export const projectDockTree: DockNode = {
 };
 
 export const learnPracticeDockTree: DockNode = {
-  type: 'split', orientation: 'vertical', ratio: 0.68,
+  type: 'split', orientation: 'vertical', ratio: 0.77,
   first: {
-    type: 'split', orientation: 'horizontal', ratio: 0.28,
+    type: 'split', orientation: 'horizontal', ratio: 0.21,
     first: { type: 'pane', paneId: 'explorer' },
     second: {
-      type: 'split', orientation: 'horizontal', ratio: 0.6,
+      type: 'split', orientation: 'horizontal', ratio: 0.62,
       first: { type: 'pane', paneId: 'editor' },
       second: { type: 'pane', paneId: 'lesson' }
     }

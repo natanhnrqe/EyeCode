@@ -26,11 +26,20 @@ export type WebShellRequestOptions = {
   requestId?: string;
 };
 
+export type ElectronWindowControls = {
+  minimize(): void;
+  toggleMaximize(): void;
+  close(): void;
+  isMaximized(): Promise<boolean>;
+  onMaximizeChange(callback: (maximized: boolean) => void): () => void;
+};
+
 declare global {
   interface Window {
     cefQuery?: (query: CefQuery) => void;
     __EYECODE_LOCAL_TRANSPORT__?: LocalTransportConfig;
     eyeCodeBridge: EyeCodeBridge;
+    electronAPI?: ElectronWindowControls;
   }
 }
 
@@ -111,6 +120,21 @@ export class WebShellBridge {
 
   async request<T>(channel: string, name: string, payload: Record<string, unknown>,
                    options: WebShellRequestOptions = {}): Promise<T> {
+    if (channel === 'native' && window.electronAPI) {
+      const electron = window.electronAPI;
+      if (name === 'windowMinimize') {
+        electron.minimize();
+        return { accepted: true } as T;
+      }
+      if (name === 'windowToggleMaximize') {
+        electron.toggleMaximize();
+        return { accepted: true } as T;
+      }
+      if (name === 'windowClose') {
+        electron.close();
+        return { accepted: true } as T;
+      }
+    }
     const requestId = options.requestId ?? this.reserveRequestId();
     const message: WebShellEnvelope = {
       protocol: 'eyecode.web/1', kind: 'request', channel, name, requestId,

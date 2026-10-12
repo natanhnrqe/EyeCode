@@ -324,7 +324,7 @@ class WebShellSharedShellSourceTest {
         String learnTree = pane.substring(pane.indexOf("learnPracticeDockTree"), pane.indexOf("theoryDockTree"));
         assertTrue(projectTree.contains("orientation: 'vertical', ratio: 0.7"));
         assertTrue(projectTree.contains("paneId: 'bottom'"));
-        assertTrue(learnTree.contains("orientation: 'vertical', ratio: 0.68"));
+        assertTrue(learnTree.contains("orientation: 'vertical', ratio: 0.77"));
         assertTrue(learnTree.contains("paneId: 'lesson'"));
         assertTrue(learnTree.contains("paneId: 'bottom'"));
         assertEquals(1, occurrences(learnTree, "paneId: 'editor'"));
@@ -385,7 +385,14 @@ class WebShellSharedShellSourceTest {
         assertTrue(learnWorkspace.contains("screen: 'ROADMAP'"));
         assertTrue(learnWorkspace.contains("screen: 'TOPIC'"));
         assertTrue(learnWorkspace.contains("screen: 'LESSON'"));
-        assertTrue(learnWorkspace.contains("bridge.request<LessonsCatalog>('lessons', 'catalog', {})"));
+        assertTrue(workspace.contains("bridge.request<LessonsCatalog>('lessons', 'catalog', {})"),
+                "the lessons catalog must be loaded once by the workspace");
+        assertTrue(workspace.contains("<LearnWorkspace navigation={learnNavigation} catalog={lessonsCatalog}"),
+                "the navigation pages must consume the shared catalog");
+        assertTrue(workspace.contains("<LearnExplorer activeTrackId={activeLearnTrackId} catalog={lessonsCatalog}"),
+                "the explorer must consume the same shared catalog");
+        assertFalse(learnWorkspace.contains("bridge.request<LessonsCatalog>('lessons', 'catalog', {})"),
+                "the navigation pages must not fetch a competing catalog");
         assertTrue(learnWorkspace.contains("lesson.executable"));
         assertTrue(learnWorkspace.contains("Teoria"));
         assertTrue(learnWorkspace.contains("Prática"));
@@ -416,6 +423,48 @@ class WebShellSharedShellSourceTest {
         assertTrue(learnWorkspace.contains("shell-page-content"));
         assertTrue(styles.contains(".shell-page-content"));
         assertTrue(styles.contains(".learn-navigation-page") && styles.contains("background: transparent"));
+    }
+
+    @Test
+    void learnExplorerKeepsThreeLevelsWithoutAPermanentColumnOnHome() throws IOException {
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+        String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
+        String model = Files.readString(Path.of("src/main/web/src/lessons/learnExplorerModel.ts"));
+        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+
+        assertTrue(model.contains("export function buildLearnExplorer"),
+                "the explorer tree must be derived by a pure model");
+        assertTrue(model.contains("LearnExplorerCategory") && model.contains("LearnExplorerTopic")
+                        && model.contains("LearnExplorerLesson"),
+                "the model must represent category -> topic -> lesson");
+        assertTrue(model.contains("lesson.executable"),
+                "availability must come from the real executable flag, not a fabricated state");
+        assertFalse(model.contains("bridge"),
+                "the navigation model must not touch the bridge or the backend");
+        assertFalse(learnWorkspace.contains("<LearnExplorer"),
+                "the navigation pages must not embed a permanent explorer column on HOME");
+        assertFalse(learnWorkspace.contains("is-embedded"),
+                "the embedded variant must be removed with the permanent column");
+        assertEquals(1, occurrences(workspace, "<LearnExplorer "),
+                "the explorer must have a single render site (the lesson dock)");
+        assertTrue(workspace.contains("!learnNavigationVisible ? <LearnExplorer"),
+                "the explorer must only render inside a lesson, not on the navigation pages");
+        assertTrue(learnWorkspace.contains("learn-explorer-category") && learnWorkspace.contains("learn-explorer-topic"),
+                "the explorer must render categories and topics as expandable levels");
+        assertTrue(styles.contains(".learn-explorer-category") && styles.contains(".learn-explorer-count"),
+                "the three-level explorer must be styled");
+        assertTrue(learnWorkspace.contains("learn-explorer-progress") && learnWorkspace.contains("learn-module-toggle")
+                        && learnWorkspace.contains("learn-explorer-search") && learnWorkspace.contains("learn-explorer-footer"),
+                "the explorer must present the prototype roadmap composition (progress, modules, search, footer)");
+        assertTrue(styles.contains(".learn-explorer-progress") && styles.contains(".learn-module-toggle")
+                        && styles.contains(".learn-explorer-lesson") && styles.contains(".learn-explorer-heading"),
+                "the roadmap composition must be styled");
+        assertTrue(learnWorkspace.contains("filterLearnExplorer") && learnWorkspace.contains("learnExplorerTotals"),
+                "the explorer must derive its tree/summary from the pure model");
+        assertTrue(styles.contains(".exercise-category"),
+                "the lesson panel must show the trail context header");
+        assertTrue(workspace.contains("setLessonsCatalog") && workspace.contains("lessonsError"),
+                "the workspace must own the single catalog source and its error state");
     }
 
     @Test

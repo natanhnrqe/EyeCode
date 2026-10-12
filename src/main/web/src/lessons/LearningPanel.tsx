@@ -14,6 +14,8 @@ type Props = {
   onExit(): void;
   hasDiagnostics: boolean;
   onShowProblems(): void;
+  category?: string;
+  topic?: string;
 };
 
 const tabs: Array<{ id: LearningPanelTab; label: string }> = [
@@ -24,7 +26,7 @@ const tabs: Array<{ id: LearningPanelTab; label: string }> = [
   { id: 'assistant', label: 'Assistente IA' }
 ];
 
-export function LearningPanel({ session, verification, verifying, onVerify, onPrevious, onNext, onExit, hasDiagnostics, onShowProblems }: Props) {
+export function LearningPanel({ session, verification, verifying, onVerify, onPrevious, onNext, onExit, hasDiagnostics, onShowProblems, category, topic }: Props) {
   const [activeTab, setActiveTab] = useState<LearningPanelTab>('exercise');
   const phaseClass = session.phase === 'PRESENTATION' ? ' is-presentation' : session.phase === 'PRACTICE' ? ' is-practice-active' : ' is-completed';
   const lessonClass = session.kind === 'THEORY' ? ' is-theory' : ` is-practice${phaseClass}${session.practiceCompleted ? ' is-practice-completed' : ''}`;
@@ -33,7 +35,7 @@ export function LearningPanel({ session, verification, verifying, onVerify, onPr
       className={activeTab === tab.id ? 'is-active' : ''} onClick={() => setActiveTab(tab.id)}>{tab.label}</button>)}
   </div>} bodyClassName="learning-panel-content" footerClassName="learning-panel-actions" footer={<><button type="button" onClick={onExit}>Voltar ao roteiro</button><div><button type="button" onClick={onPrevious} disabled={!session.canPrevious}>Anterior</button><button type="button" className="primary-action" onClick={onNext} disabled={!session.canNext}>Próximo</button></div></>}>
     <div hidden={activeTab !== 'exercise'}><ExerciseTab session={session} verification={verification} verifying={verifying} onVerify={onVerify} hasDiagnostics={hasDiagnostics}
-      onShowProblems={onShowProblems} onShowConcepts={() => setActiveTab('concepts')} /></div>
+      onShowProblems={onShowProblems} category={category} topic={topic} onShowConcepts={() => setActiveTab('concepts')} /></div>
     {activeTab === 'concepts' && <ConceptsTab blocks={session.contentBlocks} />}
     {activeTab === 'faq' && <EmptyTab title="Dúvidas frequentes" message="Esta aula ainda não possui dúvidas frequentes." />}
     {activeTab === 'examples' && <ExamplesTab blocks={session.contentBlocks} />}
@@ -41,7 +43,7 @@ export function LearningPanel({ session, verification, verifying, onVerify, onPr
   </DockPane>;
 }
 
-function ExerciseTab({ session, verification, verifying, onVerify, hasDiagnostics, onShowProblems, onShowConcepts }: Pick<Props, 'session' | 'verification' | 'verifying' | 'onVerify' | 'hasDiagnostics' | 'onShowProblems'> & { onShowConcepts(): void }) {
+function ExerciseTab({ session, verification, verifying, onVerify, hasDiagnostics, onShowProblems, category, topic, onShowConcepts }: Pick<Props, 'session' | 'verification' | 'verifying' | 'onVerify' | 'hasDiagnostics' | 'onShowProblems' | 'category' | 'topic'> & { onShowConcepts(): void }) {
   const practiceActive = session.phase === 'PRACTICE' && session.practice;
   const hints = session.contentBlocks.filter(block => block.type === 'CALLOUT' && block.title?.trim().toLocaleLowerCase() === 'dica');
   const [revealedHints, setRevealedHints] = useState(0);
@@ -58,7 +60,8 @@ function ExerciseTab({ session, verification, verifying, onVerify, hasDiagnostic
     setGuidance(choice);
     if (choice === 'start' && hints.length) setRevealedHints(current => Math.max(1, current));
   };
-  return <article className="learning-tab exercise-tab"><header className="exercise-header"><p className="learning-panel-kicker">{session.phase === 'PRESENTATION' ? 'Apresentação' : completed ? 'Prática concluída' : 'Prática'} <span>{session.currentStep + 1} de {session.totalSteps}</span></p><h1>{session.title}</h1>{session.message && <p className="learning-tab-lead">{session.message}</p>}</header>
+  const context = [category, topic].filter((value): value is string => Boolean(value)).join(' · ');
+  return <article className="learning-tab exercise-tab"><header className="exercise-header">{context && <span className="exercise-category">{context}</span>}<p className="learning-panel-kicker">{session.phase === 'PRESENTATION' ? 'Apresentação' : completed ? 'Prática concluída' : 'Prática'} <span>{session.currentStep + 1} de {session.totalSteps}</span></p><h1>{session.title}</h1>{session.message && <p className="learning-tab-lead">{session.message}</p>}</header>
     {practiceActive ? <><section className="exercise-task"><h2>Sua tarefa</h2><p><InlineContent content={session.practice!.instruction} /></p>{verification && <Feedback verification={verification} />}{completed && !verification && <section className="exercise-feedback is-success"><strong>Prática concluída</strong><p>Você já concluiu esta etapa.</p></section>}<button type="button" className="primary-action" onClick={onVerify} disabled={verifying || completed}>{verifying ? 'Verificando...' : completed ? 'Resposta verificada' : 'Verificar resposta'}</button></section>
       {!completed && <><section className="exercise-help-actions" aria-label="Ajuda para a atividade">{hints.length > 0 && <button type="button" onClick={revealHint}>{revealedHints ? revealedHints < hints.length ? 'Próxima dica' : 'Dicas exibidas' : '💡 Pedir uma dica'}</button>}<button type="button" aria-expanded={stuckOpen} onClick={() => setStuckOpen(open => !open)}>？ Estou travado</button></section>
         {revealedHints > 0 && <section className="exercise-hints" aria-label="Dicas reveladas">{hints.slice(0, revealedHints).map((hint, index) => <div key={index}><strong>Dica {index + 1}</strong><LessonBlock block={hint} theory={false} /></div>)}</section>}

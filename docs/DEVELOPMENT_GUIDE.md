@@ -10,10 +10,19 @@ mvn test
 Push-Location src/main/web
 npm run typecheck
 npm run build
+npm run electron:dev
 Pop-Location
 ~~~
 
 `mvn exec:java` starts `com.eyecode.ui.web.LocalWebShellLauncher`, the primary Web entrypoint. `LocalWebShellRuntime` creates the HTTP/WebSocket surface and `WebShellWorkspaceComposition` visibly assembles services, the lifecycle owner and Web controllers. Opening the browser is intentionally optional and can be enabled with `-Deyecode.web.openBrowser=true` when `java.awt.Desktop` is supported. JavaFX/CEFFX and Swing/JCEF remain compile-time legacy adapters, not requirements of this runtime.
+
+### Electron desktop (development mode)
+
+From `src/main/web`, run `npm run electron:dev`. This script:
+1. Builds the frontend with Vite (`npm run build` → `src/main/resources/webshell`).
+2. Launches Electron (`electron/main.js`), which starts the Java backend via `mvn compile exec:java -Deyecode.web.openBrowser=false` and opens a native window at the loopback URL.
+
+Requirements: Java 21, Maven (`mvn`) on PATH, Node.js (Electron 33.2.1 is a pinned devDependency). Set `EYECODE_JDTLS_HOME` to override JDT LS resolution if needed. This is a development convenience — no installers, packaging, or auto-update.
 
 The Web runtime has no browser-native file or directory picker yet. `workspace/openProject` without a path, `workspace/chooseDirectory`, and Save As return the recoverable `NATIVE_UI_UNAVAILABLE` protocol error. Supplying a path for opening a project remains supported.
 

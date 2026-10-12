@@ -17,7 +17,7 @@ import { LessonAnnotation } from '../lessons/LessonAnnotation';
 import { LessonEditorController } from '../lessons/LessonEditorController';
 import { LearningPanel } from '../lessons/LearningPanel';
 import { LearnContextPanel, type LearnContextTab } from '../lessons/LearnContextPanel';
-import type { LessonDescriptor, LessonFile, LessonSession, LessonVerificationResponse, PracticeVerificationResult } from '../lessons/protocol';
+import type { LessonDescriptor, LessonFile, LessonsCatalog, LessonSession, LessonVerificationResponse, PracticeVerificationResult } from '../lessons/protocol';
 import { ChallengeProvider } from '../challenge/useChallenge';
 import { ChallengeRightPanel } from '../challenge/ChallengeRightPanel';
 import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
@@ -98,6 +98,8 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   const lessonSessionRef = useRef<LessonSession | null>(null);
   const lessonRequest = useRef(0);
   const [lessonBusy, setLessonBusy] = useState(false);
+  const [lessonsCatalog, setLessonsCatalog] = useState<LessonsCatalog | null>(null);
+  const [lessonsError, setLessonsError] = useState('');
   const [practiceVerification, setPracticeVerification] = useState<PracticeVerificationResult | null>(null);
   const [practiceVerifying, setPracticeVerifying] = useState(false);
   const [projectDockLayout, setProjectDockLayout] = useState<DockNode>(() => projectDockTree);
@@ -119,6 +121,15 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
     lessonEditor.setPresentationReadyHandler(setLessonPresentationReady);
     return () => lessonEditor.setPresentationReadyHandler(null);
   }, [lessonEditor]);
+
+  useEffect(() => {
+    if (mode !== 'LEARN' || lessonsCatalog || lessonsError) return;
+    let cancelled = false;
+    void bridge.request<LessonsCatalog>('lessons', 'catalog', {})
+      .then(catalog => { if (!cancelled) setLessonsCatalog(catalog); })
+      .catch(reason => { if (!cancelled) setLessonsError(reason instanceof Error ? reason.message : 'Não foi possível carregar as aulas.'); });
+    return () => { cancelled = true; };
+  }, [mode, lessonsCatalog, lessonsError]);
 
   const updateDocument = useCallback((document: DocumentSnapshot) => {
     const tab: DocumentTab = { ...document };
@@ -787,9 +798,9 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
     onWindowAction={action => void windowAction(action)} />;
   const renderPane = (paneId: WorkspacePaneId) => {
     if (paneId === 'explorer') return <aside className="side-panel">
-      {learnMode ? <LearnExplorer activeTrackId={activeLearnTrackId} selectedLessonId={lessonSession?.lessonId ?? selectedLearnLesson?.id ?? null} completedLessonId={lessonSession?.practiceCompleted ? lessonSession.lessonId : null}
+      {learnMode ? (!learnNavigationVisible ? <LearnExplorer activeTrackId={activeLearnTrackId} catalog={lessonsCatalog} selectedLessonId={lessonSession?.lessonId ?? selectedLearnLesson?.id ?? null} completedLessonId={lessonSession?.practiceCompleted ? lessonSession.lessonId : null}
         files={lessonSession?.kind === 'PRACTICE' ? lessonEditor.lessonFiles() : []} activeFileId={activeLessonFileId}
-        onOpenFile={fileId => { const uri = lessonEditor.lessonUriFor(fileId); if (uri) activateLessonFile(uri); }} onOpenLesson={openLearnLesson} /> : sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
+        onOpenFile={fileId => { const uri = lessonEditor.lessonUriFor(fileId); if (uri) activateLessonFile(uri); }} onOpenLesson={openLearnLesson} /> : null) : sidePanel === 'project' ? <ProjectExplorer project={workspace.project} childrenByPath={childrenByPath}
         reveal={workspace.reveal} treeChangedPath={treeChangedPath} treeRefreshRevision={treeRefreshRevision} onLoadChildren={loadChildren} onOpenFile={openFile}
         onRefresh={refreshProject} onOperation={operateProject} onOpenProject={() => void openProject()} onNewFile={() => void newDocument()} /> : sidePanel === 'documentation' ? <DocumentationExplorer
         activeId={activeDocument?.kind === 'guide' && activeUri ? activeUri.slice('guide://'.length) : null}
@@ -860,6 +871,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       }
       return lessonSession ? <LearningPanel session={lessonSession} verification={practiceVerification} verifying={practiceVerifying} onVerify={() => void verifyPractice()} onPrevious={() => void changeLessonStep('previous')}
         onNext={() => void changeLessonStep('next')} onExit={() => void returnToLearnTopic()} hasDiagnostics={(diagnostics?.results ?? []).some(result => result.diagnostics.length > 0)}
+        category={learnPath[0]} topic={learnPath[1]}
         onShowProblems={() => selectLearnContextTab('problems')} /> : null;
     }
     return null;
@@ -961,7 +973,8 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
           type="button" className={sidePanel === id && !sidePanelCollapsed ? 'is-active' : ''} onClick={() => selectSidePanel(id)}
           aria-label={id} aria-expanded={sidePanel === id ? !sidePanelCollapsed : undefined}><EyeCodeIcon name={sideIcon(id)} /></button>)}
       </nav> : !learnNavigationVisible && <nav className="activity-bar learn-activity-bar" aria-label="Navegação da aula"><button type="button" className={!learnExplorerCollapsed ? 'is-active' : ''} onClick={() => setLearnExplorerCollapsed(value => !value)} aria-label={learnExplorerCollapsed ? 'Mostrar aulas' : 'Ocultar aulas'} aria-expanded={!learnExplorerCollapsed}><EyeCodeIcon name="markdown" /></button></nav>}
-      {learnNavigationVisible && <LearnWorkspace navigation={learnNavigation} onHome={() => { setActiveLearnTrackId(null); setLearnNavigation({ screen: 'HOME' }); }}
+      {learnNavigationVisible && <LearnWorkspace navigation={learnNavigation} catalog={lessonsCatalog} error={lessonsError}
+        onHome={() => { setActiveLearnTrackId(null); setLearnNavigation({ screen: 'HOME' }); }}
         onOpenRoadmap={categoryId => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'ROADMAP', categoryId }); }}
         onOpenTopic={(categoryId, topicId) => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'TOPIC', categoryId, topicId }); }}
         onOpenLesson={openLearnLesson} />}
