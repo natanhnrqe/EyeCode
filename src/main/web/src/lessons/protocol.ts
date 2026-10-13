@@ -74,3 +74,23 @@ export type LessonSession = {
   commands: LessonEditorCommand[];
 };
 export type LessonVerificationResponse = { verification: PracticeVerificationResult; session: LessonSession };
+
+export type LessonTraceStatus = 'COMPLETED' | 'TRUNCATED' | 'COMPILE_ERROR' | 'RUNTIME_ERROR' | 'STOPPED' | 'TIMEOUT' | 'FAILED';
+export type LessonTraceVariable = {
+  name: string;
+  type: string;
+  value: string;
+  kind: 'primitive' | 'string' | 'boolean' | 'char' | 'array' | 'object' | 'null' | 'reference' | 'unsupported' | string;
+  children: LessonTraceVariable[];
+  truncated: boolean;
+};
+export type LessonTraceStep = { index: number; className: string; line: number; variables: LessonTraceVariable[] };
+export type LessonTracePayload = {
+  mainClass: string;
+  status: LessonTraceStatus;
+  exitCode: number;
+  runtimeError: string;
+  steps: LessonTraceStep[];
+  output: { text: string; error: boolean }[];
+  limitations: string[];
+};

@@ -17,7 +17,7 @@ import { LessonAnnotation } from '../lessons/LessonAnnotation';
 import { LessonEditorController } from '../lessons/LessonEditorController';
 import { LearningPanel } from '../lessons/LearningPanel';
 import { LearnContextPanel, type LearnContextTab } from '../lessons/LearnContextPanel';
-import type { LessonDescriptor, LessonFile, LessonsCatalog, LessonSession, LessonVerificationResponse, PracticeVerificationResult } from '../lessons/protocol';
+import type { LessonDescriptor, LessonFile, LessonsCatalog, LessonSession, LessonTracePayload, LessonVerificationResponse, PracticeVerificationResult } from '../lessons/protocol';
 import { ChallengeProvider } from '../challenge/useChallenge';
 import { ChallengeRightPanel } from '../challenge/ChallengeRightPanel';
 import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
@@ -78,6 +78,8 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   const [treeRefreshRevision, setTreeRefreshRevision] = useState(0);
   const [runState, setRunState] = useState<RunState>(emptyRunState);
   const [runOutput, setRunOutput] = useState<RunOutputChunk[]>([]);
+  const [lessonTrace, setLessonTrace] = useState<LessonTracePayload | null>(null);
+  const [lessonTraceCapturing, setLessonTraceCapturing] = useState(false);
   const [terminalState, setTerminalState] = useState<TerminalState>(emptyTerminalState);
   const [bottomPanel, setBottomPanel] = useState<BottomPanelId>('terminal');
   const [learnContextTab, setLearnContextTab] = useState<LearnContextTab>('problems');
@@ -264,6 +266,10 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
         }
       }
       if (event.channel === 'run' && event.name === 'state') setRunState(event.payload as RunState);
+      if (event.channel === 'run' && event.name === 'trace') {
+        setLessonTrace(event.payload as LessonTracePayload);
+        setLessonTraceCapturing(false);
+      }
       if (event.channel === 'run' && event.name === 'output') {
         const payload = event.payload as { text?: string; error?: boolean; clear?: boolean };
         if (payload.clear) {
@@ -572,8 +578,16 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       context: 'lesson',
       lessonWorkspace: { files: lessonEditor.executionFiles(), mainClass: lessonSession.workspace!.mainClass }
     } : {};
-    try { await bridge.request('run', name, payload); }
-    catch (error) { setMessage(formatError(error)); }
+    try {
+      await bridge.request('run', name, payload);
+      if (lessonRunnable && name !== 'stop') {
+        setLessonTrace(null);
+        setLessonTraceCapturing(true);
+        bridge.request<{ started: boolean }>('run', 'trace', payload).then(response => {
+          if (!response?.started) setLessonTraceCapturing(false);
+        }, () => setLessonTraceCapturing(false));
+      }
+    } catch (error) { setMessage(formatError(error)); }
   }
 
   async function terminal(name: 'show' | 'restart' | 'stop') {
@@ -696,6 +710,8 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
     lessonEditor.cancelAnimation();
     setPracticeVerification(null);
     setPracticeVerifying(false);
+    setLessonTrace(null);
+    setLessonTraceCapturing(false);
     if (!session) return;
     ++lessonRequest.current;
     setLessonBusy(false);
@@ -853,7 +869,8 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
         </div>
       </section>;
     }
-    if (paneId === 'bottom') return learnMode ? <LearnContextPanel active={learnContextTab} output={runOutput} runState={runState} diagnostics={diagnostics} documents={documents} onSelect={selectLearnContextTab}
+    if (paneId === 'bottom') return learnMode ? <LearnContextPanel active={learnContextTab} output={runOutput} runState={runState} diagnostics={diagnostics} documents={documents}
+      trace={lessonTrace} capturing={lessonTraceCapturing} onSelect={selectLearnContextTab}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} /> : <BottomPanel active={bottomPanel} output={runOutput} runState={runState} terminalState={terminalState}
       diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />;
