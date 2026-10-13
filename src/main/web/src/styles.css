@@ -2203,6 +2203,21 @@ html, body, #root {
   margin: 0;
 }
 
+.lesson-annotation.is-diagnostic {
+  border-color: color-mix(in srgb, #e0848e 42%, transparent);
+}
+
+.lesson-annotation.is-diagnostic strong {
+  color: #e0848e;
+}
+
+.lesson-annotation-kicker {
+  color: var(--eyecode-muted);
+  font: 700 9px/1.2 var(--eyecode-font-ui);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 .lesson-panel-content.learning-body pre code {
   font-size: 12px;
 }

@@ -41,10 +41,15 @@ class PracticeLessonVisualSourceTest {
     void annotationKeepsItsAnchorAndRendersTheBackendContent() throws Exception {
         String annotation = Files.readString(Path.of("src/main/web/src/lessons/LessonAnnotation.tsx"));
 
-        assertTrue(annotation.contains("service.lessonAnnotationAnchor(lessonUri, annotation.range)"));
+        assertTrue(annotation.contains("service.lessonAnnotationAnchor(lessonUri, range)"));
         assertTrue(annotation.contains("service.subscribeViewport(update)"));
-        assertTrue(annotation.contains("<strong>{annotation.title}</strong><p>{annotation.message}</p>"));
-        assertTrue(annotation.contains("if (!annotation || !position) return null;"));
+        assertTrue(annotation.contains("const title = diagnostic?.title ?? annotation?.title ?? '';"),
+                "the backend annotation must remain the fallback content");
+        assertTrue(annotation.contains("const message = diagnostic ? (diagnostic.tip || diagnostic.summary) : annotation?.message;"),
+                "the backend annotation message must remain the fallback content");
+        assertTrue(annotation.contains("if (!range || !position || !message) return null;"));
+        assertTrue(annotation.contains("' is-diagnostic'"),
+                "error annotations must stay visually identifiable as errors");
     }
 
     @Test

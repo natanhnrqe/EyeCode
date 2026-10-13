@@ -14,6 +14,7 @@ import { LearningCard } from '../learning/LearningCard';
 import type { LearningPopupState } from '../learning/protocol';
 import { LearnExplorer, LearnWorkspace, type LearnNavigationState } from '../lessons/LearnWorkspace';
 import { LessonAnnotation } from '../lessons/LessonAnnotation';
+import { selectLessonDiagnosticEducation } from '../lessons/lessonEducationModel';
 import { LessonEditorController } from '../lessons/LessonEditorController';
 import { LearningPanel } from '../lessons/LearningPanel';
 import { LearnContextPanel, type LearnContextTab } from '../lessons/LearnContextPanel';
@@ -1022,7 +1023,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       {completion && <CompletionPopup state={completion} onSelect={selectCompletion} onAccept={acceptCompletion} />}
       {learning && !signature && <LearningCard state={learning} onNavigate={identifier => service.navigateLearning(identifier)}
         onAction={action => service.openLearningAction(action)} onHover={hovered => service.setLearningHovered(hovered)} />}
-      {learnMode && lessonSession?.kind === 'PRACTICE' && lessonPresentationReady && <LessonAnnotation service={service} lessonUri={lessonEditor.lessonUri()} annotation={lessonSession.annotation} />}
+      {learnMode && lessonSession?.kind === 'PRACTICE' && lessonPresentationReady && <LessonAnnotation service={service} lessonUri={lessonEditor.lessonUri()} annotation={lessonSession.annotation} diagnostic={selectLessonDiagnosticEducation(diagnostics, lessonEditor.lessonUri())} />}
       {newProjectOpen && <NewProjectDialog onCancel={() => setNewProjectOpen(false)} onBrowse={chooseProjectLocation} onCreate={createProject} />}
       {newJavaClassOpen && <NewJavaClassDialog onCancel={() => setNewJavaClassOpen(false)} onCreate={createJavaClass} />}
     </div>
