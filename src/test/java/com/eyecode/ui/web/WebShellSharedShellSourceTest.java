@@ -503,6 +503,46 @@ class WebShellSharedShellSourceTest {
     }
 
     @Test
+    void learnEnginePublishesRealRuntimeTracesWithoutFabricatedState() throws IOException {
+        String service = Files.readString(Path.of("src/main/java/com/eyecode/runtime/LessonTraceService.java"));
+        String execution = Files.readString(Path.of("src/main/java/com/eyecode/ui/web/WebShellExecutionController.java"));
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+        String learnContext = Files.readString(Path.of("src/main/web/src/lessons/LearnContextPanel.tsx"));
+        String traceModel = Files.readString(Path.of("src/main/web/src/lessons/lessonTraceModel.ts"));
+        String problems = Files.readString(Path.of("src/main/web/src/diagnostics/ProblemsPanel.tsx"));
+        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+
+        assertTrue(service.contains("com.sun.jdi.Bootstrap"),
+                "the trace must come from a real debugged execution, never a parallel interpreter");
+        assertTrue(service.contains("\"javac\", \"-encoding\", \"UTF-8\", \"-g\""),
+                "the traced compile must keep local variable tables for real capture");
+        assertTrue(service.contains("DEFAULT_TIMEOUT_MS") && service.contains("DEFAULT_MAX_STEPS"),
+                "the traced execution must have hard limits");
+        assertTrue(service.contains("machine.exit(1)"),
+                "timeout and stop must really kill the traced process");
+        assertTrue(execution.contains("surface.registerHandler(\"run\", \"trace\", this::trace)"),
+                "the trace must be requested through the run channel");
+        assertTrue(execution.contains("WebShellEnvelope.event(\"run\", \"trace\", tracePayload(trace))"),
+                "the completed trace must be published as a run event");
+        assertTrue(execution.contains("traceService.close()"),
+                "the trace service lifecycle must follow the controller");
+        assertTrue(workspace.contains("bridge.request<{ started: boolean }>('run', 'trace', payload)"),
+                "lesson runs must also request the traced execution");
+        assertTrue(workspace.contains("setLessonTrace(event.payload as LessonTracePayload)"),
+                "the frontend must consume the published trace");
+        assertTrue(learnContext.contains("Fonte: runtime — valores capturados durante a execução real da lição."),
+                "every runtime visualization must declare its data source");
+        assertTrue(traceModel.contains("variablesLeavingScope") && traceModel.contains("variableChanges"),
+                "the variables tab must derive before/after state from the real trace");
+        assertTrue(problems.contains("highlightLearningJavaSource"),
+                "education code blocks must reuse the shared highlighter instead of a second system");
+        assertTrue(styles.contains(".learn-trace-source"),
+                "the data source label must be styled");
+        assertEquals(1, occurrences(workspace, "<MonacoHost"),
+                "the engine must not create a second editor host");
+    }
+
+    @Test
     void learnUsesTheGlobalToolbarAndBottomBreadcrumbsWithoutAddingAnEditorHeader() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String toolbar = Files.readString(Path.of("src/main/web/src/workspace/TopToolbar.tsx"));
