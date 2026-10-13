@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LessonDescriptor, LessonsCatalog } from './protocol';
-import { availableLessons, buildLearnExplorer, filterLearnExplorer, findLessonLocation, isPracticeLesson, learnExplorerTotals, lessonStatus, nextAvailableLesson } from './learnExplorerModel';
+import { availableLessons, buildLearnExplorer, filterLearnExplorer, findLessonLocation, isPracticeLesson, learnExplorerTotals, lessonStatus, nextAvailableLesson, withoutCompletedLessons } from './learnExplorerModel';
 
 function lesson(id: string, overrides: Partial<LessonDescriptor> = {}): LessonDescriptor {
   return {
@@ -109,6 +109,15 @@ describe('buildLearnExplorer', () => {
     expect(model[1].available).toBe(0);
   });
 
+  it('conta apenas as aulas concluídas como progresso', () => {
+    const model = buildLearnExplorer(catalog, { completedLessonId: 'java.practice' });
+    expect(model[0].completed).toBe(1);
+    expect(model[0].topics[0].completed).toBe(1);
+    expect(model[0].topics[1].completed).toBe(0);
+    expect(model[1].completed).toBe(0);
+    expect(buildLearnExplorer(catalog)[0].completed).toBe(0);
+  });
+
   it('deriva o status de cada aula a partir da sessão atual', () => {
     const model = buildLearnExplorer(catalog, { selectedLessonId: 'java.theory', completedLessonId: 'java.practice' });
     const lessons = model[0].topics[0].lessons;
@@ -144,8 +153,10 @@ describe('availableLessons', () => {
 });
 
 describe('learnExplorerTotals', () => {
-  it('soma aulas e tópicos de toda a árvore', () => {
-    expect(learnExplorerTotals(buildLearnExplorer(catalog))).toEqual({ total: 4, available: 2, topics: 3 });
+  it('soma aulas, disponíveis, concluídas e tópicos de toda a árvore', () => {
+    expect(learnExplorerTotals(buildLearnExplorer(catalog))).toEqual({ total: 4, available: 2, completed: 0, topics: 3 });
+    expect(learnExplorerTotals(buildLearnExplorer(catalog, { completedLessonId: 'java.practice' })))
+      .toEqual({ total: 4, available: 2, completed: 1, topics: 3 });
   });
 });
 
@@ -183,5 +194,41 @@ describe('filterLearnExplorer', () => {
     const filtered = filterLearnExplorer(buildLearnExplorer(catalog), 'java');
     expect(filtered).toHaveLength(1);
     expect(filtered[0].topics[0].lessons).toHaveLength(3);
+  });
+
+  it('recalcula as contagens de concluídas após filtrar', () => {
+    const filtered = filterLearnExplorer(
+      buildLearnExplorer(catalog, { completedLessonId: 'java.theory' }), 'java.theory');
+    expect(filtered[0].completed).toBe(1);
+    expect(filtered[0].topics[0].completed).toBe(1);
+  });
+});
+
+describe('withoutCompletedLessons', () => {
+  it('oculta as aulas concluídas preservando hierarquia e contagens', () => {
+    const visible = withoutCompletedLessons(buildLearnExplorer(catalog, { completedLessonId: 'java.practice' }));
+    expect(visible[0].topics[0].lessons.map(entry => entry.lesson.id)).toEqual(['java.theory', 'java.soon']);
+    expect(visible[0].topics[0]).toMatchObject({ total: 3, available: 2, completed: 1 });
+    expect(visible[0]).toMatchObject({ total: 3, available: 2, completed: 1 });
+  });
+
+  it('mantém tópicos e categorias mesmo quando todas as aulas estão concluídas', () => {
+    const single = buildLearnExplorer({
+      categories: [{
+        id: 'x', title: 'X', description: '', topics: [{
+          id: 'x.t', title: 'T', description: '', categoryId: 'x', roadmapSections: [], lessons: [lesson('x.l')]
+        }]
+      }]
+    }, { completedLessonId: 'x.l' });
+    const visible = withoutCompletedLessons(single);
+    expect(visible).toHaveLength(1);
+    expect(visible[0].topics).toHaveLength(1);
+    expect(visible[0].topics[0].lessons).toHaveLength(0);
+    expect(visible[0].topics[0]).toMatchObject({ total: 1, completed: 1 });
+  });
+
+  it('mantém a árvore intacta quando nada foi concluído', () => {
+    const model = buildLearnExplorer(catalog);
+    expect(withoutCompletedLessons(model)).toEqual(model);
   });
 });

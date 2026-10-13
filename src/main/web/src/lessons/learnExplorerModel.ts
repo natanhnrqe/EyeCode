@@ -14,6 +14,7 @@ export type LearnExplorerTopic = {
   lessons: LearnExplorerLesson[];
   total: number;
   available: number;
+  completed: number;
 };
 
 export type LearnExplorerCategory = {
@@ -21,6 +22,7 @@ export type LearnExplorerCategory = {
   topics: LearnExplorerTopic[];
   total: number;
   available: number;
+  completed: number;
 };
 
 export type LearnExplorerModelOptions = {
@@ -46,6 +48,22 @@ export function learnLessonPath(category: LearningCategory, topic: LearningTopic
   return [category.title, topic.title, lesson.title];
 }
 
+function summarizeLessons(lessons: LearnExplorerLesson[]): { total: number; available: number; completed: number } {
+  return {
+    total: lessons.length,
+    available: lessons.filter(entry => entry.lesson.executable).length,
+    completed: lessons.filter(entry => entry.status === 'completed').length
+  };
+}
+
+function summarizeTopics(topics: LearnExplorerTopic[]): { total: number; available: number; completed: number } {
+  return {
+    total: topics.reduce((sum, topic) => sum + topic.total, 0),
+    available: topics.reduce((sum, topic) => sum + topic.available, 0),
+    completed: topics.reduce((sum, topic) => sum + topic.completed, 0)
+  };
+}
+
 export function buildLearnExplorer(catalog: LessonsCatalog, options: LearnExplorerModelOptions = {}): LearnExplorerCategory[] {
   const selectedLessonId = options.selectedLessonId ?? null;
   const completedLessonId = options.completedLessonId ?? null;
@@ -57,19 +75,9 @@ export function buildLearnExplorer(catalog: LessonsCatalog, options: LearnExplor
         practice: isPracticeLesson(lesson),
         status: lessonStatus(lesson, selectedLessonId, completedLessonId)
       }));
-      return {
-        topic,
-        lessons,
-        total: lessons.length,
-        available: lessons.filter(entry => entry.lesson.executable).length
-      };
+      return { topic, lessons, ...summarizeLessons(lessons) };
     });
-    return {
-      category,
-      topics,
-      total: topics.reduce((sum, topic) => sum + topic.total, 0),
-      available: topics.reduce((sum, topic) => sum + topic.available, 0)
-    };
+    return { category, topics, ...summarizeTopics(topics) };
   });
 }
 
@@ -89,14 +97,15 @@ export function availableLessons(value: LearningCategory | LearningTopic): numbe
   return topics.flatMap(topic => topic.lessons).filter(lesson => lesson.executable).length;
 }
 
-export type LearnExplorerTotals = { total: number; available: number; topics: number };
+export type LearnExplorerTotals = { total: number; available: number; completed: number; topics: number };
 
 export function learnExplorerTotals(model: LearnExplorerCategory[]): LearnExplorerTotals {
   return model.reduce<LearnExplorerTotals>((totals, category) => ({
     total: totals.total + category.total,
     available: totals.available + category.available,
+    completed: totals.completed + category.completed,
     topics: totals.topics + category.topics.length
-  }), { total: 0, available: 0, topics: 0 });
+  }), { total: 0, available: 0, completed: 0, topics: 0 });
 }
 
 export function nextAvailableLesson(
@@ -125,15 +134,20 @@ export function filterLearnExplorer(model: LearnExplorerCategory[], query: strin
         || entry.lesson.description.toLocaleLowerCase('pt-BR').includes(needle)
         || entry.lesson.concepts.some(concept => concept.toLocaleLowerCase('pt-BR').includes(needle)));
       if (!lessons.length) continue;
-      topics.push({ topic: topic.topic, lessons, total: lessons.length, available: lessons.filter(entry => entry.lesson.executable).length });
+      topics.push({ topic: topic.topic, lessons, ...summarizeLessons(lessons) });
     }
     if (!topics.length) continue;
-    categories.push({
-      category: category.category,
-      topics,
-      total: topics.reduce((sum, topic) => sum + topic.total, 0),
-      available: topics.reduce((sum, topic) => sum + topic.available, 0)
-    });
+    categories.push({ category: category.category, topics, ...summarizeTopics(topics) });
   }
   return categories;
+}
+
+export function withoutCompletedLessons(model: LearnExplorerCategory[]): LearnExplorerCategory[] {
+  return model.map(category => ({
+    ...category,
+    topics: category.topics.map(topic => ({
+      ...topic,
+      lessons: topic.lessons.filter(entry => entry.status !== 'completed')
+    }))
+  }));
 }

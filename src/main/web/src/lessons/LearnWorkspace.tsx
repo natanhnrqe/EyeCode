@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { EyeCodeIcon } from '../workspace/EyeCodeIcon';
 import type { LearningCategory, LearningTopic, LessonDescriptor, LessonFile, LessonsCatalog } from './protocol';
-import { availableLessons, buildLearnExplorer, filterLearnExplorer, findLessonLocation, learnExplorerTotals, nextAvailableLesson, type LearnExplorerCategory, type LearnExplorerLesson, type LearnExplorerTopic } from './learnExplorerModel';
+import { availableLessons, buildLearnExplorer, filterLearnExplorer, findLessonLocation, learnExplorerTotals, nextAvailableLesson, withoutCompletedLessons, type LearnExplorerCategory, type LearnExplorerLesson, type LearnExplorerTopic } from './learnExplorerModel';
 
 export type LearnNavigationState =
   | { screen: 'HOME' }
@@ -55,6 +55,7 @@ export function LearnExplorer({ catalog, activeTrackId = null, selectedLessonId 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => new Set());
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState('');
+  const [hideCompleted, setHideCompleted] = useState(false);
 
   useEffect(() => {
     if (!activeTrackId) return;
@@ -71,6 +72,7 @@ export function LearnExplorer({ catalog, activeTrackId = null, selectedLessonId 
 
   const model = useMemo(() => catalog ? buildLearnExplorer(catalog, { selectedLessonId, completedLessonId }) : [], [catalog, selectedLessonId, completedLessonId]);
   const filtered = useMemo(() => filterLearnExplorer(model, query), [model, query]);
+  const visible = useMemo(() => hideCompleted ? withoutCompletedLessons(filtered) : filtered, [filtered, hideCompleted]);
   const totals = useMemo(() => learnExplorerTotals(model), [model]);
   const scope = useMemo(() => activeTrackId ? model.filter(entry => entry.category.id === activeTrackId) : model, [model, activeTrackId]);
   const scopeTotals = useMemo(() => learnExplorerTotals(scope), [scope]);
@@ -79,7 +81,9 @@ export function LearnExplorer({ catalog, activeTrackId = null, selectedLessonId 
   const expandedIds = new Set([...expandedCategories, ...expandedTopics]);
   const trackIds = model.flatMap(entry => [entry.category.id, ...entry.topics.map(topic => topic.topic.id)]);
   const allExpanded = trackIds.length > 0 && trackIds.every(id => expandedIds.has(id));
-  const progressPercent = scopeTotals.total ? Math.round((scopeTotals.available / scopeTotals.total) * 100) : 0;
+  const progressPercent = scopeTotals.total ? Math.round((scopeTotals.completed / scopeTotals.total) * 100) : 0;
+  const progressCaption = next ? `Próxima: ${next.lesson.title}` : scopeTotals.available > 0 ? 'Trilha concluída' : 'Nenhuma aula disponível';
+  const emptyMessage = searching ? 'Nenhuma aula corresponde à busca.' : 'Nenhuma aula disponível.';
   const journeyTitle = activeTrackId ? (model.find(entry => entry.category.id === activeTrackId)?.category.title ?? 'Catálogo de aulas') : 'Catálogo de aulas';
 
   function toggle(setter: (update: (current: Set<string>) => Set<string>) => void, id: string) {
@@ -111,11 +115,11 @@ export function LearnExplorer({ catalog, activeTrackId = null, selectedLessonId 
       <span className="learn-explorer-course" title="Linguagem da trilha">Java</span>
     </header>
     <div className="learn-explorer-progress" aria-label="Resumo da trilha">
-      <div className="learn-explorer-progress-top"><strong>{journeyTitle}</strong><span>{scopeTotals.available} de {scopeTotals.total} aulas</span></div>
+      <div className="learn-explorer-progress-top"><strong>{journeyTitle}</strong><span>{progressPercent}% concluído</span></div>
       <div className="learn-explorer-progress-track" role="presentation"><span style={{ width: `${progressPercent}%` }} /></div>
       <div className="learn-explorer-progress-caption">
-        <span>{scopeTotals.topics === 1 ? '1 tópico' : `${scopeTotals.topics} tópicos`}</span>
-        <span>{next ? `Próxima: ${next.lesson.title}` : 'Trilha concluída'}</span>
+        <span>{scopeTotals.completed} de {scopeTotals.total} aulas</span>
+        <span>{progressCaption}</span>
       </div>
     </div>
     <div className="learn-explorer-tools">
@@ -123,16 +127,20 @@ export function LearnExplorer({ catalog, activeTrackId = null, selectedLessonId 
         <span aria-hidden="true">⌕</span>
         <input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar aula ou conceito…" aria-label="Buscar aula ou conceito" />
       </label>
+      <button type="button" className={`learn-explorer-filter${hideCompleted ? ' is-active' : ''}`} onClick={() => setHideCompleted(value => !value)}
+        aria-pressed={hideCompleted} title="Alternar aulas concluídas" aria-label="Alternar aulas concluídas"><span aria-hidden="true">☷</span></button>
     </div>
-    <div className="learn-explorer-scroll" role="tree" aria-label="Trilha de aprendizado">
+    <div className="learn-explorer-scroll">
       <div className="learn-explorer-section-label"><span>Trilha de aprendizado</span><span>{totals.total} aulas</span></div>
       {!catalog && <p className="learn-navigation-loading">Carregando aulas...</p>}
-      {catalog && filtered.length === 0 && <p className="learn-explorer-empty">Nenhuma aula corresponde à busca.</p>}
-      {filtered.map((entry, index) => <CategoryNode key={entry.category.id} entry={entry} index={index}
-        expanded={searching || expandedCategories.has(entry.category.id)} onToggle={() => toggle(setExpandedCategories, entry.category.id)}
-        expandedTopics={expandedTopics} searching={searching} onToggleTopic={id => toggle(setExpandedTopics, id)}
-        selectedLessonId={selectedLessonId} files={files} activeFileId={activeFileId}
-        activeCategoryId={activeTrackId} onOpenFile={onOpenFile} onOpenLesson={onOpenLesson} />)}
+      {catalog && visible.length === 0 && <p className="learn-explorer-empty">{emptyMessage}</p>}
+      <div className="learn-explorer-tree" role="tree" aria-label="Trilha de aprendizado">
+        {visible.map((entry, index) => <CategoryNode key={entry.category.id} entry={entry} index={index}
+          expanded={searching || expandedCategories.has(entry.category.id)} onToggle={() => toggle(setExpandedCategories, entry.category.id)}
+          expandedTopics={expandedTopics} searching={searching} onToggleTopic={id => toggle(setExpandedTopics, id)}
+          selectedLessonId={selectedLessonId} files={files} activeFileId={activeFileId}
+          activeCategoryId={activeTrackId} onOpenFile={onOpenFile} onOpenLesson={onOpenLesson} />)}
+      </div>
     </div>
     <div className="learn-explorer-footer">
       <span>Seu ritmo, seu progresso</span>
@@ -159,15 +167,15 @@ type CategoryNodeProps = {
 
 function CategoryNode({ entry, index, expanded, onToggle, expandedTopics, searching, onToggleTopic, selectedLessonId, files, activeFileId, activeCategoryId, onOpenFile, onOpenLesson }: CategoryNodeProps) {
   const active = entry.category.id === activeCategoryId;
-  const complete = entry.total > 0 && entry.available === entry.total;
-  return <section className={`learn-module learn-explorer-category${active ? ' is-active' : ''}${expanded ? ' is-open' : ''}`} role="treeitem" aria-expanded={expanded}>
-    <button type="button" className="learn-module-toggle" onClick={onToggle}>
+  const complete = entry.total > 0 && entry.completed === entry.total;
+  return <section className={`learn-module learn-explorer-category${active ? ' is-active' : ''}${expanded ? ' is-open' : ''}`} role="treeitem" aria-expanded={expanded} aria-level={1}>
+    <button type="button" className="learn-module-toggle" onClick={onToggle} aria-expanded={expanded}>
       <span className="learn-module-chevron" aria-hidden="true">›</span>
       <span className="learn-module-icon" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
       <span className="learn-module-name"><strong>{entry.category.title}</strong><small>{entry.category.description}</small></span>
-      <span className={`learn-module-status${complete ? ' is-complete' : ''}`}>{entry.available}/{entry.total}</span>
+      <span className={`learn-module-status${complete ? ' is-complete' : ''}`}>{entry.completed}/{entry.total}</span>
     </button>
-    {expanded && <div className="learn-module-body">
+    {expanded && <div className="learn-module-body" role="group">
       {entry.topics.map(topicEntry => <TopicNode key={topicEntry.topic.id} entry={topicEntry}
         expanded={searching || expandedTopics.has(topicEntry.topic.id)} onToggle={() => onToggleTopic(topicEntry.topic.id)}
         selectedLessonId={selectedLessonId} files={files} activeFileId={activeFileId}
@@ -188,13 +196,13 @@ type TopicNodeProps = {
 };
 
 function TopicNode({ entry, expanded, onToggle, selectedLessonId, files, activeFileId, onOpenFile, onOpenLesson }: TopicNodeProps) {
-  return <div className={`learn-topic-group learn-explorer-topic${expanded ? ' is-open' : ''}`} role="treeitem" aria-expanded={expanded}>
-    <button type="button" className="learn-topic-toggle" onClick={onToggle}>
+  return <div className={`learn-topic-group learn-explorer-topic${expanded ? ' is-open' : ''}`} role="treeitem" aria-expanded={expanded} aria-level={2}>
+    <button type="button" className="learn-topic-toggle" onClick={onToggle} aria-expanded={expanded}>
       <span className="learn-topic-chevron" aria-hidden="true">›</span>
       <span className="learn-topic-title">{entry.topic.title}</span>
-      <span className="learn-explorer-count">{entry.available}/{entry.total}</span>
+      <span className="learn-explorer-count">{entry.completed}/{entry.total}</span>
     </button>
-    {expanded && <div className="learn-explorer-lessons">
+    {expanded && <div className="learn-explorer-lessons" role="group">
       {entry.lessons.map((lessonEntry, index) => <LessonNode key={lessonEntry.lesson.id} entry={lessonEntry} index={index}
         selected={selectedLessonId === lessonEntry.lesson.id} files={files} activeFileId={activeFileId}
         onOpenFile={onOpenFile} onOpenLesson={onOpenLesson} />)}
@@ -220,7 +228,7 @@ function LessonNode({ entry, index, selected, files, activeFileId, onOpenFile, o
   const number = done ? '✓' : soon ? '⌑' : `${index + 1}`;
   const className = `learn-explorer-lesson${selected ? ' is-active' : ''}${done ? ' is-done' : ''}${soon ? ' is-soon' : ''}`;
   return <>
-    <button type="button" className={className} disabled={!lesson.executable} aria-current={selected ? 'true' : undefined}
+    <button type="button" role="treeitem" aria-level={3} aria-selected={selected} className={className} disabled={!lesson.executable}
       onClick={() => onOpenLesson(lesson, path)}>
       <span className="learn-explorer-lesson-number" aria-hidden="true">{number}</span>
       <span className="learn-explorer-lesson-title">{lesson.title}</span>

@@ -468,6 +468,41 @@ class WebShellSharedShellSourceTest {
     }
 
     @Test
+    void learnExplorerReportsHonestProgressAndAccessibleTreeSemantics() throws IOException {
+        String model = Files.readString(Path.of("src/main/web/src/lessons/learnExplorerModel.ts"));
+        String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
+        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+
+        assertTrue(model.contains("export function withoutCompletedLessons"),
+                "hiding completed lessons must be derived by the pure model");
+        assertTrue(model.contains("entry.status !== 'completed'"),
+                "the completed-lesson filter must drop completed lessons only");
+        assertTrue(model.contains("entry.status === 'completed'"),
+                "progress counters must count completed lessons, never executable ones");
+        assertTrue(learnWorkspace.contains("withoutCompletedLessons(filtered)"),
+                "the explorer must compose the completed-lesson filter with the search filter");
+        assertTrue(learnWorkspace.contains("aria-pressed={hideCompleted}"),
+                "the completed-lesson filter must expose its toggle state");
+        assertTrue(styles.contains(".learn-explorer-filter"),
+                "the completed-lesson filter must be styled");
+        assertTrue(learnWorkspace.contains("scopeTotals.completed / scopeTotals.total"),
+                "the progress percentage must derive from completed lessons, not from executable ones");
+        assertFalse(learnWorkspace.contains("scopeTotals.available / scopeTotals.total"),
+                "unlocked lessons must never be reported as course progress");
+        assertTrue(learnWorkspace.contains("% concluído"),
+                "the progress card must show the completion percentage");
+        assertTrue(learnWorkspace.contains("de {scopeTotals.total} aulas"),
+                "the progress caption must show the completed lesson count");
+        assertTrue(learnWorkspace.contains("role=\"tree\"") && learnWorkspace.contains("role=\"group\""),
+                "the explorer tree must nest each level inside a group");
+        assertTrue(learnWorkspace.contains("aria-level={1}") && learnWorkspace.contains("aria-level={2}")
+                        && learnWorkspace.contains("aria-level={3}"),
+                "the explorer tree must expose the depth of every level");
+        assertTrue(learnWorkspace.contains("aria-selected={selected}"),
+                "the active lesson must expose its selection state");
+    }
+
+    @Test
     void learnUsesTheGlobalToolbarAndBottomBreadcrumbsWithoutAddingAnEditorHeader() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String toolbar = Files.readString(Path.of("src/main/web/src/workspace/TopToolbar.tsx"));
