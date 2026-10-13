@@ -30,4 +30,10 @@ public final class DiagnosticsEducationService {
                 .filter(explainer -> explainer != null)
                 .flatMap(explainer -> explainer.explain(diagnostic));
     }
+
+    public Optional<DiagnosticEducation> explain(LanguageId language, Diagnostic diagnostic) {
+        if (language == null || diagnostic == null) return Optional.empty();
+        DiagnosticExplainer explainer = explainers.get(language);
+        return explainer == null ? Optional.empty() : explainer.explain(diagnostic);
+    }
 }

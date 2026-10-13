@@ -106,7 +106,7 @@ public final class WebShellWorkspaceComposition {
         WebShellLessonsController lessonsController = new WebShellLessonsController(surface);
         new WebShellDocumentationController(surface);
         WebShellNavigationController navigationController = new WebShellNavigationController(surface, editorManager, jdt);
-        WebShellJdtDiagnosticsController jdtDiagnosticsController = new WebShellJdtDiagnosticsController(surface, jdt);
+        WebShellJdtDiagnosticsController jdtDiagnosticsController = new WebShellJdtDiagnosticsController(surface, jdt, education);
         WebShellChallengesController challengesController = new WebShellChallengesController(surface,
                 new com.eyecode.challenge.ChallengeWorkspaceService());
         completionController.setResolveGateway(jdt::resolveCompletion);

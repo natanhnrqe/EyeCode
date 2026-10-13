@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { EyeCodeIcon } from '../workspace/EyeCodeIcon';
+import { highlightLearningJavaSource } from '../learning/highlightJava';
 import type { DiagnosticsViewState, WebDiagnostic } from './protocol';
 
 type DocumentLabel = { uri: string; displayName: string };
@@ -12,6 +13,7 @@ type Props = {
   selectedKey?: string | null;
   onSelectProblem?(problem: Problem): void;
   onUnderstand?(): void;
+  onOpenRelated?(id: string): void;
 };
 
 const rank = (diagnostic: WebDiagnostic): number => diagnostic.severity === 'ERROR' ? 0
@@ -26,13 +28,13 @@ export function toProblems(state: DiagnosticsViewState | null, documents: Docume
     || first.startLine - second.startLine || first.startColumn - second.startColumn);
 }
 
-export function ProblemsPanel({ state, documents, onNavigate, learnMode = false, selectedKey, onSelectProblem, onUnderstand }: Props) {
+export function ProblemsPanel({ state, documents, onNavigate, learnMode = false, selectedKey, onSelectProblem, onUnderstand, onOpenRelated }: Props) {
   const problems = toProblems(state, documents);
   if (!problems.length) return <div className="problems-empty">{learnMode ? <><strong>Nenhum problema encontrado</strong><span>Seu código está pronto para continuar.</span></> : 'No problems detected'}</div>;
   if (!learnMode) return <div className="problems-list" role="list">{problems.map(problem => <ProblemRow key={problem.key} problem={problem} onNavigate={onNavigate} />)}</div>;
   const selected = problems.find(problem => problem.key === selectedKey) ?? problems[0];
   const select = (problem: Problem) => { onSelectProblem?.(problem); onNavigate(problem.uri, problem); };
-  return <LearnProblemsExperience problems={problems} selected={selected} onSelect={select} onUnderstand={onUnderstand} />;
+  return <LearnProblemsExperience problems={problems} selected={selected} onSelect={select} onUnderstand={onUnderstand} onOpenRelated={onOpenRelated} />;
 }
 
 function ProblemRow({ problem, onNavigate }: { problem: Problem; onNavigate(uri: string, diagnostic: WebDiagnostic): void }) {
@@ -41,10 +43,14 @@ function ProblemRow({ problem, onNavigate }: { problem: Problem; onNavigate(uri:
   </button>;
 }
 
-function LearnProblemsExperience({ problems, selected, onSelect, onUnderstand }: { problems: Problem[]; selected: Problem; onSelect(problem: Problem): void; onUnderstand?: () => void }) {
+function LearnProblemsExperience({ problems, selected, onSelect, onUnderstand, onOpenRelated }: {
+  problems: Problem[]; selected: Problem; onSelect(problem: Problem): void; onUnderstand?(): void; onOpenRelated?(id: string): void;
+}) {
   const [exampleOpen, setExampleOpen] = useState(false);
   useEffect(() => setExampleOpen(false), [selected.key]);
   const education = selected.education;
+  const patternHtml = useMemo(() => education?.pattern ? highlightLearningJavaSource(education.pattern) : '', [education?.pattern]);
+  const correctedHtml = useMemo(() => education?.correctedPattern ? highlightLearningJavaSource(education.correctedPattern) : '', [education?.correctedPattern]);
   return <div className="learn-problems-experience">
     {problems.length > 1 && <nav className="learn-problem-selector" aria-label="Problemas encontrados">{problems.map((problem, index) => <button type="button" key={problem.key} className={problem.key === selected.key ? 'is-selected' : ''} aria-current={problem.key === selected.key ? 'true' : undefined} onClick={() => onSelect(problem)}><span className={`severity-dot severity-${problem.severity.toLowerCase()}`} />{problem.startLine}:{problem.startColumn} · {problem.education?.title ?? problem.message}<small>{index + 1} de {problems.length}</small></button>)}</nav>}
     <div className="learn-problems-grid">
@@ -55,11 +61,17 @@ function LearnProblemsExperience({ problems, selected, onSelect, onUnderstand }:
         {selected.sourceExcerpt && <SourceExcerpt excerpt={selected.sourceExcerpt} />}
         {education?.explanation && <p className="learn-problem-short-explanation">{education.explanation}</p>}
         <div className="learn-problem-actions">{education && onUnderstand && <button type="button" className="primary-action" onClick={onUnderstand}>Entender este erro</button>}{education?.correctedPattern && <button type="button" onClick={() => setExampleOpen(open => !open)}>{exampleOpen ? 'Ocultar exemplo' : 'Ver exemplo parecido'}</button>}</div>
-        {exampleOpen && education?.correctedPattern && <pre className="learn-problem-example"><code>{education.correctedPattern}</code></pre>}
+        {exampleOpen && education?.correctedPattern && <pre className="learn-problem-example"><code className="language-java" dangerouslySetInnerHTML={{ __html: correctedHtml }} /></pre>}
         <details className="learn-problem-technical"><summary>Detalhes técnicos</summary><dl><div><dt>Mensagem</dt><dd>{selected.message}</dd></div><div><dt>Localização</dt><dd>linha {selected.startLine}, coluna {selected.startColumn}</dd></div>{selected.code && <div><dt>Código</dt><dd>{selected.code}</dd></div>}</dl></details>
       </section>
-      <section className="learn-problem-card learn-problem-explanation"><header><EyeCodeIcon name="documentation" /><span>Explicação simples</span></header>{education ? <><p>{education.explanation}</p>{education.pattern && <pre className="learn-problem-pattern"><code>{education.pattern}</code></pre>}{education.tip && <aside className="learn-problem-tip"><strong>💡 Dica</strong><span>{education.tip}</span></aside>}</> : <p>Uma explicação pedagógica ainda não está disponível para este diagnóstico. Use os detalhes técnicos e a localização para investigar o código.</p>}</section>
-      <aside className="learn-problem-card learn-problem-related"><header><span>Conteúdo relacionado</span></header>{education?.relatedContent.length ? <ul>{education.relatedContent.map(item => <li key={item.id}><button type="button" onClick={onUnderstand}><strong>{item.title}</strong><span>{item.description}</span></button></li>)}</ul> : <p>Não há conteúdo relacionado disponível para este diagnóstico.</p>}</aside>
+      <section className="learn-problem-card learn-problem-explanation"><header><EyeCodeIcon name="documentation" /><span>Explicação simples</span></header>{education ? <><p>{education.explanation}</p>{education.pattern && <pre className="learn-problem-pattern"><code className="language-java" dangerouslySetInnerHTML={{ __html: patternHtml }} /></pre>}{education.tip && <aside className="learn-problem-tip"><strong>💡 Dica</strong><span>{education.tip}</span></aside>}</> : <p>Uma explicação pedagógica ainda não está disponível para este diagnóstico. Use os detalhes técnicos e a localização para investigar o código.</p>}</section>
+      <aside className="learn-problem-card learn-problem-related"><header><span>Conteúdo relacionado</span></header>{education?.relatedContent.length
+        ? <ul>{education.relatedContent.map(item => <li key={item.id}>
+          {onOpenRelated
+            ? <button type="button" onClick={() => onOpenRelated(item.id)} title={`Abrir "${item.title}"`}><strong>{item.title}</strong><span>{item.description}</span></button>
+            : <><strong>{item.title}</strong><span>{item.description}</span></>}
+        </li>)}</ul>
+        : <p>Não há conteúdo relacionado disponível para este diagnóstico.</p>}</aside>
     </div>
   </div>;
 }

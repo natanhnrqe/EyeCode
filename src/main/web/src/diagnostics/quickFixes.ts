@@ -1,5 +1,5 @@
 import type { MonacoCodeAction, MonacoMarker, MonacoRange } from '../monaco/api';
-import type { WebDiagnostic } from './protocol';
+import type { DiagnosticEducation, WebDiagnostic } from './protocol';
 
 export type JdtQuickFixEdit = {
   startLine: number;
@@ -23,6 +23,7 @@ export type JdtPublishedDiagnostic = {
   code: string;
   message: string;
   source: string;
+  education?: DiagnosticEducation;
 };
 
 export type JdtPublishEvent = { uri: string; diagnostics: JdtPublishedDiagnostic[] };
@@ -35,7 +36,8 @@ export function jdtWebDiagnostics(diagnostics: readonly JdtPublishedDiagnostic[]
     startLine: diagnostic.range.startLine,
     startColumn: diagnostic.range.startColumn,
     endLine: diagnostic.range.endLine,
-    endColumn: diagnostic.range.endColumn
+    endColumn: diagnostic.range.endColumn,
+    education: diagnostic.education
   }));
 }
 
@@ -239,7 +241,7 @@ function parseQuickFixEdit(value: unknown): JdtQuickFixEdit | null {
 
 function parseJdtDiagnostic(value: unknown): JdtPublishedDiagnostic | null {
   if (!value || typeof value !== 'object') return null;
-  const record = value as { range?: unknown; severity?: unknown; code?: unknown; message?: unknown; source?: unknown };
+  const record = value as { range?: unknown; severity?: unknown; code?: unknown; message?: unknown; source?: unknown; education?: unknown };
   const range = parseRange(record.range);
   if (!range) return null;
   const severity = typeof record.severity === 'string' && SEVERITIES.includes(record.severity as JdtPublishedDiagnostic['severity'])
@@ -250,7 +252,30 @@ function parseJdtDiagnostic(value: unknown): JdtPublishedDiagnostic | null {
     severity,
     code: typeof record.code === 'string' ? record.code : '',
     message: typeof record.message === 'string' ? record.message : '',
-    source: typeof record.source === 'string' && record.source.length > 0 ? record.source : 'jdt'
+    source: typeof record.source === 'string' && record.source.length > 0 ? record.source : 'jdt',
+    education: parseJdtEducation(record.education)
+  };
+}
+
+function parseJdtEducation(value: unknown): DiagnosticEducation | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const record = value as Record<string, unknown>;
+  if (typeof record.title !== 'string') return undefined;
+  const related = Array.isArray(record.relatedContent)
+    ? record.relatedContent.filter((item): item is { id: string; title: string; description: string } =>
+      !!item && typeof item === 'object'
+      && typeof (item as { id?: unknown }).id === 'string'
+      && typeof (item as { title?: unknown }).title === 'string'
+      && typeof (item as { description?: unknown }).description === 'string')
+    : [];
+  return {
+    title: record.title,
+    summary: typeof record.summary === 'string' ? record.summary : '',
+    explanation: typeof record.explanation === 'string' ? record.explanation : '',
+    pattern: typeof record.pattern === 'string' ? record.pattern : '',
+    correctedPattern: typeof record.correctedPattern === 'string' ? record.correctedPattern : '',
+    tip: typeof record.tip === 'string' ? record.tip : '',
+    relatedContent: related
   };
 }
 

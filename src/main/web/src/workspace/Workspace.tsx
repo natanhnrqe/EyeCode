@@ -871,7 +871,8 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
     }
     if (paneId === 'bottom') return learnMode ? <LearnContextPanel active={learnContextTab} output={runOutput} runState={runState} diagnostics={diagnostics} documents={documents}
       trace={lessonTrace} capturing={lessonTraceCapturing} onSelect={selectLearnContextTab}
-      onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} /> : <BottomPanel active={bottomPanel} output={runOutput} runState={runState} terminalState={terminalState}
+      onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)}
+      onOpenRelated={id => { void openDocumentationPage(id).then(opened => { if (opened) setDocsFullscreen(true); }); }} /> : <BottomPanel active={bottomPanel} output={runOutput} runState={runState} terminalState={terminalState}
       diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />;
     if (paneId === 'lesson') {

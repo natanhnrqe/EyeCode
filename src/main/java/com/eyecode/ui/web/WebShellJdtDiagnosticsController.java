@@ -1,8 +1,12 @@
 package com.eyecode.ui.web;
 
+import com.eyecode.language.LanguageId;
 import com.eyecode.language.diagnostics.Diagnostic;
+import com.eyecode.language.diagnostics.DiagnosticEducation;
+import com.eyecode.language.diagnostics.DiagnosticsEducationService;
 import com.eyecode.language.diagnostics.QuickFix;
 import com.eyecode.language.diagnostics.QuickFixEdit;
+import com.eyecode.language.diagnostics.DiagnosticRelatedContent;
 import com.eyecode.language.java.lsp.JdtLsProjectDiagnostics;
 import com.eyecode.language.java.lsp.JdtLsProjectService;
 import com.eyecode.ui.web.monaco.MonacoModelId;
@@ -20,13 +24,20 @@ public final class WebShellJdtDiagnosticsController {
 
     private final WebShellSurface surface;
     private final JdtLsProjectService jdt;
+    private final DiagnosticsEducationService education;
     private final ThreadPoolExecutor quickFixExecutor;
     private final ThreadPoolExecutor syncExecutor;
     private volatile boolean disposed;
 
     WebShellJdtDiagnosticsController(WebShellSurface surface, JdtLsProjectService jdt) {
+        this(surface, jdt, null);
+    }
+
+    WebShellJdtDiagnosticsController(WebShellSurface surface, JdtLsProjectService jdt,
+                                      DiagnosticsEducationService education) {
         this.surface = surface;
         this.jdt = jdt;
+        this.education = education;
         this.quickFixExecutor = singleThreadExecutor("eyecode-jdt-diagnostics");
         this.syncExecutor = singleThreadExecutor("eyecode-jdt-sync");
         surface.registerHandler("diagnostics", "quickFix", this::quickFix);
@@ -107,7 +118,47 @@ public final class WebShellJdtDiagnosticsController {
         if (disposed || uri == null || uri.isBlank()) return;
         surface.send(WebShellEnvelope.event("diagnostics", "jdtPublish", Map.of(
                 "uri", uri,
-                "diagnostics", diagnostics.stream().map(WebShellJdtDiagnosticsController::payload).toList())));
+                "diagnostics", diagnostics.stream().map(this::payload).toList())));
+    }
+
+    private Map<String, Object> payload(Diagnostic diagnostic) {
+        Map<String, Object> range = new LinkedHashMap<>();
+        range.put("startLine", diagnostic.startLine());
+        range.put("startColumn", diagnostic.startColumn());
+        range.put("endLine", diagnostic.endLine());
+        range.put("endColumn", diagnostic.endColumn());
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("range", range);
+        payload.put("severity", diagnostic.severity().name());
+        payload.put("code", diagnostic.code());
+        payload.put("message", diagnostic.message());
+        payload.put("source", diagnostic.category());
+        if (education != null) {
+            education.explain(LanguageId.JAVA, diagnostic)
+                    .ifPresent(value -> payload.put("education", educationPayload(value)));
+        }
+        return payload;
+    }
+
+    private static Map<String, Object> educationPayload(DiagnosticEducation education) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("title", education.title());
+        payload.put("summary", education.summary());
+        payload.put("explanation", education.explanation());
+        payload.put("pattern", education.pattern());
+        payload.put("correctedPattern", education.correctedPattern());
+        payload.put("tip", education.tip());
+        payload.put("relatedContent", education.relatedContent().stream()
+                .map(WebShellJdtDiagnosticsController::relatedPayload).toList());
+        return payload;
+    }
+
+    private static Map<String, Object> relatedPayload(DiagnosticRelatedContent related) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", related.id());
+        payload.put("title", related.title());
+        payload.put("description", related.description());
+        return payload;
     }
 
     private static Map<String, Object> range(Map<String, Object> payload) {
@@ -133,21 +184,6 @@ public final class WebShellJdtDiagnosticsController {
         payload.put("endLine", edit.endLine());
         payload.put("endColumn", edit.endColumn());
         payload.put("newText", edit.newText());
-        return payload;
-    }
-
-    private static Map<String, Object> payload(Diagnostic diagnostic) {
-        Map<String, Object> range = new LinkedHashMap<>();
-        range.put("startLine", diagnostic.startLine());
-        range.put("startColumn", diagnostic.startColumn());
-        range.put("endLine", diagnostic.endLine());
-        range.put("endColumn", diagnostic.endColumn());
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("range", range);
-        payload.put("severity", diagnostic.severity().name());
-        payload.put("code", diagnostic.code());
-        payload.put("message", diagnostic.message());
-        payload.put("source", diagnostic.category());
         return payload;
     }
 
