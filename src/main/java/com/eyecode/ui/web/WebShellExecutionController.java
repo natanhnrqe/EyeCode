@@ -3,6 +3,8 @@ package com.eyecode.ui.web;
 import com.eyecode.project.ProjectLifecycleService;
 import com.eyecode.project.model.ProjectModel;
 import com.eyecode.runtime.LessonRunRequest;
+import com.eyecode.runtime.LessonTrace;
+import com.eyecode.runtime.LessonTraceService;
 import com.eyecode.runtime.RunConfiguration;
 import com.eyecode.runtime.RunService;
 import com.eyecode.terminal.TerminalService;
@@ -23,6 +25,7 @@ final class WebShellExecutionController implements AutoCloseable {
     private final ProjectLifecycleService projectLifecycleService;
     private final RunService runService;
     private final TerminalService terminalService;
+    private final LessonTraceService traceService;
     private final ProjectLifecycleService.Listener terminalWorkspaceListener;
     private final TerminalService.Listener terminalListener;
     private final RunService.Listener runListener;
@@ -30,10 +33,17 @@ final class WebShellExecutionController implements AutoCloseable {
 
     WebShellExecutionController(WebShellSurface surface, ProjectLifecycleService projectLifecycleService,
                                 RunService runService, TerminalService terminalService) {
+        this(surface, projectLifecycleService, runService, terminalService, new LessonTraceService());
+    }
+
+    WebShellExecutionController(WebShellSurface surface, ProjectLifecycleService projectLifecycleService,
+                                RunService runService, TerminalService terminalService,
+                                LessonTraceService traceService) {
         this.surface = java.util.Objects.requireNonNull(surface, "surface");
         this.projectLifecycleService = java.util.Objects.requireNonNull(projectLifecycleService, "projectLifecycleService");
         this.runService = java.util.Objects.requireNonNull(runService, "runService");
         this.terminalService = java.util.Objects.requireNonNull(terminalService, "terminalService");
+        this.traceService = java.util.Objects.requireNonNull(traceService, "traceService");
         this.terminalWorkspaceListener = project -> {
             terminalService.setWorkspaceDirectory(project == null ? null : project.getRootDir());
             sendTerminalState();
@@ -63,6 +73,8 @@ final class WebShellExecutionController implements AutoCloseable {
         surface.registerHandler("run", "run", this::run);
         surface.registerHandler("run", "rerun", this::rerun);
         surface.registerHandler("run", "stop", this::stop);
+        surface.registerHandler("run", "trace", this::trace);
+        surface.registerHandler("run", "traceStop", this::traceStop);
         surface.registerHandler("run", "selectConfiguration", this::selectRunConfiguration);
         surface.registerHandler("terminal", "show", this::showTerminal);
         surface.registerHandler("terminal", "hide", this::hideTerminal);
@@ -95,8 +107,59 @@ final class WebShellExecutionController implements AutoCloseable {
 
     private WebShellEnvelope stop(WebShellEnvelope message) {
         runService.stop();
+        traceService.stop();
         sendRunState();
         return message.response(Map.of("stopped", true));
+    }
+
+    private WebShellEnvelope trace(WebShellEnvelope message) {
+        boolean started = traceService.trace(lessonRunRequest(message), this::publishTrace);
+        return message.response(Map.of("started", started));
+    }
+
+    private WebShellEnvelope traceStop(WebShellEnvelope message) {
+        traceService.stop();
+        return message.response(Map.of("stopped", true));
+    }
+
+    private void publishTrace(LessonTrace trace) {
+        if (!closed) {
+            surface.send(WebShellEnvelope.event("run", "trace", tracePayload(trace)));
+        }
+    }
+
+    private Map<String, Object> tracePayload(LessonTrace trace) {
+        java.util.LinkedHashMap<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("mainClass", trace.mainClass());
+        payload.put("status", trace.status().name());
+        payload.put("exitCode", trace.exitCode());
+        payload.put("runtimeError", trace.runtimeError() == null ? "" : trace.runtimeError());
+        payload.put("steps", trace.steps().stream()
+                .map(step -> {
+                    java.util.LinkedHashMap<String, Object> stepPayload = new java.util.LinkedHashMap<>();
+                    stepPayload.put("index", step.index());
+                    stepPayload.put("className", step.className());
+                    stepPayload.put("line", step.line());
+                    stepPayload.put("variables", step.variables().stream()
+                            .map(variable -> variablePayload(variable)).toList());
+                    return stepPayload;
+                }).toList());
+        payload.put("output", trace.output().stream()
+                .map(chunk -> Map.of("text", chunk.text(), "error", chunk.error())).toList());
+        payload.put("limitations", trace.limitations());
+        return payload;
+    }
+
+    private Map<String, Object> variablePayload(LessonTrace.Variable variable) {
+        java.util.LinkedHashMap<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("name", variable.name());
+        payload.put("type", variable.type());
+        payload.put("value", variable.value());
+        payload.put("kind", variable.kind());
+        payload.put("children", variable.children().stream()
+                .map(child -> variablePayload(child)).toList());
+        payload.put("truncated", variable.truncated());
+        return payload;
     }
 
     private WebShellEnvelope selectRunConfiguration(WebShellEnvelope message) {
@@ -220,5 +283,6 @@ final class WebShellExecutionController implements AutoCloseable {
         projectLifecycleService.removeListener(terminalWorkspaceListener);
         terminalService.removeListener(terminalListener);
         runService.removeListener(runListener);
+        traceService.close();
     }
 }
