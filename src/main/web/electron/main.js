@@ -15,7 +15,7 @@ function startBackend() {
   return new Promise((resolve, reject) => {
     let launch;
     try {
-      launch = buildBackendLaunch({ repoRoot });
+      launch = buildBackendLaunch({ repoRoot, resourcesPath: process.resourcesPath });
     } catch (error) {
       reject(error);
       return;

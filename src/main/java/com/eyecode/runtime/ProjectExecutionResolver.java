@@ -13,14 +13,20 @@ public final class ProjectExecutionResolver {
 
     private final BuildToolExecutableResolver buildToolResolver;
     private final MavenClasspathResolver mavenClasspathResolver;
+    private final JavaToolchainResolver toolchainResolver;
 
     public ProjectExecutionResolver() {
-        this(new BuildToolExecutableResolver());
+        this(new BuildToolExecutableResolver(), new JavaToolchainResolver());
     }
 
     ProjectExecutionResolver(BuildToolExecutableResolver buildToolResolver) {
+        this(buildToolResolver, new JavaToolchainResolver());
+    }
+
+    ProjectExecutionResolver(BuildToolExecutableResolver buildToolResolver, JavaToolchainResolver toolchainResolver) {
         this.buildToolResolver = buildToolResolver == null ? new BuildToolExecutableResolver() : buildToolResolver;
-        this.mavenClasspathResolver = new MavenClasspathResolver(this.buildToolResolver);
+        this.toolchainResolver = toolchainResolver == null ? new JavaToolchainResolver() : toolchainResolver;
+        this.mavenClasspathResolver = new MavenClasspathResolver(this.buildToolResolver, this.toolchainResolver);
     }
 
     public ResolvedExecution resolve(ProjectModel project) {
@@ -32,11 +38,13 @@ public final class ProjectExecutionResolver {
         Path gradle = existing(root, "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts");
         if (pom.toFile().isFile() && isSpringMaven(pom)) {
             return new ResolvedExecution(ResolvedExecution.Kind.SPRING_MAVEN,
-                    List.of(buildToolResolver.mavenCommand(root, "spring-boot:run")), null);
+                    List.of(buildToolResolver.mavenCommand(root, "spring-boot:run")), null,
+                    List.of(RunPhase.RUNNING), () -> { }, toolchainResolver.childEnvironment());
         }
         if (gradle != null && isSpringGradle(root)) {
             return new ResolvedExecution(ResolvedExecution.Kind.SPRING_GRADLE,
-                    List.of(buildToolResolver.gradleCommand(root, "bootRun")), null);
+                    List.of(buildToolResolver.gradleCommand(root, "bootRun")), null,
+                    List.of(RunPhase.RUNNING), () -> { }, toolchainResolver.childEnvironment());
         }
         RunConfigurationDiscoveryService discovery = new RunConfigurationDiscoveryService();
         List<RunConfiguration> configurations = discovery.discover(project);
@@ -60,12 +68,14 @@ public final class ProjectExecutionResolver {
         if (pom.toFile().isFile() && isSpringMaven(pom)) {
             return new ResolvedExecution(ResolvedExecution.Kind.SPRING_MAVEN,
                     List.of(buildToolResolver.mavenCommand(root, "spring-boot:run",
-                            "-Dspring-boot.run.main-class=" + configuration.mainClass())), configuration.mainClass());
+                            "-Dspring-boot.run.main-class=" + configuration.mainClass())), configuration.mainClass(),
+                    List.of(RunPhase.RUNNING), () -> { }, toolchainResolver.childEnvironment());
         }
         if (gradle != null && isSpringGradle(root)) {
             return new ResolvedExecution(ResolvedExecution.Kind.SPRING_GRADLE,
                     List.of(buildToolResolver.gradleCommand(root, "bootRun",
-                            "-Dspring-boot.run.main-class=" + configuration.mainClass())), configuration.mainClass());
+                            "-Dspring-boot.run.main-class=" + configuration.mainClass())), configuration.mainClass(),
+                    List.of(RunPhase.RUNNING), () -> { }, toolchainResolver.childEnvironment());
         }
         if (pom.toFile().isFile()) {
             return mavenJavaApplication(root, configuration.mainClass());
@@ -73,7 +83,8 @@ public final class ProjectExecutionResolver {
         if (gradle != null) {
             return new ResolvedExecution(ResolvedExecution.Kind.GRADLE,
                     List.of(buildToolResolver.gradleCommand(root, "run",
-                            "-PmainClass=" + configuration.mainClass())), configuration.mainClass());
+                            "-PmainClass=" + configuration.mainClass())), configuration.mainClass(),
+                    List.of(RunPhase.RUNNING), () -> { }, toolchainResolver.childEnvironment());
         }
         return standardJava(root, configuration.mainClass());
     }
@@ -84,17 +95,18 @@ public final class ProjectExecutionResolver {
         if (!Files.isDirectory(sourceRoot)) {
             throw new IllegalArgumentException("No Java source root found");
         }
+        JavaToolchain toolchain = toolchainResolver.require();
         Path output = root.resolve(".eyecode/out");
         Path entrySource = entrySource(sourceRoot, mainClass);
         String classpath = classpath(output, root);
         List<String> compile = new ArrayList<>(List.of(
-                "javac",
+                toolchain.javacExecutable().toString(),
                 "-cp", classpath,
                 "-sourcepath", sourceRoot.toString(),
                 "-Xprefer:source",
                 "-d", output.toString(),
                 entrySource.toString()));
-        List<String> launch = List.of("java", "-cp", classpath, mainClass);
+        List<String> launch = List.of(toolchain.javaExecutable().toString(), "-cp", classpath, mainClass);
         return new ResolvedExecution(ResolvedExecution.Kind.STANDARD_JAVA,
                 List.of(compile, launch), mainClass);
     }
@@ -104,19 +116,20 @@ public final class ProjectExecutionResolver {
         if (!Files.isDirectory(sourceRoot)) {
             throw new IllegalArgumentException("No Maven Java source root found");
         }
+        JavaToolchain toolchain = toolchainResolver.require();
         Path output = root.resolve(".eyecode/out");
         Path resources = root.resolve("src/main/resources");
         String dependencies = mavenClasspathResolver.resolve(root);
         String classpath = classpath(output, resources, dependencies, root);
         Path entrySource = entrySource(sourceRoot, mainClass);
         List<String> compile = new ArrayList<>(List.of(
-                "javac",
+                toolchain.javacExecutable().toString(),
                 "-cp", classpath,
                 "-sourcepath", sourceRoot.toString(),
                 "-Xprefer:source",
                 "-d", output.toString(),
                 entrySource.toString()));
-        List<String> launch = List.of("java", "-cp", classpath, mainClass);
+        List<String> launch = List.of(toolchain.javaExecutable().toString(), "-cp", classpath, mainClass);
         return new ResolvedExecution(ResolvedExecution.Kind.MAVEN_JAVA_APPLICATION,
                 List.of(compile, launch), mainClass);
     }

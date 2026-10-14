@@ -5,8 +5,10 @@ import { describe, expect, it } from 'vitest';
 import {
   assertDistReady,
   buildBackendLaunch,
+  isJdkHome,
   parseReadinessUrl,
   resolveDistDir,
+  resolveJdkHome,
   resolveJavaExecutable,
   MAIN_CLASS,
   STARTUP_TIMEOUT_MS,
@@ -16,6 +18,16 @@ const electronDir = path.dirname(fileURLToPath(import.meta.url));
 
 const always = () => true;
 const never = () => false;
+
+function existsFor(set) {
+  return (p) => set.has(p);
+}
+
+function distReadyJdkMissing(distDir) {
+  return (p) =>
+    p.startsWith(distDir) ||
+    p.endsWith(path.join('bin', 'java.exe')) === false;
+}
 
 describe('resolveDistDir', () => {
   it('uses default path under repoRoot when no override is set', () => {
@@ -34,35 +46,185 @@ describe('resolveDistDir', () => {
   });
 });
 
-describe('resolveJavaExecutable', () => {
-  it('prefers EYECODE_JAVA over JAVA_HOME and PATH', () => {
+describe('isJdkHome', () => {
+  it('accepts a home with java and javac', () => {
+    const home = 'C:/jdk21';
+    const files = new Set([
+      path.join(home, 'bin', 'java.exe'),
+      path.join(home, 'bin', 'javac.exe'),
+    ]);
+    expect(isJdkHome(home, 'win32', existsFor(files))).toBe(true);
+  });
+
+  it('rejects a home missing javac', () => {
+    const home = 'C:/jre';
+    const files = new Set([path.join(home, 'bin', 'java.exe')]);
+    expect(isJdkHome(home, 'win32', existsFor(files))).toBe(false);
+  });
+
+  it('rejects null home', () => {
+    expect(isJdkHome(null, 'win32', always)).toBe(false);
+  });
+
+  it('uses java/javac without .exe on posix', () => {
+    const home = '/opt/jdk';
+    const files = new Set([
+      path.join(home, 'bin', 'java'),
+      path.join(home, 'bin', 'javac'),
+    ]);
+    expect(isJdkHome(home, 'linux', existsFor(files))).toBe(true);
+  });
+});
+
+describe('resolveJdkHome', () => {
+  const repoRoot = path.join('C:', 'repo');
+
+  it('prefers EYECODE_JDK_HOME over staged and host', () => {
+    const override = path.join('C:', 'override-jdk');
+    const staged = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'jdk');
+    const files = new Set([
+      path.join(override, 'bin', 'java.exe'),
+      path.join(override, 'bin', 'javac.exe'),
+      path.join(staged, 'bin', 'java.exe'),
+      path.join(staged, 'bin', 'javac.exe'),
+    ]);
     expect(
-      resolveJavaExecutable(
-        { EYECODE_JAVA: 'D:/JBR/bin/java.exe', JAVA_HOME: 'C:/other' },
-        'win32',
-        always
-      )
+      resolveJdkHome({
+        repoRoot,
+        env: { EYECODE_JDK_HOME: override, JAVA_HOME: 'C:/host' },
+        platform: 'win32',
+        existsSync: existsFor(files),
+      })
+    ).toBe(override);
+  });
+
+  it('prefers staged JDK over packaged resources and JAVA_HOME', () => {
+    const staged = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'jdk');
+    const packaged = path.join('C:', 'resources', 'jdk');
+    const files = new Set([
+      path.join(staged, 'bin', 'java.exe'),
+      path.join(staged, 'bin', 'javac.exe'),
+      path.join(packaged, 'bin', 'java.exe'),
+      path.join(packaged, 'bin', 'javac.exe'),
+      path.join('C:', 'host', 'bin', 'java.exe'),
+      path.join('C:', 'host', 'bin', 'javac.exe'),
+    ]);
+    expect(
+      resolveJdkHome({
+        repoRoot,
+        env: { JAVA_HOME: path.join('C:', 'host') },
+        platform: 'win32',
+        existsSync: existsFor(files),
+        resourcesPath: path.join('C:', 'resources'),
+      })
+    ).toBe(staged);
+  });
+
+  it('uses packaged resources JDK when staged is missing', () => {
+    const packaged = path.join('C:', 'resources', 'jdk');
+    const files = new Set([
+      path.join(packaged, 'bin', 'java.exe'),
+      path.join(packaged, 'bin', 'javac.exe'),
+    ]);
+    expect(
+      resolveJdkHome({
+        repoRoot,
+        env: {},
+        platform: 'win32',
+        existsSync: existsFor(files),
+        resourcesPath: path.join('C:', 'resources'),
+      })
+    ).toBe(packaged);
+  });
+
+  it('falls back to JAVA_HOME when staged and packaged are missing', () => {
+    const host = path.join('C:', 'host');
+    const files = new Set([
+      path.join(host, 'bin', 'java.exe'),
+      path.join(host, 'bin', 'javac.exe'),
+    ]);
+    expect(
+      resolveJdkHome({
+        repoRoot,
+        env: { JAVA_HOME: host },
+        platform: 'win32',
+        existsSync: existsFor(files),
+      })
+    ).toBe(host);
+  });
+
+  it('returns null when nothing is available', () => {
+    expect(
+      resolveJdkHome({
+        repoRoot,
+        env: {},
+        platform: 'win32',
+        existsSync: never,
+      })
+    ).toBeNull();
+  });
+
+  it('ignores EYECODE_JDK_HOME without java and javac', () => {
+    expect(
+      resolveJdkHome({
+        repoRoot,
+        env: { EYECODE_JDK_HOME: path.join('C:', 'broken') },
+        platform: 'win32',
+        existsSync: never,
+      })
+    ).toBeNull();
+  });
+});
+
+describe('resolveJavaExecutable', () => {
+  it('prefers EYECODE_JAVA over staged JDK and PATH', () => {
+    expect(
+      resolveJavaExecutable({
+        env: { EYECODE_JAVA: 'D:/JBR/bin/java.exe', JAVA_HOME: 'C:/other' },
+        platform: 'win32',
+        existsSync: always,
+        repoRoot: path.join('C:', 'repo'),
+      })
     ).toBe('D:/JBR/bin/java.exe');
+  });
+
+  it('uses staged JDK java when present', () => {
+    const repoRoot = path.join('C:', 'repo');
+    const staged = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'jdk');
+    const files = new Set([
+      path.join(staged, 'bin', 'java.exe'),
+      path.join(staged, 'bin', 'javac.exe'),
+    ]);
+    expect(
+      resolveJavaExecutable({
+        env: {},
+        platform: 'win32',
+        existsSync: existsFor(files),
+        repoRoot,
+      })
+    ).toBe(path.join(staged, 'bin', 'java.exe'));
   });
 
   it('uses JAVA_HOME binary when it exists', () => {
     expect(
-      resolveJavaExecutable({ JAVA_HOME: 'C:/jbr' }, 'win32', always)
+      resolveJavaExecutable({ env: { JAVA_HOME: 'C:/jbr' }, platform: 'win32', existsSync: always })
     ).toBe(path.join('C:/jbr', 'bin', 'java.exe'));
   });
 
   it('uses JAVA_HOME binary on posix', () => {
     expect(
-      resolveJavaExecutable({ JAVA_HOME: '/opt/jbr' }, 'linux', always)
+      resolveJavaExecutable({ env: { JAVA_HOME: '/opt/jbr' }, platform: 'linux', existsSync: always })
     ).toBe(path.join('/opt/jbr', 'bin', 'java'));
   });
 
   it('falls back to PATH java when JAVA_HOME binary is missing', () => {
-    expect(resolveJavaExecutable({ JAVA_HOME: 'C:/missing' }, 'win32', never)).toBe('java');
+    expect(
+      resolveJavaExecutable({ env: { JAVA_HOME: 'C:/missing' }, platform: 'win32', existsSync: never })
+    ).toBe('java');
   });
 
   it('falls back to PATH java without JAVA_HOME', () => {
-    expect(resolveJavaExecutable({}, 'win32', never)).toBe('java');
+    expect(resolveJavaExecutable({ env: {}, platform: 'win32', existsSync: never })).toBe('java');
   });
 });
 
@@ -97,13 +259,14 @@ describe('assertDistReady', () => {
 describe('buildBackendLaunch', () => {
   const repoRoot = path.join('C:', 'repo root with spaces');
   const distDir = path.join(repoRoot, 'webshell-dist', 'target', 'webshell-dist');
+  const distReadyNoJdk = (p) => p.startsWith(distDir);
 
   it('never invokes Maven or exec:java', () => {
     const launch = buildBackendLaunch({
       repoRoot,
       env: {},
       platform: 'win32',
-      existsSync: always,
+      existsSync: distReadyNoJdk,
     });
     const joined = [launch.command, ...launch.args].join(' ');
     expect(joined).not.toMatch(/\bmvn\b/);
@@ -111,12 +274,12 @@ describe('buildBackendLaunch', () => {
     expect(launch.command).not.toBe('mvn');
   });
 
-  it('builds direct java -cp launch of LocalWebShellLauncher', () => {
+  it('builds direct java -cp launch of LocalWebShellLauncher without a toolchain', () => {
     const launch = buildBackendLaunch({
       repoRoot,
       env: {},
       platform: 'win32',
-      existsSync: always,
+      existsSync: distReadyNoJdk,
     });
     expect(launch.command).toBe('java');
     expect(launch.args).toContain(MAIN_CLASS);
@@ -130,12 +293,32 @@ describe('buildBackendLaunch', () => {
     expect(launch.cwd).toBe(distDir);
   });
 
+  it('uses staged JDK absolute java path and passes -Deyecode.jdk.home', () => {
+    const staged = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'jdk');
+    const files = new Set([
+      path.join(distDir, 'eyecode-webshell.jar'),
+      path.join(distDir, 'lib'),
+      path.join(staged, 'bin', 'java.exe'),
+      path.join(staged, 'bin', 'javac.exe'),
+    ]);
+    const launch = buildBackendLaunch({
+      repoRoot,
+      env: {},
+      platform: 'win32',
+      existsSync: existsFor(files),
+    });
+    expect(launch.command).toBe(path.join(staged, 'bin', 'java.exe'));
+    expect(launch.args).toContain(`-Deyecode.jdk.home=${staged}`);
+    expect(launch.jdkHome).toBe(staged);
+    expect(launch.command).not.toMatch(/\bmvn\b/);
+  });
+
   it('keeps spaces in the distribution path inside a single spawn argument', () => {
     const launch = buildBackendLaunch({
       repoRoot,
       env: {},
       platform: 'win32',
-      existsSync: always,
+      existsSync: distReadyNoJdk,
     });
     const cpIndex = launch.args.indexOf('-cp');
     const classpath = launch.args[cpIndex + 1];
@@ -149,7 +332,7 @@ describe('buildBackendLaunch', () => {
       repoRoot,
       env: {},
       platform: 'win32',
-      existsSync: always,
+      existsSync: distReadyNoJdk,
     });
     expect(without.args.some((a) => a.includes('eyecode.jdtls.home'))).toBe(false);
 
@@ -157,7 +340,7 @@ describe('buildBackendLaunch', () => {
       repoRoot,
       env: { EYECODE_JDTLS_HOME: 'C:/jdt ls home' },
       platform: 'win32',
-      existsSync: always,
+      existsSync: distReadyNoJdk,
     });
     expect(withHome.args).toContain('-Deyecode.jdtls.home=C:/jdt ls home');
   });
@@ -171,7 +354,7 @@ describe('buildBackendLaunch', () => {
         EYECODE_JAVA: path.join('C:', 'JBR', 'bin', 'java.exe'),
       },
       platform: 'win32',
-      existsSync: always,
+      existsSync: (p) => p.startsWith(customDist),
     });
     expect(launch.distDir).toBe(path.resolve(customDist));
     expect(launch.command).toBe(path.join('C:', 'JBR', 'bin', 'java.exe'));

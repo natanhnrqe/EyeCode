@@ -79,6 +79,9 @@ public final class RunSession {
                 }
                 ProcessBuilder builder = new ProcessBuilder(execution.commands().get(index));
                 builder.directory(workingDirectory.toFile());
+                if (!execution.environment().isEmpty()) {
+                    builder.environment().putAll(execution.environment());
+                }
                 Process started = builder.start();
                 process = started;
                 listener.onPhase(execution.commandPhases().get(index));

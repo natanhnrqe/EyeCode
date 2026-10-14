@@ -1,17 +1,23 @@
 package com.eyecode.runtime;
 
 import java.util.List;
+import java.util.Map;
 
 public record ResolvedExecution(Kind kind, List<List<String>> commands, String mainClass,
-                                List<RunPhase> commandPhases, Runnable cleanup) {
+                                List<RunPhase> commandPhases, Runnable cleanup, Map<String, String> environment) {
     public enum Kind { STANDARD_JAVA, MAVEN_JAVA_APPLICATION, MAVEN, GRADLE, SPRING_MAVEN, SPRING_GRADLE }
 
     public ResolvedExecution(Kind kind, List<List<String>> commands, String mainClass) {
-        this(kind, commands, mainClass, defaultPhases(kind, commands), () -> { });
+        this(kind, commands, mainClass, defaultPhases(kind, commands), () -> { }, Map.of());
     }
 
     public ResolvedExecution(Kind kind, List<List<String>> commands, String mainClass, List<RunPhase> commandPhases) {
-        this(kind, commands, mainClass, commandPhases, () -> { });
+        this(kind, commands, mainClass, commandPhases, () -> { }, Map.of());
+    }
+
+    public ResolvedExecution(Kind kind, List<List<String>> commands, String mainClass, List<RunPhase> commandPhases,
+                             Runnable cleanup) {
+        this(kind, commands, mainClass, commandPhases, cleanup, Map.of());
     }
 
     public ResolvedExecution {
@@ -24,6 +30,7 @@ public record ResolvedExecution(Kind kind, List<List<String>> commands, String m
             throw new IllegalArgumentException("Each execution command must have a run phase");
         }
         cleanup = cleanup == null ? () -> { } : cleanup;
+        environment = environment == null ? Map.of() : Map.copyOf(environment);
     }
 
     private static List<RunPhase> defaultPhases(Kind kind, List<List<String>> commands) {

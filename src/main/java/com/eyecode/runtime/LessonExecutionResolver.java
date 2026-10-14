@@ -9,8 +9,19 @@ import java.util.Comparator;
 import java.util.List;
 
 public final class LessonExecutionResolver {
+    private final JavaToolchainResolver toolchainResolver;
+
+    public LessonExecutionResolver() {
+        this(new JavaToolchainResolver());
+    }
+
+    LessonExecutionResolver(JavaToolchainResolver toolchainResolver) {
+        this.toolchainResolver = toolchainResolver == null ? new JavaToolchainResolver() : toolchainResolver;
+    }
+
     public ResolvedExecution resolve(LessonRunRequest request) {
         try {
+            JavaToolchain toolchain = toolchainResolver.require();
             Path root = Files.createTempDirectory("eyecode-lesson-run-");
             Path sources = root.resolve("src");
             Path output = root.resolve("classes");
@@ -23,10 +34,12 @@ public final class LessonExecutionResolver {
             }
             if (javaSources.isEmpty()) throw new IllegalArgumentException("Lesson workspace has no Java source files");
             Files.createDirectories(output);
-            List<String> compile = new ArrayList<>(List.of("javac", "-encoding", "UTF-8", "-d", output.toString()));
+            List<String> compile = new ArrayList<>(List.of(
+                    toolchain.javacExecutable().toString(), "-encoding", "UTF-8", "-d", output.toString()));
             compile.addAll(javaSources);
+            List<String> launch = List.of(toolchain.javaExecutable().toString(), "-cp", output.toString(), request.mainClass());
             return new ResolvedExecution(ResolvedExecution.Kind.STANDARD_JAVA,
-                    List.of(compile, List.of("java", "-cp", output.toString(), request.mainClass())), request.mainClass(),
+                    List.of(compile, launch), request.mainClass(),
                     List.of(RunPhase.COMPILING, RunPhase.RUNNING), () -> deleteRecursively(root));
         } catch (IOException exception) {
             throw new IllegalArgumentException("Could not materialize lesson workspace", exception);

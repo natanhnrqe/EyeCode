@@ -102,8 +102,12 @@ class ProjectExecutionResolverTest {
         assertEquals(2, execution.commands().size());
         List<String> compile = execution.commands().getFirst();
         List<String> launch = execution.commands().get(1);
-        assertEquals("javac", compile.getFirst());
-        assertEquals("java", launch.getFirst());
+        String compileFirst = compile.getFirst();
+        String launchFirst = launch.getFirst();
+        assertTrue(compileFirst.equals("javac") || compileFirst.endsWith("javac") || compileFirst.endsWith("javac.exe"),
+                "expected javac, got: " + compileFirst);
+        assertTrue(launchFirst.equals("java") || launchFirst.endsWith("java") || launchFirst.endsWith("java.exe"),
+                "expected java, got: " + launchFirst);
         assertTrue(compile.contains("-sourcepath"));
         assertTrue(compile.get(compile.indexOf("-cp") + 1).contains(root.resolve(".eyecode/out").toString()));
         assertTrue(compile.get(compile.indexOf("-cp") + 1).contains(root.resolve("src/main/resources").toString()));
