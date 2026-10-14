@@ -86,6 +86,18 @@ public final class LessonTraceService implements AutoCloseable {
 
     static final long DEFAULT_TIMEOUT_MS = 10_000;
     static final int DEFAULT_MAX_STEPS = 500;
+    /**
+     * Sampling inside loops whose back edge stays on the same source line: the
+     * line-based step requests never fire again there, so while the program
+     * keeps running we suspend the same JDI thread periodically and record
+     * what is actually visible. Sampling is bounded by {@link #MAX_TRACE_SAMPLES}
+     * and only records a snapshot when the observed values changed since the
+     * last one — no value is ever invented or interpolated.
+     */
+    static final int MAX_TRACE_SAMPLES = 10;
+    static final long SAMPLE_INTERVAL_MS = 400;
+    static final long SAMPLE_STALL_MS = 250;
+    static final int SAMPLE_POLL_MS = 100;
     private static final int MAX_VARIABLES_PER_STEP = 24;
     private static final int MAX_ARRAY_ELEMENTS = 32;
     private static final int MAX_OBJECT_FIELDS = 24;
@@ -158,6 +170,11 @@ public final class LessonTraceService implements AutoCloseable {
         private final Listener listener;
         volatile boolean stopRequested;
         volatile VirtualMachine vm;
+        private volatile ThreadReference stepThread;
+        private volatile long lastStepNanos;
+        private volatile long lastSampleNanos;
+        private volatile int samplesTaken;
+        private volatile String lastSampleFingerprint = "";
 
         private ActiveRun(LessonRunRequest request, Listener listener) {
             this.request = request;
@@ -250,6 +267,7 @@ public final class LessonTraceService implements AutoCloseable {
             boolean sawVmDeath = false;
             VirtualMachine machine = null;
             Process process = null;
+            lastStepNanos = System.nanoTime();
             try {
                 LaunchingConnector connector = Bootstrap.virtualMachineManager().defaultConnector();
                 Map<String, Connector.Argument> arguments = connector.defaultArguments();
@@ -298,7 +316,7 @@ public final class LessonTraceService implements AutoCloseable {
                     }
                     EventSet set;
                     try {
-                        set = machine.eventQueue().remove((int) Math.min(Integer.MAX_VALUE, remaining));
+                        set = machine.eventQueue().remove((int) Math.min(SAMPLE_POLL_MS, remaining));
                     } catch (InterruptedException interrupted) {
                         Thread.currentThread().interrupt();
                         break;
@@ -306,8 +324,13 @@ public final class LessonTraceService implements AutoCloseable {
                         break;
                     }
                     if (set == null) {
+                        LessonTrace.Step sample = captureSample(machine, capture);
+                        if (sample != null) {
+                            steps.add(sample);
+                        }
                         continue;
                     }
+                    lastStepNanos = System.nanoTime();
                     for (Event event : set) {
                         if (event instanceof StepEvent stepEvent) {
                             if (request.mainClass().equals(stepEvent.location().declaringType().name())) {
@@ -353,6 +376,7 @@ public final class LessonTraceService implements AutoCloseable {
                             exceptions.enable();
                         } else if (event instanceof BreakpointEvent entry) {
                             ThreadReference thread = entry.thread();
+                            stepThread = thread;
                             LessonTrace.Step captured = captureStep(thread, entry.location(), capture);
                             if (captured != null) {
                                 steps.add(captured);
@@ -466,7 +490,75 @@ public final class LessonTraceService implements AutoCloseable {
             }
         }
 
+        /**
+         * Limited sampling while the lesson program keeps running without new
+         * line events (single-line loop bodies). Suspends the same traced
+         * thread briefly, reads the first frame that belongs to the lesson
+         * class and records the observed values. A sample is only recorded
+         * when the observed values differ from the last recorded state, so a
+         * spinning loop without state changes produces a single sample instead
+         * of noise. No value is invented: what is not observed is not shown.
+         */
+        private LessonTrace.Step captureSample(VirtualMachine machine, CaptureState capture) {
+            ThreadReference thread = stepThread;
+            if (thread == null || samplesTaken >= MAX_TRACE_SAMPLES || stopRequested) {
+                return null;
+            }
+            Process tracedProcess = machine.process();
+            if (tracedProcess == null || !tracedProcess.isAlive()) {
+                return null;
+            }
+            long now = System.nanoTime();
+            if (samplesTaken == 0
+                    && now - lastStepNanos < TimeUnit.MILLISECONDS.toNanos(SAMPLE_STALL_MS)) {
+                return null;
+            }
+            if (now - lastSampleNanos < TimeUnit.MILLISECONDS.toNanos(SAMPLE_INTERVAL_MS)) {
+                return null;
+            }
+            lastSampleNanos = now;
+            try {
+                thread.suspend();
+                try {
+                    for (StackFrame frame : thread.frames()) {
+                        if (!request.mainClass().equals(frame.location().declaringType().name())) {
+                            continue;
+                        }
+                        LessonTrace.Step candidate = captureStep(thread, frame.location(), capture, true);
+                        if (candidate == null) {
+                            return null;
+                        }
+                        String fingerprint = fingerprint(candidate);
+                        if (samplesTaken > 0 && fingerprint.equals(lastSampleFingerprint)) {
+                            return null;
+                        }
+                        samplesTaken++;
+                        lastSampleFingerprint = fingerprint;
+                        return candidate;
+                    }
+                    return null;
+                } finally {
+                    thread.resume();
+                }
+            } catch (RuntimeException | IncompatibleThreadStateException unavailable) {
+                return null;
+            }
+        }
+
+        private static String fingerprint(LessonTrace.Step step) {
+            StringBuilder builder = new StringBuilder();
+            for (LessonTrace.Variable variable : step.variables()) {
+                builder.append(variable.name()).append('=').append(variable.value()).append(';');
+            }
+            return builder.toString();
+        }
+
         private LessonTrace.Step captureStep(ThreadReference thread, Location location, CaptureState capture) {
+            return captureStep(thread, location, capture, false);
+        }
+
+        private LessonTrace.Step captureStep(ThreadReference thread, Location location, CaptureState capture,
+                                             boolean sampled) {
             int line = location.lineNumber();
             if (line < 0) {
                 return null;
@@ -479,7 +571,8 @@ public final class LessonTraceService implements AutoCloseable {
                     visible = new ArrayList<>(frame.visibleVariables());
                 } catch (AbsentInformationException missing) {
                     capture.limitation("Sem tabela de variáveis locais: não é possível capturar valores neste passo.");
-                    return new LessonTrace.Step(capture.nextIndex(), location.declaringType().name(), line, List.of());
+                    return new LessonTrace.Step(capture.nextIndex(), location.declaringType().name(), line,
+                            sampled, List.of());
                 }
                 visible.sort(Comparator.comparing(LocalVariable::name));
                 int count = Math.min(visible.size(), MAX_VARIABLES_PER_STEP);
@@ -498,7 +591,8 @@ public final class LessonTraceService implements AutoCloseable {
                     capture.limitation("Passo truncado: apenas as primeiras " + MAX_VARIABLES_PER_STEP
                             + " variáveis foram capturadas.");
                 }
-                return new LessonTrace.Step(capture.nextIndex(), location.declaringType().name(), line, variables);
+                return new LessonTrace.Step(capture.nextIndex(), location.declaringType().name(), line,
+                        sampled, variables);
             } catch (RuntimeException | IncompatibleThreadStateException frameUnavailable) {
                 capture.limitation("Um passo não pôde ser capturado: frame indisponível.");
                 return null;

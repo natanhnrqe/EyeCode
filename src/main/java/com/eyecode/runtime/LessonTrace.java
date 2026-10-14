@@ -21,7 +21,7 @@ public record LessonTrace(
         List<Chunk> output,
         List<String> limitations
 ) {
-    public record Step(int index, String className, int line, List<Variable> variables) {
+    public record Step(int index, String className, int line, boolean sampled, List<Variable> variables) {
         public Step {
             variables = variables == null ? List.of() : List.copyOf(variables);
         }

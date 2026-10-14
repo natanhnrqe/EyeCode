@@ -80,7 +80,7 @@ function TraceStepSelector({ view, selectedStep, onSelectStep }: { view: LessonT
       onClick={() => onSelectStep(step.index)}
       title={`Estado observado ao chegar na linha ${step.line}, antes de executá-la`}>
       <span className="learn-trace-step-index">Passo {step.index + 1}</span>
-      <span className="learn-trace-step-line">linha {step.line}</span>
+      <span className="learn-trace-step-line">linha {step.line}{step.sampled ? ' · amostra' : ''}</span>
       {step.changed.length > 0 && <span className="learn-trace-step-marker" aria-label="variáveis mudaram neste passo">•</span>}
     </button>)}
   </nav>;
@@ -128,7 +128,9 @@ function SnapshotTable({ step }: { step: LessonTraceViewStep }) {
   const previousValues = new Map((step.previous?.variables ?? []).map(variable => [variable.name, variable.value]));
   return <div className="learn-trace-snapshot" aria-label={`Estado no passo ${step.index + 1}`}>
     <p className="learn-trace-snapshot-caption">
-      Passo {step.index + 1} — estado observado ao chegar na linha {step.line}, antes de executá-la.
+      {step.sampled
+        ? `Passo ${step.index + 1} — amostragem na linha ${step.line}: último estado observado enquanto o programa continuava executando.`
+        : `Passo ${step.index + 1} — estado observado ao chegar na linha ${step.line}, antes de executá-la.`}
     </p>
     <table className="learn-trace-table">
       <thead><tr><th scope="col">Variável</th><th scope="col">Tipo</th><th scope="col">Valor agora</th><th scope="col">Antes</th></tr></thead>

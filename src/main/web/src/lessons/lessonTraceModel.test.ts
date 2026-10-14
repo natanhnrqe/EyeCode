@@ -7,7 +7,7 @@ import {
 
 function step(index: number, line: number, variables: Array<[name: string, value: string]>): LessonTraceStep {
   return {
-    index, className: 'Main', line,
+    index, className: 'Main', line, sampled: false,
     variables: variables.map(([name, value]) => ({
       name, type: 'int', value, kind: 'primitive', children: [], truncated: false
     }))
@@ -98,5 +98,22 @@ describe('seleção de passo', () => {
     expect(stepByIndex(view, 2)?.line).toBe(5);
     expect(stepByIndex(view, null)?.index).toBe(3);
     expect(stepByIndex(view, 99)?.index).toBe(3);
+  });
+});
+
+describe('amostragem dentro de loops', () => {
+  it('mantém a marcação de amostra e deriva as mudanças reais entre amostras', () => {
+    const sampled: LessonTracePayload = {
+      ...trace,
+      steps: [
+        { ...step(0, 5, [['contador', '0']]), sampled: true },
+        { ...step(1, 5, [['contador', '1200']]), sampled: true },
+        { ...step(2, 5, [['contador', '1200']]), sampled: true }
+      ]
+    };
+    const view = buildLessonTraceView(sampled);
+    expect(view.steps.every(entry => entry.sampled)).toBe(true);
+    expect(view.steps[1].changed).toEqual(['contador']);
+    expect(view.steps[2].changed).toEqual([]);
   });
 });

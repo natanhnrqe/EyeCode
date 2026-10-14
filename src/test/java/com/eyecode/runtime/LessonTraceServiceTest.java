@@ -257,6 +257,91 @@ class LessonTraceServiceTest {
         }
     }
 
+    @Test
+    void singleLineInfiniteLoopStillObservesRealCounterValuesBeforeTheTimeout() throws Exception {
+        String source = """
+                public class Main {
+                    public static void main(String[] args) {
+                        int contador = 0;
+                        while (true) {
+                            contador++;
+                        }
+                    }
+                }
+                """;
+        LessonTraceService service = new LessonTraceService(4_000, 500);
+        LessonTrace trace;
+        try {
+            trace = traceAndAwait(service, source);
+        } finally {
+            service.close();
+        }
+
+        assertEquals(LessonTraceStatus.TIMEOUT, trace.status());
+        List<String> counterValues = trace.steps().stream()
+                .flatMap(step -> step.variables().stream())
+                .filter(variable -> variable.name().equals("contador"))
+                .map(LessonTrace.Variable::value)
+                .toList();
+        assertTrue(counterValues.size() >= 3,
+                "o loop deve ser observado por amostragem real, não apenas no primeiro passo: " + counterValues);
+        assertTrue(counterValues.stream().distinct().count() >= 3,
+                "os valores observados de contador devem evoluir durante o loop: " + counterValues);
+        assertTrue(counterValues.stream().anyMatch(value -> Integer.parseInt(value) > 0),
+                "valores reais do increment devem aparecer antes do timeout: " + counterValues);
+        assertTrue(trace.steps().stream().anyMatch(LessonTrace.Step::sampled),
+                "as observações dentro do loop devem ser marcadas como amostras");
+        assertTrue(trace.steps().size() < 20,
+                "a amostragem deve ser limitada, não um snapshot por iteração: " + trace.steps().size());
+    }
+
+    @Test
+    void conditionalLoopKeepsStepBasedEvolutionWithoutSampling() throws Exception {
+        String source = """
+                public class Main {
+                    public static void main(String[] args) {
+                        int contador = 0;
+                        while (contador < 3) {
+                            contador++;
+                        }
+                        System.out.println(contador);
+                    }
+                }
+                """;
+        LessonTrace trace = run(source);
+
+        assertEquals(LessonTraceStatus.COMPLETED, trace.status());
+        assertTrue(trace.steps().stream().noneMatch(LessonTrace.Step::sampled),
+                "programas normais continuam com evolução por passos, sem amostras");
+        List<String> counterValues = trace.steps().stream()
+                .flatMap(step -> step.variables().stream())
+                .filter(variable -> variable.name().equals("contador"))
+                .map(LessonTrace.Variable::value)
+                .toList();
+        assertTrue(counterValues.contains("0"), "estado inicial observado: " + counterValues);
+        assertTrue(counterValues.contains("3"), "estado final observado: " + counterValues);
+    }
+
+    @Test
+    void traceAfterATimeoutStillRunsNormally() throws Exception {
+        LessonTraceService service = new LessonTraceService(1_500, 500);
+        try {
+            LessonTrace timedOut = traceAndAwait(service, """
+                    public class Main {
+                        public static void main(String[] args) throws Exception {
+                            Thread.sleep(30_000);
+                        }
+                    }
+                    """);
+            assertEquals(LessonTraceStatus.TIMEOUT, timedOut.status());
+            LessonTrace healthy = traceAndAwait(service, ASSIGNMENT_LESSON);
+            assertEquals(LessonTraceStatus.COMPLETED, healthy.status());
+            assertTrue(healthy.steps().stream().noneMatch(LessonTrace.Step::sampled));
+        } finally {
+            service.close();
+        }
+    }
+
     private static LessonRunRequest lessonRequest(String source) {
         return new LessonRunRequest(
                 List.of(new LessonRunRequest.SourceFile("Main.java", source)), "Main");
