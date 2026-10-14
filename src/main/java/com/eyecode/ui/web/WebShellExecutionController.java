@@ -36,6 +36,7 @@ final class WebShellExecutionController implements AutoCloseable {
     private final LessonTraceService traceService;
     private final LessonCompileAnalyzer compileAnalyzer;
     private final Optional<DiagnosticExplainer> explainer;
+    private final RunOutputCoalescer outputCoalescer;
     private final Map<String, String> lessonUrisByFile = new java.util.concurrent.ConcurrentHashMap<>();
     private final AtomicLong traceSequence = new AtomicLong();
     private volatile boolean lessonReachedExecution;
@@ -66,6 +67,12 @@ final class WebShellExecutionController implements AutoCloseable {
         this.traceService = java.util.Objects.requireNonNull(traceService, "traceService");
         this.compileAnalyzer = new LessonCompileAnalyzer();
         this.explainer = Optional.ofNullable(explainer);
+        this.outputCoalescer = new RunOutputCoalescer((text, error) -> {
+            if (!closed) {
+                surface.send(WebShellEnvelope.event("run", "output", Map.of(
+                        "text", text, "error", error)));
+            }
+        });
         this.terminalWorkspaceListener = project -> {
             terminalService.setWorkspaceDirectory(project == null ? null : project.getRootDir());
             sendTerminalState();
@@ -82,18 +89,20 @@ final class WebShellExecutionController implements AutoCloseable {
                 if (phase == com.eyecode.runtime.RunPhase.RUNNING) {
                     lessonReachedExecution = true;
                 }
+                outputCoalescer.flush();
                 sendRunState();
             }
             @Override public void onStarted(com.eyecode.runtime.RunRequest request) { sendRunState(); }
             @Override public void onOutput(String text, boolean error) {
                 if (text == null) {
+                    outputCoalescer.flush();
                     surface.send(WebShellEnvelope.event("run", "output", Map.of("clear", true)));
-                } else {
-                    surface.send(WebShellEnvelope.event("run", "output", Map.of(
-                            "text", text, "error", error)));
+                    return;
                 }
+                outputCoalescer.onOutput(text, error);
             }
             @Override public void onFinished(int exitCode, boolean stopped) {
+                outputCoalescer.flush();
                 publishLessonRunDiagnostics(exitCode, stopped);
                 sendRunState();
             }
@@ -414,6 +423,7 @@ final class WebShellExecutionController implements AutoCloseable {
             return;
         }
         closed = true;
+        outputCoalescer.close();
         projectLifecycleService.removeListener(terminalWorkspaceListener);
         terminalService.removeListener(terminalListener);
         runService.removeListener(runListener);

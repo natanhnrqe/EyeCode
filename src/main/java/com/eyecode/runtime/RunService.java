@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
@@ -26,6 +27,9 @@ public final class RunService {
         void onOutput(String text, boolean error);
         void onFinished(int exitCode, boolean stopped);
     }
+
+    static final long DEFAULT_LESSON_TIMEOUT_MS = 30_000;
+    private static final int MAX_OUTPUT_HISTORY_CHARS = 256_000;
 
     private final ProjectLifecycleService lifecycleService;
     private final ProjectLifecycleService.Listener lifecycleListener;
@@ -52,10 +56,20 @@ public final class RunService {
     private volatile boolean preparationCancelled;
     private volatile long attemptGeneration;
     private volatile BooleanSupplier beforeRunFlush = () -> true;
+    private final long lessonTimeoutMs;
+    private final java.util.concurrent.ScheduledExecutorService lessonWatchdog =
+            Executors.newSingleThreadScheduledExecutor(task -> daemon("eyecode-lesson-watchdog", task));
+    private volatile Future<?> lessonWatchdogTask;
+    private int outputHistoryChars;
 
     public RunService(ProjectLifecycleService lifecycleService) {
         this(lifecycleService, (ExecutionResolver) null,
                 new RunConfigurationDiscoveryService(), new RunConfigurationSelectionStore());
+    }
+
+    RunService(ProjectLifecycleService lifecycleService, long lessonTimeoutMs) {
+        this(lifecycleService, (ExecutionResolver) null,
+                new RunConfigurationDiscoveryService(), new RunConfigurationSelectionStore(), lessonTimeoutMs);
     }
 
     public RunService(ProjectLifecycleService lifecycleService, ProjectExecutionResolver resolver) {
@@ -77,10 +91,17 @@ public final class RunService {
     private RunService(ProjectLifecycleService lifecycleService, ExecutionResolver resolver,
                        RunConfigurationDiscoveryService discoveryService,
                        RunConfigurationSelectionStore selectionStore) {
+        this(lifecycleService, resolver, discoveryService, selectionStore, DEFAULT_LESSON_TIMEOUT_MS);
+    }
+
+    private RunService(ProjectLifecycleService lifecycleService, ExecutionResolver resolver,
+                       RunConfigurationDiscoveryService discoveryService,
+                       RunConfigurationSelectionStore selectionStore, long lessonTimeoutMs) {
         this.lifecycleService = lifecycleService;
         this.resolver = resolver == null ? adapt(new ProjectExecutionResolver()) : resolver;
         this.discoveryService = discoveryService == null ? new RunConfigurationDiscoveryService() : discoveryService;
         this.selectionStore = selectionStore == null ? new RunConfigurationSelectionStore() : selectionStore;
+        this.lessonTimeoutMs = Math.max(0, lessonTimeoutMs);
         this.lifecycleListener = this::onProjectChanged;
         if (lifecycleService != null) {
             lifecycleService.addListener(lifecycleListener);
@@ -150,6 +171,7 @@ public final class RunService {
             publishFinished(-1, false);
             return false;
         }
+        armLessonWatchdog();
         return true;
     }
 
@@ -194,6 +216,8 @@ public final class RunService {
         rerunAfterStop = false;
         preparationCancelled = true;
         attemptGeneration++;
+        cancelLessonWatchdog();
+        lessonWatchdog.shutdownNow();
         Future<?> preparation = preparationTask;
         if (preparation != null) {
             preparation.cancel(true);
@@ -289,6 +313,7 @@ public final class RunService {
 
     private void clearOutput() {
         outputHistory.clear();
+        outputHistoryChars = 0;
         hasCompletion = false;
         for (Listener listener : listeners) {
             listener.onOutput(null, false);
@@ -296,8 +321,14 @@ public final class RunService {
     }
 
     private void publishOutput(String text, boolean error) {
-        if (text != null) {
-            outputHistory.add(new RunOutputChunk(text, error));
+        if (text != null && outputHistoryChars < MAX_OUTPUT_HISTORY_CHARS) {
+            outputHistoryChars += text.length();
+            if (outputHistoryChars >= MAX_OUTPUT_HISTORY_CHARS) {
+                outputHistory.add(new RunOutputChunk(text, error));
+                outputHistory.add(new RunOutputChunk("…saída truncada…\n", false));
+            } else {
+                outputHistory.add(new RunOutputChunk(text, error));
+            }
         }
         for (Listener listener : listeners) {
             listener.onOutput(text, error);
@@ -308,6 +339,7 @@ public final class RunService {
         if (!completionPublished.compareAndSet(false, true)) {
             return;
         }
+        cancelLessonWatchdog();
         publishPhase(RunPhase.IDLE);
         lastExitCode = exitCode;
         lastStopped = stopped;
@@ -381,6 +413,29 @@ public final class RunService {
             activeSession = new RunSession(execution, java.nio.file.Path.of(System.getProperty("java.io.tmpdir")), new SessionListener());
         }
         activeSession.start();
+    }
+
+    private void armLessonWatchdog() {
+        cancelLessonWatchdog();
+        if (lessonTimeoutMs <= 0) {
+            return;
+        }
+        lessonWatchdogTask = lessonWatchdog.schedule(() -> {
+            if (disposed || !isRunning()) {
+                return;
+            }
+            publishOutput("Execução interrompida: o tempo limite de "
+                    + (lessonTimeoutMs / 1000) + " segundos foi atingido.", true);
+            stop();
+        }, lessonTimeoutMs, TimeUnit.MILLISECONDS);
+    }
+
+    private void cancelLessonWatchdog() {
+        Future<?> watchdog = lessonWatchdogTask;
+        if (watchdog != null) {
+            watchdog.cancel(false);
+        }
+        lessonWatchdogTask = null;
     }
 
     private static ExecutionResolver adapt(ProjectExecutionResolver resolver) {
