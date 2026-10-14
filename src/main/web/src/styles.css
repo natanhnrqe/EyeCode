@@ -2138,6 +2138,12 @@ html, body, #root {
   font: 10px/1.4 var(--eyecode-font-ui);
 }
 
+.learn-output-dropped {
+  display: block;
+  color: var(--eyecode-muted);
+  font-style: italic;
+}
+
 
 /* Lesson actions */
 

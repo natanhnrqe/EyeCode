@@ -9,6 +9,7 @@ import {
   buildLessonTraceView, defaultStepIndex, describeLessonTraceStatus, lessonTracePhase,
   stepByIndex, type LessonTraceView, type LessonTraceViewStep
 } from './lessonTraceModel';
+import { windowRunOutput } from './learnOutputModel';
 
 export type LearnContextTab = 'problems' | 'output' | 'understand' | 'variables' | 'visualization';
 type DocumentLabel = { uri: string; displayName: string };
@@ -232,9 +233,13 @@ function DiagnosticUnderstanding({ problem }: { problem: Problem | null }) {
 
 function LearnOutput({ output, runState }: Pick<Props, 'output' | 'runState'>) {
   const outputRef = useRef<HTMLPreElement>(null);
+  const visible = useMemo(() => windowRunOutput(output), [output]);
   useEffect(() => { if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight; }, [output]);
   const status = runState.running ? 'Executando…' : runState.finished ? runState.exitCode === 0 ? 'Programa finalizado' : `Processo finalizado com código ${runState.exitCode ?? -1}` : 'Execute a atividade para ver a saída.';
-  return <section className="learn-output"><header className={runState.finished && runState.exitCode === 0 ? 'is-success' : ''}>{status}</header><pre ref={outputRef}>{output.length ? output.map((chunk, index) => <span key={index} className={chunk.error ? 'is-error' : ''}>{chunk.text}</span>) : 'A saída do programa aparecerá aqui.'}</pre></section>;
+  return <section className="learn-output"><header className={runState.finished && runState.exitCode === 0 ? 'is-success' : ''}>{status}</header><pre ref={outputRef}>
+    {visible.droppedChars > 0 && <span className="learn-output-dropped">…{visible.droppedChars.toLocaleString('pt-BR')} caracteres anteriores não exibidos — a exibição mostra apenas o final da saída…{'\n'}</span>}
+    {visible.chunks.length ? visible.chunks.map((chunk, index) => <span key={index} className={chunk.error ? 'is-error' : ''}>{chunk.text}</span>) : 'A saída do programa aparecerá aqui.'}
+  </pre></section>;
 }
 
 function ContextEmpty({ title, message }: { title: string; message: string }) {

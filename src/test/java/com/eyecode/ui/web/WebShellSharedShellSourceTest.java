@@ -572,6 +572,21 @@ class WebShellSharedShellSourceTest {
     }
 
     @Test
+    void heavyOutputRenderingStaysBoundedByAMemoizedWindow() throws IOException {
+        String context = Files.readString(Path.of("src/main/web/src/lessons/LearnContextPanel.tsx"));
+        String model = Files.readString(Path.of("src/main/web/src/lessons/learnOutputModel.ts"));
+
+        assertTrue(context.contains("useMemo(() => windowRunOutput(output), [output])"),
+                "the console must render a bounded window instead of re-rendering the whole output");
+        assertTrue(context.contains("caracteres anteriores não exibidos"),
+                "the hidden output volume must be reported honestly, not silently dropped");
+        assertTrue(model.contains("export const OUTPUT_WINDOW_CHARS = 32_000;"),
+                "the render window must stay explicitly bounded");
+        assertTrue(model.contains("dropped += chunk.text.length"),
+                "the window must account for every hidden character");
+    }
+
+    @Test
     void learnUsesTheGlobalToolbarAndBottomBreadcrumbsWithoutAddingAnEditorHeader() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String toolbar = Files.readString(Path.of("src/main/web/src/workspace/TopToolbar.tsx"));
