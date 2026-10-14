@@ -64,6 +64,9 @@ public final class JavaDiagnosticExplainer implements DiagnosticExplainer {
         if (text.contains("Type mismatch: cannot convert from") || text.contains("incompatible types")) {
             return typeMismatch();
         }
+        if (text.contains("ArithmeticException") && text.contains("/ by zero")) {
+            return divisionByZero();
+        }
         if (text.contains("reached end of file while parsing")) {
             return unclosedClassBody();
         }
@@ -163,6 +166,19 @@ public final class JavaDiagnosticExplainer implements DiagnosticExplainer {
                 "Para mudar o valor depois da declaração, apenas atribua: `total = 15;`.",
                 List.of(
                         new DiagnosticRelatedContent("java/jdk/fundamentos/variables", "Variáveis", "Declaração, atribuição e escopo")
+                ));
+    }
+
+    private static DiagnosticEducation divisionByZero() {
+        return new DiagnosticEducation(
+                "Divisão por zero",
+                "Não é possível dividir um número inteiro por zero.",
+                "Na matemática dos inteiros do Java, `x / 0` lança uma `ArithmeticException` — o programa para na linha onde isso acontece.",
+                "int resultado = 10 / 0;",
+                "int divisor = 2;\nint resultado = 10 / divisor;",
+                "Antes de dividir, garanta que o divisor não seja zero — por exemplo, verificando com `if (divisor != 0)`.",
+                List.of(
+                        new DiagnosticRelatedContent("java/jdk/fundamentos/variables", "Variáveis", "Divisão entre valores inteiros")
                 ));
     }
 

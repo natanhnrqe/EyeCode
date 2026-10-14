@@ -522,13 +522,15 @@ class WebShellSharedShellSourceTest {
                 "timeout and stop must really kill the traced process");
         assertTrue(execution.contains("surface.registerHandler(\"run\", \"trace\", this::trace)"),
                 "the trace must be requested through the run channel");
-        assertTrue(execution.contains("WebShellEnvelope.event(\"run\", \"trace\", tracePayload(trace))"),
-                "the completed trace must be published as a run event");
+        assertTrue(execution.contains("WebShellEnvelope.event(\"run\", \"trace\", tracePayload(traceId, trace))"),
+                "the completed trace must be published as a run event with its request identity");
         assertTrue(execution.contains("traceService.close()"),
                 "the trace service lifecycle must follow the controller");
-        assertTrue(workspace.contains("bridge.request<{ started: boolean }>('run', 'trace', payload)"),
-                "lesson runs must also request the traced execution");
-        assertTrue(workspace.contains("setLessonTrace(event.payload as LessonTracePayload)"),
+        assertTrue(workspace.contains("bridge.request<{ started: boolean; traceId: number }>('run', 'trace', payload)"),
+                "lesson runs must also request the traced execution with an identity guard");
+        assertTrue(workspace.contains("expectedTraceIdRef.current"),
+                "stale trace events from a previous run must be discarded by identity");
+        assertTrue(workspace.contains("setLessonTrace(tracePayload)"),
                 "the frontend must consume the published trace");
         assertTrue(learnContext.contains("Fonte: runtime — valores capturados durante a execução real da lição."),
                 "every runtime visualization must declare its data source");
@@ -540,6 +542,33 @@ class WebShellSharedShellSourceTest {
                 "the data source label must be styled");
         assertEquals(1, occurrences(workspace, "<MonacoHost"),
                 "the engine must not create a second editor host");
+    }
+
+    @Test
+    void lessonRunFailuresReachTheProblemsFlowWithRealCompilerData() throws IOException {
+        String execution = Files.readString(Path.of("src/main/java/com/eyecode/ui/web/WebShellExecutionController.java"));
+        String analyzer = Files.readString(Path.of("src/main/java/com/eyecode/runtime/LessonCompileAnalyzer.java"));
+        String service = Files.readString(Path.of("src/main/web/src/monaco/MonacoWorkspaceService.ts"));
+        String parser = Files.readString(Path.of("src/main/web/src/diagnostics/lessonRunDiagnostics.ts"));
+
+        assertTrue(execution.contains("publishLessonRunDiagnostics(exitCode, stopped)"),
+                "a failed lesson run must publish its real compile diagnostics");
+        assertTrue(execution.contains("WebShellEnvelope.event(\"diagnostics\", \"lessonRun\""),
+                "lesson run diagnostics must travel on the diagnostics channel");
+        assertTrue(execution.contains("compileAnalyzer.analyze(request)"),
+                "compile diagnostics must come from the real compiler, not from parsing stdout");
+        assertTrue(execution.contains("lessonReachedExecution"),
+                "only failures before the RUNNING phase are compile failures");
+        assertTrue(execution.contains("publishRuntimeErrorDiagnostic(trace)"),
+                "a traced runtime exception with a real line must reach the problems flow");
+        assertTrue(analyzer.contains("diagnostic.getMessage(Locale.ROOT)"),
+                "compiler messages keep the same locale convention as the parse pipeline");
+        assertTrue(service.contains("receiveLessonRunDiagnostics"),
+                "the frontend must merge lesson run diagnostics into the problems state");
+        assertTrue(service.contains("this.diagnosticsByUri.set(group.uri,"),
+                "lesson run diagnostics replace parse diagnostics instead of duplicating them");
+        assertTrue(parser.contains("if (!uri || !message || rawStartLine < 1) return null;"),
+                "entries without real file or line evidence must be dropped");
     }
 
     @Test
@@ -718,9 +747,11 @@ class WebShellSharedShellSourceTest {
         assertTrue(workspace.contains("context: 'lesson'"));
         assertTrue(workspace.contains("lessonSession?.phase === 'PRACTICE'"));
         assertTrue(workspace.contains("lessonEditor.executionFiles()"));
-        assertTrue(lessonEditor.contains("executionFiles(): { name: string; source: string }[]"));
+        assertTrue(lessonEditor.contains("executionFiles(): { name: string; source: string; uri: string }[]"),
+                "lesson execution files must carry the editor uri so run diagnostics reach the right document");
         assertTrue(toolbar.contains("runAvailable"));
-        assertTrue(execution.contains("runService.runLesson(lessonRunRequest(message))"));
+        assertTrue(execution.contains("runLesson(message, runService::runLesson)"),
+                "lesson runs keep using the shared run transport");
     }
 
     @Test

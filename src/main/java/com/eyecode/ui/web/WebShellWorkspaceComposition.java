@@ -87,7 +87,8 @@ public final class WebShellWorkspaceComposition {
                 List.of(new JavaInlayHintProvider()));
         WebShellDiagnosticsController diagnosticsController = new WebShellDiagnosticsController(surface, diagnostics, education);
         WebShellExecutionController executionController = new WebShellExecutionController(surface,
-                projectLifecycleService, runService, terminalService, new com.eyecode.runtime.LessonTraceService());
+                projectLifecycleService, runService, terminalService, new com.eyecode.runtime.LessonTraceService(),
+                new JavaDiagnosticExplainer());
         WorkspaceProjects projects = new WorkspaceProjects(projectLifecycleService, editorManager,
                 runService, projectCreationService);
         ProjectExplorerQuery explorer = new ProjectExplorerQuery();

@@ -172,7 +172,7 @@ public final class LessonTraceService implements AutoCloseable {
             } catch (Throwable failure) {
                 trace = new LessonTrace(request.mainClass(), LessonTraceStatus.FAILED, -1,
                         failure.getMessage() == null ? failure.toString() : failure.getMessage(),
-                        List.of(), List.of(), List.of("Falha ao capturar o traço: " + failure));
+                        -1, List.of(), List.of(), List.of("Falha ao capturar o traço: " + failure));
             } finally {
                 synchronized (LessonTraceService.this) {
                     if (active == this) {
@@ -200,7 +200,7 @@ public final class LessonTraceService implements AutoCloseable {
                         }
                     }
                     return new LessonTrace(request.mainClass(), LessonTraceStatus.COMPILE_ERROR, -1, null,
-                            List.of(), output, List.of("O programa não compilou, então não há execução para capturar."));
+                            -1, List.of(), output, List.of("O programa não compilou, então não há execução para capturar."));
                 }
                 return traceExecution(classes);
             } finally {
@@ -270,7 +270,7 @@ public final class LessonTraceService implements AutoCloseable {
                     limitations.add("Não foi possível iniciar a execução instrumentada: "
                             + launchFailure.getMessage() + ".");
                     return new LessonTrace(request.mainClass(), LessonTraceStatus.FAILED, -1,
-                            "Não foi possível iniciar a execução instrumentada", List.of(), outputChunks, limitations);
+                            "Não foi possível iniciar a execução instrumentada", -1, List.of(), outputChunks, limitations);
                 }
                 vm = machine;
                 process = machine.process();
@@ -438,7 +438,7 @@ public final class LessonTraceService implements AutoCloseable {
                 status = LessonTraceStatus.FAILED;
             }
             return new LessonTrace(request.mainClass(), status, exitCode, runtimeError,
-                    steps, outputChunks, limitations);
+                    runtimeErrorLine, steps, outputChunks, limitations);
         }
 
         private String describeException(ExceptionEvent event) {

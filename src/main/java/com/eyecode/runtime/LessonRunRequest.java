@@ -3,9 +3,14 @@ package com.eyecode.runtime;
 import java.util.List;
 
 public record LessonRunRequest(List<SourceFile> files, String mainClass) {
-    public record SourceFile(String name, String source) {
+    public record SourceFile(String name, String source, String uri) {
         public SourceFile {
             if (name == null || name.isBlank() || source == null) throw new IllegalArgumentException("Lesson source is required");
+            uri = uri == null ? "" : uri;
+        }
+
+        public SourceFile(String name, String source) {
+            this(name, source, "");
         }
     }
 

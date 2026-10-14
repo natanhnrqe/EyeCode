@@ -86,10 +86,12 @@ export type LessonTraceVariable = {
 };
 export type LessonTraceStep = { index: number; className: string; line: number; variables: LessonTraceVariable[] };
 export type LessonTracePayload = {
+  traceId: number;
   mainClass: string;
   status: LessonTraceStatus;
   exitCode: number;
   runtimeError: string;
+  runtimeErrorLine: number;
   steps: LessonTraceStep[];
   output: { text: string; error: boolean }[];
   limitations: string[];

@@ -16,6 +16,7 @@ public record LessonTrace(
         LessonTraceStatus status,
         int exitCode,
         String runtimeError,
+        int runtimeErrorLine,
         List<Step> steps,
         List<Chunk> output,
         List<String> limitations

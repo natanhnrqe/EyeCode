@@ -107,10 +107,8 @@ function LessonVariablesTab({ phase, view, trace, selectedStep, onSelectStep }: 
       message="O EyeCode está executando a lição de forma instrumentada para registrar os valores das variáveis linha por linha." />;
   }
   if (phase === 'failed' || !view || !trace) {
-    const message = trace && trace.output.length
-      ? [describeLessonTraceStatus(trace.status), ...trace.output.map(chunk => chunk.text.trim())].join('\n')
-      : describeLessonTraceStatus(trace?.status ?? 'FAILED');
-    return <ContextEmpty title="Sem captura disponível" message={message} />;
+    return <ContextEmpty title="Sem captura disponível"
+      message={`${describeLessonTraceStatus(trace?.status ?? 'FAILED')} Confira a aba Problemas e a Saída para os detalhes reais.`} />;
   }
   if (!view.hasVariables) {
     return <section className="learn-trace">

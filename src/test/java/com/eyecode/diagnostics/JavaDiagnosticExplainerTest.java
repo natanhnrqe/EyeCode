@@ -92,6 +92,15 @@ class JavaDiagnosticExplainerTest {
     }
 
     @Test
+    void explainsDivisionByZeroFromRealJvmMessage() {
+        Diagnostic diagnostic = new Diagnostic(DiagnosticSeverity.ERROR, "runtime",
+                "java.lang.ArithmeticException: / by zero", 4, 21, 4, 27);
+        DiagnosticEducation education = explainer.explain(diagnostic).orElseThrow();
+        assertEquals("Divisão por zero", education.title());
+        assertTrue(education.explanation().contains("ArithmeticException"));
+    }
+
+    @Test
     void leavesUnsupportedDiagnosticWithoutFabricatedExplanation() {
         Diagnostic diagnostic = new Diagnostic(DiagnosticSeverity.ERROR, "compiler.err.some.future",
                 "algum erro ainda não catalogado", 4, 17, 4, 18);

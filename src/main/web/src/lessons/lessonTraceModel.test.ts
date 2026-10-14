@@ -15,7 +15,7 @@ function step(index: number, line: number, variables: Array<[name: string, value
 }
 
 const trace: LessonTracePayload = {
-  mainClass: 'Main', status: 'COMPLETED', exitCode: 0, runtimeError: '',
+  traceId: 1, mainClass: 'Main', status: 'COMPLETED', exitCode: 0, runtimeError: '', runtimeErrorLine: -1,
   steps: [
     step(0, 3, []),
     step(1, 4, [['total', '10']]),

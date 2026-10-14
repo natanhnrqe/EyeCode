@@ -81,6 +81,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   const [runOutput, setRunOutput] = useState<RunOutputChunk[]>([]);
   const [lessonTrace, setLessonTrace] = useState<LessonTracePayload | null>(null);
   const [lessonTraceCapturing, setLessonTraceCapturing] = useState(false);
+  const expectedTraceIdRef = useRef(0);
   const [terminalState, setTerminalState] = useState<TerminalState>(emptyTerminalState);
   const [bottomPanel, setBottomPanel] = useState<BottomPanelId>('terminal');
   const [learnContextTab, setLearnContextTab] = useState<LearnContextTab>('problems');
@@ -268,7 +269,9 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       }
       if (event.channel === 'run' && event.name === 'state') setRunState(event.payload as RunState);
       if (event.channel === 'run' && event.name === 'trace') {
-        setLessonTrace(event.payload as LessonTracePayload);
+        const tracePayload = event.payload as LessonTracePayload;
+        if (Number(tracePayload.traceId ?? 0) !== expectedTraceIdRef.current) return;
+        setLessonTrace(tracePayload);
         setLessonTraceCapturing(false);
       }
       if (event.channel === 'run' && event.name === 'output') {
@@ -584,9 +587,17 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       if (lessonRunnable && name !== 'stop') {
         setLessonTrace(null);
         setLessonTraceCapturing(true);
-        bridge.request<{ started: boolean }>('run', 'trace', payload).then(response => {
-          if (!response?.started) setLessonTraceCapturing(false);
-        }, () => setLessonTraceCapturing(false));
+        bridge.request<{ started: boolean; traceId: number }>('run', 'trace', payload).then(response => {
+          if (response?.started) {
+            expectedTraceIdRef.current = response.traceId;
+          } else {
+            expectedTraceIdRef.current = 0;
+            setLessonTraceCapturing(false);
+          }
+        }, () => {
+          expectedTraceIdRef.current = 0;
+          setLessonTraceCapturing(false);
+        });
       }
     } catch (error) { setMessage(formatError(error)); }
   }
@@ -713,6 +724,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
     setPracticeVerifying(false);
     setLessonTrace(null);
     setLessonTraceCapturing(false);
+    expectedTraceIdRef.current = 0;
     if (!session) return;
     ++lessonRequest.current;
     setLessonBusy(false);

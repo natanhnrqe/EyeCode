@@ -12,6 +12,7 @@ import { canResolveCandidate, createResolvePrefetchCache, mergeDocumentation, to
 import type { CompletionResolveResult, ResolveEdits } from './autoImportResolve';
 import type { DiagnosticsViewState, DiagnosticsPublish, WebDiagnostic } from '../diagnostics/protocol';
 import { parseJdtPublish, parseQuickFixes, jdtWebDiagnostics, overlappingMarkers, quickFixRequestSpan, toMonacoCodeActions } from '../diagnostics/quickFixes';
+import { parseLessonRunDiagnostics } from '../diagnostics/lessonRunDiagnostics';
 import type { JdtQuickFix } from '../diagnostics/quickFixes';
 import type { Disposable, MonacoApi, MonacoCodeActionContext, MonacoCodeActionList, MonacoContentChangeEvent, MonacoCursorPositionEvent, MonacoEditor, MonacoInlayHint, MonacoInlayHintList, MonacoKeyEvent, MonacoLocation, MonacoModel, MonacoMouseEvent, MonacoRange, MonacoRenameLocation, MonacoSnippetController, MonacoWorkspaceEdit } from './api';
 import { isValidJavaIdentifier, renameFailureMessage, toMonacoRenameLocation, type PrepareRenamePayload, type RenameResponsePayload } from '../refactor/applyRename';
@@ -1019,7 +1020,12 @@ export class MonacoWorkspaceService {
       }
       return;
     }
-    if (message.kind !== 'event' || message.name !== 'publish') return;
+    if (message.kind !== 'event' || message.name !== 'publish') {
+      if (message.kind === 'event' && message.name === 'lessonRun') {
+        this.receiveLessonRunDiagnostics(message.payload);
+      }
+      return;
+    }
     const response = message.payload as DiagnosticsPublish;
     const pending = this.pendingDiagnostics.get(response.requestId);
     this.pendingDiagnostics.delete(response.requestId);
@@ -1119,6 +1125,35 @@ export class MonacoWorkspaceService {
 
   private modelForUri(uri: string): MonacoModel | undefined {
     return this.models.get(uri) ?? this.ephemeralModels.get(uri);
+  }
+
+  /**
+   * Lesson-run diagnostics come from the real compilation of the lesson or
+   * from the traced runtime exception. They REPLACE the per-uri parse
+   * diagnostics: the full compiler saw everything the parse analyzer saw, so
+   * keeping both would duplicate problems. The next edit clears them through
+   * the regular scheduleDiagnostics flow.
+   */
+  private receiveLessonRunDiagnostics(payload: unknown): void {
+    const groups = parseLessonRunDiagnostics(payload);
+    if (!groups.length) return;
+    const api = this.api;
+    if (!api) return;
+    for (const group of groups) {
+      const model = this.modelForUri(group.uri);
+      if (!model) continue;
+      const diagnostics = group.diagnostics
+        .map(diagnostic => ({ ...diagnostic, sourceExcerpt: this.sourceExcerpt(model, diagnostic) }));
+      this.diagnosticsByUri.set(group.uri, {
+        uri: group.uri, requestId: 'lessonRun', modelVersion: model.getAlternativeVersionId(), diagnostics
+      });
+      api.editor.setModelMarkers(model, 'eyecode.diagnostics', diagnostics.map(diagnostic => ({
+        severity: this.markerSeverity(diagnostic), code: diagnostic.code, message: diagnostic.message,
+        startLineNumber: diagnostic.startLine, startColumn: diagnostic.startColumn,
+        endLineNumber: diagnostic.endLine, endColumn: diagnostic.endColumn
+      })));
+    }
+    this.publishDiagnosticsForActiveModel();
   }
 
   private receiveJdtDiagnosticsMessage(message: WebShellEnvelope): void {

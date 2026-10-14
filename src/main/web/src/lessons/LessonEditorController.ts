@@ -40,10 +40,11 @@ export class LessonEditorController {
 
   practiceSource(): string | null { return this.activeUri ? this.service.ephemeralModelValue(this.activeUri) : null; }
 
-  executionFiles(): { name: string; source: string }[] {
+  executionFiles(): { name: string; source: string; uri: string }[] {
     return [...this.documentsByUri.values()].map(({ file, uri }) => ({
       name: file.name,
-      source: this.service.ephemeralModelValue(uri) ?? file.starterCode
+      source: this.service.ephemeralModelValue(uri) ?? file.starterCode,
+      uri
     }));
   }
 

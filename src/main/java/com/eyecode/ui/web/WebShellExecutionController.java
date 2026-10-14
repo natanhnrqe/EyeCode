@@ -1,18 +1,26 @@
 package com.eyecode.ui.web;
 
+import com.eyecode.language.diagnostics.Diagnostic;
+import com.eyecode.language.diagnostics.DiagnosticEducation;
+import com.eyecode.language.diagnostics.DiagnosticExplainer;
+import com.eyecode.language.diagnostics.DiagnosticSeverity;
 import com.eyecode.project.ProjectLifecycleService;
 import com.eyecode.project.model.ProjectModel;
+import com.eyecode.runtime.LessonCompileAnalyzer;
 import com.eyecode.runtime.LessonRunRequest;
 import com.eyecode.runtime.LessonTrace;
 import com.eyecode.runtime.LessonTraceService;
+import com.eyecode.runtime.LessonTraceStatus;
 import com.eyecode.runtime.RunConfiguration;
 import com.eyecode.runtime.RunService;
 import com.eyecode.terminal.TerminalService;
 
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Web adapter for workspace execution and terminal state.
@@ -26,6 +34,12 @@ final class WebShellExecutionController implements AutoCloseable {
     private final RunService runService;
     private final TerminalService terminalService;
     private final LessonTraceService traceService;
+    private final LessonCompileAnalyzer compileAnalyzer;
+    private final Optional<DiagnosticExplainer> explainer;
+    private final Map<String, String> lessonUrisByFile = new java.util.concurrent.ConcurrentHashMap<>();
+    private final AtomicLong traceSequence = new AtomicLong();
+    private volatile boolean lessonReachedExecution;
+    private volatile LessonRunRequest lastLessonRequest;
     private final ProjectLifecycleService.Listener terminalWorkspaceListener;
     private final TerminalService.Listener terminalListener;
     private final RunService.Listener runListener;
@@ -39,11 +53,19 @@ final class WebShellExecutionController implements AutoCloseable {
     WebShellExecutionController(WebShellSurface surface, ProjectLifecycleService projectLifecycleService,
                                 RunService runService, TerminalService terminalService,
                                 LessonTraceService traceService) {
+        this(surface, projectLifecycleService, runService, terminalService, traceService, null);
+    }
+
+    WebShellExecutionController(WebShellSurface surface, ProjectLifecycleService projectLifecycleService,
+                                RunService runService, TerminalService terminalService,
+                                LessonTraceService traceService, DiagnosticExplainer explainer) {
         this.surface = java.util.Objects.requireNonNull(surface, "surface");
         this.projectLifecycleService = java.util.Objects.requireNonNull(projectLifecycleService, "projectLifecycleService");
         this.runService = java.util.Objects.requireNonNull(runService, "runService");
         this.terminalService = java.util.Objects.requireNonNull(terminalService, "terminalService");
         this.traceService = java.util.Objects.requireNonNull(traceService, "traceService");
+        this.compileAnalyzer = new LessonCompileAnalyzer();
+        this.explainer = Optional.ofNullable(explainer);
         this.terminalWorkspaceListener = project -> {
             terminalService.setWorkspaceDirectory(project == null ? null : project.getRootDir());
             sendTerminalState();
@@ -56,7 +78,12 @@ final class WebShellExecutionController implements AutoCloseable {
         };
         terminalService.addListener(terminalListener);
         runListener = new RunService.Listener() {
-            @Override public void onPhase(com.eyecode.runtime.RunPhase phase) { sendRunState(); }
+            @Override public void onPhase(com.eyecode.runtime.RunPhase phase) {
+                if (phase == com.eyecode.runtime.RunPhase.RUNNING) {
+                    lessonReachedExecution = true;
+                }
+                sendRunState();
+            }
             @Override public void onStarted(com.eyecode.runtime.RunRequest request) { sendRunState(); }
             @Override public void onOutput(String text, boolean error) {
                 if (text == null) {
@@ -66,7 +93,10 @@ final class WebShellExecutionController implements AutoCloseable {
                             "text", text, "error", error)));
                 }
             }
-            @Override public void onFinished(int exitCode, boolean stopped) { sendRunState(); }
+            @Override public void onFinished(int exitCode, boolean stopped) {
+                publishLessonRunDiagnostics(exitCode, stopped);
+                sendRunState();
+            }
         };
         runService.addListener(runListener);
         surface.registerHandler("run", "state", this::runState);
@@ -94,15 +124,44 @@ final class WebShellExecutionController implements AutoCloseable {
     }
 
     private WebShellEnvelope run(WebShellEnvelope message) {
-        boolean started = lessonRun(message) ? runService.runLesson(lessonRunRequest(message)) : runService.runCurrent();
+        boolean lesson = lessonRun(message);
+        if (!lesson) {
+            lastLessonRequest = null;
+        }
+        boolean started = lesson
+                ? runLesson(message, runService::runLesson)
+                : runService.runCurrent();
         sendRunState();
         return message.response(Map.of("started", started));
     }
 
     private WebShellEnvelope rerun(WebShellEnvelope message) {
-        boolean started = lessonRun(message) ? runService.runLesson(lessonRunRequest(message)) : runService.rerun();
+        boolean lesson = lessonRun(message);
+        if (!lesson) {
+            lastLessonRequest = null;
+        }
+        boolean started = lesson
+                ? runLesson(message, runService::runLesson)
+                : runService.rerun();
         sendRunState();
         return message.response(Map.of("started", started));
+    }
+
+    private boolean runLesson(WebShellEnvelope message, java.util.function.Function<LessonRunRequest, Boolean> starter) {
+        LessonRunRequest request = lessonRunRequest(message);
+        rememberLessonRequest(request);
+        lessonReachedExecution = false;
+        return starter.apply(request);
+    }
+
+    private void rememberLessonRequest(LessonRunRequest request) {
+        lastLessonRequest = request;
+        lessonUrisByFile.clear();
+        for (LessonRunRequest.SourceFile file : request.files()) {
+            if (!file.uri().isBlank()) {
+                lessonUrisByFile.put(file.name(), file.uri());
+            }
+        }
     }
 
     private WebShellEnvelope stop(WebShellEnvelope message) {
@@ -113,8 +172,11 @@ final class WebShellExecutionController implements AutoCloseable {
     }
 
     private WebShellEnvelope trace(WebShellEnvelope message) {
-        boolean started = traceService.trace(lessonRunRequest(message), this::publishTrace);
-        return message.response(Map.of("started", started));
+        long traceId = traceSequence.incrementAndGet();
+        LessonRunRequest request = lessonRunRequest(message);
+        rememberLessonRequest(request);
+        boolean started = traceService.trace(request, trace -> publishTrace(traceId, trace));
+        return message.response(Map.of("started", started, "traceId", started ? traceId : 0L));
     }
 
     private WebShellEnvelope traceStop(WebShellEnvelope message) {
@@ -122,18 +184,88 @@ final class WebShellExecutionController implements AutoCloseable {
         return message.response(Map.of("stopped", true));
     }
 
-    private void publishTrace(LessonTrace trace) {
-        if (!closed) {
-            surface.send(WebShellEnvelope.event("run", "trace", tracePayload(trace)));
+    private void publishLessonRunDiagnostics(int exitCode, boolean stopped) {
+        LessonRunRequest request = lastLessonRequest;
+        if (closed || request == null || lessonReachedExecution || stopped || exitCode == 0) {
+            return;
+        }
+        List<LessonCompileAnalyzer.Entry> entries = compileAnalyzer.analyze(request);
+        if (entries.isEmpty()) {
+            return;
+        }
+        List<Map<String, Object>> diagnostics = entries.stream()
+                .filter(entry -> !entry.uri().isBlank())
+                .map(entry -> diagnosticPayload(entry.uri(), entry.severity(), entry.code(), entry.message(),
+                        entry.startLine(), entry.startColumn(), entry.endLine(), entry.endColumn()))
+                .toList();
+        if (!diagnostics.isEmpty()) {
+            surface.send(WebShellEnvelope.event("diagnostics", "lessonRun", Map.of("diagnostics", diagnostics)));
         }
     }
 
-    private Map<String, Object> tracePayload(LessonTrace trace) {
+    private void publishRuntimeErrorDiagnostic(LessonTrace trace) {
+        if (closed || trace.status() != LessonTraceStatus.RUNTIME_ERROR
+                || trace.runtimeError() == null || trace.runtimeErrorLine() <= 0) {
+            return;
+        }
+        String uri = lessonUrisByFile.get(trace.mainClass() + ".java");
+        if (uri == null || uri.isBlank()) {
+            return;
+        }
+        surface.send(WebShellEnvelope.event("diagnostics", "lessonRun", Map.of("diagnostics",
+                List.of(diagnosticPayload(uri, "ERROR", "runtime", trace.runtimeError(),
+                        trace.runtimeErrorLine(), 1, trace.runtimeErrorLine(), 1)))));
+    }
+
+    private Map<String, Object> diagnosticPayload(String uri, String severity, String code, String message,
+                                                  int startLine, int startColumn, int endLine, int endColumn) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("uri", uri);
+        payload.put("severity", severity);
+        payload.put("code", code);
+        payload.put("message", message);
+        payload.put("startLine", startLine);
+        payload.put("startColumn", startColumn);
+        payload.put("endLine", endLine);
+        payload.put("endColumn", endColumn);
+        Diagnostic synthetic = new Diagnostic(severity(severity), code, message, startLine, startColumn, endLine, endColumn, "");
+        explainer.flatMap(explainer -> explainer.explain(synthetic))
+                .ifPresent(education -> payload.put("education", educationPayload(education)));
+        return payload;
+    }
+
+    private static DiagnosticSeverity severity(String severity) {
+        return "WARNING".equals(severity) ? DiagnosticSeverity.WARNING : DiagnosticSeverity.ERROR;
+    }
+
+    private static Map<String, Object> educationPayload(DiagnosticEducation education) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("title", education.title());
+        payload.put("summary", education.summary());
+        payload.put("explanation", education.explanation());
+        payload.put("pattern", education.pattern());
+        payload.put("correctedPattern", education.correctedPattern());
+        payload.put("tip", education.tip());
+        payload.put("relatedContent", education.relatedContent().stream().map(related -> Map.of(
+                "id", related.id(), "title", related.title(), "description", related.description())).toList());
+        return payload;
+    }
+
+    private void publishTrace(long traceId, LessonTrace trace) {
+        if (!closed) {
+            surface.send(WebShellEnvelope.event("run", "trace", tracePayload(traceId, trace)));
+            publishRuntimeErrorDiagnostic(trace);
+        }
+    }
+
+    private Map<String, Object> tracePayload(long traceId, LessonTrace trace) {
         java.util.LinkedHashMap<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("traceId", traceId);
         payload.put("mainClass", trace.mainClass());
         payload.put("status", trace.status().name());
         payload.put("exitCode", trace.exitCode());
         payload.put("runtimeError", trace.runtimeError() == null ? "" : trace.runtimeError());
+        payload.put("runtimeErrorLine", trace.runtimeErrorLine());
         payload.put("steps", trace.steps().stream()
                 .map(step -> {
                     java.util.LinkedHashMap<String, Object> stepPayload = new java.util.LinkedHashMap<>();
@@ -256,7 +388,9 @@ final class WebShellExecutionController implements AutoCloseable {
                     || !(file.get("source") instanceof String source)) {
                 throw new IllegalArgumentException("Invalid lesson source file");
             }
-            return new LessonRunRequest.SourceFile(name, source);
+            Object uri = file.get("uri");
+            return new LessonRunRequest.SourceFile(name, source,
+                    uri instanceof String value1 ? value1 : "");
         }).toList();
         if (!(values.get("mainClass") instanceof String mainClass)) {
             throw new IllegalArgumentException("Lesson main class is required");
