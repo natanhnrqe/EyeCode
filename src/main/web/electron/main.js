@@ -1,39 +1,31 @@
 import { app, BrowserWindow, dialog, shell, Menu, ipcMain } from 'electron';
-import { spawn, execSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import fs from 'node:fs';
+import { buildBackendLaunch, parseReadinessUrl, STARTUP_TIMEOUT_MS } from './backendLaunch.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const webDir = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(__dirname, '..', '..', '..', '..');
 
 let mainWindow = null;
 let backendProcess = null;
 let backendUrl = null;
 
-function ensureFrontendBuilt() {
-  const indexHtml = path.join(repoRoot, 'src', 'main', 'resources', 'webshell', 'index.html');
-  if (!fs.existsSync(indexHtml)) {
-    console.log('[Electron] Frontend assets not found. Building with Vite...');
-    execSync('npm run build', { cwd: webDir, stdio: 'inherit' });
-    console.log('[Electron] Frontend build complete.');
-  }
-}
-
 function startBackend() {
   return new Promise((resolve, reject) => {
-    const args = ['compile', 'exec:java', '-Deyecode.web.openBrowser=false'];
-
-    if (process.env.EYECODE_JDTLS_HOME) {
-      args.push(`-Deyecode.jdtls.home="${process.env.EYECODE_JDTLS_HOME}"`);
+    let launch;
+    try {
+      launch = buildBackendLaunch({ repoRoot });
+    } catch (error) {
+      reject(error);
+      return;
     }
 
-    console.log('[Electron] Starting Java backend...');
+    console.log(`[Electron] Starting Java backend from ${launch.distDir}`);
 
-    backendProcess = spawn('mvn', args, {
-      cwd: repoRoot,
-      shell: true,
+    backendProcess = spawn(launch.command, launch.args, {
+      cwd: launch.cwd,
+      env: process.env,
       detached: process.platform !== 'win32',
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -46,20 +38,20 @@ function startBackend() {
       if (!resolved) {
         resolved = true;
         killBackend();
-        reject(new Error('Backend startup timed out after 60 seconds.'));
+        reject(new Error(`Backend startup timed out after ${STARTUP_TIMEOUT_MS / 1000} seconds.`));
       }
-    }, 60000);
+    }, STARTUP_TIMEOUT_MS);
 
     backendProcess.stdout.on('data', (data) => {
       const text = data.toString();
       stdoutBuffer += text;
       process.stdout.write(text);
 
-      const urlMatch = stdoutBuffer.match(/\[EyeCode\] URL: (http:\/\/127\.0\.0\.1:\d+\/webshell\/index\.html)/);
-      if (urlMatch && !resolved) {
+      const url = parseReadinessUrl(stdoutBuffer);
+      if (url && !resolved) {
         resolved = true;
         clearTimeout(timeout);
-        backendUrl = urlMatch[1];
+        backendUrl = url;
         console.log(`[Electron] Backend ready at ${backendUrl}`);
         resolve(backendUrl);
       }
@@ -76,8 +68,8 @@ function startBackend() {
         resolved = true;
         clearTimeout(timeout);
         reject(new Error(
-          `Failed to start Maven: ${error.message}\n\n` +
-          'Ensure Maven (mvn) is installed and available in your PATH.'
+          `Failed to start Java backend: ${error.message}\n\n` +
+          `Command:\n  ${launch.command} ${launch.args.join(' ')}`
         ));
       }
     });
@@ -106,8 +98,8 @@ function killBackend() {
     console.log('[Electron] Stopping backend...');
     if (process.platform === 'win32') {
       spawn('taskkill', ['/pid', String(backendProcess.pid), '/T', '/F'], {
-        shell: true,
         stdio: 'ignore',
+        windowsHide: true,
       });
     } else {
       try {
@@ -229,7 +221,6 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
   console.log('[Electron] EyeCode Desktop (development mode)');
   try {
-    ensureFrontendBuilt();
     const url = await startBackend();
     createWindow(url);
   } catch (error) {

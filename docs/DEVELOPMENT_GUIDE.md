@@ -20,9 +20,10 @@ Pop-Location
 
 From `src/main/web`, run `npm run electron:dev`. This script:
 1. Builds the frontend with Vite (`npm run build` → `src/main/resources/webshell`).
-2. Launches Electron (`electron/main.js`), which starts the Java backend via `mvn compile exec:java -Deyecode.web.openBrowser=false` and opens a native window at the loopback URL.
+2. Packages the WebShell runtime distribution (`npm run webshell:dist` → `webshell-dist/target/webshell-dist`).
+3. Launches Electron (`electron/main.js`), which starts the Java backend by running `java` directly on the packaged distribution (`eyecode-webshell.jar` + `lib/*` → `com.eyecode.ui.web.LocalWebShellLauncher`) and opens a native window at the loopback URL.
 
-Requirements: Java 21, Maven (`mvn`) on PATH, Node.js (Electron 33.2.1 is a pinned devDependency). Set `EYECODE_JDTLS_HOME` to override JDT LS resolution if needed. This is a development convenience — no installers, packaging, or auto-update.
+Requirements: Java 21 (`java` on PATH, or `JAVA_HOME`, or `EYECODE_JAVA`), Maven only for building the distribution (`webshell:dist` / `mvn -f webshell-dist/pom.xml package`), Node.js (Electron 33.2.1 is a pinned devDependency). Set `EYECODE_JDTLS_HOME` to override JDT LS resolution if needed; set `EYECODE_WEBSHELL_DIST` to point at an alternate distribution directory. Electron never invokes Maven at runtime — if the distribution is missing it shows the build command and exits. This is a development convenience — no installers, packaging, or auto-update.
 
 The Web runtime has no browser-native file or directory picker yet. `workspace/openProject` without a path, `workspace/chooseDirectory`, and Save As return the recoverable `NATIVE_UI_UNAVAILABLE` protocol error. Supplying a path for opening a project remains supported.
 
