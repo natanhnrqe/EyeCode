@@ -4499,29 +4499,44 @@ img.learning-icon {
 /* ========================================================================== */
 
 .learning-body pre code .learning-token-comment,
-.docs-article-content pre code .learning-token-comment {
+.docs-article-content pre code .learning-token-comment,
+.learn-problem-pattern code .learning-token-comment,
+.learn-problem-example code .learning-token-comment,
+.learn-diagnostic-understanding code .learning-token-comment {
   color: #8f9aa7;
 }
 
 .learning-body pre code .learning-token-keyword,
-.docs-article-content pre code .learning-token-keyword {
+.docs-article-content pre code .learning-token-keyword,
+.learn-problem-pattern code .learning-token-keyword,
+.learn-problem-example code .learning-token-keyword,
+.learn-diagnostic-understanding code .learning-token-keyword {
   color: #f0aa82;
 
   font-weight: 500;
 }
 
 .learning-body pre code .learning-token-string,
-.docs-article-content pre code .learning-token-string {
+.docs-article-content pre code .learning-token-string,
+.learn-problem-pattern code .learning-token-string,
+.learn-problem-example code .learning-token-string,
+.learn-diagnostic-understanding code .learning-token-string {
   color: #9bd49f;
 }
 
 .learning-body pre code .learning-token-number,
-.docs-article-content pre code .learning-token-number {
+.docs-article-content pre code .learning-token-number,
+.learn-problem-pattern code .learning-token-number,
+.learn-problem-example code .learning-token-number,
+.learn-diagnostic-understanding code .learning-token-number {
   color: #62d3db;
 }
 
 .learning-body pre code .learning-token-type,
-.docs-article-content pre code .learning-token-type {
+.docs-article-content pre code .learning-token-type,
+.learn-problem-pattern code .learning-token-type,
+.learn-problem-example code .learning-token-type,
+.learn-diagnostic-understanding code .learning-token-type {
   color: #b4c8ff;
 
   font-weight: 500;

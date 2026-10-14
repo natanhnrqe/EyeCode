@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,6 +36,29 @@ class PracticeLessonVisualSourceTest {
         assertTrue(styles.contains(".lesson-practice-header"));
         assertTrue(block(styles, ".lesson-panel.is-practice .lesson-heading").contains("border: 0;"));
         assertTrue(block(styles, ".lesson-practice-header").contains("padding-bottom: 0;"));
+    }
+
+    @Test
+    void educationCodeBlocksReuseTheSharedTokenStyling() throws Exception {
+        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String panel = Files.readString(Path.of("src/main/web/src/diagnostics/ProblemsPanel.tsx"));
+        String context = Files.readString(Path.of("src/main/web/src/lessons/LearnContextPanel.tsx"));
+
+        for (String token : List.of("comment", "keyword", "string", "number", "type")) {
+            for (String container : List.of(".learn-problem-pattern", ".learn-problem-example",
+                    ".learn-diagnostic-understanding")) {
+                assertTrue(styles.contains(container + " code .learning-token-" + token),
+                        "the education containers must reuse the shared token rule for " + token);
+            }
+        }
+        assertTrue(panel.contains("dangerouslySetInnerHTML={{ __html: correctedHtml }}"),
+                "correctedPattern must render through the shared highlighter");
+        assertTrue(panel.contains("dangerouslySetInnerHTML={{ __html: patternHtml }}"),
+                "pattern must render through the shared highlighter");
+        assertTrue(context.contains("dangerouslySetInnerHTML={{ __html: patternHtml }}"),
+                "the understand tab must render through the shared highlighter");
+        assertTrue(panel.contains("useMemo(() => education?.pattern ? highlightLearningJavaSource"),
+                "highlighting must not recompute on every render");
     }
 
     @Test
