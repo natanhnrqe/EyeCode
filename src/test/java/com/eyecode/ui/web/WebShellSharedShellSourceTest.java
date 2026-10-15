@@ -532,7 +532,7 @@ class WebShellSharedShellSourceTest {
         assertTrue(pane.contains("allowedDockSides: ['TOP', 'BOTTOM']"));
         assertTrue(pane.contains("requiredPaneIds"));
         assertTrue(pane.contains("dockablePaneIds"));
-        assertTrue(pane.contains("export const dockSeparatorSize = 11"));
+        assertTrue(pane.contains("export const dockSeparatorSize = 7"));
         assertTrue(layout.contains("const draggablePaneIds = new Set(dockPaneIds(tree).filter"));
         assertTrue(layout.contains("dockSides.some(side => canDockDrop?.(paneId, targetId, side))"));
         assertTrue(layout.contains("const dockDragThreshold = 5"));

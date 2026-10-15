@@ -224,15 +224,15 @@ html, body, #root {
 }
 
 .dock-split-root.dock-split-horizontal {
-  grid-template-columns: 356px 5px minmax(0, 1fr);
+  grid-template-columns: 356px 7px minmax(0, 1fr);
 }
 
 .dock-split-nested.dock-split-horizontal {
-  grid-template-columns: minmax(0, 55fr) 5px minmax(0, 45fr);
+  grid-template-columns: minmax(0, 55fr) 7px minmax(0, 45fr);
 }
 
 .dock-split-vertical {
-  grid-template-rows: minmax(0, 1fr) 5px minmax(170px, 30%);
+  grid-template-rows: minmax(0, 1fr) 7px minmax(170px, 30%);
 }
 
 .dock-leaf {
@@ -296,29 +296,6 @@ html, body, #root {
   content: '';
 }
 
-.dock-split-separator-horizontal::after {
-  top: 0;
-  bottom: 0;
-  left: 5px;
-  width: 1px;
-}
-
-.dock-split-separator-horizontal::before {
-  top: 0;
-  bottom: 0;
-  inset-inline: 0;
-}
-
-.dock-split-separator-vertical::after {
-  right: 0;
-  bottom: 5px;
-  left: 0;
-  height: 1px;
-}
-
-.dock-split-separator-vertical::before {
-  inset: 0;
-}
 
 .dock-split-separator:hover::after, .dock-split-separator.is-active::after {
   background: var(--eyecode-accent-bright);
@@ -331,26 +308,6 @@ html, body, #root {
   pointer-events: none;
   opacity: .45;
 }
-
-.dock-split-separator-horizontal .dock-split-grip {
-  top: 50%;
-  left: 0;
-  width: 5px;
-  height: 20px;
-  transform: translateY(-50%);
-  background: radial-gradient(circle, rgba(221,224,231,.75) 1px, transparent 1.5px) center / 3px 5px repeat-y;
-}
-
-.dock-split-separator-vertical .dock-split-grip {
-  top: 0;
-  left: 50%;
-  width: 24px;
-  height: 5px;
-  transform: translateX(-50%);
-  background: linear-gradient(90deg, transparent 0 4px, rgba(221,224,231,.6) 4px 7px, transparent 7px 10px, rgba(221,224,231,.6) 10px 14px, transparent 14px 17px, rgba(221,224,231,.6) 17px 20px, transparent 20px);
-}
-
-.dock-split-separator:hover .dock-split-grip, .dock-split-separator.is-active .dock-split-grip { opacity: .95; }
 
 .workspace-shell {
   display: grid;
@@ -428,8 +385,8 @@ html, body, #root {
   min-height: 0;
   overflow: hidden;
   grid-template-rows: minmax(0, 1fr) minmax(170px, 30%);
-  gap: 5px;
-  padding: 10px;
+  gap: 0;
+  padding: 0 5px 0 0;
   position: relative;
 }
 .shell-workspace.is-welcome {
@@ -2716,6 +2673,8 @@ html, body, #root {
   min-width: 0;
   min-height: 0;
   height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
 }
 
 .lesson-highlight {

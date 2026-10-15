@@ -26,7 +26,7 @@ export type DockRules = {
   dockablePaneIds: readonly WorkspacePaneId[];
 };
 
-export const dockSeparatorSize = 11;
+export const dockSeparatorSize = 7;
 export const explorerCollapsedRailWidth = 64;
 
 export const workspacePaneDefinitions: Readonly<Record<WorkspacePaneId, WorkspacePaneDefinition>> = {
