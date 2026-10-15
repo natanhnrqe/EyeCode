@@ -219,7 +219,7 @@ function createWindow(url) {
 
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
-  console.log('[Electron] EyeCode Desktop (development mode)');
+  console.log(`[Electron] EyeCode Desktop (${app.isPackaged ? 'packaged' : 'development'} mode)`);
   try {
     const url = await startBackend();
     createWindow(url);

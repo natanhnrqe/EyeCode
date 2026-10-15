@@ -44,6 +44,41 @@ describe('resolveDistDir', () => {
     const distDir = resolveDistDir('/repo', { EYECODE_WEBSHELL_DIST: '   ' });
     expect(distDir).toBe(path.join('/repo', 'webshell-dist', 'target', 'webshell-dist'));
   });
+
+  it('prefers packaged resources webshell-dist when the jar exists there', () => {
+    const resourcesPath = path.join('C:', 'install', 'resources');
+    const packagedDist = path.join(resourcesPath, 'webshell-dist');
+    const files = new Set([path.join(packagedDist, 'eyecode-webshell.jar')]);
+    const distDir = resolveDistDir(
+      path.join('C:', 'repo'),
+      {},
+      resourcesPath,
+      existsFor(files)
+    );
+    expect(distDir).toBe(packagedDist);
+  });
+
+  it('falls back to the repo distribution when packaged resources are missing', () => {
+    const distDir = resolveDistDir(
+      path.join('C:', 'repo'),
+      {},
+      path.join('C:', 'install', 'resources'),
+      never
+    );
+    expect(distDir).toBe(path.join('C:', 'repo', 'webshell-dist', 'target', 'webshell-dist'));
+  });
+
+  it('prefers EYECODE_WEBSHELL_DIST over packaged resources', () => {
+    const custom = path.join('C:', 'custom dist');
+    const files = new Set([path.join(path.join('C:', 'r'), 'webshell-dist', 'eyecode-webshell.jar')]);
+    const distDir = resolveDistDir(
+      path.join('C:', 'repo'),
+      { EYECODE_WEBSHELL_DIST: custom },
+      path.join('C:', 'r'),
+      existsFor(files)
+    );
+    expect(distDir).toBe(path.resolve(custom));
+  });
 });
 
 describe('isJdkHome', () => {
@@ -365,6 +400,31 @@ describe('buildBackendLaunch', () => {
     expect(() =>
       buildBackendLaunch({ repoRoot, env: {}, platform: 'win32', existsSync: never })
     ).toThrow(/mvn -f webshell-dist\/pom\.xml package/);
+  });
+
+  it('resolves packaged resources for both dist and JDK', () => {
+    const resourcesPath = path.join('C:', 'install', 'resources');
+    const packagedDist = path.join(resourcesPath, 'webshell-dist');
+    const packagedJdk = path.join(resourcesPath, 'jdk');
+    const files = new Set([
+      path.join(packagedDist, 'eyecode-webshell.jar'),
+      path.join(packagedDist, 'lib'),
+      path.join(packagedJdk, 'bin', 'java.exe'),
+      path.join(packagedJdk, 'bin', 'javac.exe'),
+    ]);
+    const launch = buildBackendLaunch({
+      repoRoot: path.join('C:', 'nonexistent repo'),
+      env: {},
+      platform: 'win32',
+      existsSync: existsFor(files),
+      resourcesPath,
+    });
+    expect(launch.distDir).toBe(packagedDist);
+    expect(launch.command).toBe(path.join(packagedJdk, 'bin', 'java.exe'));
+    expect(launch.args).toContain(`-Deyecode.jdk.home=${packagedJdk}`);
+    expect(launch.jdkHome).toBe(packagedJdk);
+    const cpIndex = launch.args.indexOf('-cp');
+    expect(launch.args[cpIndex + 1]).toContain(path.join(packagedDist, 'lib', '*'));
   });
 });
 

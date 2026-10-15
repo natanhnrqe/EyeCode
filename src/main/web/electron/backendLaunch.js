@@ -8,9 +8,13 @@ export const READINESS_URL_PATTERN = /\[EyeCode\] URL: (http:\/\/127\.0\.0\.1:\d
 export const STARTUP_TIMEOUT_MS = 60_000;
 export const STAGED_JDK_RELATIVE = path.join('target', 'eyecode-desktop', 'runtime', 'jdk');
 
-export function resolveDistDir(repoRoot, env = process.env) {
+export function resolveDistDir(repoRoot, env = process.env, resourcesPath, existsSync = fs.existsSync) {
   const override = (env.EYECODE_WEBSHELL_DIST || '').trim();
   if (override) return path.resolve(override);
+  if (resourcesPath) {
+    const packagedDist = path.join(resourcesPath, 'webshell-dist');
+    if (existsSync(path.join(packagedDist, DIST_JAR_NAME))) return packagedDist;
+  }
   return path.join(repoRoot, 'webshell-dist', 'target', 'webshell-dist');
 }
 
@@ -83,7 +87,7 @@ export function assertDistReady(distDir, existsSync = fs.existsSync) {
 }
 
 export function buildBackendLaunch({ repoRoot, env = process.env, platform = process.platform, existsSync = fs.existsSync, resourcesPath }) {
-  const distDir = resolveDistDir(repoRoot, env);
+  const distDir = resolveDistDir(repoRoot, env, resourcesPath, existsSync);
   const { jar, libDir } = assertDistReady(distDir, existsSync);
   const jdkHome = resolveJdkHome({ repoRoot, env, platform, existsSync, resourcesPath });
   const java = resolveJavaExecutable({ env, platform, existsSync, repoRoot, resourcesPath });
