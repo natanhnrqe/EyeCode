@@ -95,7 +95,7 @@ final class WebShellExecutionController implements AutoCloseable {
             @Override public void onStarted(com.eyecode.runtime.RunRequest request) { sendRunState(); }
             @Override public void onOutput(String text, boolean error) {
                 if (text == null) {
-                    outputCoalescer.flush();
+                    outputCoalescer.reset();
                     surface.send(WebShellEnvelope.event("run", "output", Map.of("clear", true)));
                     return;
                 }

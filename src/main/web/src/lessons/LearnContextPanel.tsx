@@ -16,6 +16,7 @@ type DocumentLabel = { uri: string; displayName: string };
 type Props = {
   active: LearnContextTab;
   output: RunOutputChunk[];
+  outputDropped: number;
   runState: RunState;
   diagnostics: DiagnosticsViewState | null;
   documents: DocumentLabel[];
@@ -30,7 +31,7 @@ const tabs: Array<{ id: LearnContextTab; label: string }> = [
   { id: 'problems', label: 'Problemas' }, { id: 'output', label: 'Saída' }, { id: 'understand', label: 'Entender' }, { id: 'variables', label: 'Variáveis' }, { id: 'visualization', label: 'Visualização' }
 ];
 
-export function LearnContextPanel({ active, output, runState, diagnostics, documents, trace, capturing, onSelect, onNavigateProblem, onOpenRelated }: Props) {
+export function LearnContextPanel({ active, output, outputDropped, runState, diagnostics, documents, trace, capturing, onSelect, onNavigateProblem, onOpenRelated }: Props) {
   const problemCount = diagnostics?.results.reduce((total, result) => total + result.diagnostics.length, 0) ?? 0;
   const problems = toProblems(diagnostics, documents);
   const [selectedProblemKey, setSelectedProblemKey] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export function LearnContextPanel({ active, output, runState, diagnostics, docum
   </div>} bodyClassName="bottom-panel-content">
     {active === 'problems' ? <ProblemsPanel state={diagnostics} documents={documents} onNavigate={onNavigateProblem} learnMode selectedKey={selectedProblem?.key}
       onSelectProblem={(problem: Problem) => setSelectedProblemKey(problem.key)} onUnderstand={() => onSelect('understand')} onOpenRelated={onOpenRelated} />
-      : active === 'output' ? <LearnOutput output={output} runState={runState} />
+      : active === 'output' ? <LearnOutput output={output} outputDropped={outputDropped} runState={runState} />
         : active === 'understand' ? <DiagnosticUnderstanding problem={selectedProblem} />
           : active === 'variables' ? <LessonVariablesTab phase={tracePhase} view={traceView} trace={trace} selectedStep={selectedStep}
             onSelectStep={setSelectedStepIndex} />
@@ -231,13 +232,14 @@ function DiagnosticUnderstanding({ problem }: { problem: Problem | null }) {
   return <article className="learn-diagnostic-understanding"><p className="learning-panel-kicker">Entendendo o problema</p><h2>{education.title}</h2><section><h3>O que aconteceu?</h3><p>{education.explanation}</p></section><section><h3>Como pensar sobre isso?</h3><p>{education.summary}</p></section><section><h3>Padrão de referência</h3><pre><code className="language-java" dangerouslySetInnerHTML={{ __html: patternHtml }} /></pre></section>{education.tip && <section className="learn-problem-tip"><strong>💡 Dica</strong><span>{education.tip}</span></section>}<details><summary>Detalhes técnicos</summary><p>{problem.message} · linha {problem.startLine}, coluna {problem.startColumn}</p></details></article>;
 }
 
-function LearnOutput({ output, runState }: Pick<Props, 'output' | 'runState'>) {
+function LearnOutput({ output, outputDropped, runState }: Pick<Props, 'output' | 'outputDropped' | 'runState'>) {
   const outputRef = useRef<HTMLPreElement>(null);
   const visible = useMemo(() => windowRunOutput(output), [output]);
   useEffect(() => { if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight; }, [output]);
   const status = runState.running ? 'Executando…' : runState.finished ? runState.exitCode === 0 ? 'Programa finalizado' : `Processo finalizado com código ${runState.exitCode ?? -1}` : 'Execute a atividade para ver a saída.';
+  const hiddenChars = visible.droppedChars + outputDropped;
   return <section className="learn-output"><header className={runState.finished && runState.exitCode === 0 ? 'is-success' : ''}>{status}</header><pre ref={outputRef}>
-    {visible.droppedChars > 0 && <span className="learn-output-dropped">…{visible.droppedChars.toLocaleString('pt-BR')} caracteres anteriores não exibidos — a exibição mostra apenas o final da saída…{'\n'}</span>}
+    {hiddenChars > 0 && <span className="learn-output-dropped">…{hiddenChars.toLocaleString('pt-BR')} caracteres anteriores não exibidos — a exibição mostra apenas o final da saída…{'\n'}</span>}
     {visible.chunks.length ? visible.chunks.map((chunk, index) => <span key={index} className={chunk.error ? 'is-error' : ''}>{chunk.text}</span>) : 'A saída do programa aparecerá aqui.'}
   </pre></section>;
 }

@@ -40,7 +40,8 @@ import { StatusBar } from './StatusBar';
 import { TopToolbar } from './TopToolbar';
 import { WelcomeScreen } from './WelcomeScreen';
 import { challengeDockRules, challengeDockTree, learnPracticeDockRules, learnPracticeDockTree, moveDockPane, projectDockRules, projectDockTree, theoryDockTree, updateDockSplitRatio, type DockNode, type DockRules, type WorkspacePaneId } from './WorkspacePane';
-import type { ProjectNode, RunOutputChunk, RunState, TerminalState, WorkspaceSnapshot } from './protocol';
+import type { ProjectNode, RunState, TerminalState, WorkspaceSnapshot } from './protocol';
+import { appendRunOutput, emptyRunOutput, type RunOutputState } from './runOutputModel';
 
 type DocumentTab = Omit<DocumentSnapshot, 'content'>;
 type BottomPanelId = 'run' | 'terminal' | 'problems' | 'git';
@@ -78,7 +79,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   const [treeChangedPath, setTreeChangedPath] = useState<string | undefined>(undefined);
   const [treeRefreshRevision, setTreeRefreshRevision] = useState(0);
   const [runState, setRunState] = useState<RunState>(emptyRunState);
-  const [runOutput, setRunOutput] = useState<RunOutputChunk[]>([]);
+  const [runOutputState, setRunOutputState] = useState<RunOutputState>(emptyRunOutput());
   const [lessonTrace, setLessonTrace] = useState<LessonTracePayload | null>(null);
   const [lessonTraceCapturing, setLessonTraceCapturing] = useState(false);
   const expectedTraceIdRef = useRef(0);
@@ -277,13 +278,13 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       if (event.channel === 'run' && event.name === 'output') {
         const payload = event.payload as { text?: string; error?: boolean; clear?: boolean };
         if (payload.clear) {
-          setRunOutput([]);
+          setRunOutputState(emptyRunOutput());
           setBottomPanel('run');
           return;
         }
         const text = payload.text;
         if (typeof text === 'string') {
-          setRunOutput(chunks => [...chunks, { text, error: payload.error === true }]);
+          setRunOutputState(state => appendRunOutput(state, { text, error: payload.error === true }));
           setBottomPanel('run');
         }
       }
@@ -882,10 +883,10 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
         </div>
       </section>;
     }
-    if (paneId === 'bottom') return learnMode ? <LearnContextPanel active={learnContextTab} output={runOutput} runState={runState} diagnostics={diagnostics} documents={documents}
+    if (paneId === 'bottom') return learnMode ? <LearnContextPanel active={learnContextTab} output={runOutputState.chunks} outputDropped={runOutputState.droppedChars} runState={runState} diagnostics={diagnostics} documents={documents}
       trace={lessonTrace} capturing={lessonTraceCapturing} onSelect={selectLearnContextTab}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)}
-      onOpenRelated={id => { void openDocumentationPage(id).then(opened => { if (opened) setDocsFullscreen(true); }); }} /> : <BottomPanel active={bottomPanel} output={runOutput} runState={runState} terminalState={terminalState}
+      onOpenRelated={id => { void openDocumentationPage(id).then(opened => { if (opened) setDocsFullscreen(true); }); }} /> : <BottomPanel active={bottomPanel} output={runOutputState.chunks} outputDropped={runOutputState.droppedChars} runState={runState} terminalState={terminalState}
       diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />;
     if (paneId === 'lesson') {

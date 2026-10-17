@@ -2144,6 +2144,11 @@ html, body, #root {
   font-style: italic;
 }
 
+.run-output-chunk.is-dropped {
+  color: var(--eyecode-muted);
+  font-style: italic;
+}
+
 
 /* Lesson actions */
 

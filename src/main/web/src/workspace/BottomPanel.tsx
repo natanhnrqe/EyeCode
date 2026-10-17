@@ -11,6 +11,7 @@ type DocumentLabel = { uri: string; displayName: string };
 type Props = {
   active: BottomPanelId;
   output: RunOutputChunk[];
+  outputDropped: number;
   runState: RunState;
   terminalState: TerminalState;
   diagnostics: DiagnosticsViewState | null;
@@ -24,7 +25,7 @@ const panels: Array<{ id: BottomPanelId; label: string }> = [
   { id: 'git', label: 'Git' }
 ];
 
-function RunConsole({ output, runState }: Pick<Props, 'output' | 'runState'>) {
+function RunConsole({ output, outputDropped, runState }: Pick<Props, 'output' | 'outputDropped' | 'runState'>) {
   const outputRef = useRef<HTMLPreElement | null>(null);
   const followTail = useRef(true);
 
@@ -48,11 +49,11 @@ function RunConsole({ output, runState }: Pick<Props, 'output' | 'runState'>) {
     <pre ref={outputRef} className="run-output" onScroll={event => {
       const element = event.currentTarget;
       followTail.current = element.scrollHeight - element.scrollTop - element.clientHeight <= 24;
-    }}>{output.map((chunk, index) => <span key={index} className={chunk.error ? 'run-output-chunk is-error' : 'run-output-chunk'}>{chunk.text}</span>)}</pre>
+    }}>{outputDropped > 0 && <span className="run-output-chunk is-dropped">…{outputDropped.toLocaleString('pt-BR')} characters not shown — displaying only the tail of the output…{'\n'}</span>}{output.map((chunk, index) => <span key={index} className={chunk.error ? 'run-output-chunk is-error' : 'run-output-chunk'}>{chunk.text}</span>)}</pre>
   </div>;
 }
 
-export function BottomPanel({ active, output, runState, terminalState, diagnostics, documents, onSelect, onNavigateProblem }: Props) {
+export function BottomPanel({ active, output, outputDropped, runState, terminalState, diagnostics, documents, onSelect, onNavigateProblem }: Props) {
   const problemCount = diagnostics?.results.reduce((total, result) => total + result.diagnostics.length, 0) ?? 0;
   return <DockPane paneId="bottom" className="bottom-panel" label="Tool windows" headerClassName="bottom-tabs" headerLabel="Tool windows" dragHandleOnly header={<>
       <span className="dock-drag-handle" data-dock-handle aria-label="Drag tool windows" />
@@ -62,7 +63,7 @@ export function BottomPanel({ active, output, runState, terminalState, diagnosti
       </button>)}
     </>} bodyClassName="bottom-panel-content">
       {active === 'problems' ? <ProblemsPanel state={diagnostics} documents={documents} onNavigate={onNavigateProblem} />
-      : active === 'run' ? <RunConsole output={output} runState={runState} /> : active === 'terminal' ? <TerminalPanel state={terminalState} />
+      : active === 'run' ? <RunConsole output={output} outputDropped={outputDropped} runState={runState} /> : active === 'terminal' ? <TerminalPanel state={terminalState} />
       : <div className="toolwindow-placeholder">
         <strong>{panels.find(panel => panel.id === active)?.label}</strong>
         <span>This Web Shell panel is ready for its existing service integration.</span>
