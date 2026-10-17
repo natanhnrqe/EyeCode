@@ -282,6 +282,7 @@ final class WebShellExecutionController implements AutoCloseable {
                     stepPayload.put("className", step.className());
                     stepPayload.put("line", step.line());
                     stepPayload.put("sampled", step.sampled());
+                    stepPayload.put("elapsedMs", step.elapsedMs());
                     stepPayload.put("variables", step.variables().stream()
                             .map(variable -> variablePayload(variable)).toList());
                     return stepPayload;

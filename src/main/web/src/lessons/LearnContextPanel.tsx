@@ -131,7 +131,7 @@ function SnapshotTable({ step }: { step: LessonTraceViewStep }) {
   return <div className="learn-trace-snapshot" aria-label={`Estado no passo ${step.index + 1}`}>
     <p className="learn-trace-snapshot-caption">
       {step.sampled
-        ? `Passo ${step.index + 1} — amostragem na linha ${step.line}: último estado observado enquanto o programa continuava executando.`
+        ? `Passo ${step.index + 1} — amostragem na linha ${step.line}${step.elapsedMs !== undefined ? ` em +${(step.elapsedMs / 1000).toFixed(1)}s de execução` : ''}: último estado observado enquanto o programa continuava executando.`
         : `Passo ${step.index + 1} — estado observado ao chegar na linha ${step.line}, antes de executá-la.`}
     </p>
     <table className="learn-trace-table">

@@ -84,7 +84,7 @@ export type LessonTraceVariable = {
   children: LessonTraceVariable[];
   truncated: boolean;
 };
-export type LessonTraceStep = { index: number; className: string; line: number; sampled: boolean; variables: LessonTraceVariable[] };
+export type LessonTraceStep = { index: number; className: string; line: number; sampled: boolean; elapsedMs?: number; variables: LessonTraceVariable[] };
 export type LessonTracePayload = {
   traceId: number;
   mainClass: string;

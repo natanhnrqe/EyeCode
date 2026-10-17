@@ -354,6 +354,87 @@ class LessonTraceServiceTest {
         }
     }
 
+    @Test
+    void sampledLoopProgressionIsFaithfulToTheRealExecutionRate() throws Exception {
+        String source = """
+                public class Main {
+                    public static void main(String[] args) {
+                        int contador = 0;
+                        while (true) {
+                            contador++;
+                        }
+                    }
+                }
+                """;
+        long timeoutMs = 6_000;
+        LessonTraceService service = new LessonTraceService(timeoutMs, 500);
+        LessonTrace trace;
+        try {
+            trace = traceAndAwait(service, source);
+        } finally {
+            service.close();
+        }
+
+        assertEquals(LessonTraceStatus.TIMEOUT, trace.status());
+        List<LessonTrace.Step> samples = trace.steps().stream()
+                .filter(LessonTrace.Step::sampled)
+                .toList();
+        assertTrue(samples.size() >= 3 && samples.size() <= 10,
+                "amostragem limitada (3..10), nunca uma por iteração: " + samples.size());
+
+        // duplicação ou atualização aplicada duas vezes produziriam valores
+        // repetidos ou decrescentes; um contador real só cresce.
+        long previousValue = Long.MIN_VALUE;
+        long previousElapsed = Long.MIN_VALUE;
+        List<Long> intervals = new java.util.ArrayList<>();
+        for (LessonTrace.Step sample : samples) {
+            long value = sample.variables().stream()
+                    .filter(variable -> variable.name().equals("contador"))
+                    .map(LessonTrace.Variable::value)
+                    .mapToLong(Long::parseLong).findFirst().orElseThrow();
+            assertTrue(value > previousValue,
+                    "valores observados devem ser estritamente crescentes: " + value + " após " + previousValue);
+            assertTrue(sample.elapsedMs() > previousElapsed,
+                    "o tempo medido de cada observação deve avançar");
+            if (previousElapsed > 0) {
+                intervals.add(sample.elapsedMs() - previousElapsed);
+            }
+            previousValue = value;
+            previousElapsed = sample.elapsedMs();
+        }
+
+        // agendamento uniforme: depois da primeira observação (que inclui o
+        // stall), os intervalos não dobram. O backoff geométrico antigo fazia
+        // ratio >= 4 e um loop linear parecer geométrico na interface.
+        List<Long> steadyIntervals = intervals.size() > 1
+                ? intervals.subList(1, intervals.size()) : intervals;
+        long maxInterval = steadyIntervals.stream().mapToLong(Long::longValue).max().orElseThrow();
+        long minInterval = steadyIntervals.stream().mapToLong(Long::longValue).min().orElseThrow();
+        assertTrue(minInterval >= LessonTraceService.SAMPLE_INTERVAL_MS,
+                "o piso de intervalo protege a responsividade: " + steadyIntervals);
+        assertTrue(maxInterval <= minInterval * 2,
+                "intervalos estáveis distinguem salto legítimo de backoff: " + steadyIntervals);
+
+        // cálculo incorreto (ex.: valor dobrado) dobraria a taxa aparente;
+        // a taxa real estabiliza com o JIT — banda larga, mas finita.
+        List<Double> rates = samples.stream()
+                .filter(sample -> sample.elapsedMs() > 1_500)
+                .map(sample -> sample.variables().stream()
+                        .filter(variable -> variable.name().equals("contador"))
+                        .map(LessonTrace.Variable::value).mapToLong(Long::parseLong).findFirst().orElseThrow()
+                        * 1000.0 / sample.elapsedMs())
+                .toList();
+        assertTrue(rates.size() >= 3, "amostras pós-warmup suficientes: " + rates.size());
+        double minRate = rates.stream().mapToDouble(Double::doubleValue).min().orElseThrow();
+        double maxRate = rates.stream().mapToDouble(Double::doubleValue).max().orElseThrow();
+        assertTrue(maxRate < minRate * 1.5,
+                "a taxa observada deve ser estável (sem saltos de duplicação): " + rates);
+
+        assertTrue(trace.limitations().stream().anyMatch(message ->
+                        message.contains("Loop mais rápido que a captura")),
+                "a limitação honesta deve acompanhar o trace");
+    }
+
     private static LessonRunRequest lessonRequest(String source) {
         return new LessonRunRequest(
                 List.of(new LessonRunRequest.SourceFile("Main.java", source)), "Main");

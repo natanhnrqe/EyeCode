@@ -116,4 +116,22 @@ describe('amostragem dentro de loops', () => {
     expect(view.steps[1].changed).toEqual(['contador']);
     expect(view.steps[2].changed).toEqual([]);
   });
+
+  it('o valor final aplicado pela interface é exatamente a última observação — nunca acumulado', () => {
+    const sampled: LessonTracePayload = {
+      ...trace,
+      steps: [
+        { ...step(0, 5, [['contador', '100']]), sampled: true },
+        { ...step(1, 5, [['contador', '250']]), sampled: true },
+        { ...step(2, 5, [['contador', '480']]), sampled: true }
+      ]
+    };
+    const view = buildLessonTraceView(sampled);
+    const applied = stepByIndex(view, defaultStepIndex(view));
+    expect(applied?.index).toBe(2);
+    const finalValue = applied?.variables.find(variable => variable.name === 'contador')?.value;
+    expect(finalValue).toBe('480');
+    expect(finalValue).not.toBe('100 + 250 + 480');
+    expect(Number(finalValue)).not.toBe(830);
+  });
 });

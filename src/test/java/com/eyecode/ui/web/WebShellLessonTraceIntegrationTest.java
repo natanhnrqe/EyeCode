@@ -50,6 +50,16 @@ class WebShellLessonTraceIntegrationTest {
             List<?> steps = (List<?>) trace.payload().get("steps");
             assertNotNull(steps);
             assertTrue(steps.size() >= 2, "o traço deve conter os passos reais da execução");
+            long previousElapsed = -1;
+            for (Object step : steps) {
+                Map<?, ?> stepPayload = (Map<?, ?>) step;
+                Object elapsed = stepPayload.get("elapsedMs");
+                assertNotNull(elapsed, "cada passo publicado deve carregar o tempo medido");
+                long elapsedMs = ((Number) elapsed).longValue();
+                assertTrue(elapsedMs >= 0, "o tempo medido nunca é negativo");
+                assertTrue(elapsedMs > previousElapsed, "os tempos publicados avançam em ordem");
+                previousElapsed = elapsedMs;
+            }
             assertTrue(trace.payload().get("limitations") instanceof List<?>);
 
             String allText = trace.payload().get("output").toString();

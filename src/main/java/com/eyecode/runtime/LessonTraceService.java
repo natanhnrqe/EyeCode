@@ -96,7 +96,6 @@ public final class LessonTraceService implements AutoCloseable {
      */
     static final int MAX_TRACE_SAMPLES = 10;
     static final long SAMPLE_INTERVAL_MS = 400;
-    static final long SAMPLE_MAX_INTERVAL_MS = 2_000;
     static final long SAMPLE_STALL_MS = 250;
     static final int SAMPLE_POLL_MS = 100;
     private static final int MAX_VARIABLES_PER_STEP = 24;
@@ -172,9 +171,10 @@ public final class LessonTraceService implements AutoCloseable {
         volatile boolean stopRequested;
         volatile VirtualMachine vm;
         private volatile ThreadReference stepThread;
+        private volatile long traceStartNanos;
+        private volatile long traceDeadlineNanos;
         private volatile long lastStepNanos;
         private volatile long lastSampleNanos;
-        private volatile long sampleIntervalNanos = TimeUnit.MILLISECONDS.toNanos(SAMPLE_INTERVAL_MS);
         private volatile long suspensionNanos;
         private volatile int samplesTaken;
         private volatile String lastSampleFingerprint = "";
@@ -270,7 +270,9 @@ public final class LessonTraceService implements AutoCloseable {
             boolean sawVmDeath = false;
             VirtualMachine machine = null;
             Process process = null;
-            lastStepNanos = System.nanoTime();
+            traceStartNanos = System.nanoTime();
+            traceDeadlineNanos = traceStartNanos + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+            lastStepNanos = traceStartNanos;
             try {
                 LaunchingConnector connector = Bootstrap.virtualMachineManager().defaultConnector();
                 Map<String, Connector.Argument> arguments = connector.defaultArguments();
@@ -303,7 +305,7 @@ public final class LessonTraceService implements AutoCloseable {
                 prepare.enable();
                 machine.resume();
 
-                long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+                long deadline = traceDeadlineNanos;
                 boolean terminated = false;
                 while (!terminated) {
                     if (stopRequested) {
@@ -509,12 +511,17 @@ public final class LessonTraceService implements AutoCloseable {
          * spinning loop without state changes produces a single sample instead
          * of noise. No value is invented: what is not observed is not shown.
          *
-         * <p>The interval grows geometrically after each recorded sample: a
-         * tight loop increments far faster than any honest capture can follow,
-         * so suspending more often would only slow the program without making
-         * the gaps smaller. The measured suspension cost is reported as a
-         * trace limitation so the interface can state that individual
-         * increments were not registered.</p>
+         * <p>Observations are spaced evenly across the remaining trace window
+         * (never faster than {@link #SAMPLE_INTERVAL_MS} between suspensions,
+         * never more than {@link #MAX_TRACE_SAMPLES} in total). A geometric
+         * backoff used to double the interval between samples, which made a
+         * constant-rate loop LOOK geometric in the interface — each observed
+         * value was roughly twice the previous one purely because of the
+         * schedule, not because of the program. Even spacing keeps the
+         * progression faithful: deltas between observations reflect the real
+         * execution rate. The measured suspension cost is reported as a trace
+         * limitation so the interface can state that individual increments
+         * were not registered.</p>
          */
         private LessonTrace.Step captureSample(VirtualMachine machine, CaptureState capture) {
             ThreadReference thread = stepThread;
@@ -530,7 +537,7 @@ public final class LessonTraceService implements AutoCloseable {
                     && now - lastStepNanos < TimeUnit.MILLISECONDS.toNanos(SAMPLE_STALL_MS)) {
                 return null;
             }
-            if (now - lastSampleNanos < sampleIntervalNanos) {
+            if (now - lastSampleNanos < sampleIntervalNanos()) {
                 return null;
             }
             lastSampleNanos = now;
@@ -552,8 +559,6 @@ public final class LessonTraceService implements AutoCloseable {
                         }
                         samplesTaken++;
                         suspensionNanos += System.nanoTime() - suspendStart;
-                        sampleIntervalNanos = Math.min(sampleIntervalNanos * 2,
-                                TimeUnit.MILLISECONDS.toNanos(SAMPLE_MAX_INTERVAL_MS));
                         lastSampleFingerprint = fingerprint;
                         return candidate;
                     }
@@ -564,6 +569,23 @@ public final class LessonTraceService implements AutoCloseable {
             } catch (RuntimeException | IncompatibleThreadStateException unavailable) {
                 return null;
             }
+        }
+
+        /**
+         * Even spacing across the remaining trace window, with a floor to keep
+         * the suspension cost bounded: the remaining samples are distributed
+         * over the remaining time, but never closer together than the base
+         * interval.
+         */
+        private long sampleIntervalNanos() {
+            long remainingNanos = traceDeadlineNanos - System.nanoTime();
+            long remainingSamples = MAX_TRACE_SAMPLES - samplesTaken;
+            if (remainingSamples <= 0 || remainingNanos <= 0) {
+                return Long.MAX_VALUE;
+            }
+            long evenSpacing = remainingNanos / remainingSamples;
+            long floor = TimeUnit.MILLISECONDS.toNanos(SAMPLE_INTERVAL_MS);
+            return Math.max(floor, evenSpacing);
         }
 
         private static String fingerprint(LessonTrace.Step step) {
@@ -593,7 +615,7 @@ public final class LessonTraceService implements AutoCloseable {
                 } catch (AbsentInformationException missing) {
                     capture.limitation("Sem tabela de variáveis locais: não é possível capturar valores neste passo.");
                     return new LessonTrace.Step(capture.nextIndex(), location.declaringType().name(), line,
-                            sampled, List.of());
+                            sampled, elapsedMs(), List.of());
                 }
                 visible.sort(Comparator.comparing(LocalVariable::name));
                 int count = Math.min(visible.size(), MAX_VARIABLES_PER_STEP);
@@ -613,11 +635,16 @@ public final class LessonTraceService implements AutoCloseable {
                             + " variáveis foram capturadas.");
                 }
                 return new LessonTrace.Step(capture.nextIndex(), location.declaringType().name(), line,
-                        sampled, variables);
+                        sampled, elapsedMs(), variables);
             } catch (RuntimeException | IncompatibleThreadStateException frameUnavailable) {
                 capture.limitation("Um passo não pôde ser capturado: frame indisponível.");
                 return null;
             }
+        }
+
+        /** Measured wall-clock time, in milliseconds, since the traced execution started. */
+        private long elapsedMs() {
+            return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - traceStartNanos);
         }
 
         private LessonTrace.Variable describe(String name, String declaredType, Value value, int depth,

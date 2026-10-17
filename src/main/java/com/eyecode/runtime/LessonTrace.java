@@ -21,7 +21,13 @@ public record LessonTrace(
         List<Chunk> output,
         List<String> limitations
 ) {
-    public record Step(int index, String className, int line, boolean sampled, List<Variable> variables) {
+    /**
+     * A captured step. {@code elapsedMs} is the measured wall-clock time, in
+     * milliseconds, between the start of the traced execution and the moment
+     * this observation was made — real measured data, never estimated.
+     */
+    public record Step(int index, String className, int line, boolean sampled, long elapsedMs,
+                       List<Variable> variables) {
         public Step {
             variables = variables == null ? List.of() : List.copyOf(variables);
         }
