@@ -8,6 +8,14 @@
     <artifactId>eyecode-webshell</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
+    <name>Eyecode WebShell</name>
+    <licenses>
+        <license>
+            <name>GNU General Public License, Version 3 (GPL-3.0-or-later)</name>
+            <url>https://www.gnu.org/licenses/gpl-3.0.html</url>
+            <comments>EyeCode's original code is licensed under GPL-3.0-or-later. Third-party components retain their own licenses; see third-party-notices/THIRD-PARTY-NOTICES.md.</comments>
+        </license>
+    </licenses>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>

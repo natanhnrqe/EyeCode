@@ -10,6 +10,8 @@ const DIST_DIR = path.join(repoRoot, 'webshell-dist', 'target', 'webshell-dist')
 const STAGED_JDK = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'jdk');
 const JDK_MANIFEST = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'jdk-manifest.json');
 const STAGE_SCRIPT = path.join(repoRoot, 'scripts', 'stage-eyecode-jdk.ps1');
+const THIRD_PARTY_NOTICES = path.join(repoRoot, 'third-party-notices', 'THIRD-PARTY-NOTICES.md');
+const EYE_CODE_LICENSE = path.join(repoRoot, 'LICENSE');
 const OUT_DIR = path.join(webRoot, 'out');
 const PACKAGE_MANIFEST = path.join(repoRoot, 'target', 'eyecode-desktop', 'package-manifest.json');
 
@@ -67,6 +69,14 @@ if (!fs.existsSync(JDK_MANIFEST)) {
 step('4/6 Verify package resources (extraResource sources)');
 console.log(`webshell-dist: ${DIST_DIR}`);
 console.log(`jdk:           ${STAGED_JDK}`);
+if (!fs.existsSync(THIRD_PARTY_NOTICES)) {
+  fail(`Third-party notices file missing at ${THIRD_PARTY_NOTICES}.`);
+}
+console.log(`notices:       ${THIRD_PARTY_NOTICES}`);
+if (!fs.existsSync(EYE_CODE_LICENSE)) {
+  fail(`EyeCode LICENSE file missing at ${EYE_CODE_LICENSE}.`);
+}
+console.log(`license:       ${EYE_CODE_LICENSE}`);
 
 step('5/6 Electron Forge make (win32 x64 ZIP)');
 run('npx electron-forge make --platform=win32 --arch=x64');

@@ -623,7 +623,7 @@ class WebShellSharedShellSourceTest {
 
         assertTrue(protocol.contains("export type RunPhase = 'IDLE' | 'PREPARING' | 'COMPILING' | 'RUNNING';"));
         assertTrue(protocol.contains("phase: RunPhase;"));
-        assertTrue(toolbar.contains("runState.running ? <span className=\"toolbar-run-spinner\""));
+        assertTrue(toolbar.contains("runState.running ? <EyeCodeIcon name=\"reload\""));
         assertTrue(statusBar.contains("runState.phase === 'COMPILING'"));
         assertTrue(statusBar.contains("status-progress-track"));
         assertTrue(styles.contains("@media (prefers-reduced-motion: reduce)"));

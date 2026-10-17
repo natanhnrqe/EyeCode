@@ -4,6 +4,8 @@ const webRoot = __dirname;
 const repoRoot = path.resolve(webRoot, '..', '..', '..');
 const webshellDist = path.join(repoRoot, 'webshell-dist', 'target', 'webshell-dist');
 const stagedJdk = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'jdk');
+const thirdPartyNotices = path.join(repoRoot, 'third-party-notices');
+const eyeCodeLicense = path.join(repoRoot, 'LICENSE');
 
 module.exports = {
   packagerConfig: {
@@ -16,7 +18,7 @@ module.exports = {
       if (file === '/electron' || file.startsWith('/electron/')) return false;
       return true;
     },
-    extraResource: [webshellDist, stagedJdk],
+    extraResource: [webshellDist, stagedJdk, thirdPartyNotices, eyeCodeLicense],
   },
   makers: [
     {
