@@ -269,15 +269,20 @@ class LessonTraceServiceTest {
                     }
                 }
                 """;
-        LessonTraceService service = new LessonTraceService(4_000, 500);
+        long timeoutMs = 4_000;
+        LessonTraceService service = new LessonTraceService(timeoutMs, 500);
+        long startedAt = System.nanoTime();
         LessonTrace trace;
         try {
             trace = traceAndAwait(service, source);
         } finally {
             service.close();
         }
+        long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
 
         assertEquals(LessonTraceStatus.TIMEOUT, trace.status());
+        assertTrue(elapsedMs < timeoutMs * 2,
+                "a amostragem não pode estourar o próprio timeout: " + elapsedMs + "ms");
         List<String> counterValues = trace.steps().stream()
                 .flatMap(step -> step.variables().stream())
                 .filter(variable -> variable.name().equals("contador"))
@@ -289,10 +294,17 @@ class LessonTraceServiceTest {
                 "os valores observados de contador devem evoluir durante o loop: " + counterValues);
         assertTrue(counterValues.stream().anyMatch(value -> Integer.parseInt(value) > 0),
                 "valores reais do increment devem aparecer antes do timeout: " + counterValues);
-        assertTrue(trace.steps().stream().anyMatch(LessonTrace.Step::sampled),
-                "as observações dentro do loop devem ser marcadas como amostras");
+        long samples = trace.steps().stream().filter(LessonTrace.Step::sampled).count();
+        assertTrue(samples >= 3 && samples <= 10,
+                "a amostragem deve ser limitada (3..10 amostras), não uma por iteração: " + samples);
         assertTrue(trace.steps().size() < 20,
                 "a amostragem deve ser limitada, não um snapshot por iteração: " + trace.steps().size());
+        assertTrue(trace.limitations().stream().anyMatch(message ->
+                        message.contains("Loop mais rápido que a captura")
+                                && message.contains("µs de suspensão")
+                                && message.contains("não registrados")),
+                "o trace deve declarar honestamente que incrementos individuais não foram observados: "
+                        + trace.limitations());
     }
 
     @Test

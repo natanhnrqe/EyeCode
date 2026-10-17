@@ -96,6 +96,7 @@ public final class LessonTraceService implements AutoCloseable {
      */
     static final int MAX_TRACE_SAMPLES = 10;
     static final long SAMPLE_INTERVAL_MS = 400;
+    static final long SAMPLE_MAX_INTERVAL_MS = 2_000;
     static final long SAMPLE_STALL_MS = 250;
     static final int SAMPLE_POLL_MS = 100;
     private static final int MAX_VARIABLES_PER_STEP = 24;
@@ -173,6 +174,8 @@ public final class LessonTraceService implements AutoCloseable {
         private volatile ThreadReference stepThread;
         private volatile long lastStepNanos;
         private volatile long lastSampleNanos;
+        private volatile long sampleIntervalNanos = TimeUnit.MILLISECONDS.toNanos(SAMPLE_INTERVAL_MS);
+        private volatile long suspensionNanos;
         private volatile int samplesTaken;
         private volatile String lastSampleFingerprint = "";
 
@@ -456,6 +459,13 @@ public final class LessonTraceService implements AutoCloseable {
                 limitations.add(0, "Erro de execução: " + runtimeError
                         + (runtimeErrorLine > 0 ? " (linha " + runtimeErrorLine + ")" : "") + ".");
             }
+            if (samplesTaken > 0) {
+                long averageMicros = suspensionNanos / samplesTaken / 1_000;
+                limitations.add("Loop mais rápido que a captura: " + samplesTaken
+                        + " amostras reais (~" + averageMicros + " µs de suspensão por observação); "
+                        + "incrementos individuais não registrados — os saltos entre valores refletem "
+                        + "a velocidade real de execução.");
+            }
             if (runtimeError != null && status == LessonTraceStatus.COMPLETED) {
                 status = LessonTraceStatus.RUNTIME_ERROR;
             } else if (runtimeError == null && status == LessonTraceStatus.COMPLETED && exitCode != 0) {
@@ -498,6 +508,13 @@ public final class LessonTraceService implements AutoCloseable {
          * when the observed values differ from the last recorded state, so a
          * spinning loop without state changes produces a single sample instead
          * of noise. No value is invented: what is not observed is not shown.
+         *
+         * <p>The interval grows geometrically after each recorded sample: a
+         * tight loop increments far faster than any honest capture can follow,
+         * so suspending more often would only slow the program without making
+         * the gaps smaller. The measured suspension cost is reported as a
+         * trace limitation so the interface can state that individual
+         * increments were not registered.</p>
          */
         private LessonTrace.Step captureSample(VirtualMachine machine, CaptureState capture) {
             ThreadReference thread = stepThread;
@@ -513,10 +530,11 @@ public final class LessonTraceService implements AutoCloseable {
                     && now - lastStepNanos < TimeUnit.MILLISECONDS.toNanos(SAMPLE_STALL_MS)) {
                 return null;
             }
-            if (now - lastSampleNanos < TimeUnit.MILLISECONDS.toNanos(SAMPLE_INTERVAL_MS)) {
+            if (now - lastSampleNanos < sampleIntervalNanos) {
                 return null;
             }
             lastSampleNanos = now;
+            long suspendStart = System.nanoTime();
             try {
                 thread.suspend();
                 try {
@@ -533,6 +551,9 @@ public final class LessonTraceService implements AutoCloseable {
                             return null;
                         }
                         samplesTaken++;
+                        suspensionNanos += System.nanoTime() - suspendStart;
+                        sampleIntervalNanos = Math.min(sampleIntervalNanos * 2,
+                                TimeUnit.MILLISECONDS.toNanos(SAMPLE_MAX_INTERVAL_MS));
                         lastSampleFingerprint = fingerprint;
                         return candidate;
                     }
