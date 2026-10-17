@@ -16,6 +16,11 @@ const styles = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8');
 const diagnostic: WebDiagnostic = {
   severity: 'ERROR', code: 'compiler.err.expected', message: "';' expected",
   startLine: 3, startColumn: 5, endLine: 3, endColumn: 18,
+  sourceExcerpt: {
+    lines: [{ lineNumber: 2, text: 'public static void main(String[] args) {' },
+      { lineNumber: 3, text: '    int idade = 15' }],
+    pointerLine: 3, pointerColumn: 19
+  },
   education: {
     title: 'Falta o ponto e vírgula',
     summary: 'Toda instrução termina com ;',
@@ -118,15 +123,11 @@ test('a Cor de um token keyword é idêntica no bloco funcional e nos blocos edu
   }
 });
 
-test('os cinco tipos de token recebem cores distintas no bloco pattern', () => {
+test('os três blocos do Entender compartilham fonte JetBrains Mono e cor base idêntica', () => {
   setup();
   try {
     act(() => {
       root!.render(createElement('div', null,
-        createElement('div', { className: 'learning-body' },
-          createElement('pre', null,
-            createElement('code', { className: 'language-java' }, 'x')),
-        createElement('div', null)),
         createElement(ProblemsPanel, {
           state, documents: [{ uri: 'lesson://fundamentals/s1/main', displayName: 'Main.java' }],
           onNavigate: () => {}, learnMode: true
@@ -140,19 +141,47 @@ test('os cinco tipos de token recebem cores distintas no bloco pattern', () => {
           trace: null, capturing: false, onSelect: () => {}, onNavigateProblem: () => {}
         })));
     });
-    const block = document.querySelector<HTMLElement>('.learn-problem-pattern')!;
-    const expected: Record<string, string> = {
+    // abre o bloco correctedPattern (é condicional)
+    const exampleToggle = [...document.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent === 'Ver exemplo parecido');
+    act(() => { exampleToggle!.click(); });
+
+    const sourceBlock = document.querySelector<HTMLElement>('.learn-problem-source')!;
+    const patternBlock = document.querySelector<HTMLElement>('.learn-problem-pattern')!;
+    const exampleBlock = document.querySelector<HTMLElement>('.learn-problem-example')!;
+    const understandBlock = document.querySelector<HTMLElement>('.learn-diagnostic-understanding pre')!;
+
+    for (const block of [sourceBlock, patternBlock, exampleBlock, understandBlock]) {
+      expect(block, 'todos os blocos devem existir').toBeTruthy();
+      const fontFamily = getComputedStyle(block).fontFamily;
+      expect(fontFamily.toLowerCase(), 'todo bloco de código usa JetBrains Mono com fallbacks')
+        .toContain('jetbrains mono');
+      expect(fontFamily.toLowerCase()).toContain('monospace');
+    }
+
+    // a cor base (texto sem token) deve ser idêntica nos blocos de código —
+    // a regra legada color:#b6d7ff fazia o pattern parecer outro componente
+    const baseColor = getComputedStyle(patternBlock).color;
+    expect(getComputedStyle(exampleBlock).color, 'correctedPattern mesma cor base').toBe(baseColor);
+    expect(getComputedStyle(understandBlock).color, 'Entender mesma cor base').toBe(baseColor);
+
+    // Entender: os cinco tipos de token com as cores do tema
+    const expectedTokens: Record<string, string> = {
       'learning-token-keyword': 'rgb(240, 170, 130)',
       'learning-token-string': 'rgb(155, 212, 159)',
       'learning-token-number': 'rgb(98, 211, 219)',
       'learning-token-type': 'rgb(180, 200, 255)',
       'learning-token-comment': 'rgb(143, 154, 167)'
     };
-    for (const [className, color] of Object.entries(expected)) {
-      const span = block.querySelector<HTMLElement>('.' + className);
-      expect(span, 'falta o token ' + className + ' no pattern realçado').not.toBeNull();
-      expect(getComputedStyle(span!).color, className + ' deve ter cor própria').toBe(color);
+    for (const [className, color] of Object.entries(expectedTokens)) {
+      const span = understandBlock.querySelector<HTMLElement>('code .' + className);
+      expect(span, 'Entender deve conter ' + className).not.toBeNull();
+      expect(getComputedStyle(span!).color).toBe(color);
     }
+    // paridade com o bloco funcional de referência
+    const keywordInUnderstand = getComputedStyle(
+      understandBlock.querySelector<HTMLElement>('.learning-token-keyword')!).color;
+    expect(keywordInUnderstand).toBe('rgb(240, 170, 130)');
   } finally {
     teardown();
   }
