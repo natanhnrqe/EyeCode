@@ -6,9 +6,11 @@ import {
   assertDistReady,
   buildBackendLaunch,
   isJdkHome,
+  isMavenHome,
   parseReadinessUrl,
   resolveDistDir,
   resolveJdkHome,
+  resolveMavenHome,
   resolveJavaExecutable,
   MAIN_CLASS,
   STARTUP_TIMEOUT_MS,
@@ -425,6 +427,131 @@ describe('buildBackendLaunch', () => {
     expect(launch.jdkHome).toBe(packagedJdk);
     const cpIndex = launch.args.indexOf('-cp');
     expect(launch.args[cpIndex + 1]).toContain(path.join(packagedDist, 'lib', '*'));
+  });
+
+  it('passes -Deyecode.maven.home when a packaged Maven home exists', () => {
+    const resourcesPath = path.join('C:', 'install', 'resources');
+    const packagedDist = path.join(resourcesPath, 'webshell-dist');
+    const packagedMaven = path.join(resourcesPath, 'maven');
+    const files = new Set([
+      path.join(packagedDist, 'eyecode-webshell.jar'),
+      path.join(packagedDist, 'lib'),
+      path.join(packagedMaven, 'bin', 'mvn.cmd'),
+    ]);
+    const launch = buildBackendLaunch({
+      repoRoot: path.join('C:', 'nonexistent repo'),
+      env: {},
+      platform: 'win32',
+      existsSync: existsFor(files),
+      resourcesPath,
+    });
+    expect(launch.args).toContain(`-Deyecode.maven.home=${packagedMaven}`);
+    expect(launch.mavenHome).toBe(packagedMaven);
+    expect(launch.args.filter((a) => a.includes('eyecode.maven.home'))).toHaveLength(1);
+  });
+
+  it('omits -Deyecode.maven.home when no Maven home is found', () => {
+    const launch = buildBackendLaunch({
+      repoRoot,
+      env: {},
+      platform: 'win32',
+      existsSync: distReadyNoJdk,
+    });
+    expect(launch.args.some((a) => a.includes('eyecode.maven.home'))).toBe(false);
+    expect(launch.mavenHome).toBeNull();
+  });
+});
+
+describe('isMavenHome', () => {
+  it('accepts a home with mvn.cmd on win32', () => {
+    const home = 'C:/maven';
+    const files = new Set([path.join(home, 'bin', 'mvn.cmd')]);
+    expect(isMavenHome(home, 'win32', existsFor(files))).toBe(true);
+  });
+
+  it('rejects a home missing mvn.cmd', () => {
+    expect(isMavenHome('C:/empty', 'win32', never)).toBe(false);
+  });
+
+  it('rejects null home', () => {
+    expect(isMavenHome(null, 'win32', always)).toBe(false);
+  });
+
+  it('uses mvn without .exe on posix', () => {
+    const home = '/opt/maven';
+    const files = new Set([path.join(home, 'bin', 'mvn')]);
+    expect(isMavenHome(home, 'linux', existsFor(files))).toBe(true);
+  });
+});
+
+describe('resolveMavenHome', () => {
+  const repoRoot = path.join('C:', 'repo');
+
+  it('prefers EYECODE_MAVEN_HOME over staged and packaged', () => {
+    const override = path.join('C:', 'override-maven');
+    const staged = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'maven');
+    const files = new Set([
+      path.join(override, 'bin', 'mvn.cmd'),
+      path.join(staged, 'bin', 'mvn.cmd'),
+    ]);
+    expect(
+      resolveMavenHome({
+        repoRoot,
+        env: { EYECODE_MAVEN_HOME: override },
+        platform: 'win32',
+        existsSync: existsFor(files),
+      })
+    ).toBe(override);
+  });
+
+  it('uses the staged maven home when no override is set', () => {
+    const staged = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'maven');
+    const files = new Set([path.join(staged, 'bin', 'mvn.cmd')]);
+    expect(
+      resolveMavenHome({
+        repoRoot,
+        env: {},
+        platform: 'win32',
+        existsSync: existsFor(files),
+      })
+    ).toBe(staged);
+  });
+
+  it('falls back to packaged resources/maven', () => {
+    const resourcesPath = path.join('C:', 'install', 'resources');
+    const packaged = path.join(resourcesPath, 'maven');
+    const files = new Set([path.join(packaged, 'bin', 'mvn.cmd')]);
+    expect(
+      resolveMavenHome({
+        repoRoot: path.join('C:', 'nonexistent repo'),
+        env: {},
+        platform: 'win32',
+        existsSync: existsFor(files),
+        resourcesPath,
+      })
+    ).toBe(packaged);
+  });
+
+  it('returns null when no maven home exists anywhere', () => {
+    expect(
+      resolveMavenHome({
+        repoRoot,
+        env: {},
+        platform: 'win32',
+        existsSync: never,
+      })
+    ).toBeNull();
+  });
+
+  it('ignores a blank EYECODE_MAVEN_HOME override', () => {
+    expect(
+      resolveMavenHome({
+        repoRoot,
+        env: { EYECODE_MAVEN_HOME: '   ' },
+        platform: 'win32',
+        existsSync: never,
+      })
+    ).toBeNull();
   });
 });
 

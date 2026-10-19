@@ -61,13 +61,28 @@ the distribution.
 - License text in repo: not duplicated here; the JDK's own `legal/` tree is
   the authoritative source and ships in full.
 
-## 4. OpenJFX / WebView-related natives — see bundled jar licenses
+## 4. Apache Maven 3.9.16 (Apache-2.0)
+
+- Shipped as: `resources/maven/` (complete Maven distribution: `bin/`,
+  `boot/`, `conf/`, `lib/`, `LICENSE`, `NOTICE`, `README.txt`).
+- License: **Apache License, Version 2.0** (Apache Software Foundation).
+- Evidence: distribution archive `apache-maven-3.9.16-bin.zip` from
+  `downloads.apache.org`, SHA-512
+  `ed41650d42485cfc243fad22158caf9cbb5dc408ce7a09ddb94dd42a019de929ca43065bfa450612cf12bf78b5cafa3884b96c090de326ff590448c933454af3`
+  (verified at staging time by `scripts/stage-eyecode-maven.ps1`);
+  `resources/maven/LICENSE` is the upstream Apache-2.0 text and
+  `resources/maven/NOTICE` carries Maven's notice.
+- License text in package: `resources/maven/LICENSE` (upstream copy) and
+  `resources/third-party-notices/licenses/Apache-2.0.txt`.
+- License text in repo: `third-party-notices/licenses/Apache-2.0.txt`.
+
+## 5. OpenJFX / WebView-related natives — see bundled jar licenses
 
 No separate OpenJFX distribution is shipped. JavaFX classes used by the
 legacy Swing/JavaFX adapters are not part of the Electron ZIP's runtime path;
-the packaged backend is the WebShell distribution (section 5).
+the packaged backend is the WebShell distribution (section 6).
 
-## 5. Eyecode WebShell backend distribution (33 jars)
+## 6. Eyecode WebShell backend distribution (33 jars)
 
 Shipped as: `resources/webshell-dist/` containing `eyecode-webshell.jar` and
 `lib/*.jar` (33 jars, exact list in the package manifest
@@ -77,7 +92,7 @@ sources: embedded `pom.properties` / `META-INF` license files inside the
 jars themselves, or the corresponding Maven Central `.pom` files (path
 `.m2/repository/<groupPath>/<artifact>/<version>/<artifact>-<version>.pom`).
 
-### 5.1 Apache-2.0 components
+### 6.1 Apache-2.0 components
 
 | Artifact | Version | Evidence |
 |---|---|---|
@@ -89,7 +104,7 @@ jars themselves, or the corresponding Maven Central `.pom` files (path
 - License text in package: `resources/third-party-notices/licenses/Apache-2.0.txt`.
 - License text in repo: `third-party-notices/licenses/Apache-2.0.txt`.
 
-### 5.2 MIT components
+### 6.2 MIT components
 
 | Artifact | Version | Evidence |
 |---|---|---|
@@ -102,7 +117,7 @@ jars themselves, or the corresponding Maven Central `.pom` files (path
   jar's own `META-INF` or in the upstream repository).
 - License text in repo: `third-party-notices/licenses/MIT.txt`.
 
-### 5.3 BSD 2-Clause components (flexmark-java family)
+### 6.3 BSD 2-Clause components (flexmark-java family)
 
 | Artifact | Version | Evidence |
 |---|---|---|
@@ -111,7 +126,7 @@ jars themselves, or the corresponding Maven Central `.pom` files (path
 - License text in package: `resources/third-party-notices/licenses/BSD-2-Clause.txt`.
 - License text in repo: `third-party-notices/licenses/BSD-2-Clause.txt`.
 
-### 5.4 JNA 5.14.0 — dual-licensed LGPL-2.1-or-later OR Apache-2.0; EyeCode elects Apache-2.0
+### 6.4 JNA 5.14.0 — dual-licensed LGPL-2.1-or-later OR Apache-2.0; EyeCode elects Apache-2.0
 
 | Artifact | Version | Evidence |
 |---|---|---|
@@ -127,7 +142,7 @@ jars themselves, or the corresponding Maven Central `.pom` files (path
   `third-party-notices/licenses/LGPL-2.1.txt` for reference of the
   alternative option).
 
-### 5.5 Eclipse Public License 2.0 components
+### 6.5 Eclipse Public License 2.0 components
 
 | Artifact | Version | Evidence |
 |---|---|---|
@@ -145,7 +160,7 @@ jars themselves, or the corresponding Maven Central `.pom` files (path
 - License text in package: `resources/third-party-notices/licenses/EPL-2.0.txt`.
 - License text in repo: `third-party-notices/licenses/EPL-2.0.txt`.
 
-### 5.6 Eclipse Public License 1.0 components
+### 6.6 Eclipse Public License 1.0 components
 
 | Artifact | Version | Evidence |
 |---|---|---|
@@ -159,44 +174,44 @@ jars themselves, or the corresponding Maven Central `.pom` files (path
 - License text in package: `resources/third-party-notices/licenses/EPL-1.0.txt`.
 - License text in repo: `third-party-notices/licenses/EPL-1.0.txt`.
 
-### 5.7 pty4j native libraries (winpty, conpty, win-helper)
+### 6.7 pty4j native libraries (winpty, conpty, win-helper)
 
 - Shipped inside `pty4j-0.13.12.jar` as platform natives (winpty DLLs,
   conpty, `win-helper.dll`, libpty.*). These are components of the pty4j
-  distribution and are covered by pty4j's EPL-1.0 (section 5.6) and any
+  distribution and are covered by pty4j's EPL-1.0 (section 6.6) and any
   upstream notices inside the jar.
 - `NEEDS_REVIEW` (low): winpty itself is MIT-licensed upstream; its notice
   is not separately extracted here because it is not separately shipped —
   it is part of the pty4j jar as published by JetBrains. If EyeCode later
   republishes winpty binaries standalone, a separate MIT notice is required.
 
-### 5.8 JNA native library (jnidispatch)
+### 6.8 JNA native library (jnidispatch)
 
 - Shipped inside `jna-5.14.0.jar` as `com/sun/jna/win32-x86-64/jnidispatch.dll`
   (and other platforms). Covered by JNA's dual license; EyeCode elects
-  Apache-2.0 (section 5.4).
+  Apache-2.0 (section 6.4).
 
-### 5.9 Remaining webshell-dist jars — license inventory
+### 6.9 Remaining webshell-dist jars — license inventory
 
 All 33 jars accounted for above:
 
 | # | Jar | License section |
 |---|---|---|
-| 1 | annotations-24.0.1.jar | 5.1 Apache-2.0 |
-| 2 | autolink-0.6.0.jar | 5.2 MIT |
-| 3 | error_prone_annotations-2.48.0.jar | 5.1 Apache-2.0 |
-| 4–24 | flexmark* (21 jars, v0.64.8) | 5.3 BSD-2-Clause |
-| 25 | gson-2.14.0.jar | 5.1 Apache-2.0 |
-| 26 | Java-WebSocket-1.5.7.jar | 5.2 MIT |
-| 27 | jna-5.14.0.jar | 5.4 Apache-2.0 (elected) |
-| 28 | jna-platform-5.14.0.jar | 5.4 Apache-2.0 (elected) |
-| 29 | kotlin-stdlib-2.1.21.jar | 5.1 Apache-2.0 |
-| 30 | org.eclipse.lsp4j.jsonrpc-1.0.0.jar | 5.5 EPL-2.0 |
-| 31 | org.eclipse.lsp4j-1.0.0.jar | 5.5 EPL-2.0 |
-| 32 | pty4j-0.13.12.jar | 5.6 EPL-1.0 (+ 5.7 natives) |
-| 33 | slf4j-api-2.0.13.jar | 5.2 MIT |
+| 1 | annotations-24.0.1.jar | 6.1 Apache-2.0 |
+| 2 | autolink-0.6.0.jar | 6.2 MIT |
+| 3 | error_prone_annotations-2.48.0.jar | 6.1 Apache-2.0 |
+| 4–24 | flexmark* (21 jars, v0.64.8) | 6.3 BSD-2-Clause |
+| 25 | gson-2.14.0.jar | 6.1 Apache-2.0 |
+| 26 | Java-WebSocket-1.5.7.jar | 6.2 MIT |
+| 27 | jna-5.14.0.jar | 6.4 Apache-2.0 (elected) |
+| 28 | jna-platform-5.14.0.jar | 6.4 Apache-2.0 (elected) |
+| 29 | kotlin-stdlib-2.1.21.jar | 6.1 Apache-2.0 |
+| 30 | org.eclipse.lsp4j.jsonrpc-1.0.0.jar | 6.5 EPL-2.0 |
+| 31 | org.eclipse.lsp4j-1.0.0.jar | 6.5 EPL-2.0 |
+| 32 | pty4j-0.13.12.jar | 6.6 EPL-1.0 (+ 6.7 natives) |
+| 33 | slf4j-api-2.0.13.jar | 6.2 MIT |
 
-## 6. Monaco Editor 0.52.2 (MIT)
+## 7. Monaco Editor 0.52.2 (MIT)
 
 - Shipped as: `resources/webshell-dist/eyecode-webshell.jar` →
   `monaco/editor/**` (AMD loader, vs workers, CSS). Version marker:
@@ -209,7 +224,7 @@ All 33 jars accounted for above:
 - License text in package: `resources/third-party-notices/licenses/MIT.txt`.
 - License text in repo: `third-party-notices/licenses/MIT.txt`.
 
-## 7. Frontend libraries bundled into the webshell assets
+## 8. Frontend libraries bundled into the webshell assets
 
 Shipped as compiled/minified assets under
 `resources/webshell-dist/` (production `index.html` + hashed JS/CSS chunks
@@ -225,7 +240,7 @@ produced by Vite from `src/main/web/`).
 - License text in package: `resources/third-party-notices/licenses/MIT.txt`.
 - License text in repo: `third-party-notices/licenses/MIT.txt`.
 
-## 8. Build-time-only tools (NOT shipped — listed for completeness)
+## 9. Build-time-only tools (NOT shipped — listed for completeness)
 
 The following are used at build time and are **not** present in the ZIP
 root, asar, or resources. They are listed only so the absence is explicit:
@@ -235,7 +250,7 @@ root, asar, or resources. They are listed only so the absence is explicit:
   Vitest (MIT), jsdom (MIT), @types/* (MIT), Electron packager/maker
   (MIT). None of these appear as loose files or jars in the distribution.
 
-## 9. EyeCode first-party code — license status
+## 10. EyeCode first-party code — license status
 
 - EyeCode's original project code is licensed under **GPL-3.0-or-later**
   (GNU General Public License v3.0 or any later version, at the recipient's
@@ -243,7 +258,7 @@ root, asar, or resources. They are listed only so the absence is explicit:
   (canonical GPLv3 text from gnu.org). In the desktop ZIP it ships at
   `resources/LICENSE`, **separately** from this third-party notices file.
 - This first-party license does **not** change the license of any component
-  listed in sections 1–8; third-party components keep their own licenses.
+  listed in sections 1–9; third-party components keep their own licenses.
 - `src/main/java/LICENSE.txt` is the **JCEF BSD-3-Clause** license for the
   extracted JCEF Java bindings (Marshall Greenblatt / Google Inc.) — it is
   **not** a license for EyeCode itself.
@@ -251,33 +266,35 @@ root, asar, or resources. They are listed only so the absence is explicit:
   should confirm the preferred copyright notice (see
   `docs/OPEN_SOURCE_LICENSING_REPORT.md`).
 
-## 10. Obligations checklist (what this distribution must keep)
+## 11. Obligations checklist (what this distribution must keep)
 
 | Obligation | How this ZIP satisfies it | Residual work |
 |---|---|---|
 | Electron MIT — keep copyright notice | `<zip root>/LICENSE` ships | none |
 | Chromium — keep full third-party notice file | `<zip root>/LICENSES.chromium.html` ships | none |
 | JDK GPLv2+CE — keep `legal/` tree | `resources/jdk/legal/**` ships (243 files) | none |
+| Maven Apache-2.0 — retain notices | `resources/maven/LICENSE` + `resources/maven/NOTICE` ship; this document lists the component | none |
 | EPL-2.0 (LSP4J) — source availability for shipped binaries | Unmodified jars; upstream source public | none while unmodified; document if jars are ever patched |
 | EPL-1.0 (pty4j) — source availability for shipped binaries | Unmodified jar; upstream source public | none while unmodified |
 | JNA dual license — license election | Apache-2.0 elected (permissive option) | keep Apache-2.0 text in package (done) |
 | Apache-2.0 / MIT / BSD-2 — retain notices | Supplied via this document + license texts | none |
 | First-party license | **GPL-3.0-or-later** (`LICENSE` at repo root + `resources/LICENSE` in ZIP) | Maintainer should confirm preferred copyright-holder line |
 
-## 11. `NEEDS_REVIEW` items
+## 12. `NEEDS_REVIEW` items
 
 1. **First-party copyright line**: the project license is now
-   `GPL-3.0-or-later` (section 9), but no explicit copyright-holder notice
+   `GPL-3.0-or-later` (section 10), but no explicit copyright-holder notice
    has been asserted in source files or a NOTICE file. Maintainer decision
    remains on the preferred copyright line (e.g. author name + years).
    Does not block packaging; recommended before a public announcement.
 2. **winpty upstream notice inside pty4j jar**: not separately extracted
-   (section 5.7). Low risk — part of the pty4j EPL-1.0 distribution as
+   (section 6.7). Low risk — part of the pty4j EPL-1.0 distribution as
    published by JetBrains.
 
 ---
 
-*Generated for EyeCode Electron packaging (CP5). Component versions are
-pinned by `src/main/web/package.json` (product/Electron) and
+*Generated for EyeCode Electron packaging (CP5; component inventory kept
+current through CP7 — Apache Maven bundled as `resources/maven/`). Component
+versions are pinned by `src/main/web/package.json` (product/Electron) and
 `webshell-dist/pom.xml` (backend jars). Re-verify this inventory after any
 dependency change.*

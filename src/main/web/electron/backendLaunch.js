@@ -7,6 +7,7 @@ export const DIST_LIB_DIR_NAME = 'lib';
 export const READINESS_URL_PATTERN = /\[EyeCode\] URL: (http:\/\/127\.0\.0\.1:\d+\/webshell\/index\.html)/;
 export const STARTUP_TIMEOUT_MS = 60_000;
 export const STAGED_JDK_RELATIVE = path.join('target', 'eyecode-desktop', 'runtime', 'jdk');
+export const STAGED_MAVEN_RELATIVE = path.join('target', 'eyecode-desktop', 'runtime', 'maven');
 
 export function resolveDistDir(repoRoot, env = process.env, resourcesPath, existsSync = fs.existsSync) {
   const override = (env.EYECODE_WEBSHELL_DIST || '').trim();
@@ -45,6 +46,35 @@ export function resolveJdkHome({
 
   const javaHome = (env.JAVA_HOME || '').trim();
   if (javaHome && isJdkHome(javaHome, platform, existsSync)) return javaHome;
+
+  return null;
+}
+
+export function isMavenHome(home, platform = process.platform, existsSync = fs.existsSync) {
+  if (!home) return false;
+  const mvn = path.join(home, 'bin', platform === 'win32' ? 'mvn.cmd' : 'mvn');
+  return existsSync(mvn);
+}
+
+export function resolveMavenHome({
+  repoRoot,
+  env = process.env,
+  platform = process.platform,
+  existsSync = fs.existsSync,
+  resourcesPath,
+} = {}) {
+  const override = (env.EYECODE_MAVEN_HOME || '').trim();
+  if (override && isMavenHome(override, platform, existsSync)) return override;
+
+  if (repoRoot) {
+    const staged = path.join(repoRoot, STAGED_MAVEN_RELATIVE);
+    if (isMavenHome(staged, platform, existsSync)) return staged;
+  }
+
+  if (resourcesPath) {
+    const packaged = path.join(resourcesPath, 'maven');
+    if (isMavenHome(packaged, platform, existsSync)) return packaged;
+  }
 
   return null;
 }
@@ -100,8 +130,12 @@ export function buildBackendLaunch({ repoRoot, env = process.env, platform = pro
   if (jdkHome) {
     args.push(`-Deyecode.jdk.home=${jdkHome}`);
   }
+  const mavenHome = resolveMavenHome({ repoRoot, env, platform, existsSync, resourcesPath });
+  if (mavenHome) {
+    args.push(`-Deyecode.maven.home=${mavenHome}`);
+  }
   args.push('-cp', classpath, MAIN_CLASS);
-  return { command: java, args, cwd: distDir, distDir, jdkHome: jdkHome || null };
+  return { command: java, args, cwd: distDir, distDir, jdkHome: jdkHome || null, mavenHome: mavenHome || null };
 }
 
 export function parseReadinessUrl(buffer) {

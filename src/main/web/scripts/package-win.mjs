@@ -10,6 +10,9 @@ const DIST_DIR = path.join(repoRoot, 'webshell-dist', 'target', 'webshell-dist')
 const STAGED_JDK = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'jdk');
 const JDK_MANIFEST = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'jdk-manifest.json');
 const STAGE_SCRIPT = path.join(repoRoot, 'scripts', 'stage-eyecode-jdk.ps1');
+const STAGED_MAVEN = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'maven');
+const MAVEN_MANIFEST = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'maven-manifest.json');
+const STAGE_MAVEN_SCRIPT = path.join(repoRoot, 'scripts', 'stage-eyecode-maven.ps1');
 const THIRD_PARTY_NOTICES = path.join(repoRoot, 'third-party-notices', 'THIRD-PARTY-NOTICES.md');
 const EYE_CODE_LICENSE = path.join(repoRoot, 'LICENSE');
 const OUT_DIR = path.join(webRoot, 'out');
@@ -36,13 +39,21 @@ function isUsableJdkHome(home) {
   );
 }
 
-step('1/6 Build production frontend');
+function isUsableMavenHome(home) {
+  return (
+    fs.existsSync(path.join(home, 'bin', 'mvn.cmd')) &&
+    fs.existsSync(path.join(home, 'bin', 'mvn')) &&
+    fs.existsSync(path.join(home, 'conf', 'settings.xml'))
+  );
+}
+
+step('1/7 Build production frontend');
 run('npm run build');
 if (!fs.existsSync(path.join(repoRoot, 'src', 'main', 'resources', 'webshell', 'index.html'))) {
   fail('Frontend build did not produce src/main/resources/webshell/index.html');
 }
 
-step('2/6 Build isolated WebShell distribution');
+step('2/7 Build isolated WebShell distribution');
 run('npm run webshell:dist');
 if (!fs.existsSync(path.join(DIST_DIR, 'eyecode-webshell.jar'))) {
   fail(`WebShell distribution jar missing at ${DIST_DIR}\\eyecode-webshell.jar`);
@@ -53,7 +64,7 @@ if (libJars.length === 0) {
 }
 console.log(`WebShell runtime jars: ${libJars.length}`);
 
-step('3/6 Stage and verify pinned JDK');
+step('3/7 Stage and verify pinned JDK');
 if (isUsableJdkHome(STAGED_JDK) && fs.existsSync(JDK_MANIFEST)) {
   console.log(`Staged JDK already valid: ${STAGED_JDK}`);
 } else {
@@ -66,9 +77,23 @@ if (!fs.existsSync(JDK_MANIFEST)) {
   fail(`JDK manifest missing at ${JDK_MANIFEST}.`);
 }
 
-step('4/6 Verify package resources (extraResource sources)');
+step('4/7 Stage and verify pinned Maven');
+if (isUsableMavenHome(STAGED_MAVEN) && fs.existsSync(MAVEN_MANIFEST)) {
+  console.log(`Staged Maven already valid: ${STAGED_MAVEN}`);
+} else {
+  run(`powershell -NoProfile -ExecutionPolicy Bypass -File "${STAGE_MAVEN_SCRIPT}"`);
+}
+if (!isUsableMavenHome(STAGED_MAVEN)) {
+  fail(`Staged Maven is not usable at ${STAGED_MAVEN}. Run scripts/stage-eyecode-maven.ps1 manually.`);
+}
+if (!fs.existsSync(MAVEN_MANIFEST)) {
+  fail(`Maven manifest missing at ${MAVEN_MANIFEST}.`);
+}
+
+step('5/7 Verify package resources (extraResource sources)');
 console.log(`webshell-dist: ${DIST_DIR}`);
 console.log(`jdk:           ${STAGED_JDK}`);
+console.log(`maven:         ${STAGED_MAVEN}`);
 if (!fs.existsSync(THIRD_PARTY_NOTICES)) {
   fail(`Third-party notices file missing at ${THIRD_PARTY_NOTICES}.`);
 }
@@ -78,10 +103,10 @@ if (!fs.existsSync(EYE_CODE_LICENSE)) {
 }
 console.log(`license:       ${EYE_CODE_LICENSE}`);
 
-step('5/6 Electron Forge make (win32 x64 ZIP)');
+step('6/7 Electron Forge make (win32 x64 ZIP)');
 run('npx electron-forge make --platform=win32 --arch=x64');
 
-step('6/6 Report ZIP and write package manifest');
+step('7/7 Report ZIP and write package manifest');
 const makeZipRoot = path.join(OUT_DIR, 'make', 'zip', 'win32', 'x64');
 if (!fs.existsSync(makeZipRoot)) {
   fail(`Maker-zip output directory missing: ${makeZipRoot}`);
@@ -102,6 +127,7 @@ function readJson(file) {
 }
 
 const jdkManifest = readJson(JDK_MANIFEST);
+const mavenManifest = readJson(MAVEN_MANIFEST);
 const electronPkg = readJson(
   path.join(webRoot, 'node_modules', 'electron', 'package.json')
 );
@@ -126,6 +152,14 @@ const manifest = {
     archiveSha256: jdkManifest.archiveSha256,
     downloadUrl: jdkManifest.downloadUrl,
     licenseNotice: jdkManifest.licenseNotice,
+  },
+  maven: {
+    vendor: mavenManifest.vendor,
+    name: mavenManifest.name,
+    version: mavenManifest.version,
+    archiveSha512: mavenManifest.archiveSha512,
+    downloadUrl: mavenManifest.downloadUrl,
+    licenseNotice: mavenManifest.licenseNotice,
   },
   webshell: {
     jar: 'webshell-dist/eyecode-webshell.jar',
