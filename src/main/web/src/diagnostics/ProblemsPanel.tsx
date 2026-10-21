@@ -77,7 +77,10 @@ function LearnProblemsExperience({ problems, selected, onSelect, onUnderstand, o
 }
 
 function SourceExcerpt({ excerpt }: { excerpt: NonNullable<WebDiagnostic['sourceExcerpt']> }) {
-  return <pre className="learn-problem-source" aria-label="Trecho do código com o problema">{excerpt.lines.map(line => <span className={line.lineNumber === excerpt.pointerLine ? 'is-pointer-line' : ''} key={line.lineNumber}><b>{String(line.lineNumber).padStart(3, ' ')}</b> {line.text}{line.lineNumber === excerpt.pointerLine && <i>{' '.repeat(Math.max(0, excerpt.pointerColumn + 3))}^</i>}{'\n'}</span>)}</pre>;
+  const highlightedLines = useMemo(
+    () => excerpt.lines.map(line => highlightLearningJavaSource(line.text)),
+    [excerpt]);
+  return <pre className="learn-problem-source" aria-label="Trecho do código com o problema">{excerpt.lines.map((line, index) => <span className={line.lineNumber === excerpt.pointerLine ? 'is-pointer-line' : ''} key={line.lineNumber}><b>{String(line.lineNumber).padStart(3, ' ')}</b> <code className="language-java" dangerouslySetInnerHTML={{ __html: highlightedLines[index] }} />{line.lineNumber === excerpt.pointerLine && <i>{' '.repeat(Math.max(0, excerpt.pointerColumn + 3))}^</i>}{'\n'}</span>)}</pre>;
 }
 
 function fileName(uri: string): string {

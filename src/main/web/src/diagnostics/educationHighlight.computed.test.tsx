@@ -18,7 +18,7 @@ const diagnostic: WebDiagnostic = {
   startLine: 3, startColumn: 5, endLine: 3, endColumn: 18,
   sourceExcerpt: {
     lines: [{ lineNumber: 2, text: 'public static void main(String[] args) {' },
-      { lineNumber: 3, text: '    int idade = 15' }],
+      { lineNumber: 3, text: '    int idade = 15; String nome = "Ana";' }],
     pointerLine: 3, pointerColumn: 19
   },
   education: {
@@ -164,6 +164,15 @@ test('os três blocos do Entender compartilham fonte JetBrains Mono e cor base i
     const baseColor = getComputedStyle(patternBlock).color;
     expect(getComputedStyle(exampleBlock).color, 'correctedPattern mesma cor base').toBe(baseColor);
     expect(getComputedStyle(understandBlock).color, 'Entender mesma cor base').toBe(baseColor);
+
+    // SourceExcerpt: agora com tokens realçados (a causa do bloco "diferente")
+    const sourceKeyword = sourceBlock.querySelector<HTMLElement>('.learning-token-keyword');
+    expect(sourceKeyword, 'SourceExcerpt deve conter spans de token realçados').not.toBeNull();
+    expect(getComputedStyle(sourceKeyword!).color,
+        'SourceExcerpt keyword mesma cor do bloco funcional').toBe('rgb(240, 170, 130)');
+    const sourceString = sourceBlock.querySelector<HTMLElement>('.learning-token-string');
+    expect(sourceString, 'SourceExcerpt deve realçar strings').not.toBeNull();
+    expect(getComputedStyle(sourceString!).color).toBe('rgb(155, 212, 159)');
 
     // Entender: os cinco tipos de token com as cores do tema
     const expectedTokens: Record<string, string> = {
