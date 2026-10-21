@@ -892,7 +892,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       onNewTerminal={() => { setBottomPanel('terminal'); void terminal('show'); }}
       onRestartTerminal={() => void terminal('restart')}
       onStopTerminal={() => void terminal('stop')}
-      onClearRunOutput={() => setRunOutput([])} />;
+      onClearRunOutput={() => setRunOutputState(emptyRunOutput())} />;
     if (paneId === 'lesson') {
       if (challenge && layoutKind === 'CHALLENGE') {
         return <ChallengeProvider challengeId={challenge.id} beforeRun={() => service.saveWorkspaceDocuments()}>
