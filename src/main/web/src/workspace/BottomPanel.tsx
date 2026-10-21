@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ProblemsPanel } from '../diagnostics/ProblemsPanel';
 import type { DiagnosticsViewState, WebDiagnostic } from '../diagnostics/protocol';
 import { TerminalPanel } from './TerminalPanel';
 import { DockPane } from './DockPane';
+import { EyeCodeIcon } from './EyeCodeIcon';
 import type { RunOutputChunk, RunState, TerminalState } from './protocol';
 
 type BottomPanelId = 'run' | 'terminal' | 'problems' | 'git';
@@ -18,6 +19,10 @@ type Props = {
   documents: DocumentLabel[];
   onSelect(id: BottomPanelId): void;
   onNavigateProblem(uri: string, diagnostic: WebDiagnostic): void;
+  onNewTerminal(): void;
+  onRestartTerminal(): void;
+  onStopTerminal(): void;
+  onClearRunOutput(): void;
 };
 
 const panels: Array<{ id: BottomPanelId; label: string }> = [
@@ -53,14 +58,37 @@ function RunConsole({ output, outputDropped, runState }: Pick<Props, 'output' | 
   </div>;
 }
 
-export function BottomPanel({ active, output, outputDropped, runState, terminalState, diagnostics, documents, onSelect, onNavigateProblem }: Props) {
+export function BottomPanel({ active, output, outputDropped, runState, terminalState, diagnostics, documents, onSelect, onNavigateProblem, onNewTerminal, onRestartTerminal, onStopTerminal, onClearRunOutput }: Props) {
   const problemCount = diagnostics?.results.reduce((total, result) => total + result.diagnostics.length, 0) ?? 0;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [menuOpen]);
+  const menuActions: Array<{ label: string; run(): void }> = active === 'terminal'
+    ? [{ label: 'Restart Terminal', run: onRestartTerminal }, { label: 'Stop Terminal', run: onStopTerminal }]
+    : active === 'run' ? [{ label: 'Clear Output', run: onClearRunOutput }] : [];
   return <DockPane paneId="bottom" className="bottom-panel" label="Tool windows" headerClassName="bottom-tabs" headerLabel="Tool windows" dragHandleOnly header={<>
       <span className="dock-drag-handle" data-dock-handle aria-label="Drag tool windows" />
       {panels.map(panel => <button type="button" key={panel.id}
         className={active === panel.id ? 'is-active' : ''} onClick={() => onSelect(panel.id)}>
         {panel.label}{panel.id === 'problems' && problemCount ? ` ${problemCount}` : ''}
       </button>)}
+      <span className="bottom-actions">
+        <button type="button" className="bottom-action" onClick={onNewTerminal} aria-label="New terminal" title="New Terminal"><EyeCodeIcon name="plus" /></button>
+        {active === 'run' && <button type="button" className="bottom-action" onClick={onClearRunOutput} aria-label="Clear output" title="Clear Output"><EyeCodeIcon name="clear" /></button>}
+        {menuActions.length > 0 && <div className="bottom-actions-menu-wrap" ref={menuRef}>
+          <button type="button" className={`bottom-action${menuOpen ? ' is-open' : ''}`} onClick={() => setMenuOpen(value => !value)} aria-label="Panel options" aria-expanded={menuOpen} title="Panel options"><EyeCodeIcon name="kebab" /></button>
+          {menuOpen && <div className="bottom-actions-menu" role="menu">
+            {menuActions.map(action => <button type="button" key={action.label} role="menuitem" onClick={() => { setMenuOpen(false); action.run(); }}>{action.label}</button>)}
+          </div>}
+        </div>}
+      </span>
     </>} bodyClassName="bottom-panel-content">
       {active === 'problems' ? <ProblemsPanel state={diagnostics} documents={documents} onNavigate={onNavigateProblem} />
       : active === 'run' ? <RunConsole output={output} outputDropped={outputDropped} runState={runState} /> : active === 'terminal' ? <TerminalPanel state={terminalState} />

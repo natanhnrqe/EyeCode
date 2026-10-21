@@ -888,7 +888,11 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)}
       onOpenRelated={id => { void openDocumentationPage(id).then(opened => { if (opened) setDocsFullscreen(true); }); }} /> : <BottomPanel active={bottomPanel} output={runOutputState.chunks} outputDropped={runOutputState.droppedChars} runState={runState} terminalState={terminalState}
       diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
-      onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)} />;
+      onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)}
+      onNewTerminal={() => { setBottomPanel('terminal'); void terminal('show'); }}
+      onRestartTerminal={() => void terminal('restart')}
+      onStopTerminal={() => void terminal('stop')}
+      onClearRunOutput={() => setRunOutput([])} />;
     if (paneId === 'lesson') {
       if (challenge && layoutKind === 'CHALLENGE') {
         return <ChallengeProvider challengeId={challenge.id} beforeRun={() => service.saveWorkspaceDocuments()}>
@@ -1003,8 +1007,11 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       {projectMode ? <nav className="activity-bar" aria-label="Workspace views">
         {(['project', 'search', 'documentation', 'settings'] as SidePanelId[]).map(id => <button key={id}
           type="button" className={sidePanel === id && !sidePanelCollapsed ? 'is-active' : ''} onClick={() => selectSidePanel(id)}
-          aria-label={id} aria-expanded={sidePanel === id ? !sidePanelCollapsed : undefined}><EyeCodeIcon name={sideIcon(id)} /></button>)}
-      </nav> : !learnNavigationVisible && <nav className="activity-bar learn-activity-bar" aria-label="Navegação da aula"><button type="button" className={!learnExplorerCollapsed ? 'is-active' : ''} onClick={() => setLearnExplorerCollapsed(value => !value)} aria-label={learnExplorerCollapsed ? 'Mostrar aulas' : 'Ocultar aulas'} aria-expanded={!learnExplorerCollapsed}><EyeCodeIcon name="markdown" /></button></nav>}
+          aria-label={id} aria-expanded={sidePanel === id ? !sidePanelCollapsed : undefined}>
+          <EyeCodeIcon name={sideIcon(id)} />
+          <span className="activity-label">{activityLabel(id)}</span>
+        </button>)}
+      </nav> : !learnNavigationVisible && <nav className="activity-bar learn-activity-bar" aria-label="Navegação da aula"><button type="button" className={!learnExplorerCollapsed ? 'is-active' : ''} onClick={() => setLearnExplorerCollapsed(value => !value)} aria-label={learnExplorerCollapsed ? 'Mostrar aulas' : 'Ocultar aulas'} aria-expanded={!learnExplorerCollapsed}><EyeCodeIcon name="learn" /><span className="activity-label">Learn</span></button></nav>}
       {learnNavigationVisible && <LearnWorkspace navigation={learnNavigation} catalog={lessonsCatalog} error={lessonsError}
         onHome={() => { setActiveLearnTrackId(null); setLearnNavigation({ screen: 'HOME' }); }}
         onOpenRoadmap={categoryId => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'ROADMAP', categoryId }); }}
@@ -1062,7 +1069,11 @@ function isSameProjectPath(a: string, b: string): boolean {
 }
 
 function sideIcon(id: SidePanelId): string {
-  return ({ project: 'project', search: 'search', documentation: 'markdown', settings: 'settings' })[id];
+  return ({ project: 'project', search: 'search', documentation: 'documentation', settings: 'settings' })[id];
+}
+
+function activityLabel(id: SidePanelId): string {
+  return ({ project: 'Project', search: 'Search', documentation: 'Docs', settings: 'Settings' })[id];
 }
 
 

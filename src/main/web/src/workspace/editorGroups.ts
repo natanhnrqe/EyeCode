@@ -1,5 +1,5 @@
 export const PRIMARY_EDITOR_GROUP_ID = 0;
-export const editorGroupSeparatorSize = 11;
+export const editorGroupSeparatorSize = 7;
 export const editorGroupMinRatio = .2;
 export const editorGroupMaxRatio = .8;
 

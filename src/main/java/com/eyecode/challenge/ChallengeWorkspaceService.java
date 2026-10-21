@@ -7,7 +7,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -20,13 +19,23 @@ public final class ChallengeWorkspaceService {
     private static final Pattern ID_PATTERN = Pattern.compile("[a-z0-9-]{1,64}");
 
     private final Path root;
+    private final com.eyecode.runtime.BuildToolExecutableResolver buildTools;
+    private final com.eyecode.runtime.JavaToolchainResolver toolchain;
 
     public ChallengeWorkspaceService() {
         this(Path.of(System.getProperty("user.home"), ".eyecode", "challenges"));
     }
 
     public ChallengeWorkspaceService(Path root) {
+        this(root, new com.eyecode.runtime.BuildToolExecutableResolver(),
+                new com.eyecode.runtime.JavaToolchainResolver());
+    }
+
+    ChallengeWorkspaceService(Path root, com.eyecode.runtime.BuildToolExecutableResolver buildTools,
+                              com.eyecode.runtime.JavaToolchainResolver toolchain) {
         this.root = Objects.requireNonNull(root, "root");
+        this.buildTools = Objects.requireNonNull(buildTools, "buildTools");
+        this.toolchain = Objects.requireNonNull(toolchain, "toolchain");
     }
 
     public synchronized EnsureResult ensure(String id) {
@@ -60,14 +69,20 @@ public final class ChallengeWorkspaceService {
         ensure(id);
         Path reports = directory.resolve("target/surefire-reports");
         clearTestReports(reports);
+        List<String> command;
+        try {
+            command = buildTools.mavenCommand(directory, "-q", "-Dstyle.color=never", "test");
+        } catch (IllegalArgumentException exception) {
+            return new ChallengeTestRun(List.of(failure("runner-unavailable", "Maven indisponível",
+                    exception.getMessage(), "")), "Não foi possível iniciar o Maven.");
+        }
         Path output = null;
         try {
             output = Files.createTempFile("eyecode-challenge-", ".log");
-            List<String> command = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win")
-                    ? List.of("cmd.exe", "/c", "mvn", "-q", "-Dstyle.color=never", "test")
-                    : List.of("mvn", "-q", "-Dstyle.color=never", "test");
-            Process process = new ProcessBuilder(command).directory(directory.toFile())
-                    .redirectErrorStream(true).redirectOutput(output.toFile()).start();
+            ProcessBuilder builder = new ProcessBuilder(command).directory(directory.toFile())
+                    .redirectErrorStream(true).redirectOutput(output.toFile());
+            toolchain.childEnvironment().forEach(builder.environment()::put);
+            Process process = builder.start();
             if (!process.waitFor(180, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 process.waitFor(5, TimeUnit.SECONDS);

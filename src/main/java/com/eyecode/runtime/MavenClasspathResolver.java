@@ -6,13 +6,20 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 final class MavenClasspathResolver {
     private final BuildToolExecutableResolver buildToolResolver;
+    private final JavaToolchainResolver toolchainResolver;
 
     MavenClasspathResolver(BuildToolExecutableResolver buildToolResolver) {
+        this(buildToolResolver, new JavaToolchainResolver());
+    }
+
+    MavenClasspathResolver(BuildToolExecutableResolver buildToolResolver, JavaToolchainResolver toolchainResolver) {
         this.buildToolResolver = buildToolResolver == null ? new BuildToolExecutableResolver() : buildToolResolver;
+        this.toolchainResolver = toolchainResolver == null ? new JavaToolchainResolver() : toolchainResolver;
     }
 
     String resolve(Path projectRoot) {
@@ -36,6 +43,10 @@ final class MavenClasspathResolver {
                     .directory(projectRoot.toFile())
                     .redirectErrorStream(true)
                     .redirectOutput(logFile.toFile());
+            Map<String, String> toolchainEnv = toolchainResolver.childEnvironment();
+            if (!toolchainEnv.isEmpty()) {
+                builder.environment().putAll(toolchainEnv);
+            }
             process = builder.start();
             while (!process.waitFor(100, TimeUnit.MILLISECONDS)) {
                 if (Thread.currentThread().isInterrupted()) {

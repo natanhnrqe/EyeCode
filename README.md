@@ -236,6 +236,20 @@ src/
 
 <img src="https://capsule-render.vercel.app/api?type=rect&color=0:00c6ff,100:0f2027&height=3&section=header" width="100%"/>
 
+<br>
+
+## 📄 License
+
+EyeCode's original project code is licensed under the **GNU General Public License, version 3 or (at your option) any later version** (SPDX identifier: `GPL-3.0-or-later`). The full license text is in the repository's [`LICENSE`](LICENSE) file.
+
+Third-party components bundled with or used by EyeCode (Electron, Chromium, the bundled Temurin JDK, Java and frontend dependencies, Monaco, and others) **retain their own respective licenses** and are not covered by EyeCode's license. Their attribution and license texts ship with the desktop distribution under `resources/third-party-notices/` and are documented in [`third-party-notices/THIRD-PARTY-NOTICES.md`](third-party-notices/THIRD-PARTY-NOTICES.md).
+
+GPL-3.0-or-later does not prohibit commercial use or paid redistribution; it requires that derivative works be shared under the same license terms. Policies about freely accessible extension catalogs (if introduced later) are separate from this project license and require their own review.
+
+<br>
+
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:00c6ff,100:0f2027&height=3&section=header" width="100%"/>
+
 <div align="center">
 
 ### 📌 Final Statement

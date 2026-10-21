@@ -224,21 +224,23 @@ html, body, #root {
 }
 
 .dock-split-root.dock-split-horizontal {
-  grid-template-columns: 356px 5px minmax(0, 1fr);
+  grid-template-columns: 356px 7px minmax(0, 1fr);
 }
 
 .dock-split-nested.dock-split-horizontal {
-  grid-template-columns: minmax(0, 55fr) 5px minmax(0, 45fr);
+  grid-template-columns: minmax(0, 55fr) 7px minmax(0, 45fr);
 }
 
 .dock-split-vertical {
-  grid-template-rows: minmax(0, 1fr) 5px minmax(170px, 30%);
+  grid-template-rows: minmax(0, 1fr) 7px minmax(170px, 30%);
 }
 
 .dock-leaf {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
 }
 
 .dock-layout.is-theory .dock-split-nested.dock-split-horizontal > .dock-split-separator,
@@ -296,29 +298,6 @@ html, body, #root {
   content: '';
 }
 
-.dock-split-separator-horizontal::after {
-  top: 0;
-  bottom: 0;
-  left: 5px;
-  width: 1px;
-}
-
-.dock-split-separator-horizontal::before {
-  top: 0;
-  bottom: 0;
-  inset-inline: 0;
-}
-
-.dock-split-separator-vertical::after {
-  right: 0;
-  bottom: 5px;
-  left: 0;
-  height: 1px;
-}
-
-.dock-split-separator-vertical::before {
-  inset: 0;
-}
 
 .dock-split-separator:hover::after, .dock-split-separator.is-active::after {
   background: var(--eyecode-accent-bright);
@@ -331,26 +310,6 @@ html, body, #root {
   pointer-events: none;
   opacity: .45;
 }
-
-.dock-split-separator-horizontal .dock-split-grip {
-  top: 50%;
-  left: 0;
-  width: 5px;
-  height: 20px;
-  transform: translateY(-50%);
-  background: radial-gradient(circle, rgba(221,224,231,.75) 1px, transparent 1.5px) center / 3px 5px repeat-y;
-}
-
-.dock-split-separator-vertical .dock-split-grip {
-  top: 0;
-  left: 50%;
-  width: 24px;
-  height: 5px;
-  transform: translateX(-50%);
-  background: linear-gradient(90deg, transparent 0 4px, rgba(221,224,231,.6) 4px 7px, transparent 7px 10px, rgba(221,224,231,.6) 10px 14px, transparent 14px 17px, rgba(221,224,231,.6) 17px 20px, transparent 20px);
-}
-
-.dock-split-separator:hover .dock-split-grip, .dock-split-separator.is-active .dock-split-grip { opacity: .95; }
 
 .workspace-shell {
   display: grid;
@@ -428,8 +387,8 @@ html, body, #root {
   min-height: 0;
   overflow: hidden;
   grid-template-rows: minmax(0, 1fr) minmax(170px, 30%);
-  gap: 5px;
-  padding: 10px;
+  gap: 0;
+  padding: 0 5px 0 0;
   position: relative;
 }
 .shell-workspace.is-welcome {
@@ -2279,7 +2238,7 @@ html, body, #root {
 .toolbar-run-group {
   flex: 0 1 auto;
   justify-content: center;
-  gap: 12px;
+  gap: 2px;
 }
 
 .toolbar-mode-indicator {
@@ -2415,19 +2374,16 @@ html, body, #root {
 }
 
 .toolbar-run {
+  width: 34px;
   height: 30px;
-  padding: 0 9px;
+  min-width: 34px;
+  padding: 0;
   border-radius: 6px;
-  font: 600 11px var(--eyecode-font-ui);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border-color: rgba(119, 227, 135, .35);
-  color: #b9f6c1;
-  background: rgba(64, 154, 77, .14);
-  font-size: 12px;
-  justify-content: center;
-  min-width: 88px;
+  display: inline-grid;
+  place-items: center;
+  border-color: transparent;
+  color: #7ee08a;
+  background: transparent;
 }
 
 .toolbar-run:disabled {
@@ -2483,12 +2439,37 @@ html, body, #root {
 }
 
 .toolbar-run:hover {
-  background: rgba(64, 154, 77, .26);
+  background: var(--eyecode-hover);
 }
 
 .toolbar-run .eyecode-icon {
   width: 15px;
   height: 15px;
+}
+
+.toolbar-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 2px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #b8bcc6;
+  font: 12px var(--eyecode-font-ui);
+  white-space: nowrap;
+}
+
+.toolbar-branch .eyecode-icon {
+  width: 14px;
+  height: 14px;
+  opacity: .85;
+}
+
+.toolbar-config-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: -4px;
+  opacity: .9;
 }
 
 .toolbar-brand, .toolbar-actions {
@@ -2532,8 +2513,11 @@ html, body, #root {
 }
 
 .activity-bar button {
- display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   position: relative;
   width: 48px;
   height: 48px;
@@ -2543,7 +2527,15 @@ html, body, #root {
   color: #858b96;
   background: transparent;
   font: 17px/1 var(--eyecode-font-ui);
+}
 
+.activity-bar .activity-label {
+  max-width: 46px;
+  overflow: hidden;
+  color: inherit;
+  font: 600 9px/1 var(--eyecode-font-ui);
+  letter-spacing: .02em;
+  white-space: nowrap;
 }
 
 .activity-bar button:hover {
@@ -2879,18 +2871,9 @@ html, body, #root {
   background: var(--surface-editor);
 }
 
-.toolbar-run-spinner {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
-  border: 2px solid rgba(185,246,193,.35);
-  border-top-color: currentColor;
-  border-radius: 50%;
-  animation: eyecode-run-spin .85s linear infinite;
-}
-
-@keyframes eyecode-run-spin {
-  to { transform: rotate(360deg); }
+@media (prefers-reduced-motion: reduce) {
+  .status-progress-track span { animation: none; }
+  .status-progress-track span { left: 33%; }
 }
 
 .persistent-editor-surface.is-hidden {
@@ -3050,6 +3033,8 @@ html, body, #root {
   min-width: 0;
   min-height: 0;
   height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
 }
 
 .lesson-highlight {
@@ -3358,6 +3343,73 @@ html, body, #root {
   content: '';
 }
 
+.bottom-actions {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  padding-right: 2px;
+}
+
+.bottom-tabs .bottom-action {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: #9298a2;
+  background: transparent;
+  cursor: pointer;
+}
+
+.bottom-tabs .bottom-action:hover, .bottom-tabs .bottom-action.is-open {
+  color: #d5d8dd;
+  background: var(--eyecode-hover);
+}
+
+.bottom-action .eyecode-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.bottom-actions-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.bottom-actions-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  right: 0;
+  display: grid;
+  min-width: 150px;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: #25233b;
+  box-shadow: 0 12px 28px rgba(0,0,0,.42);
+}
+
+.bottom-tabs .bottom-actions-menu button {
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+  font: 400 11px var(--font-ui);
+  cursor: pointer;
+}
+
+.bottom-tabs .bottom-actions-menu button:hover {
+  color: #f1effa;
+  background: var(--surface-hover);
+}
+
 .bottom-panel-content {
   min-height: 0;
   overflow: auto;
@@ -3612,7 +3664,6 @@ html, body, #root {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .toolbar-run-spinner,
   .status-progress-track span { animation: none; }
   .status-progress-track span { left: 33%; }
 }

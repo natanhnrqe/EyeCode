@@ -110,6 +110,23 @@ class ChallengeWorkspaceServiceTest {
     }
 
     @Test
+    void runTestsReportsFriendlyFailureWhenMavenCannotBeResolved() throws Exception {
+        Path emptyUserDirectory = Files.createTempDirectory("eyecode-no-tools");
+        com.eyecode.runtime.BuildToolExecutableResolver buildTools =
+                new com.eyecode.runtime.BuildToolExecutableResolver(Map.of(), "Windows 11",
+                        emptyUserDirectory, Map.of());
+        ChallengeWorkspaceService service = new ChallengeWorkspaceService(temporary, buildTools,
+                new com.eyecode.runtime.JavaToolchainResolver());
+
+        ChallengeTestRun result = service.runTests("fizzbuzz");
+
+        assertEquals(1, result.tests().size());
+        assertEquals("runner-unavailable", result.tests().getFirst().id());
+        assertTrue(result.tests().getFirst().errorMessage().contains("Maven could not be found"),
+                "the failure must explain that Maven could not be resolved");
+    }
+
+    @Test
     void runTestsExecutesEveryFundamentalsJUnitSuite() {
         ChallengeWorkspaceService service = new ChallengeWorkspaceService(temporary);
         Map<String, Integer> suites = Map.of(
