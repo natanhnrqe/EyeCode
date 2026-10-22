@@ -1,0 +1,17 @@
+# Force LF line endings on checkout for all text files.
+# This prevents CRLF-related source test failures on Windows
+# regardless of each developer's core.autocrlf setting.
+* text=auto eol=lf
+
+# Binary files — never normalize
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.dll binary
+*.exe binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
