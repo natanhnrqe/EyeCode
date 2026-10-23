@@ -67,3 +67,6 @@ src/main/web/node_modules.stale/
 .opencode
 lib
 
+PRODUCT.md
+DESIGN.md
+.impeccable
