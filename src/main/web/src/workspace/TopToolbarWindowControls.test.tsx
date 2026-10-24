@@ -42,7 +42,7 @@ function renderTopToolbar(): { container: HTMLElement; maximizeButton: HTMLButto
     onOpenSettings: () => {},
     onWindowAction: () => {},
   })));
-  const maximizeButton = container.querySelector<HTMLButtonElement>('[aria-label="Maximize"], [aria-label="Restore"]');
+  const maximizeButton = container.querySelector<HTMLButtonElement>('[aria-label="Maximizar"], [aria-label="Restaurar"]');
   if (!maximizeButton) throw new Error('Maximize/Restore button not found');
   return { container, maximizeButton };
 }
@@ -58,7 +58,7 @@ test('shows the maximize icon and label when the window is not maximized', async
   window.electronAPI = controls;
   const { maximizeButton } = renderTopToolbar();
   await act(async () => {});
-  expect(maximizeButton.getAttribute('aria-label')).toBe('Maximize');
+  expect(maximizeButton.getAttribute('aria-label')).toBe('Maximizar');
   expect(maximizeButton.querySelector('img')?.getAttribute('src')).toContain('maximize');
 });
 
@@ -77,9 +77,9 @@ test('switches to the restore icon and label when the window reports maximized',
   window.electronAPI = controls;
   const { maximizeButton } = renderTopToolbar();
   await act(async () => {});
-  expect(maximizeButton.getAttribute('aria-label')).toBe('Maximize');
+  expect(maximizeButton.getAttribute('aria-label')).toBe('Maximizar');
   await act(async () => { listener!(true); });
-  expect(maximizeButton.getAttribute('aria-label')).toBe('Restore');
+  expect(maximizeButton.getAttribute('aria-label')).toBe('Restaurar');
   expect(maximizeButton.querySelector('img')?.getAttribute('src')).toContain('restore');
 });
 
@@ -87,5 +87,5 @@ test('renders without the electron api in web mode', async () => {
   delete window.electronAPI;
   const { maximizeButton } = renderTopToolbar();
   await act(async () => {});
-  expect(maximizeButton.getAttribute('aria-label')).toBe('Maximize');
+  expect(maximizeButton.getAttribute('aria-label')).toBe('Maximizar');
 });

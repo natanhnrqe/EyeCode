@@ -76,7 +76,7 @@ export function EditorDiagnosticStrip({ state, onNavigate }: Props) {
       onClick={() => { cancelClose(); setPinned(value => !value); setOpen(true); }}>
       {stateIcons}
     </button>
-    {open && diagnostics.length > 0 && <div className="editor-diagnostic-popover" role="dialog" aria-label="Current file diagnostics"
+    {open && diagnostics.length > 0 && <div className="editor-diagnostic-popover" role="dialog" aria-label="Diagnósticos do arquivo atual"
       onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
       {entries.map(diagnostic => <button type="button" key={`${diagnostic.startLine}:${diagnostic.startColumn}:${diagnostic.code}:${diagnostic.message}`}
         className={`editor-diagnostic-entry severity-${diagnostic.severity.toLowerCase()}`} onClick={() => navigate(diagnostic)}>

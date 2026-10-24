@@ -44,7 +44,7 @@ export type ChallengeStatementMetadata = {
   documentationReferences?: ChallengeDocumentationReference[];
 };
 
-export type ChallengeTab = 'statement' | 'tests' | 'assistant';
+export type ChallengeTab = 'statement' | 'tests';
 
 export type ChallengeSummary = { passed: number; failed: number; total: number };
 

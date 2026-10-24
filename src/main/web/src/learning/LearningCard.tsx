@@ -119,7 +119,7 @@ export function LearningCard({
       ref={cardRef}
       className={`learning-popup learning-size-${card.sizeClass}`}
       style={style}
-      aria-label="Learning card"
+      aria-label="Cartão de aprendizado"
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
     >
@@ -178,7 +178,7 @@ export function LearningCard({
   {card.breadcrumb.length > 0 && (
     <nav
       className="learning-breadcrumb"
-      aria-label="Learning path"
+      aria-label="Trilha de aprendizado"
     >
       {card.breadcrumb.map(
         (item, index) =>

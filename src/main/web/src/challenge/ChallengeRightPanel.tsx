@@ -74,17 +74,6 @@ export function ChallengeRightPanel({
           </div>
 
           <ChallengeStatement challenge={controller.challenge} onOpenDocumentation={onOpenDocumentation} />
-
-          <div
-            className="challenge-assistant is-disabled"
-            aria-disabled="true"
-          >
-            <span className="challenge-lock" aria-hidden="true">
-              🔒
-            </span>
-            <span>Assistente IA</span>
-            <span className="challenge-badge">Em breve</span>
-          </div>
         </div>
 
         {/* RODAPÉ FIXO DO ENUNCIADO */}

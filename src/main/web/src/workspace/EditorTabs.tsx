@@ -147,7 +147,7 @@ export function EditorTabs({ documents, activeUri, onActivate, onClose, closable
   const contextMenuDocument = contextMenu ? documents.find(document => document.uri === contextMenu.uri) : undefined;
 
   return (
-    <nav className="editor-tabs" data-dock-handle aria-label="Open documents">
+    <nav className="editor-tabs" data-dock-handle aria-label="Documentos abertos">
       {documents.map(document => (
         <button
           key={document.uri}
@@ -180,7 +180,7 @@ export function EditorTabs({ documents, activeUri, onActivate, onClose, closable
           {document.dirty && (
             <span
               className="tab-dirty"
-              aria-label="Unsaved changes"
+              aria-label="Alterações não salvas"
             />
           )}
 
@@ -188,7 +188,7 @@ export function EditorTabs({ documents, activeUri, onActivate, onClose, closable
             className="editor-tab-close"
             role="button"
             tabIndex={0}
-            aria-label={`Close ${document.displayName}`}
+            aria-label={`Fechar ${document.displayName}`}
             onClick={event => {
               event.stopPropagation();
               onClose(document.uri);
@@ -215,11 +215,11 @@ export function EditorTabs({ documents, activeUri, onActivate, onClose, closable
         <div ref={contextMenuRef} className="editor-context-menu" role="menu" style={{ left: contextMenu.x, top: contextMenu.y }}>
           <button type="button" role="menuitem" disabled={!onSplitRight}
             onClick={() => { onSplitRight?.(contextMenu.uri); setContextMenu(null); }}>
-            Split Right
+            Dividir à direita
           </button>
           <button type="button" role="menuitem" disabled={!onSplitDown}
             onClick={() => { onSplitDown?.(contextMenu.uri); setContextMenu(null); }}>
-            Split Down
+            Dividir para baixo
           </button>
         </div>
       )}

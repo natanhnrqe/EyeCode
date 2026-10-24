@@ -59,6 +59,7 @@ function track(root: Root) {
 test('context menu opens on right click and Split Right invokes the callback', () => {
   const onSplitRight = vi.fn();
   const { root, container } = renderTabs({ onSplitRight });
+
   track(root);
 
   const tab = container.querySelector('.editor-tab')!;
@@ -66,7 +67,7 @@ test('context menu opens on right click and Split Right invokes the callback', (
   const menu = document.querySelector('.editor-context-menu');
   expect(menu).not.toBeNull();
 
-  const splitRight = [...menu!.querySelectorAll('button')].find(button => button.textContent === 'Split Right')!;
+  const splitRight = [...menu!.querySelectorAll('button')].find(button => button.textContent === 'Dividir à direita')!;
   fire(splitRight, 'mousedown', { button: 0, clientX: 50, clientY: 20 });
   fire(splitRight, 'click', { button: 0, clientX: 50, clientY: 20 });
 
@@ -82,7 +83,7 @@ test('Split Down invokes the callback and closes the menu', () => {
 
   const tab = container.querySelector('.editor-tab')!;
   fire(tab, 'contextmenu', { button: 2, clientX: 40, clientY: 12 });
-  const splitDown = [...document.querySelectorAll('.editor-context-menu button')].find(button => button.textContent === 'Split Down')!;
+  const splitDown = [...document.querySelectorAll('.editor-context-menu button')].find(button => button.textContent === 'Dividir para baixo')!;
   fire(splitDown, 'mousedown', { button: 0 });
   fire(splitDown, 'click', { button: 0 });
 

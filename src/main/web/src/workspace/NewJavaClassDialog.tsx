@@ -20,10 +20,10 @@ export function NewJavaClassDialog({ onCancel, onCreate }: Props) {
 
   return <div className="new-project-backdrop" onPointerDown={() => { if (!creating) onCancel(); }}>
     <form className="new-project-dialog" onPointerDown={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void submit(); }}>
-      <header><strong>New Java Class</strong><span>Create a class in the project root</span></header>
-      <label>Class Name<input autoFocus value={name} onChange={event => setName(event.target.value)} placeholder="Main" disabled={creating} /></label>
+      <header><strong>Nova Classe Java</strong><span>Crie uma classe na raiz do projeto</span></header>
+      <label>Nome da classe<input autoFocus value={name} onChange={event => setName(event.target.value)} placeholder="Main" disabled={creating} /></label>
       {error && <p className="new-project-error" role="alert">{error}</p>}
-      <footer><button type="button" onClick={onCancel} disabled={creating}>Cancel</button><button type="submit" disabled={creating}>{creating ? 'Creating...' : 'Create Class'}</button></footer>
+      <footer><button type="button" onClick={onCancel} disabled={creating}>Cancelar</button><button type="submit" disabled={creating}>{creating ? 'Criando…' : 'Criar classe'}</button></footer>
     </form>
   </div>;
 }

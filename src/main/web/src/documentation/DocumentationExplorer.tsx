@@ -72,7 +72,7 @@ export function DocumentationExplorer({ activeId, onOpen }: Props) {
 
   return (
     <section className="auxiliary-panel docs-explorer">
-      <header className="panel-heading"><span>Documentation</span></header>
+      <header className="panel-heading"><span>Documentação</span></header>
       <div className="docs-explorer-search">
         <input
           type="search"

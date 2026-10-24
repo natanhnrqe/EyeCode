@@ -55,14 +55,14 @@ export function TopToolbar({ learnMode = false, projectName, projectPath, branch
   return <header className="app-toolbar" onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}>
     <div className="toolbar-brand">
       <div className="toolbar-menu">
-        <button type="button" className="toolbar-icon" aria-label="Main menu" onClick={() => setMenuOpen(value => !value)}>
+        <button type="button" className="toolbar-icon" aria-label="Menu principal" onClick={() => setMenuOpen(value => !value)}>
           <EyeCodeIcon name="hamburger" />
         </button>
         {menuOpen && <div className="toolbar-menu-popover">
-          <button type="button" onClick={() => { setMenuOpen(false); onNewProject(); }}>New Project</button>
-          <button type="button" onClick={() => { setMenuOpen(false); onOpenProject(); }}>Open Project</button>
-          <button type="button" onClick={() => { setMenuOpen(false); onNewFile(); }}>New Java File</button>
-          {projectName && <button type="button" onClick={() => { setMenuOpen(false); onWelcome(); }}>Back to Welcome</button>}
+          <button type="button" onClick={() => { setMenuOpen(false); onNewProject(); }}>Novo Projeto</button>
+          <button type="button" onClick={() => { setMenuOpen(false); onOpenProject(); }}>Abrir Projeto</button>
+          <button type="button" onClick={() => { setMenuOpen(false); onNewFile(); }}>Novo Arquivo Java</button>
+          {projectName && <button type="button" onClick={() => { setMenuOpen(false); onWelcome(); }}>Voltar à tela inicial</button>}
         </div>}
       </div>
       <span className="brand-sign">EC</span>
@@ -73,22 +73,22 @@ export function TopToolbar({ learnMode = false, projectName, projectPath, branch
         {switcherOpen && <div className="project-switcher-popover">
           {projectName && <div className="project-switcher-current"><strong>{projectName}</strong><span className="project-switcher-path">{projectPath}</span></div>}
           {otherRecentProjects.length > 0 && <div className="project-switcher-recent">
-            <span>Recent Projects</span>
+            <span>Projetos recentes</span>
             {otherRecentProjects.map(project => <div className="project-switcher-recent-row" key={project.path}>
               <button type="button" onClick={() => { setSwitcherOpen(false); onOpenRecentProject(project.path); }}>
                 <strong>{project.name}</strong><small className="project-switcher-path">{project.path}</small>
               </button>
-              <button type="button" aria-label={`Remove ${project.name} from recent projects`} onClick={() => onRemoveRecentProject(project.path)}>Remove</button>
+              <button type="button" aria-label={`Remover ${project.name} dos projetos recentes`} onClick={() => onRemoveRecentProject(project.path)}>Remover</button>
             </div>)}
           </div>}
           <div className="project-switcher-actions">
-            <button type="button" onClick={() => { setSwitcherOpen(false); onNewProject(); }}>New Project</button>
-            <button type="button" onClick={() => { setSwitcherOpen(false); onOpenProject(); }}>Open Project</button>
-            {projectName && <button type="button" onClick={() => { setSwitcherOpen(false); onWelcome(); }}>Back to Welcome</button>}
+            <button type="button" onClick={() => { setSwitcherOpen(false); onNewProject(); }}>Novo Projeto</button>
+            <button type="button" onClick={() => { setSwitcherOpen(false); onOpenProject(); }}>Abrir Projeto</button>
+            {projectName && <button type="button" onClick={() => { setSwitcherOpen(false); onWelcome(); }}>Voltar à tela inicial</button>}
           </div>
         </div>}
       </div>
-      {!learnMode && <span className="toolbar-branch" title="Git branch (visual indicator)">
+      {!learnMode && <span className="toolbar-branch" title="Branch Git (indicador visual)">
         <EyeCodeIcon name="branch" />
         <span>{branch ?? 'main'}</span>
       </span>}
@@ -97,8 +97,8 @@ export function TopToolbar({ learnMode = false, projectName, projectPath, branch
       {learnMode && <span className="toolbar-mode-indicator" aria-label="Modo Aprender">Aprender <span aria-hidden="true">⌄</span></span>}
       {!learnMode && <EyeCodeIcon name="completion/class" className="toolbar-config-icon" />}
       {!learnMode && <select value={runState.selectedConfigurationId} onChange={event => onSelectConfiguration(event.target.value)}
-        aria-label="Run configuration" disabled={!runState.configurations.length}>
-        {runState.configurations.length === 0 && <option value="">No run configuration</option>}
+        aria-label="Configuração de execução" disabled={!runState.configurations.length}>
+        {runState.configurations.length === 0 && <option value="">Nenhuma configuração de execução</option>}
         {runState.configurations.map(configuration => <option key={configuration.id} value={configuration.id}>
           {configuration.name}
         </option>)}
@@ -114,14 +114,14 @@ export function TopToolbar({ learnMode = false, projectName, projectPath, branch
       {!learnMode && <button type="button" className="toolbar-icon" disabled aria-label="Run options" title="Main class / JVM options (em breve)"><EyeCodeIcon name="kebab" /></button>}
     </div>
     <div className="toolbar-actions">
-      <button type="button" className="toolbar-icon" onClick={onOpenSearch} aria-label="Search"><EyeCodeIcon name="search" /></button>
-      <button type="button" className="toolbar-icon" disabled aria-label="Account" title="Account (em breve)"><EyeCodeIcon name="account" /></button>
-      <button type="button" className="toolbar-icon" onClick={onOpenSettings} aria-label="Settings"><EyeCodeIcon name="settings" /></button>
+      <button type="button" className="toolbar-icon" onClick={onOpenSearch} aria-label="Busca"><EyeCodeIcon name="search" /></button>
+      <button type="button" className="toolbar-icon" disabled aria-label="Conta" title="Conta (em breve)"><EyeCodeIcon name="account" /></button>
+      <button type="button" className="toolbar-icon" onClick={onOpenSettings} aria-label="Configurações"><EyeCodeIcon name="settings" /></button>
       <span className="toolbar-separator" />
       <div className="toolbar-window-controls">
-        <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowMinimize')} aria-label="Minimize"><EyeCodeIcon name="minimize" /></button>
-        <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowToggleMaximize')} aria-label={maximized ? 'Restore' : 'Maximize'}><EyeCodeIcon name={maximized ? 'restore' : 'maximize'} /></button>
-        <button type="button" className="toolbar-icon window-close" onClick={() => onWindowAction('windowClose')} aria-label="Close"><EyeCodeIcon name="close" /></button>
+        <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowMinimize')} aria-label="Minimizar"><EyeCodeIcon name="minimize" /></button>
+        <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowToggleMaximize')} aria-label={maximized ? 'Restaurar' : 'Maximizar'}><EyeCodeIcon name={maximized ? 'restore' : 'maximize'} /></button>
+        <button type="button" className="toolbar-icon window-close" onClick={() => onWindowAction('windowClose')} aria-label="Fechar"><EyeCodeIcon name="close" /></button>
       </div>
     </div>
   </header>;

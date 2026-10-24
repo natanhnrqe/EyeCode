@@ -41,13 +41,13 @@ export function NewProjectDialog({ onCancel, onBrowse, onCreate }: Props) {
 
   return <div className="new-project-backdrop" onPointerDown={() => { if (!creating) onCancel(); }}>
     <form className="new-project-dialog" onPointerDown={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void submit(); }}>
-      <header><strong>Create New Project</strong><span>Java Maven project</span></header>
-      <label>Project Name<input autoFocus value={name} onChange={event => setName(event.target.value)} placeholder="my-project" disabled={creating} /></label>
-      <label>Location<span className="new-project-location"><input value={location} onChange={event => setLocation(event.target.value)} placeholder="Choose a folder" disabled={creating} /><button type="button" onClick={() => void browse()} disabled={creating}>Browse</button></span></label>
+      <header><strong>Criar novo projeto</strong><span>Projeto Java com Maven</span></header>
+      <label>Nome do projeto<input autoFocus value={name} onChange={event => setName(event.target.value)} placeholder="my-project" disabled={creating} /></label>
+      <label>Local<span className="new-project-location"><input value={location} onChange={event => setLocation(event.target.value)} placeholder="Escolha uma pasta" disabled={creating} /><button type="button" onClick={() => void browse()} disabled={creating}>Escolher pasta</button></span></label>
       <label>Group ID<input value={groupId} onChange={event => setGroupId(event.target.value)} placeholder="com.example" disabled={creating} /></label>
       <p className="new-project-build">Maven · Java 21</p>
       {error && <p className="new-project-error" role="alert">{error}</p>}
-      <footer><button type="button" onClick={onCancel} disabled={creating}>Cancel</button><button type="submit" disabled={creating}>{creating ? 'Creating...' : 'Create Project'}</button></footer>
+      <footer><button type="button" onClick={onCancel} disabled={creating}>Cancelar</button><button type="submit" disabled={creating}>{creating ? 'Criando…' : 'Criar projeto'}</button></footer>
     </form>
   </div>;
 }

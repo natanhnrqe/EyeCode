@@ -108,12 +108,12 @@ export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPa
     nodeRefs.current.get(selectedPath)?.scrollIntoView({ block: 'nearest' });
   }, [childrenByPath, expandedPaths, selectedPath]);
 
-  if (!project) return <DockPane paneId="explorer" className="project-explorer project-explorer-empty" label="Project" bodyClassName="project-explorer-body">
+  if (!project) return <DockPane paneId="explorer" className="project-explorer project-explorer-empty" label="Projeto" bodyClassName="project-explorer-body">
     <div className="empty-mark">EC</div>
-    <strong>No project open</strong>
-    <span>Open a Java workspace to browse and edit its source.</span>
-    <button type="button" className="primary-action" onClick={onOpenProject}>Open Project</button>
-    <button type="button" className="quiet-action" onClick={onNewFile}>New File</button>
+    <strong>Nenhum projeto aberto</strong>
+    <span>Abra um projeto Java para navegar e editar o código-fonte.</span>
+    <button type="button" className="primary-action" onClick={onOpenProject}>Abrir Projeto</button>
+    <button type="button" className="quiet-action" onClick={onNewFile}>Novo Arquivo</button>
   </DockPane>;
 
   const toggle = (node: ProjectNode) => {
@@ -130,11 +130,11 @@ export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPa
     setExpandedPaths(paths => { const next = new Set(paths); next.delete(node.path); return next; });
   };
 
-  return <DockPane paneId="explorer" className="project-explorer" label="Project" headerClassName="panel-heading" header={<>
-      <span>Project</span>
+  return <DockPane paneId="explorer" className="project-explorer" label="Projeto" headerClassName="panel-heading" header={<>
+      <span>Projeto</span>
       <div className="panel-heading-actions">
-        <button type="button" onClick={onNewFile} aria-label="New file"><EyeCodeIcon name="newFile" /></button>
-        <button type="button" onClick={() => void refreshExpandedPaths()} aria-label="Refresh project"><EyeCodeIcon name="reload" /></button>
+        <button type="button" onClick={onNewFile} aria-label="Novo arquivo"><EyeCodeIcon name="newFile" /></button>
+        <button type="button" onClick={() => void refreshExpandedPaths()} aria-label="Atualizar projeto"><EyeCodeIcon name="reload" /></button>
       </div>
     </>} bodyClassName="project-explorer-body">
     <div className="project-tree" role="tree">
@@ -215,29 +215,29 @@ export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPa
     return createPortal(<>
       {contextMenu && <div className="explorer-context-menu" style={{ left: contextMenu.x, top: contextMenu.y }} onPointerDown={event => event.stopPropagation()}>
         {contextMenu.node.kind === 'file' ? <>
-          <button type="button" onClick={() => { setContextMenu(undefined); setSelectedPath(contextMenu.node.path); void openFile.current(contextMenu.node.path); }}>Open</button>
+          <button type="button" onClick={() => { setContextMenu(undefined); setSelectedPath(contextMenu.node.path); void openFile.current(contextMenu.node.path); }}>Abrir</button>
           <hr />
-          <button type="button" onClick={() => void runOperation('duplicate', contextMenu.node)}>Duplicate</button>
-          <button type="button" onClick={() => openDialog('rename', contextMenu.node)}>Rename</button>
-          <button type="button" className="is-danger" onClick={() => openDialog('delete', contextMenu.node)}>Delete</button>
+          <button type="button" onClick={() => void runOperation('duplicate', contextMenu.node)}>Duplicar</button>
+          <button type="button" onClick={() => openDialog('rename', contextMenu.node)}>Renomear</button>
+          <button type="button" className="is-danger" onClick={() => openDialog('delete', contextMenu.node)}>Excluir</button>
         </> : <>
-          <button type="button" onClick={() => openDialog('createJavaClass', contextMenu.node)}>New Java Class</button>
-          <button type="button" onClick={() => openDialog('createFile', contextMenu.node)}>New File</button>
-          <button type="button" onClick={() => openDialog('createPackage', contextMenu.node)}>New Package</button>
-          <button type="button" onClick={() => openDialog('createDirectory', contextMenu.node)}>New Directory</button>
+          <button type="button" onClick={() => openDialog('createJavaClass', contextMenu.node)}>Nova Classe Java</button>
+          <button type="button" onClick={() => openDialog('createFile', contextMenu.node)}>Novo Arquivo</button>
+          <button type="button" onClick={() => openDialog('createPackage', contextMenu.node)}>Novo Pacote</button>
+          <button type="button" onClick={() => openDialog('createDirectory', contextMenu.node)}>Nova Pasta</button>
           <hr />
-          <button type="button" onClick={() => { setContextMenu(undefined); void ensureChildren(contextMenu.node.path, true); }}>Refresh</button>
+          <button type="button" onClick={() => { setContextMenu(undefined); void ensureChildren(contextMenu.node.path, true); }}>Atualizar</button>
           {contextMenu.node.kind !== 'project' && <><hr />
-            <button type="button" onClick={() => openDialog('rename', contextMenu.node)}>Rename</button>
-            <button type="button" className="is-danger" onClick={() => openDialog('delete', contextMenu.node)}>Delete</button>
+            <button type="button" onClick={() => openDialog('rename', contextMenu.node)}>Renomear</button>
+            <button type="button" className="is-danger" onClick={() => openDialog('delete', contextMenu.node)}>Excluir</button>
           </>}
         </>}
       </div>}
       {dialog && <div className="explorer-dialog-backdrop" onPointerDown={() => setDialog(undefined)}>
         <form className="explorer-dialog" onPointerDown={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void submitDialog(); }}>
           <strong>{dialogTitle(dialog.operation)}</strong>
-          {dialog.operation === 'delete' ? <p>Delete {dialog.node.name}{dialog.node.kind !== 'file' ? ' and its contents' : ''}?</p> : <input autoFocus value={input} onChange={event => setInput(event.target.value)} placeholder={dialogPlaceholder(dialog.operation)} />}
-          <div><button type="button" onClick={() => setDialog(undefined)}>Cancel</button><button type="submit">{dialog.operation === 'delete' ? 'Delete' : dialog.operation === 'rename' ? 'Rename' : 'Create'}</button></div>
+          {dialog.operation === 'delete' ? <p>Excluir {dialog.node.name}{dialog.node.kind !== 'file' ? ' e todo o seu conteúdo' : ''}?</p> : <input autoFocus value={input} onChange={event => setInput(event.target.value)} placeholder={dialogPlaceholder(dialog.operation)} />}
+          <div><button type="button" onClick={() => setDialog(undefined)}>Cancelar</button><button type="submit">{dialog.operation === 'delete' ? 'Excluir' : dialog.operation === 'rename' ? 'Renomear' : 'Criar'}</button></div>
         </form>
       </div>}
     </>, root);
@@ -278,11 +278,11 @@ function TreeNode({ node, depth, childrenByPath, expandedPaths, loadingPaths, fa
 }
 
 function dialogTitle(operation: ExplorerOperation): string {
-  return ({ createJavaClass: 'New Java Class', createFile: 'New File', createPackage: 'New Package', createDirectory: 'New Directory', rename: 'Rename', delete: 'Delete', duplicate: 'Duplicate' })[operation];
+  return ({ createJavaClass: 'Nova Classe Java', createFile: 'Novo Arquivo', createPackage: 'Novo Pacote', createDirectory: 'Nova Pasta', rename: 'Renomear', delete: 'Excluir', duplicate: 'Duplicar' })[operation];
 }
 
 function dialogPlaceholder(operation: ExplorerOperation): string {
-  return ({ createJavaClass: 'Class name', createFile: 'File name', createPackage: 'com.example.feature', createDirectory: 'Directory name', rename: 'New name', delete: '', duplicate: '' })[operation];
+  return ({ createJavaClass: 'Nome da classe', createFile: 'Nome do arquivo', createPackage: 'com.example.feature', createDirectory: 'Nome da pasta', rename: 'Novo nome', delete: '', duplicate: '' })[operation];
 }
 
 function treeIcon(node: ProjectNode, expanded: boolean): string {

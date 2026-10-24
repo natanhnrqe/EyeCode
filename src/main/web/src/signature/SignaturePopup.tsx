@@ -82,7 +82,7 @@ export function SignaturePopup({ state }: { state: SignaturePopupState }) {
       className="signature-popup"
       style={{ left: position.left, top: position.top }}
       role="tooltip"
-      aria-label="Signature help"
+      aria-label="Assinatura do método"
     >
       <div className="signature-line">
         <span className="signature-name">{name}</span>

@@ -117,8 +117,8 @@ class ChallengeModuleSourceTest {
         assertTrue(tabs.contains("onSplitRight"));
         assertTrue(tabs.contains("onSplitDown"));
         assertTrue(tabs.contains("onContextMenu"));
-        assertTrue(tabs.contains("Split Right"));
-        assertTrue(tabs.contains("Split Down"));
+        assertTrue(tabs.contains("Dividir à direita"));
+        assertTrue(tabs.contains("Dividir para baixo"));
         assertTrue(tabs.contains("editor-context-menu"));
         assertTrue(tabs.contains("onTabSplitDrop"));
         assertTrue(tabs.contains("editor-tab-drag-ghost"));

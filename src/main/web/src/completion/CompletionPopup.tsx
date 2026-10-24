@@ -239,7 +239,7 @@ function DetailSection({ section }: { section: CompletionDetailSection }) {
       </div>
 
       {hiddenEntries > 0 && (
-        <div className="completion-detail-more">+{hiddenEntries} more</div>
+        <div className="completion-detail-more">+{hiddenEntries} mais</div>
       )}
     </section>
   );
@@ -405,7 +405,7 @@ export function CompletionPopup({
         top: position.top
       }}
       role="listbox"
-      aria-label="Completion suggestions"
+      aria-label="Sugestões de código"
     >
       <div
         ref={listRef}

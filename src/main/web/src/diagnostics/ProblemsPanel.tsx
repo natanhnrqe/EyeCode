@@ -30,7 +30,7 @@ export function toProblems(state: DiagnosticsViewState | null, documents: Docume
 
 export function ProblemsPanel({ state, documents, onNavigate, learnMode = false, selectedKey, onSelectProblem, onUnderstand, onOpenRelated }: Props) {
   const problems = toProblems(state, documents);
-  if (!problems.length) return <div className="problems-empty">{learnMode ? <><strong>Nenhum problema encontrado</strong><span>Seu código está pronto para continuar.</span></> : 'No problems detected'}</div>;
+  if (!problems.length) return <div className="problems-empty">{learnMode ? <><strong>Nenhum problema encontrado</strong><span>Seu código está pronto para continuar.</span></> : 'Nenhum problema detectado'}</div>;
   if (!learnMode) return <div className="problems-list" role="list">{problems.map(problem => <ProblemRow key={problem.key} problem={problem} onNavigate={onNavigate} />)}</div>;
   const selected = problems.find(problem => problem.key === selectedKey) ?? problems[0];
   const select = (problem: Problem) => { onSelectProblem?.(problem); onNavigate(problem.uri, problem); };

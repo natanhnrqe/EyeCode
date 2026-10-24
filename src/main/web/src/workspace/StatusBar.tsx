@@ -17,11 +17,11 @@ export function StatusBar({ activeUri, displayName, projectRoot, projectName, ca
   const breadcrumbs: StatusBreadcrumb[] = suppliedBreadcrumbs ?? documentBreadcrumbs(activeUri, displayName, projectRoot, projectName).map(label => ({ label }));
   const selected = runState.configurations.find(configuration => configuration.id === runState.selectedConfigurationId);
   const mainName = selected?.mainClass?.split('.').pop() || selected?.name || '';
-  const phaseLabel = runState.phase === 'PREPARING' ? 'Preparing...'
-    : runState.phase === 'COMPILING' ? `Compiling ${mainName}...`
-      : runState.phase === 'RUNNING' ? `Running ${mainName}...` : '';
+  const phaseLabel = runState.phase === 'PREPARING' ? 'Preparando…'
+    : runState.phase === 'COMPILING' ? `Compilando ${mainName}…`
+      : runState.phase === 'RUNNING' ? `Executando ${mainName}…` : '';
   return <footer className="status-bar">
-    <div className="status-breadcrumbs" aria-label="Current document path">
+    <div className="status-breadcrumbs" aria-label="Caminho do documento atual">
       {breadcrumbs.map((segment, index) => <span key={`${segment.label}-${index}`}>
         {index > 0 && <i aria-hidden="true">›</i>}{segment.onClick ? <button type="button" onClick={segment.onClick}>{segment.label}</button> : segment.label}
       </span>)}
@@ -31,7 +31,7 @@ export function StatusBar({ activeUri, displayName, projectRoot, projectName, ca
       <span>{phaseLabel}</span><span className="status-progress-track" aria-hidden="true"><span /></span>
     </div>}
     <div className="status-editor-meta">
-      <span>Ln {caret.line}, Col {caret.column}</span><span>LF</span><span>UTF-8</span><span>4 spaces</span><span>Java 21</span>
+      <span>Ln {caret.line}, Col {caret.column}</span><span>LF</span><span>UTF-8</span><span>4 espaços</span><span>Java 21</span>
     </div>
   </footer>;
 }

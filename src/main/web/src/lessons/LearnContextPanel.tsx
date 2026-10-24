@@ -236,7 +236,7 @@ function LearnOutput({ output, outputDropped, runState }: Pick<Props, 'output' |
   const outputRef = useRef<HTMLPreElement>(null);
   const visible = useMemo(() => windowRunOutput(output), [output]);
   useEffect(() => { if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight; }, [output]);
-  const status = runState.running ? 'Executando…' : runState.finished ? runState.exitCode === 0 ? 'Programa finalizado' : `Processo finalizado com código ${runState.exitCode ?? -1}` : 'Execute a atividade para ver a saída.';
+  const status = runState.running ? 'Executando…' : runState.finished ? runState.exitCode === 0 ? 'Programa finalizado' : `Processo finalizado com código de saída ${runState.exitCode ?? -1}` : 'Execute a atividade para ver a saída.';
   const hiddenChars = visible.droppedChars + outputDropped;
   return <section className="learn-output"><header className={runState.finished && runState.exitCode === 0 ? 'is-success' : ''}>{status}</header><pre ref={outputRef}>
     {hiddenChars > 0 && <span className="learn-output-dropped">…{hiddenChars.toLocaleString('pt-BR')} caracteres anteriores não exibidos — a exibição mostra apenas o final da saída…{'\n'}</span>}

@@ -3,7 +3,7 @@ import type { LessonContentBlock, LessonSession, PracticeVerificationResult } fr
 import { InlineContent, LessonBlock, LessonBlocks } from './LessonPanel';
 import { DockPane } from '../workspace/DockPane';
 
-type LearningPanelTab = 'exercise' | 'concepts' | 'faq' | 'examples' | 'assistant';
+type LearningPanelTab = 'exercise' | 'concepts' | 'faq' | 'examples';
 type Props = {
   session: LessonSession;
   verification: PracticeVerificationResult | null;
@@ -22,8 +22,7 @@ const tabs: Array<{ id: LearningPanelTab; label: string }> = [
   { id: 'exercise', label: 'Exercício' },
   { id: 'concepts', label: 'Conceitos' },
   { id: 'faq', label: 'Dúvidas' },
-  { id: 'examples', label: 'Exemplos' },
-  { id: 'assistant', label: 'Assistente IA' }
+  { id: 'examples', label: 'Exemplos' }
 ];
 
 export function LearningPanel({ session, verification, verifying, onVerify, onPrevious, onNext, onExit, hasDiagnostics, onShowProblems, category, topic }: Props) {
@@ -39,7 +38,6 @@ export function LearningPanel({ session, verification, verifying, onVerify, onPr
     {activeTab === 'concepts' && <ConceptsTab blocks={session.contentBlocks} />}
     {activeTab === 'faq' && <EmptyTab title="Dúvidas frequentes" message="Esta aula ainda não possui dúvidas frequentes." />}
     {activeTab === 'examples' && <ExamplesTab blocks={session.contentBlocks} />}
-    {activeTab === 'assistant' && <EmptyTab title="Assistente da aula" message="Em breve, o assistente usará esta aula e o seu código para oferecer ajuda contextual." />}
   </DockPane>;
 }
 

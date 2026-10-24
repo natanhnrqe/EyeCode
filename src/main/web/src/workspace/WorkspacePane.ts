@@ -31,9 +31,9 @@ export const explorerCollapsedRailWidth = 64;
 
 export const workspacePaneDefinitions: Readonly<Record<WorkspacePaneId, WorkspacePaneDefinition>> = {
   editor: { id: 'editor', title: 'Editor', kind: 'surface', draggable: true, resizable: true, allowedDockSides: ['LEFT', 'RIGHT'], minWidth: 320, minHeight: 180 },
-  explorer: { id: 'explorer', title: 'Explorer', kind: 'navigation', draggable: true, resizable: true, allowedDockSides: ['LEFT', 'RIGHT'], minWidth: explorerCollapsedRailWidth, minHeight: 0 },
-  bottom: { id: 'bottom', title: 'Tool windows', kind: 'tool-window', draggable: true, resizable: true, allowedDockSides: ['TOP', 'BOTTOM'], minWidth: 0, minHeight: 140 },
-  lesson: { id: 'lesson', title: 'Lesson content', kind: 'lesson-content', draggable: true, resizable: true, allowedDockSides: ['LEFT', 'RIGHT'], minWidth: 160, minHeight: 160 }
+  explorer: { id: 'explorer', title: 'Explorador', kind: 'navigation', draggable: true, resizable: true, allowedDockSides: ['LEFT', 'RIGHT'], minWidth: explorerCollapsedRailWidth, minHeight: 0 },
+  bottom: { id: 'bottom', title: 'Janelas de ferramentas', kind: 'tool-window', draggable: true, resizable: true, allowedDockSides: ['TOP', 'BOTTOM'], minWidth: 0, minHeight: 140 },
+  lesson: { id: 'lesson', title: 'Conteúdo da aula', kind: 'lesson-content', draggable: true, resizable: true, allowedDockSides: ['LEFT', 'RIGHT'], minWidth: 160, minHeight: 160 }
 };
 
 export const workspacePaneMinimums: Readonly<Record<WorkspacePaneId, DockPaneMinimum>> = {

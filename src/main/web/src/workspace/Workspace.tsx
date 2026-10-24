@@ -35,6 +35,7 @@ import { EyeCodeIcon } from './EyeCodeIcon';
 import { MonacoHost } from './MonacoHost';
 import { NewProjectDialog } from './NewProjectDialog';
 import { NewJavaClassDialog } from './NewJavaClassDialog';
+import { PanelEmptyState } from './PanelEmptyState';
 import { ProjectExplorer } from './ProjectExplorer';
 import { StatusBar } from './StatusBar';
 import { TopToolbar } from './TopToolbar';
@@ -321,7 +322,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
         return;
       }
       if (service.apply(document, event.name === 'opened' || event.name === 'externalChanged')) updateDocument(document);
-      if (event.name === 'saveFailed') setMessage('Could not save the document');
+      if (event.name === 'saveFailed') setMessage('Não foi possível salvar o documento');
     });
     bridge.emit('shell', 'ready', {});
     return unsubscribe;
@@ -836,16 +837,21 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
         activeId={activeDocument?.kind === 'guide' && activeUri ? activeUri.slice('guide://'.length) : null}
         onOpen={id => void openDocumentationPage(id)} /> : <section className="auxiliary-panel">
         <header className="panel-heading"><span>{sideTitle(sidePanel)}</span></header>
-        <div className="toolwindow-placeholder"><strong>{sideTitle(sidePanel)}</strong>
-          <span>This shell view is composed and ready for its dedicated service integration.</span></div>
+        {sidePanel === 'search' ? <PanelEmptyState icon="search" title="Busca no projeto"
+          description="Aqui você vai encontrar arquivos, símbolos e trechos de código em todo o projeto. Esta visão ainda está sendo construída."
+          meantime={[<><kbd>Ctrl+F</kbd> abre a busca no arquivo aberto no editor.</>, 'A Documentação tem busca própria nas páginas de referência.']}
+          action={{ label: 'Buscar na Documentação', run: () => setSidePanel('documentation') }} />
+        : <PanelEmptyState icon="settings" title="Configurações do EyeCode"
+          description="Aqui vão morar as preferências do editor, os atalhos e a aparência do EyeCode. Esta visão ainda está sendo construída."
+          meantime={['O autosave já guarda suas edições automaticamente.', 'O JDK já vem embutido — nada a configurar antes de programar.']} />}
       </section>}
     </aside>;
     if (paneId === 'editor') {
       const primaryRegion = <section className="editor-region" data-editor-group-id={PRIMARY_EDITOR_GROUP_ID} data-editor-region-slot>
         {projectMode && activeDocument?.kind === 'documentation' && <DocumentationTab document={activeDocument} />}
         {projectMode && activeDocument?.kind === 'guide' && !docsFullscreenActive && renderGuideArticle}
-        {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Start coding</strong>
-          <span>Open a file from Project panel or create something new.</span><div><button type="button" className="primary-action" onClick={() => setNewJavaClassOpen(true)}>New Java Class</button></div></div>}
+        {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Comece a programar</strong>
+          <span>Abra um arquivo pelo painel Projeto ou crie algo novo.</span><div><button type="button" className="primary-action" onClick={() => setNewJavaClassOpen(true)}>Nova Classe Java</button></div></div>}
         {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
         {projectMode && <EditorDiagnosticStrip state={diagnostics} onNavigate={navigateProblem} />}
       </section>;
@@ -1004,14 +1010,14 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   return <main className="app-shell">
     {toolbar}
     <div ref={shellWorkspace} className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}`} aria-hidden={mode === 'WELCOME'}>
-      {projectMode ? <nav className="activity-bar" aria-label="Workspace views">
+      {projectMode ? <nav className="activity-bar" aria-label="Exibições do workspace">
         {(['project', 'search', 'documentation', 'settings'] as SidePanelId[]).map(id => <button key={id}
           type="button" className={sidePanel === id && !sidePanelCollapsed ? 'is-active' : ''} onClick={() => selectSidePanel(id)}
-          aria-label={id} aria-expanded={sidePanel === id ? !sidePanelCollapsed : undefined}>
+          aria-label={activityLabel(id)} aria-expanded={sidePanel === id ? !sidePanelCollapsed : undefined}>
           <EyeCodeIcon name={sideIcon(id)} />
           <span className="activity-label">{activityLabel(id)}</span>
         </button>)}
-      </nav> : !learnNavigationVisible && <nav className="activity-bar learn-activity-bar" aria-label="Navegação da aula"><button type="button" className={!learnExplorerCollapsed ? 'is-active' : ''} onClick={() => setLearnExplorerCollapsed(value => !value)} aria-label={learnExplorerCollapsed ? 'Mostrar aulas' : 'Ocultar aulas'} aria-expanded={!learnExplorerCollapsed}><EyeCodeIcon name="learn" /><span className="activity-label">Learn</span></button></nav>}
+      </nav> : !learnNavigationVisible && <nav className="activity-bar learn-activity-bar" aria-label="Navegação da aula"><button type="button" className={!learnExplorerCollapsed ? 'is-active' : ''} onClick={() => setLearnExplorerCollapsed(value => !value)} aria-label={learnExplorerCollapsed ? 'Mostrar aulas' : 'Ocultar aulas'} aria-expanded={!learnExplorerCollapsed}><EyeCodeIcon name="learn" /><span className="activity-label">Aulas</span></button></nav>}
       {learnNavigationVisible && <LearnWorkspace navigation={learnNavigation} catalog={lessonsCatalog} error={lessonsError}
         onHome={() => { setActiveLearnTrackId(null); setLearnNavigation({ screen: 'HOME' }); }}
         onOpenRoadmap={categoryId => { setActiveLearnTrackId(categoryId); setLearnNavigation({ screen: 'ROADMAP', categoryId }); }}
@@ -1073,12 +1079,12 @@ function sideIcon(id: SidePanelId): string {
 }
 
 function activityLabel(id: SidePanelId): string {
-  return ({ project: 'Project', search: 'Search', documentation: 'Docs', settings: 'Settings' })[id];
+  return ({ project: 'Projeto', search: 'Busca', documentation: 'Docs', settings: 'Configurações' })[id];
 }
 
 
 function sideTitle(id: SidePanelId): string {
-  return ({ project: 'Project', search: 'Search', documentation: 'Documentation', settings: 'Settings' })[id];
+  return ({ project: 'Projeto', search: 'Busca', documentation: 'Documentação', settings: 'Configurações' })[id];
 }
 
 function formatError(error: unknown): string {
