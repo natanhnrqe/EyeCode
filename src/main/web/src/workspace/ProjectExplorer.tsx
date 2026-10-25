@@ -110,7 +110,7 @@ export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPa
 
   if (!project) return <DockPane paneId="explorer" className="project-explorer project-explorer-empty" label="Projeto" bodyClassName="project-explorer-body">
     <div className="empty-mark">EC</div>
-    <strong>Nenhum projeto aberto</strong>
+    <h2>Nenhum projeto aberto</h2>
     <span>Abra um projeto Java para navegar e editar o código-fonte.</span>
     <button type="button" className="primary-action" onClick={onOpenProject}>Abrir Projeto</button>
     <button type="button" className="quiet-action" onClick={onNewFile}>Novo Arquivo</button>

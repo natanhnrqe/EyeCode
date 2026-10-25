@@ -71,6 +71,19 @@
   unicode-range: U+2000-2BFF, U+1F000-1FFFF, U+2600-26FF, U+2700-27BF, U+3000-30FF, U+FE00-FE0F, U+200D, U+231A-23FF;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* ========================================================================== */
 /* Global & Diagnostics */
 /* ========================================================================== */
@@ -318,6 +331,13 @@ html, body, #root {
   box-shadow: 0 0 8px rgba(169, 146, 255, .42);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .dock-split-separator,
+  .dock-split-separator::after {
+    transition: none;
+  }
+}
+
 .dock-split-grip {
   position: absolute;
   z-index: 1;
@@ -377,7 +397,12 @@ html, body, #root {
 }
 
 .document-open-row input:focus {
-  border-color: #3574f0;
+  border-color: var(--accent);
+}
+
+.document-open-row input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .workspace-message {
@@ -617,6 +642,12 @@ html, body, #root {
 .learn-topic-card:hover,
 .learn-lesson-item:not(:disabled):hover {
   background: var(--eyecode-hover);
+}
+
+.learn-topic-card:focus-visible,
+.learn-lesson-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .learn-topic-marker {
@@ -1038,6 +1069,20 @@ html, body, #root {
   transform: rotate(90deg);
 }
 
+.learn-module-toggle:focus-visible,
+.learn-topic-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .learn-module-chevron,
+  .learn-topic-chevron,
+  .learn-explorer-progress-track > span {
+    transition: none;
+  }
+}
+
 .learn-topic-title {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1171,6 +1216,12 @@ html, body, #root {
 
 .learn-explorer-lesson-file.is-active {
   color: var(--eyecode-accent-bright);
+}
+
+.learn-explorer-lesson:focus-visible,
+.learn-explorer-lesson-file:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* Footer */
@@ -1329,6 +1380,7 @@ html, body, #root {
 .learning-panel-tabs button:hover { color: var(--eyecode-text); background: var(--eyecode-hover); }
 .learning-panel-tabs button.is-active { color: var(--eyecode-accent-bright); }
 .learning-panel-tabs button.is-active::after { position: absolute; right: 10px; bottom: 0; left: 10px; height: 2px; background: var(--eyecode-accent); content: ''; }
+.learning-panel-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 .learning-panel-content { min-height: 0; overflow: auto; padding: 18px 18px 16px; background: var(--eyecode-surface); }
 .learning-tab { color: var(--eyecode-text-secondary); font: 13px/1.6 var(--eyecode-font-ui); }
@@ -1350,6 +1402,7 @@ html, body, #root {
 .exercise-help-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .exercise-help-actions button, .exercise-stuck-choices button, .exercise-guidance button { min-height: 32px; padding: 6px 10px; border: 1px solid var(--eyecode-border-strong); border-radius: var(--eyecode-radius-sm); background: var(--eyecode-surface-elevated); color: var(--eyecode-text); font: 600 12px var(--eyecode-font-ui); }
 .exercise-help-actions button:hover, .exercise-stuck-choices button:hover, .exercise-guidance button:hover { border-color: var(--eyecode-accent); background: var(--eyecode-hover); }
+.exercise-help-actions button:focus-visible, .exercise-stuck-choices button:focus-visible, .exercise-guidance button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .exercise-hints, .exercise-stuck { display: grid; gap: 9px; margin-top: 12px; padding: 12px; border: 1px solid var(--eyecode-border); border-radius: var(--eyecode-radius-md); background: color-mix(in srgb, var(--eyecode-surface-elevated) 42%, var(--surface-editor)); }
 .exercise-hints > div { padding-left: 10px; border-left: 3px solid var(--eyecode-accent-bright); }
 .exercise-hints .lesson-callout { margin: 5px 0 0; padding: 0; border: 0; background: transparent; }
@@ -2387,6 +2440,11 @@ html, body, #root {
   font-size: 12px;
 }
 
+.app-toolbar select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .toolbar-run {
   width: 34px;
   height: 30px;
@@ -2420,6 +2478,13 @@ html, body, #root {
   background: rgba(169, 144, 255, .12);
 }
 
+.toolbar-icon:focus-visible,
+.panel-heading-actions button:focus-visible,
+.toolbar-run:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .toolbar-menu {
   position: relative;
 }
@@ -2450,6 +2515,13 @@ html, body, #root {
 
 .toolbar-menu-popover button:hover {
   background: var(--surface-hover);
+}
+
+.toolbar-menu-popover button:focus-visible,
+.project-switcher-recent button:focus-visible,
+.project-switcher-actions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .toolbar-run:hover {
@@ -2585,6 +2657,11 @@ html, body, #root {
   opacity: 1;
 }
 
+.activity-bar button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 /* ========================================================================== */
 /* Project Explorer */
 /* ========================================================================== */
@@ -2671,6 +2748,11 @@ html, body, #root {
   background: rgba(133, 109, 237, .18);
 }
 
+.tree-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .tree-chevron {
   width: 9px;
   color: #c0b9e8;
@@ -2682,6 +2764,12 @@ html, body, #root {
 
 .tree-chevron.is-open {
   transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tree-chevron {
+    transition: none;
+  }
 }
 
 .tree-icon {
@@ -2737,7 +2825,8 @@ html, body, #root {
   font: 12px/1.5 var(--eyecode-font-ui);
 }
 
-.project-explorer-empty strong, .workspace-empty strong {
+.project-explorer-empty strong, .project-explorer-empty h2, .workspace-empty strong, .workspace-empty h1 {
+  margin: 0;
   color: #e1e3e7;
   font-size: 15px;
 }
@@ -2806,7 +2895,8 @@ html, body, #root {
   max-width: 46ch;
 }
 
-.panel-empty-state-copy strong {
+.panel-empty-state-copy h2 {
+  margin: 0;
   color: var(--text);
   font: 600 14px/1.35 var(--font-ui);
 }
@@ -2869,7 +2959,7 @@ html, body, #root {
 }
 
 .panel-empty-state .primary-action:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-bright);
   outline-offset: 2px;
 }
 
@@ -3026,6 +3116,12 @@ html, body, #root {
 .lesson-task-card:active {
   transform: translateY(1px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, .22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lesson-task-card {
+    transition: none;
+  }
 }
 
 .lesson-task-card header,
@@ -3308,6 +3404,19 @@ html, body, #root {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.editor-tab:focus-visible,
+.editor-tab-close:focus-visible,
+.editor-group-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-tab {
+    transition: none;
+  }
+}
+
 .workspace-empty > div:last-child, .workspace-empty > button {
   pointer-events: auto;
 }
@@ -3451,6 +3560,11 @@ html, body, #root {
   height: 2px;
   background: #8b68ff;
   content: '';
+}
+
+.bottom-tabs button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .bottom-actions {
@@ -4205,7 +4319,8 @@ html, body, #root {
 
 .explorer-dialog p { margin: 0; color: #b8bdc8; line-height: 1.45; }
 .explorer-dialog input { height: 30px; padding: 0 9px; border: 1px solid rgba(255,255,255,.16); border-radius: 5px; color: #e6e8ed; background: #1f2023; outline: none; font: 12px var(--font-ui); }
-.explorer-dialog input:focus { border-color: #7387cb; }
+.explorer-dialog input:focus { border-color: var(--accent); }
+.explorer-dialog input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .explorer-dialog > div { display: flex; justify-content: flex-end; gap: 7px; }
 .explorer-dialog button { height: 27px; padding: 0 11px; border: 1px solid rgba(255,255,255,.13); border-radius: 5px; color: #d9dce4; background: #2d2f35; font: 12px var(--font-ui); }
 .explorer-dialog button[type='submit'] { border-color: #7189d7; background: #4d64a9; color: #fff; }
@@ -4239,7 +4354,8 @@ html, body, #root {
 .new-project-dialog header span, .new-project-build { color: var(--text-muted); }
 .new-project-dialog label { display: grid; gap: 6px; color: #cdd0da; }
 .new-project-dialog input { width: 100%; height: 32px; padding: 0 9px; border: 1px solid rgba(255,255,255,.16); border-radius: 5px; outline: none; color: #e6e8ed; background: #17191f; font: 12px var(--font-ui); }
-.new-project-dialog input:focus { border-color: #7387cb; }
+.new-project-dialog input:focus { border-color: var(--accent); }
+.new-project-dialog input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .new-project-location { display: flex; gap: 7px; }
 .new-project-location input { min-width: 0; flex: 1; }
 .new-project-location button, .new-project-dialog footer button { height: 32px; padding: 0 11px; border: 1px solid rgba(255,255,255,.14); border-radius: 5px; color: #d9dce4; background: #2d2f35; font: 12px var(--font-ui); }
@@ -5364,6 +5480,11 @@ img.learning-icon {
   border-color: rgba(133, 109, 237, .55);
 }
 
+.docs-explorer-search input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .docs-explorer-search input::placeholder {
   color: #777c8d;
 }
@@ -5425,6 +5546,12 @@ img.learning-icon {
   transform: rotate(0deg);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .docs-branch-caret {
+    transition: none;
+  }
+}
+
 .docs-branch-label {
   flex: 1;
   color: #8b8fa3;
@@ -5468,6 +5595,12 @@ img.learning-icon {
 .docs-page-item:hover {
   background: var(--surface-hover);
   color: #e7e9ec;
+}
+
+.docs-page-item:focus-visible,
+.docs-branch-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .docs-page-item.is-active {
@@ -5935,6 +6068,12 @@ img.learning-icon {
   transition: grid-template-columns 160ms ease;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .dock-layout.is-challenge-panel-collapsed [data-dock-path='root-first-second'] {
+    transition: none;
+  }
+}
+
 .dock-layout.is-challenge-panel-collapsed
   [data-dock-path='root-first-second'] > .dock-split-separator {
   visibility: hidden;
@@ -6080,6 +6219,11 @@ img.learning-icon {
 .challenge-tab.is-active {
   color: var(--text);
   border-bottom-color: var(--accent);
+}
+
+.challenge-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .challenge-badge {
@@ -6511,8 +6655,18 @@ img.learning-icon {
   line-height: 1.5;
 }
 
-.challenge-lock {
-  font-size: 13px;
+.challenge-collapse-button:focus-visible,
+.challenge-panel-back:focus-visible,
+.challenge-panel-restore:focus-visible,
+.challenge-rail-expand:focus-visible,
+.challenge-documentation-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.challenge-run-button:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
 }
 
 /* Animações */
@@ -7358,6 +7512,10 @@ img.learning-icon {
   }
 
   .challenge-spinner {
+    animation-duration: 1.6s;
+  }
+
+  .is-spinning {
     animation-duration: 1.6s;
   }
 }

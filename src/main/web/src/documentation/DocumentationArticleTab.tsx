@@ -135,7 +135,7 @@ export function DocumentationArticleTab({ page, fullscreen, onOpenRelated, onTog
                     className={activeHeading === item.id ? 'is-active' : undefined}
                     onClick={() => bodyRef.current
                       ?.querySelector<HTMLElement>(`[id="${item.id}"]`)
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                      ?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })}
                   >
                     {item.text}
                   </button>

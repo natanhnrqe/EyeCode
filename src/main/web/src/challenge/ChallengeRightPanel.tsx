@@ -45,10 +45,7 @@ export function ChallengeRightPanel({
           }`}
           onClick={() => controller.selectTab('tests')}
         >
-          Testes{' '}
-          <span className="challenge-lock" aria-hidden="true">
-            🔒
-          </span>
+          Testes
         </button>
 
         <button

@@ -850,9 +850,9 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       const primaryRegion = <section className="editor-region" data-editor-group-id={PRIMARY_EDITOR_GROUP_ID} data-editor-region-slot>
         {projectMode && activeDocument?.kind === 'documentation' && <DocumentationTab document={activeDocument} />}
         {projectMode && activeDocument?.kind === 'guide' && !docsFullscreenActive && renderGuideArticle}
-        {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>Comece a programar</strong>
+        {projectMode && !documents.length && <div className="workspace-empty"><div className="empty-mark">EC</div><h1>Comece a programar</h1>
           <span>Abra um arquivo pelo painel Projeto ou crie algo novo.</span><div><button type="button" className="primary-action" onClick={() => setNewJavaClassOpen(true)}>Nova Classe Java</button></div></div>}
-        {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><strong>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</strong><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
+        {learnMode && !lessonSession && <div className="workspace-empty"><div className="empty-mark">EC</div><h1>{selectedLearnLesson?.title ?? 'Tipos Primitivos'}</h1><span>Inicie a aula para carregar o exemplo no editor.</span>{selectedLearnLesson?.executable && <button type="button" className="primary-action" onClick={() => startLesson(selectedLearnLesson)}>Iniciar aula</button>}</div>}
         {projectMode && <EditorDiagnosticStrip state={diagnostics} onNavigate={navigateProblem} />}
       </section>;
       const renderGroupNode = (node: EditorGroupNode, splitPath: string): ReactNode => {
@@ -1009,6 +1009,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   }
   return <main className="app-shell">
     {toolbar}
+    <span className="visually-hidden" aria-live="polite">{projectMode ? `Painel ${sideTitle(sidePanel)} aberto` : ''}</span>
     <div ref={shellWorkspace} className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}`} aria-hidden={mode === 'WELCOME'}>
       {projectMode ? <nav className="activity-bar" aria-label="Exibições do workspace">
         {(['project', 'search', 'documentation', 'settings'] as SidePanelId[]).map(id => <button key={id}

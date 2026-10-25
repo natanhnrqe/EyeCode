@@ -16,7 +16,7 @@ export function PanelEmptyState({ icon, title, description, meantime, action, la
   return <section className={`panel-empty-state is-${layout}`}>
     <span className="panel-empty-state-icon" aria-hidden="true"><EyeCodeIcon name={icon} /></span>
     <div className="panel-empty-state-copy">
-      <strong>{title}</strong>
+      <h2>{title}</h2>
       <p>{description}</p>
       {meantime && meantime.length > 0 && <div className="panel-empty-state-meantime">
         <span className="panel-empty-state-meantime-label">Enquanto isso</span>

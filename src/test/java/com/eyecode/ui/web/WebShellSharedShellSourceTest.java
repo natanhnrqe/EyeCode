@@ -856,7 +856,8 @@ class WebShellSharedShellSourceTest {
         assertTrue(workspace.contains("onDocumentation={() => { void openDocumentationPage('java/jdk/fundamentos/variables')"));
         assertTrue(workspace.contains("if (opened) setDocsFullscreen(true)"));
         assertTrue(article.contains("bodyRef.current"));
-        assertTrue(article.contains("scrollIntoView({ behavior: 'smooth', block: 'start' })"));
+        assertTrue(article.contains("scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })"),
+                "TOC smooth scrolling must fall back to instant scrolling under prefers-reduced-motion");
         assertFalse(article.contains("document.getElementById"));
         assertTrue(article.contains("bodyRef.current.scrollTop = 0"));
         assertTrue(article.contains("addEventListener('scroll'"));
