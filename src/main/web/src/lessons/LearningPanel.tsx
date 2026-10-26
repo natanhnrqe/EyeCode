@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import type { LessonContentBlock, LessonSession, PracticeVerificationResult } from './protocol';
 import { InlineContent, LessonBlock, LessonBlocks } from './LessonPanel';
 import { DockPane } from '../workspace/DockPane';
+import { panelIdFor, tabIdFor, useAriaTabs } from '../workspace/ariaTabs';
 
 type LearningPanelTab = 'exercise' | 'concepts' | 'faq' | 'examples';
 type Props = {
@@ -25,19 +26,28 @@ const tabs: Array<{ id: LearningPanelTab; label: string }> = [
   { id: 'examples', label: 'Exemplos' }
 ];
 
+const LEARNING_PANEL_LIST_ID = 'learning-panel';
+
 export function LearningPanel({ session, verification, verifying, onVerify, onPrevious, onNext, onExit, hasDiagnostics, onShowProblems, category, topic }: Props) {
   const [activeTab, setActiveTab] = useState<LearningPanelTab>('exercise');
   const phaseClass = session.phase === 'PRESENTATION' ? ' is-presentation' : session.phase === 'PRACTICE' ? ' is-practice-active' : ' is-completed';
   const lessonClass = session.kind === 'THEORY' ? ' is-theory' : ` is-practice${phaseClass}${session.practiceCompleted ? ' is-practice-completed' : ''}`;
-  return <DockPane paneId="lesson" className={`learning-panel${lessonClass}`} label="Painel de aprendizagem" headerClassName="learning-panel-tabs" header={<div role="tablist" aria-label="Recursos da aula">
-    {tabs.map(tab => <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id}
+  const ariaTabs = useAriaTabs<LearningPanelTab>({
+    listId: LEARNING_PANEL_LIST_ID,
+    label: 'Recursos da aula',
+    tabIds: tabs.map(tab => tab.id),
+    activeId: activeTab,
+    onSelect: setActiveTab,
+  });
+  return <DockPane paneId="lesson" className={`learning-panel${lessonClass}`} label="Painel de aprendizagem" headerClassName="learning-panel-tabs" header={<div {...ariaTabs.tabListProps}>
+    {tabs.map(tab => <button key={tab.id} type="button" {...ariaTabs.tabProps(tab.id)}
       className={activeTab === tab.id ? 'is-active' : ''} onClick={() => setActiveTab(tab.id)}>{tab.label}</button>)}
   </div>} bodyClassName="learning-panel-content" footerClassName="learning-panel-actions" footer={<><button type="button" onClick={onExit}>Voltar ao roteiro</button><div><button type="button" onClick={onPrevious} disabled={!session.canPrevious}>Anterior</button><button type="button" className="primary-action" onClick={onNext} disabled={!session.canNext}>Próximo</button></div></>}>
-    <div hidden={activeTab !== 'exercise'}><ExerciseTab session={session} verification={verification} verifying={verifying} onVerify={onVerify} hasDiagnostics={hasDiagnostics}
+    <div role="tabpanel" id={panelIdFor(LEARNING_PANEL_LIST_ID, 'exercise')} aria-labelledby={tabIdFor(LEARNING_PANEL_LIST_ID, 'exercise')} hidden={activeTab !== 'exercise'}><ExerciseTab session={session} verification={verification} verifying={verifying} onVerify={onVerify} hasDiagnostics={hasDiagnostics}
       onShowProblems={onShowProblems} category={category} topic={topic} onShowConcepts={() => setActiveTab('concepts')} /></div>
-    {activeTab === 'concepts' && <ConceptsTab blocks={session.contentBlocks} />}
-    {activeTab === 'faq' && <EmptyTab title="Dúvidas frequentes" message="Esta aula ainda não possui dúvidas frequentes." />}
-    {activeTab === 'examples' && <ExamplesTab blocks={session.contentBlocks} />}
+    {activeTab === 'concepts' && <div role="tabpanel" id={panelIdFor(LEARNING_PANEL_LIST_ID, 'concepts')} aria-labelledby={tabIdFor(LEARNING_PANEL_LIST_ID, 'concepts')}><ConceptsTab blocks={session.contentBlocks} /></div>}
+    {activeTab === 'faq' && <div role="tabpanel" id={panelIdFor(LEARNING_PANEL_LIST_ID, 'faq')} aria-labelledby={tabIdFor(LEARNING_PANEL_LIST_ID, 'faq')}><EmptyTab title="Dúvidas frequentes" message="Esta aula ainda não possui dúvidas frequentes." /></div>}
+    {activeTab === 'examples' && <div role="tabpanel" id={panelIdFor(LEARNING_PANEL_LIST_ID, 'examples')} aria-labelledby={tabIdFor(LEARNING_PANEL_LIST_ID, 'examples')}><ExamplesTab blocks={session.contentBlocks} /></div>}
   </DockPane>;
 }
 

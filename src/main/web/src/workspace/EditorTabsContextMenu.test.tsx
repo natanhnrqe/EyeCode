@@ -278,3 +278,92 @@ test('dropping near the right edge of a group resolves the RIGHT split zone', ()
 
   expect(onTabSplitDrop).toHaveBeenCalledWith(fileTab.uri, { groupId: 0, zone: 'RIGHT' });
 });
+
+function renderWithSplits(onSplitRight: () => void, onSplitDown: () => void) {
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  track(root);
+  act(() => {
+    root.render(createElement(EditorTabs, {
+      documents: [fileTab],
+      activeUri: fileTab.uri,
+      onActivate: () => {},
+      onClose: () => {},
+      onSplitRight,
+      onSplitDown
+    }));
+  });
+  return { container, tab: container.querySelector('.editor-tab')! };
+}
+
+test('the context-menu key opens the menu and focuses the first action', () => {
+  const onSplitRight = vi.fn();
+  const { tab } = renderWithSplits(onSplitRight, () => {});
+
+  fire(tab, 'keydown', { key: 'ContextMenu' });
+  const menu = document.querySelector('.editor-context-menu')!;
+  expect(menu).not.toBeNull();
+  const items = [...menu.querySelectorAll('button')];
+  expect(document.activeElement).toBe(items[0]);
+  expect(items[0].textContent).toBe('Dividir à direita');
+});
+
+test('Shift+F10 opens the menu like the context-menu key', () => {
+  const { tab } = renderWithSplits(() => {}, () => {});
+  fire(tab, 'keydown', { key: 'F10', shiftKey: true });
+  expect(document.querySelector('.editor-context-menu')).not.toBeNull();
+});
+
+test('arrow keys move focus inside the menu and Enter does not close it before activation', () => {
+  const onSplitDown = vi.fn();
+  const onSplitRight = vi.fn();
+  const { tab } = renderWithSplits(onSplitRight, onSplitDown);
+
+  fire(tab, 'keydown', { key: 'ContextMenu' });
+  const menu = document.querySelector('.editor-context-menu')!;
+  const items = [...menu.querySelectorAll('button')];
+
+  fire(menu, 'keydown', { key: 'ArrowDown' });
+  expect(document.activeElement).toBe(items[1]);
+
+  fire(menu, 'keydown', { key: 'ArrowUp' });
+  expect(document.activeElement).toBe(items[0]);
+
+  fire(menu, 'keydown', { key: 'ArrowDown' });
+  expect(document.activeElement).toBe(items[1]);
+  fire(document.activeElement!, 'keydown', { key: 'Enter' });
+  expect(document.querySelector('.editor-context-menu')).not.toBeNull();
+
+  fire(items[1], 'click', { button: 0 });
+  expect(onSplitDown).toHaveBeenCalledWith(fileTab.uri);
+  expect(document.querySelector('.editor-context-menu')).toBeNull();
+});
+
+test('Escape still closes the keyboard-opened menu', () => {
+  const { tab } = renderWithSplits(() => {}, () => {});
+  fire(tab, 'keydown', { key: 'ContextMenu' });
+  expect(document.querySelector('.editor-context-menu')).not.toBeNull();
+
+  fire(window, 'keydown', { key: 'Escape' });
+  expect(document.querySelector('.editor-context-menu')).toBeNull();
+});
+
+test('the keyboard trigger is inert when split actions are unavailable', () => {
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  track(root);
+  act(() => {
+    root.render(createElement(EditorTabs, {
+      documents: [fileTab],
+      activeUri: fileTab.uri,
+      onActivate: () => {},
+      onClose: () => {}
+    }));
+  });
+
+  const tab = container.querySelector('.editor-tab')!;
+  fire(tab, 'keydown', { key: 'ContextMenu' });
+  expect(document.querySelector('.editor-context-menu')).toBeNull();
+});

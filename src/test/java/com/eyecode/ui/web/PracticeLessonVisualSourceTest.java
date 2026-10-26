@@ -127,7 +127,8 @@ class PracticeLessonVisualSourceTest {
 
         assertTrue(panel.contains("block.type === 'CALLOUT' && block.title?.trim().toLocaleLowerCase() === 'dica'"));
         assertTrue(panel.contains("hints.slice(0, revealedHints)"));
-        assertTrue(panel.contains("<div hidden={activeTab !== 'exercise'}><ExerciseTab"));
+        assertTrue(panel.contains("hidden={activeTab !== 'exercise'}><ExerciseTab"));
+        assertTrue(panel.contains("id={panelIdFor(LEARNING_PANEL_LIST_ID, 'exercise')}"));
         assertTrue(panel.contains("[session.sessionId, session.currentStep, session.practice?.id]"));
         assertTrue(panel.contains("aria-expanded={stuckOpen}"));
         assertTrue(panel.contains("Não entendi a tarefa"));

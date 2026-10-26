@@ -28,7 +28,8 @@ import { BottomPanel } from './BottomPanel';
 import { DockLayout } from './DockLayout';
 import { DocumentationTab } from './DocumentationTab';
 import { EditorGroupPane } from './EditorGroupPane';
-import { EditorTabs } from './EditorTabs';
+import { EditorTabs, EDITOR_TABS_LIST_ID, EDITOR_TABS_PANEL_ID } from './EditorTabs';
+import { tabIdFor } from './ariaTabs';
 import { PRIMARY_EDITOR_GROUP_ID, editorGroupResizeRatio, editorGroupSeparatorSize, insertEditorGroup, primaryEditorGroup, pruneEditorGroups, removeEditorGroup, setEditorGroupUri, updateEditorGroupRatio, type EditorGroupNode, type EditorGroupOrientation } from './editorGroups';
 import type { EditorGroupDropTarget } from './editorSplitDnd';
 import { EyeCodeIcon } from './EyeCodeIcon';
@@ -876,14 +877,17 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
           <div className="editor-group-split-child">{renderGroupNode(node.second, splitPath ? `${splitPath}/second` : 'second')}</div>
         </div>;
       };
+      const editorTabStripMounted = projectMode || !!(lessonSession?.kind === 'PRACTICE' && lessonSession.workspace);
       return <section className="main-workspace" data-pane-id="editor">
         <div className="editor-stack">
           {projectMode ? <EditorTabs documents={documents} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={uri => void close(uri)}
             onSplitRight={uri => splitEditorTab(uri, 'RIGHT')} onSplitDown={uri => splitEditorTab(uri, 'BOTTOM')}
             onTabSplitDrop={handleTabSplitDrop} /> : lessonSession?.kind === 'PRACTICE' && lessonSession.workspace ? <>
             <EditorTabs documents={lessonDocuments} activeUri={activeUri} onActivate={uri => void activate(uri)} onClose={() => undefined} closable={false} />
-          </> : <header className="document-tabs learn-editor-tabs" data-dock-handle>{learnPath.join(' / ')}</header>}
-          <div className="editor-groups">
+          </> : <header className="learn-editor-tabs" data-dock-handle>{learnPath.join(' / ')}</header>}
+          <div className="editor-groups" id={EDITOR_TABS_PANEL_ID}
+            role={editorTabStripMounted ? 'tabpanel' : undefined}
+            aria-labelledby={editorTabStripMounted && activeUri && (projectMode ? documents : lessonDocuments).some(document => document.uri === activeUri) ? tabIdFor(EDITOR_TABS_LIST_ID, activeUri) : undefined}>
             {renderGroupNode(editorGroupTree, '')}
           </div>
         </div>

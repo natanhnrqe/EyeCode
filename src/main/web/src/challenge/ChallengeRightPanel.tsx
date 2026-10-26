@@ -1,5 +1,6 @@
 import type React from 'react';
 import { EyeCodeIcon } from '../workspace/EyeCodeIcon';
+import { panelIdFor, tabIdFor, useAriaTabs } from '../workspace/ariaTabs';
 import { ChallengeStatement } from './ChallengeStatement';
 import type { TestResult } from './types';
 import { useChallenge } from './useChallenge';
@@ -10,24 +11,31 @@ type Props = {
   onOpenDocumentation(id: string): void;
 };
 
+const CHALLENGE_PANEL_LIST_ID = 'challenge-panel-tabs';
+
 export function ChallengeRightPanel({
   onExit,
   onCollapse,
   onOpenDocumentation
 }: Props): React.ReactElement {
   const controller = useChallenge();
+  const tabs = useAriaTabs<'statement' | 'tests'>({
+    listId: CHALLENGE_PANEL_LIST_ID,
+    label: 'Seções do desafio',
+    tabIds: ['statement', 'tests'],
+    activeId: controller.activeTab,
+    onSelect: controller.selectTab,
+  });
 
   return (
     <aside className="challenge-panel" aria-label="Painel do desafio">
       <nav
         className="challenge-tabs"
-        role="tablist"
-        aria-label="Seções do desafio"
+        {...tabs.tabListProps}
       >
         <button
           type="button"
-          role="tab"
-          aria-selected={controller.activeTab === 'statement'}
+          {...tabs.tabProps('statement')}
           className={`challenge-tab${
             controller.activeTab === 'statement' ? ' is-active' : ''
           }`}
@@ -38,8 +46,7 @@ export function ChallengeRightPanel({
 
         <button
           type="button"
-          role="tab"
-          aria-selected={controller.activeTab === 'tests'}
+          {...tabs.tabProps('tests')}
           className={`challenge-tab${
             controller.activeTab === 'tests' ? ' is-active' : ''
           }`}
@@ -62,6 +69,9 @@ export function ChallengeRightPanel({
       {/* ENUNCIADO */}
       <div
         className="challenge-statement"
+        role="tabpanel"
+        id={panelIdFor(CHALLENGE_PANEL_LIST_ID, 'statement')}
+        aria-labelledby={tabIdFor(CHALLENGE_PANEL_LIST_ID, 'statement')}
         hidden={controller.activeTab !== 'statement'}
       >
         {/* Somente este conteúdo rola */}
@@ -103,6 +113,9 @@ export function ChallengeRightPanel({
       {/* TESTES — comportamento preservado */}
       <div
         className="challenge-tests"
+        role="tabpanel"
+        id={panelIdFor(CHALLENGE_PANEL_LIST_ID, 'tests')}
+        aria-labelledby={tabIdFor(CHALLENGE_PANEL_LIST_ID, 'tests')}
         hidden={controller.activeTab !== 'tests'}
       >
         <div className="challenge-tests-toolbar">

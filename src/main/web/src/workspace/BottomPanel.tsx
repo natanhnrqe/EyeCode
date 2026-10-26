@@ -5,6 +5,7 @@ import { TerminalPanel } from './TerminalPanel';
 import { DockPane } from './DockPane';
 import { EyeCodeIcon } from './EyeCodeIcon';
 import { PanelEmptyState } from './PanelEmptyState';
+import { tabIdFor, useAriaTabs } from './ariaTabs';
 import type { RunOutputChunk, RunState, TerminalState } from './protocol';
 
 type BottomPanelId = 'run' | 'terminal' | 'problems' | 'git';
@@ -30,6 +31,8 @@ const panels: Array<{ id: BottomPanelId; label: string }> = [
   { id: 'problems', label: 'Problemas' }, { id: 'run', label: 'Run' }, { id: 'terminal', label: 'Terminal' },
   { id: 'git', label: 'Git' }
 ];
+
+const BOTTOM_TOOLS_PANEL_ID = 'bottom-tools-panel';
 
 function RunConsole({ output, outputDropped, runState }: Pick<Props, 'output' | 'outputDropped' | 'runState'>) {
   const outputRef = useRef<HTMLPreElement | null>(null);
@@ -74,12 +77,22 @@ export function BottomPanel({ active, output, outputDropped, runState, terminalS
   const menuActions: Array<{ label: string; run(): void }> = active === 'terminal'
     ? [{ label: 'Reiniciar Terminal', run: onRestartTerminal }, { label: 'Parar Terminal', run: onStopTerminal }]
     : active === 'run' ? [{ label: 'Limpar saída', run: onClearRunOutput }] : [];
-  return <DockPane paneId="bottom" className="bottom-panel" label="Janelas de ferramentas" headerClassName="bottom-tabs" headerLabel="Janelas de ferramentas" dragHandleOnly header={<>
+  const tabs = useAriaTabs<BottomPanelId>({
+    listId: 'bottom-tools',
+    label: 'Janelas de ferramentas',
+    tabIds: panels.map(panel => panel.id),
+    activeId: active,
+    onSelect,
+    sharedPanelId: BOTTOM_TOOLS_PANEL_ID,
+  });
+  return <DockPane paneId="bottom" className="bottom-panel" label="Janelas de ferramentas" headerClassName="bottom-tabs" headerLabel="Janelas de ferramentas" dragHandleOnly bodyRole="tabpanel" bodyId={BOTTOM_TOOLS_PANEL_ID} bodyLabelledBy={tabIdFor('bottom-tools', active)} header={<>
       <span className="dock-drag-handle" data-dock-handle aria-label="Arrastar janelas de ferramentas" />
-      {panels.map(panel => <button type="button" key={panel.id}
-        className={active === panel.id ? 'is-active' : ''} onClick={() => onSelect(panel.id)}>
-        {panel.label}{panel.id === 'problems' && problemCount ? ` ${problemCount}` : ''}
-      </button>)}
+      <div {...tabs.tabListProps}>
+        {panels.map(panel => <button type="button" key={panel.id}
+          className={active === panel.id ? 'is-active' : ''} {...tabs.tabProps(panel.id)} onClick={() => onSelect(panel.id)}>
+          {panel.label}{panel.id === 'problems' && problemCount ? ` ${problemCount}` : ''}
+        </button>)}
+      </div>
       <span className="bottom-actions">
         <button type="button" className="bottom-action" onClick={onNewTerminal} aria-label="Novo terminal" title="Novo terminal"><EyeCodeIcon name="plus" /></button>
         {active === 'run' && <button type="button" className="bottom-action" onClick={onClearRunOutput} aria-label="Limpar saída" title="Limpar saída"><EyeCodeIcon name="clear" /></button>}

@@ -10,6 +10,7 @@ import {
   stepByIndex, type LessonTraceView, type LessonTraceViewStep
 } from './lessonTraceModel';
 import { windowRunOutput } from './learnOutputModel';
+import { tabIdFor, useAriaTabs } from '../workspace/ariaTabs';
 
 export type LearnContextTab = 'problems' | 'output' | 'understand' | 'variables' | 'visualization';
 type DocumentLabel = { uri: string; displayName: string };
@@ -31,6 +32,8 @@ const tabs: Array<{ id: LearnContextTab; label: string }> = [
   { id: 'problems', label: 'Problemas' }, { id: 'output', label: 'Saída' }, { id: 'understand', label: 'Entender' }, { id: 'variables', label: 'Variáveis' }, { id: 'visualization', label: 'Visualização' }
 ];
 
+const LEARN_CONTEXT_PANEL_ID = 'learn-context-panel';
+
 export function LearnContextPanel({ active, output, outputDropped, runState, diagnostics, documents, trace, capturing, onSelect, onNavigateProblem, onOpenRelated }: Props) {
   const problemCount = diagnostics?.results.reduce((total, result) => total + result.diagnostics.length, 0) ?? 0;
   const problems = toProblems(diagnostics, documents);
@@ -48,8 +51,17 @@ export function LearnContextPanel({ active, output, outputDropped, runState, dia
   }, [trace]);
   const selectedStep = traceView ? stepByIndex(traceView, selectedStepIndex) : null;
 
-  return <DockPane paneId="bottom" className="bottom-panel learn-context-panel" label="Contexto da aula" headerClassName="bottom-tabs" header={<div role="tablist" aria-label="Contexto do programa">
-    {tabs.map(tab => <button type="button" key={tab.id} role="tab" aria-selected={active === tab.id} className={active === tab.id ? 'is-active' : ''} onClick={() => onSelect(tab.id)}>{tab.label}{tab.id === 'problems' && problemCount ? ` ${problemCount}` : ''}</button>)}
+  const ariaTabs = useAriaTabs<LearnContextTab>({
+    listId: 'learn-context',
+    label: 'Contexto do programa',
+    tabIds: tabs.map(tab => tab.id),
+    activeId: active,
+    onSelect,
+    sharedPanelId: LEARN_CONTEXT_PANEL_ID,
+  });
+
+  return <DockPane paneId="bottom" className="bottom-panel learn-context-panel" label="Contexto da aula" headerClassName="bottom-tabs" bodyRole="tabpanel" bodyId={LEARN_CONTEXT_PANEL_ID} bodyLabelledBy={tabIdFor('learn-context', active)} header={<div {...ariaTabs.tabListProps}>
+    {tabs.map(tab => <button type="button" key={tab.id} {...ariaTabs.tabProps(tab.id)} className={active === tab.id ? 'is-active' : ''} onClick={() => onSelect(tab.id)}>{tab.label}{tab.id === 'problems' && problemCount ? ` ${problemCount}` : ''}</button>)}
   </div>} bodyClassName="bottom-panel-content">
     {active === 'problems' ? <ProblemsPanel state={diagnostics} documents={documents} onNavigate={onNavigateProblem} learnMode selectedKey={selectedProblem?.key}
       onSelectProblem={(problem: Problem) => setSelectedProblemKey(problem.key)} onUnderstand={() => onSelect('understand')} onOpenRelated={onOpenRelated} />

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useModalDialog } from './modalDialog';
 
 type Props = {
   onCancel(): void;
@@ -12,12 +13,7 @@ export function NewProjectDialog({ onCancel, onBrowse, onCreate }: Props) {
   const [groupId, setGroupId] = useState('com.example');
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
-
-  useEffect(() => {
-    const close = (event: KeyboardEvent) => { if (event.key === 'Escape' && !creating) onCancel(); };
-    window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
-  }, [creating, onCancel]);
+  const dialogRef = useModalDialog<HTMLFormElement>({ escapeEnabled: !creating, onClose: onCancel });
 
   async function browse() {
     try {
@@ -40,8 +36,8 @@ export function NewProjectDialog({ onCancel, onBrowse, onCreate }: Props) {
   }
 
   return <div className="new-project-backdrop" onPointerDown={() => { if (!creating) onCancel(); }}>
-    <form className="new-project-dialog" onPointerDown={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void submit(); }}>
-      <header><strong>Criar novo projeto</strong><span>Projeto Java com Maven</span></header>
+    <form ref={dialogRef} className="new-project-dialog" role="dialog" aria-modal="true" aria-labelledby="new-project-dialog-title" onPointerDown={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void submit(); }}>
+      <header><strong id="new-project-dialog-title">Criar novo projeto</strong><span>Projeto Java com Maven</span></header>
       <label>Nome do projeto<input autoFocus value={name} onChange={event => setName(event.target.value)} placeholder="my-project" disabled={creating} /></label>
       <label>Local<span className="new-project-location"><input value={location} onChange={event => setLocation(event.target.value)} placeholder="Escolha uma pasta" disabled={creating} /><button type="button" onClick={() => void browse()} disabled={creating}>Escolher pasta</button></span></label>
       <label>Group ID<input value={groupId} onChange={event => setGroupId(event.target.value)} placeholder="com.example" disabled={creating} /></label>
