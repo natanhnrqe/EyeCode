@@ -32,17 +32,18 @@ export function TerminalPanel({ state }: Props) {
     const container = host.current;
     if (!container) return;
 
-    const terminalSurface = window.getComputedStyle(container).getPropertyValue('--surface-editor').trim() || '#1a1b1d';
+    const style = window.getComputedStyle(container);
+    const token = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
     const terminal = new Terminal({
       cursorBlink: true,
       convertEol: true,
       fontFamily: 'JetBrains Mono, monospace',
       fontSize: 13,
       theme: {
-        background: terminalSurface,
-        foreground: '#bbbfc8',
-        cursor: '#e8e9ee',
-        selectionBackground: '#6352b855',
+        background: token('--surface-editor', '#1a1b1d'),
+        foreground: token('--terminal-foreground', '#bbbfc8'),
+        cursor: token('--terminal-cursor', '#e8e9ee'),
+        selectionBackground: token('--terminal-selection', '#6352b855'),
       },
     });
     const fitAddon = new FitAddon();
