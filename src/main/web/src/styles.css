@@ -2911,7 +2911,7 @@ html, body, #root {
 }
 
 .side-panel, .editor-stack, .bottom-panel {
-  background: rgb(26, 27, 29);
+  background: var(--surface-editor);
   box-shadow: 0 5px 15px rgba(0, 0, 0, .16);
 }
 
