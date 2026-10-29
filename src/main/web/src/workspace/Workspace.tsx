@@ -897,7 +897,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       trace={lessonTrace} capturing={lessonTraceCapturing} onSelect={selectLearnContextTab}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)}
       onOpenRelated={id => { void openDocumentationPage(id).then(opened => { if (opened) setDocsFullscreen(true); }); }} /> : <BottomPanel active={bottomPanel} output={runOutputState.chunks} outputDropped={runOutputState.droppedChars} runState={runState} terminalState={terminalState}
-      diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
+      terminalEnabled={mode !== 'WELCOME'} diagnostics={diagnostics} documents={documents} onSelect={selectBottomPanel}
       onNavigateProblem={(uri, diagnostic) => void navigateProblem(uri, diagnostic)}
       onNewTerminal={() => { setBottomPanel('terminal'); void terminal('show'); }}
       onRestartTerminal={() => void terminal('restart')}

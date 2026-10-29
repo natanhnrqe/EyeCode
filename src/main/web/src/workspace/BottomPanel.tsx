@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ProblemsPanel } from '../diagnostics/ProblemsPanel';
 import type { DiagnosticsViewState, WebDiagnostic } from '../diagnostics/protocol';
-import { TerminalPanel } from './TerminalPanel';
 import { DockPane } from './DockPane';
 import { EyeCodeIcon } from './EyeCodeIcon';
 import { PanelEmptyState } from './PanelEmptyState';
 import { tabIdFor, useAriaTabs } from './ariaTabs';
 import type { RunOutputChunk, RunState, TerminalState } from './protocol';
+
+const TerminalPanel = lazy(() => import('./TerminalPanel').then(module => ({ default: module.TerminalPanel })));
 
 type BottomPanelId = 'run' | 'terminal' | 'problems' | 'git';
 type DocumentLabel = { uri: string; displayName: string };
@@ -17,6 +18,7 @@ type Props = {
   outputDropped: number;
   runState: RunState;
   terminalState: TerminalState;
+  terminalEnabled?: boolean;
   diagnostics: DiagnosticsViewState | null;
   documents: DocumentLabel[];
   onSelect(id: BottomPanelId): void;
@@ -62,7 +64,7 @@ function RunConsole({ output, outputDropped, runState }: Pick<Props, 'output' | 
   </div>;
 }
 
-export function BottomPanel({ active, output, outputDropped, runState, terminalState, diagnostics, documents, onSelect, onNavigateProblem, onNewTerminal, onRestartTerminal, onStopTerminal, onClearRunOutput }: Props) {
+export function BottomPanel({ active, output, outputDropped, runState, terminalState, terminalEnabled = true, diagnostics, documents, onSelect, onNavigateProblem, onNewTerminal, onRestartTerminal, onStopTerminal, onClearRunOutput }: Props) {
   const problemCount = diagnostics?.results.reduce((total, result) => total + result.diagnostics.length, 0) ?? 0;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -105,7 +107,9 @@ export function BottomPanel({ active, output, outputDropped, runState, terminalS
       </span>
     </>} bodyClassName="bottom-panel-content">
       {active === 'problems' ? <ProblemsPanel state={diagnostics} documents={documents} onNavigate={onNavigateProblem} />
-      : active === 'run' ? <RunConsole output={output} outputDropped={outputDropped} runState={runState} /> : active === 'terminal' ? <TerminalPanel state={terminalState} />
+      : active === 'run' ? <RunConsole output={output} outputDropped={outputDropped} runState={runState} /> : active === 'terminal' ? terminalEnabled
+        ? <Suspense fallback={<div className="terminal-pending" aria-hidden="true" />}><TerminalPanel state={terminalState} /></Suspense>
+        : <div className="terminal-pending" aria-hidden="true" />
       : <PanelEmptyState layout="row" icon="git" title="Controle de versão"
         description="Aqui você vai acompanhar alterações, commits e o histórico do projeto. Esta visão ainda está sendo construída."
         meantime={['O Terminal integrado executa todos os comandos git do seu projeto.']}

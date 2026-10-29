@@ -881,6 +881,20 @@ class WebShellSharedShellSourceTest {
         assertTrue(projects.contains("editor.unwatchProject();"));
     }
 
+    @Test
+    void terminalPanelIsLazyLoadedOutOfTheInitialShellBundle() throws IOException {
+        String bottomPanel = Files.readString(Path.of("src/main/web/src/workspace/BottomPanel.tsx"));
+        String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
+        String stylesheet = Files.readString(Path.of("src/main/web/src/styles.css"));
+
+        assertFalse(bottomPanel.contains("import { TerminalPanel } from './TerminalPanel'"));
+        assertTrue(bottomPanel.contains("lazy(() => import('./TerminalPanel')"));
+        assertTrue(bottomPanel.contains("<Suspense fallback="));
+        assertTrue(bottomPanel.contains("terminalEnabled"));
+        assertTrue(workspace.contains("terminalEnabled={mode !== 'WELCOME'}"));
+        assertTrue(stylesheet.contains(".terminal-pending"));
+    }
+
     private static int occurrences(String text, String target) {
         return text.split(java.util.regex.Pattern.quote(target), -1).length - 1;
     }
