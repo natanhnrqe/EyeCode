@@ -1,0 +1,257 @@
+﻿
+> eyecode-web-shell@0.1.0-beta.4 electron:package:linux
+> node --max-old-space-size=6144 scripts/package-desktop.mjs --platform linux --arch x64
+
+
+=== 1/8 Build production frontend [linux/x64] ===
+> npm run build
+
+> eyecode-web-shell@0.1.0-beta.4 build
+> vite build
+
+[36mvite v7.1.3 [32mbuilding for production...[36m[39m
+transforming...
+[32mÔ£ô[39m 99 modules transformed.
+rendering chunks...
+computing gzip size...
+[2m../resources/webshell/[22m[32micons/play.svg                        [39m[1m[2m  0.15 kB[22m[1m[22m[2m Ôöé gzip:  0.15 kB[22m
+[2m../resources/webshell/[22m[32micons/restore.svg                     [39m[1m[2m  0.23 kB[22m[1m[22m[2m Ôöé gzip:  0.18 kB[22m
+[2m../resources/webshell/[22m[32micons/modifiedDot.svg                 [39m[1m[2m  0.28 kB[22m[1m[22m[2m Ôöé gzip:  0.23 kB[22m
+[2m../resources/webshell/[22m[32micons/challengeTrackWeb.svg           [39m[1m[2m  0.29 kB[22m[1m[22m[2m Ôöé gzip:  0.21 kB[22m
+[2m../resources/webshell/[22m[32micons/minimize.svg                    [39m[1m[2m  0.29 kB[22m[1m[22m[2m Ôöé gzip:  0.23 kB[22m
+[2m../resources/webshell/[22m[32micons/maximize.svg                    [39m[1m[2m  0.29 kB[22m[1m[22m[2m Ôöé gzip:  0.24 kB[22m
+[2m../resources/webshell/[22m[32micons/completion/variable.svg         [39m[1m[2m  0.29 kB[22m[1m[22m[2m Ôöé gzip:  0.23 kB[22m
+[2m../resources/webshell/[22m[32micons/folderOpen.svg                  [39m[1m[2m  0.31 kB[22m[1m[22m[2m Ôöé gzip:  0.23 kB[22m
+[2m../resources/webshell/[22m[32micons/plus.svg                        [39m[1m[2m  0.31 kB[22m[1m[22m[2m Ôöé gzip:  0.26 kB[22m
+[2m../resources/webshell/[22m[32micons/stop.svg                        [39m[1m[2m  0.32 kB[22m[1m[22m[2m Ôöé gzip:  0.25 kB[22m
+[2m../resources/webshell/[22m[32micons/close.svg                       [39m[1m[2m  0.32 kB[22m[1m[22m[2m Ôöé gzip:  0.26 kB[22m
+[2m../resources/webshell/[22m[32micons/challengeTrackArchitecture.svg  [39m[1m[2m  0.32 kB[22m[1m[22m[2m Ôöé gzip:  0.22 kB[22m
+[2m../resources/webshell/[22m[32micons/package.svg                     [39m[1m[2m  0.33 kB[22m[1m[22m[2m Ôöé gzip:  0.20 kB[22m
+[2m../resources/webshell/[22m[32micons/challengeTrackSpring.svg        [39m[1m[2m  0.33 kB[22m[1m[22m[2m Ôöé gzip:  0.23 kB[22m
+[2m../resources/webshell/[22m[32mindex.html                            [39m[1m[2m  0.33 kB[22m[1m[22m[2m Ôöé gzip:  0.24 kB[22m
+[2m../resources/webshell/[22m[32micons/challengeTrackTesting.svg       [39m[1m[2m  0.34 kB[22m[1m[22m[2m Ôöé gzip:  0.22 kB[22m
+[2m../resources/webshell/[22m[32micons/challengeTrackOop.svg           [39m[1m[2m  0.35 kB[22m[1m[22m[2m Ôöé gzip:  0.22 kB[22m
+[2m../resources/webshell/[22m[32micons/challengeTrackJava.svg          [39m[1m[2m  0.35 kB[22m[1m[22m[2m Ôöé gzip:  0.23 kB[22m
+[2m../resources/webshell/[22m[32micons/save.svg                        [39m[1m[2m  0.36 kB[22m[1m[22m[2m Ôöé gzip:  0.29 kB[22m
+[2m../resources/webshell/[22m[32micons/module.svg                      [39m[1m[2m  0.36 kB[22m[1m[22m[2m Ôöé gzip:  0.18 kB[22m
+[2m../resources/webshell/[22m[32micons/search.svg                      [39m[1m[2m  0.36 kB[22m[1m[22m[2m Ôöé gzip:  0.28 kB[22m
+[2m../resources/webshell/[22m[32micons/image.svg                       [39m[1m[2m  0.37 kB[22m[1m[22m[2m Ôöé gzip:  0.25 kB[22m
+[2m../resources/webshell/[22m[32micons/challengeTrackData.svg          [39m[1m[2m  0.38 kB[22m[1m[22m[2m Ôöé gzip:  0.21 kB[22m
+[2m../resources/webshell/[22m[32micons/challengeTrackAdvanced.svg      [39m[1m[2m  0.39 kB[22m[1m[22m[2m Ôöé gzip:  0.23 kB[22m
+[2m../resources/webshell/[22m[32micons/css.svg                         [39m[1m[2m  0.39 kB[22m[1m[22m[2m Ôöé gzip:  0.23 kB[22m
+[2m../resources/webshell/[22m[32micons/challengeTrackAlgorithms.svg    [39m[1m[2m  0.41 kB[22m[1m[22m[2m Ôöé gzip:  0.22 kB[22m
+[2m../resources/webshell/[22m[32micons/run.svg                         [39m[1m[2m  0.44 kB[22m[1m[22m[2m Ôöé gzip:  0.33 kB[22m
+[2m../resources/webshell/[22m[32micons/completion/interface.svg        [39m[1m[2m  0.45 kB[22m[1m[22m[2m Ôöé gzip:  0.32 kB[22m
+[2m../resources/webshell/[22m[32micons/problem.svg                     [39m[1m[2m  0.46 kB[22m[1m[22m[2m Ôöé gzip:  0.31 kB[22m
+[2m../resources/webshell/[22m[32micons/terminal.svg                    [39m[1m[2m  0.47 kB[22m[1m[22m[2m Ôöé gzip:  0.31 kB[22m
+[2m../resources/webshell/[22m[32micons/html.svg                        [39m[1m[2m  0.50 kB[22m[1m[22m[2m Ôöé gzip:  0.24 kB[22m
+[2m../resources/webshell/[22m[32micons/hamburger.svg                   [39m[1m[2m  0.51 kB[22m[1m[22m[2m Ôöé gzip:  0.26 kB[22m
+[2m../resources/webshell/[22m[32micons/completion/field.svg            [39m[1m[2m  0.51 kB[22m[1m[22m[2m Ôöé gzip:  0.36 kB[22m
+[2m../resources/webshell/[22m[32micons/project.svg                     [39m[1m[2m  0.52 kB[22m[1m[22m[2m Ôöé gzip:  0.37 kB[22m
+[2m../resources/webshell/[22m[32micons/successDialog.svg               [39m[1m[2m  0.54 kB[22m[1m[22m[2m Ôöé gzip:  0.35 kB[22m
+[2m../resources/webshell/[22m[32micons/folders.svg                     [39m[1m[2m  0.55 kB[22m[1m[22m[2m Ôöé gzip:  0.38 kB[22m
+[2m../resources/webshell/[22m[32micons/pr.svg                          [39m[1m[2m  0.59 kB[22m[1m[22m[2m Ôöé gzip:  0.33 kB[22m
+[2m../resources/webshell/[22m[32micons/clear.svg                       [39m[1m[2m  0.62 kB[22m[1m[22m[2m Ôöé gzip:  0.40 kB[22m
+[2m../resources/webshell/[22m[32micons/branch.svg                      [39m[1m[2m  0.62 kB[22m[1m[22m[2m Ôöé gzip:  0.31 kB[22m
+[2m../resources/webshell/[22m[32micons/markdown.svg                    [39m[1m[2m  0.69 kB[22m[1m[22m[2m Ôöé gzip:  0.43 kB[22m
+[2m../resources/webshell/[22m[32micons/commit.svg                      [39m[1m[2m  0.70 kB[22m[1m[22m[2m Ôöé gzip:  0.43 kB[22m
+[2m../resources/webshell/[22m[32micons/completion/class.svg            [39m[1m[2m  0.70 kB[22m[1m[22m[2m Ôöé gzip:  0.43 kB[22m
+[2m../resources/webshell/[22m[32micons/java.svg                        [39m[1m[2m  0.70 kB[22m[1m[22m[2m Ôöé gzip:  0.43 kB[22m
+[2m../resources/webshell/[22m[32micons/kebab.svg                       [39m[1m[2m  0.70 kB[22m[1m[22m[2m Ôöé gzip:  0.36 kB[22m
+[2m../resources/webshell/[22m[32micons/newProject.svg                  [39m[1m[2m  0.73 kB[22m[1m[22m[2m Ôöé gzip:  0.41 kB[22m
+[2m../resources/webshell/[22m[32micons/errorDialog.svg                 [39m[1m[2m  0.74 kB[22m[1m[22m[2m Ôöé gzip:  0.43 kB[22m
+[2m../resources/webshell/[22m[32micons/completion/package.svg          [39m[1m[2m  0.74 kB[22m[1m[22m[2m Ôöé gzip:  0.35 kB[22m
+[2m../resources/webshell/[22m[32micons/completion/keyword.svg          [39m[1m[2m  0.76 kB[22m[1m[22m[2m Ôöé gzip:  0.45 kB[22m
+[2m../resources/webshell/[22m[32micons/completion/method.svg           [39m[1m[2m  0.79 kB[22m[1m[22m[2m Ôöé gzip:  0.48 kB[22m
+[2m../resources/webshell/[22m[32micons/services.svg                    [39m[1m[2m  0.83 kB[22m[1m[22m[2m Ôöé gzip:  0.48 kB[22m
+[2m../resources/webshell/[22m[32micons/folder.svg                      [39m[1m[2m  0.85 kB[22m[1m[22m[2m Ôöé gzip:  0.49 kB[22m
+[2m../resources/webshell/[22m[32micons/structure.svg                   [39m[1m[2m  0.90 kB[22m[1m[22m[2m Ôöé gzip:  0.49 kB[22m
+[2m../resources/webshell/[22m[32micons/warningDialog.svg               [39m[1m[2m  0.90 kB[22m[1m[22m[2m Ôöé gzip:  0.51 kB[22m
+[2m../resources/webshell/[22m[32micons/file.svg                        [39m[1m[2m  0.92 kB[22m[1m[22m[2m Ôöé gzip:  0.50 kB[22m
+[2m../resources/webshell/[22m[32micons/newFile.svg                     [39m[1m[2m  0.95 kB[22m[1m[22m[2m Ôöé gzip:  0.52 kB[22m
+[2m../resources/webshell/[22m[32micons/assets.svg                      [39m[1m[2m  0.97 kB[22m[1m[22m[2m Ôöé gzip:  0.50 kB[22m
+[2m../resources/webshell/[22m[32micons/projectDirectory.svg            [39m[1m[2m  1.04 kB[22m[1m[22m[2m Ôöé gzip:  0.57 kB[22m
+[2m../resources/webshell/[22m[32micons/xml.svg                         [39m[1m[2m  1.15 kB[22m[1m[22m[2m Ôöé gzip:  0.63 kB[22m
+[2m../resources/webshell/[22m[32micons/maven.svg                       [39m[1m[2m  1.16 kB[22m[1m[22m[2m Ôöé gzip:  0.68 kB[22m
+[2m../resources/webshell/[22m[32micons/mavenProject.svg                [39m[1m[2m  1.16 kB[22m[1m[22m[2m Ôöé gzip:  0.68 kB[22m
+[2m../resources/webshell/[22m[32micons/reload.svg                      [39m[1m[2m  1.20 kB[22m[1m[22m[2m Ôöé gzip:  0.63 kB[22m
+[2m../resources/webshell/[22m[32micons/documentation.svg               [39m[1m[2m  1.28 kB[22m[1m[22m[2m Ôöé gzip:  0.60 kB[22m
+[2m../resources/webshell/[22m[32micons/completion/snippet.svg          [39m[1m[2m  1.30 kB[22m[1m[22m[2m Ôöé gzip:  0.45 kB[22m
+[2m../resources/webshell/[22m[32micons/javaProject.svg                 [39m[1m[2m  1.30 kB[22m[1m[22m[2m Ôöé gzip:  0.68 kB[22m
+[2m../resources/webshell/[22m[32micons/git.svg                         [39m[1m[2m  1.33 kB[22m[1m[22m[2m Ôöé gzip:  0.73 kB[22m
+[2m../resources/webshell/[22m[32micons/learn.svg                       [39m[1m[2m  1.39 kB[22m[1m[22m[2m Ôöé gzip:  0.64 kB[22m
+[2m../resources/webshell/[22m[32micons/account.svg                     [39m[1m[2m  1.43 kB[22m[1m[22m[2m Ôöé gzip:  0.61 kB[22m
+[2m../resources/webshell/[22m[32micons/gradle.svg                      [39m[1m[2m  1.65 kB[22m[1m[22m[2m Ôöé gzip:  0.88 kB[22m
+[2m../resources/webshell/[22m[32micons/gradleProject.svg               [39m[1m[2m  1.65 kB[22m[1m[22m[2m Ôöé gzip:  0.88 kB[22m
+[2m../resources/webshell/[22m[32micons/json.svg                        [39m[1m[2m  2.13 kB[22m[1m[22m[2m Ôöé gzip:  0.93 kB[22m
+[2m../resources/webshell/[22m[32micons/debug.svg                       [39m[1m[2m  2.17 kB[22m[1m[22m[2m Ôöé gzip:  1.02 kB[22m
+[2m../resources/webshell/[22m[32micons/spring.svg                      [39m[1m[2m  2.42 kB[22m[1m[22m[2m Ôöé gzip:  1.12 kB[22m
+[2m../resources/webshell/[22m[32micons/springProject.svg               [39m[1m[2m  2.42 kB[22m[1m[22m[2m Ôöé gzip:  1.12 kB[22m
+[2m../resources/webshell/[22m[32micons/settings.svg                    [39m[1m[2m  2.91 kB[22m[1m[22m[2m Ôöé gzip:  1.30 kB[22m
+[2m../resources/webshell/[22m[32micons/java.png                        [39m[1m[2m 16.70 kB[22m[1m[22m
+[2m../resources/webshell/[22m[35massets/TerminalPanel-DhzMnp0v.css     [39m[1m[2m  4.11 kB[22m[1m[22m[2m Ôöé gzip:  1.67 kB[22m
+[2m../resources/webshell/[22m[35massets/App-4W9Q_tnt.css               [39m[1m[2m141.77 kB[22m[1m[22m[2m Ôöé gzip: 24.02 kB[22m
+[2m../resources/webshell/[22m[36massets/index-BTeco717.js              [39m[1m[2m189.15 kB[22m[1m[22m[2m Ôöé gzip: 59.80 kB[22m
+[2m../resources/webshell/[22m[36massets/TerminalPanel-CAqA7qCv.js      [39m[1m[2m292.50 kB[22m[1m[22m[2m Ôöé gzip: 73.15 kB[22m
+[2m../resources/webshell/[22m[36massets/App-DFdoigHB.js                [39m[1m[2m312.62 kB[22m[1m[22m[2m Ôöé gzip: 85.97 kB[22m
+[32mÔ£ô built in 3.69s[39m
+
+=== 2/8 Build isolated WebShell distribution ===
+> npm run webshell:dist
+
+> eyecode-web-shell@0.1.0-beta.4 webshell:dist
+> mvn -f ../../../webshell-dist/pom.xml package
+
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< ide.java:eyecode-webshell >----------------------
+[INFO] Building Eyecode WebShell 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ eyecode-webshell ---
+[INFO] Copying 673 resources from ..\src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ eyecode-webshell ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ eyecode-webshell ---
+[INFO] skip non existing resourceDirectory C:\Users\JoyBoy\Downloads\springboot\EyeCode\webshell-dist\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ eyecode-webshell ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.2:test (default-test) @ eyecode-webshell ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.eyecode.terminal.PackagedTerminalSessionTest
+node.exe : SLF4J(W): No SLF4J providers were found.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (SLF4J(W): No SLF4J providers were found.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by com.sun.jna.Native in an unnamed module 
+(file:/C:/Users/JoyBoy/.m2/repository/net/java/dev/jna/jna/5.14.0/jna-5.14.0.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+TERMINAL_LIFECYCLE create workspace=C:\Users\JoyBoy\AppData\Local\Temp\eyecode-cp1-terminal-service1038124399625022652 session=1
+TERMINAL_LIFECYCLE status workspace=C:\Users\JoyBoy\AppData\Local\Temp\eyecode-cp1-terminal-service1038124399625022652 session=1 endpoint=ws://127.0.0.1:58224/terminal?token=qC_L7iVLHSMZyy2oVT8Bk66OaLGY0U64wECxD7RCl40
+TERMINAL_LIFECYCLE process-exit workspace=C:\Users\JoyBoy\AppData\Local\Temp\eyecode-cp1-terminal-service1038124399625022652 session=1
+TERMINAL_LIFECYCLE create workspace=C:\Users\JoyBoy\AppData\Local\Temp\eyecode-cp1-terminal-dispose10963871133915846502 session=1
+TERMINAL_LIFECYCLE process-exit workspace=C:\Users\JoyBoy\AppData\Local\Temp\eyecode-cp1-terminal-dispose10963871133915846502 session=1
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.504 s -- in com.eyecode.terminal.PackagedTerminalSessionTest
+[INFO] Running com.eyecode.ui.web.PackagedWebShellRuntimeBootTest
+[WEBSHELL-HTTP] started http://127.0.0.1:58227
+[LOCAL-WEBSHELL] websocket ws://127.0.0.1:58228/webshell-bridge?token=1QZXJYZx26UtmH3VzULmI2IUrJDzz3y9u71fkjuEA-w
+[WEBSHELL-HTTP] GET /webshell/index.html 200
+[EyeCode] Shutting down...
+[EyeCode] WebShell stopped
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.776 s -- in com.eyecode.ui.web.PackagedWebShellRuntimeBootTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- jar:3.4.2:jar (default-jar) @ eyecode-webshell ---
+[INFO] 
+[INFO] --- dependency:3.8.1:copy-dependencies (copy-webshell-runtime-deps) @ eyecode-webshell ---
+[INFO] org.jetbrains.pty4j:pty4j:jar:0.13.12 already exists in destination.
+[INFO] org.jetbrains.kotlin:kotlin-stdlib:jar:2.1.21 already exists in destination.
+[INFO] org.jetbrains:annotations:jar:24.0.1 already exists in destination.
+[INFO] org.slf4j:slf4j-api:jar:2.0.13 already exists in destination.
+[INFO] net.java.dev.jna:jna:jar:5.14.0 already exists in destination.
+[INFO] net.java.dev.jna:jna-platform:jar:5.14.0 already exists in destination.
+[INFO] org.java-websocket:Java-WebSocket:jar:1.5.7 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-util-ast:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-util-builder:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-util-collection:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-util-data:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-util-dependency:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-util-format:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-util-html:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-util-misc:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-util-sequence:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-util-visitor:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-ext-autolink:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-util:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-util-options:jar:0.64.8 already exists in destination.
+[INFO] org.nibor.autolink:autolink:jar:0.6.0 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-ext-emoji:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-jira-converter:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-ext-gfm-strikethrough:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-ext-wikilink:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-ext-ins:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-ext-superscript:jar:0.64.8 already exists in destination.
+[INFO] com.vladsch.flexmark:flexmark-ext-tables:jar:0.64.8 already exists in destination.
+[INFO] org.eclipse.lsp4j:org.eclipse.lsp4j:jar:1.0.0 already exists in destination.
+[INFO] org.eclipse.lsp4j:org.eclipse.lsp4j.jsonrpc:jar:1.0.0 already exists in destination.
+[INFO] com.google.code.gson:gson:jar:2.15.0 already exists in destination.
+[INFO] com.google.errorprone:error_prone_annotations:jar:2.50.0 already exists in destination.
+[INFO] 
+[INFO] --- antrun:3.1.0:run (stage-webshell-dist) @ eyecode-webshell ---
+[INFO] Executing tasks
+[INFO] Executed tasks
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  11.149 s
+[INFO] Finished at: 2026-10-29T18:07:50-03:00
+[INFO] ------------------------------------------------------------------------
+WebShell runtime jars: 35
+
+=== 3/8 Stage and verify pinned JDK (linux/x64) ===
+Staged JDK already valid for linux/x64: C:\Users\JoyBoy\Downloads\springboot\EyeCode\target\eyecode-desktop\runtime\jdk
+
+=== 4/8 Stage and verify pinned Maven ===
+Staged Maven already valid: C:\Users\JoyBoy\Downloads\springboot\EyeCode\target\eyecode-desktop\runtime\maven
+
+=== 5/8 Verify package resources (extraResource sources) ===
+webshell-dist: C:\Users\JoyBoy\Downloads\springboot\EyeCode\webshell-dist\target\webshell-dist
+jdk:           C:\Users\JoyBoy\Downloads\springboot\EyeCode\target\eyecode-desktop\runtime\jdk
+maven:         C:\Users\JoyBoy\Downloads\springboot\EyeCode\target\eyecode-desktop\runtime\maven
+notices:       C:\Users\JoyBoy\Downloads\springboot\EyeCode\third-party-notices\THIRD-PARTY-NOTICES.md
+license:       C:\Users\JoyBoy\Downloads\springboot\EyeCode\LICENSE
+
+=== 6/8 Electron Forge make (linux/x64 ZIP) ===
+> npx electron-forge make --platform=linux --arch=x64
+[33m>[39m Checking your system
+[33m>[39m Checking package manager version
+[31m├ù[39m Checking package manager version [31m[FAILED: Could not check npm version "undefined", assuming 
+incompatible][39m
+[31m├ù[39m Checking your system [31m[FAILED: Could not check npm version "undefined", assuming incompatible][39m
+node:internal/errors:985
+  const err = new Error(message);
+              ^
+
+Error: Command failed: npx electron-forge make --platform=linux --arch=x64
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at run (file:///C:/Users/JoyBoy/Downloads/springboot/EyeCode/src/main/web/scripts/package-desktop.mjs:58:3)
+    at runPackage (file:///C:/Users/JoyBoy/Downloads/springboot/EyeCode/src/main/web/scripts/package-desktop.mjs:195:3)
+    at file:///C:/Users/JoyBoy/Downloads/springboot/EyeCode/src/main/web/scripts/package-desktop.mjs:277:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 4200,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.14.0
+[?25h

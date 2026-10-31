@@ -1,0 +1,12 @@
+﻿[33m>[39m Checking your system
+[33m>[39m Checking package manager version
+node.exe : [31m├ù[39m Checking package manager version [31m[FAILED: Could not check npm version "undefined", 
+assuming incompatible][39m
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([31m├ù[39m Ch...ompatible][39m:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[31m├ù[39m Checking your system [31m[FAILED: Could not check npm version "undefined", assuming incompatible][39m
+[?25h

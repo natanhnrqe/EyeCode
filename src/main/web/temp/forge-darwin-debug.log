@@ -1,0 +1,74 @@
+﻿[33m>[39m Checking your system
+node.exe : 2026-10-29T21:21:38.538Z electron-forge:check-system checking system, create ~/.skip-forge-system-check to 
+stop doing this
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-10-29T21:2...stop doing this:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[33m>[39m Checking package manager version
+2026-10-29T21:21:38.542Z electron-forge:package-manager Resolved package manager to npm. (Derived from NODE_INSTALLER: 
+undefined, npm_config_user_agent: npm/11.9.0 node/v24.14.0 win32 x64 workspaces/false, lockfile: npm)
+[32mÔêÜ[39m Found npm@11.9.0
+[32mÔêÜ[39m Checking your system
+[?25h[33m>[39m Loading configuration
+2026-10-29T21:21:41.006Z electron-forge:project-resolver searching for project in: 
+C:\Users\JoyBoy\Downloads\springboot\EyeCode\src\main\web
+2026-10-29T21:21:41.021Z electron-forge:project-resolver package.json with forge dependency found in 
+C:\Users\JoyBoy\Downloads\springboot\EyeCode\src\main\web\package.json
+[32mÔêÜ[39m Loading configuration
+[33m>[39m Resolving make targets
+2026-10-29T21:21:41.042Z electron-forge:import-search searching [
+  '@electron-forge/maker-zip',
+  'C:\\Users\\JoyBoy\\Downloads\\springboot\\EyeCode\\src\\main\\web\\@electron-forge\\maker-zip',
+  'C:\\Users\\JoyBoy\\Downloads\\springboot\\EyeCode\\src\\main\\web\\node_modules\\@electron-forge\\maker-zip'
+] relative to C:\Users\JoyBoy\Downloads\springboot\EyeCode\src\main\web
+2026-10-29T21:21:41.043Z electron-forge:import-search testing @electron-forge/maker-zip
+ÔÇ║ Making for the following targets: 
+[32mÔêÜ[39m Resolving make targets
+[33m>[39m Running package command
+[33m>[39m Preparing to package application
+2026-10-29T21:21:41.283Z electron-forge:project-resolver searching for project in: 
+C:\Users\JoyBoy\Downloads\springboot\EyeCode\src\main\web
+2026-10-29T21:21:41.284Z electron-forge:project-resolver package.json with forge dependency found in 
+C:\Users\JoyBoy\Downloads\springboot\EyeCode\src\main\web\package.json
+[32mÔêÜ[39m Preparing to package application
+[33m>[39m Running packaging hooks
+[33m>[39m Running generateAssets hook
+[32mÔêÜ[39m Running generateAssets hook
+[33m>[39m Running prePackage hook
+[32mÔêÜ[39m Running prePackage hook
+[32mÔêÜ[39m Running packaging hooks
+[33m>[39m Packaging application
+ÔÇ║ Determining targets...
+2026-10-29T21:21:41.293Z electron-forge:packager packaging with options {
+  asar: true,
+  overwrite: true,
+  ignore: [Function: ignore],
+  quiet: true,
+  name: 'EyeCode',
+  appVersion: '0.1.0-beta.4',
+  extraResource: [
+    'C:\\Users\\JoyBoy\\Downloads\\springboot\\EyeCode\\webshell-dist\\target\\webshell-dist',
+    'C:\\Users\\JoyBoy\\Downloads\\springboot\\EyeCode\\target\\eyecode-desktop\\runtime\\jdk',
+    'C:\\Users\\JoyBoy\\Downloads\\springboot\\EyeCode\\target\\eyecode-desktop\\runtime\\maven',
+    'C:\\Users\\JoyBoy\\Downloads\\springboot\\EyeCode\\third-party-notices',
+    'C:\\Users\\JoyBoy\\Downloads\\springboot\\EyeCode\\LICENSE'
+  ],
+  dir: 'C:\\Users\\JoyBoy\\Downloads\\springboot\\EyeCode\\src\\main\\web',
+  arch: 'arm64',
+  platform: 'darwin',
+  afterFinalizePackageTargets: [ [Function (anonymous)] ],
+  afterComplete: [ [Function (anonymous)] ],
+  afterCopy: [ [Function (anonymous)] ],
+  afterExtract: [ [Function (anonymous)] ],
+  afterPrune: [ [Function (anonymous)] ],
+  out: 'C:\\Users\\JoyBoy\\Downloads\\springboot\\EyeCode\\src\\main\\web\\out',
+  electronVersion: '33.2.1'
+}
+2026-10-29T21:21:41.301Z electron-forge:packager targets: [ { platform: 'darwin', arch: 'arm64' } ]
+[33m>[39m Packaging for arm64 on darwin
+[33m>[39m Copying files
+[33m>[39m Preparing native dependencies
+[33m>[39m Finalizing package

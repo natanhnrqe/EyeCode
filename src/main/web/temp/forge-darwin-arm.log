@@ -1,0 +1,24 @@
+﻿[33m>[39m Checking your system
+[33m>[39m Checking package manager version
+[32mÔêÜ[39m Found npm@11.9.0
+[32mÔêÜ[39m Checking your system
+[?25h[33m>[39m Loading configuration
+[32mÔêÜ[39m Loading configuration
+[33m>[39m Resolving make targets
+ÔÇ║ Making for the following targets: 
+[32mÔêÜ[39m Resolving make targets
+[33m>[39m Running package command
+[33m>[39m Preparing to package application
+[32mÔêÜ[39m Preparing to package application
+[33m>[39m Running packaging hooks
+[33m>[39m Running generateAssets hook
+[32mÔêÜ[39m Running generateAssets hook
+[33m>[39m Running prePackage hook
+[32mÔêÜ[39m Running prePackage hook
+[32mÔêÜ[39m Running packaging hooks
+[33m>[39m Packaging application
+ÔÇ║ Determining targets...
+[33m>[39m Packaging for arm64 on darwin
+[33m>[39m Copying files
+[33m>[39m Preparing native dependencies
+[33m>[39m Finalizing package
