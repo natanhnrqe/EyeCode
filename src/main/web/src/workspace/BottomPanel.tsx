@@ -87,8 +87,7 @@ export function BottomPanel({ active, output, outputDropped, runState, terminalS
     onSelect,
     sharedPanelId: BOTTOM_TOOLS_PANEL_ID,
   });
-  return <DockPane paneId="bottom" className="bottom-panel" label="Janelas de ferramentas" headerClassName="bottom-tabs" headerLabel="Janelas de ferramentas" dragHandleOnly bodyRole="tabpanel" bodyId={BOTTOM_TOOLS_PANEL_ID} bodyLabelledBy={tabIdFor('bottom-tools', active)} header={<>
-      <span className="dock-drag-handle" data-dock-handle aria-label="Arrastar janelas de ferramentas" />
+  return <DockPane paneId="bottom" className="bottom-panel" label="Janelas de ferramentas" headerClassName="bottom-tabs" headerLabel="Janelas de ferramentas" bodyRole="tabpanel" bodyId={BOTTOM_TOOLS_PANEL_ID} bodyLabelledBy={tabIdFor('bottom-tools', active)} header={<>
       <div {...tabs.tabListProps}>
         {panels.map(panel => <button type="button" key={panel.id}
           className={active === panel.id ? 'is-active' : ''} {...tabs.tabProps(panel.id)} onClick={() => onSelect(panel.id)}>

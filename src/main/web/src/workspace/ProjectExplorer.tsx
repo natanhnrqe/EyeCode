@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type MutableRefObject } from 'react';
 import { createPortal } from 'react-dom';
+import { ChevronDown, ChevronRight, File, Folder, FolderOpen, FolderPlus, RefreshCw } from 'lucide-react';
 import type { ProjectNode, ProjectSnapshot, TreeReveal } from './protocol';
-import { EyeCodeIcon } from './EyeCodeIcon';
 import { DockPane } from './DockPane';
+import FigmaCoffee from './assets/figma-coffee.svg';
 
 type Props = {
   project?: ProjectSnapshot;
@@ -52,7 +53,8 @@ export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPa
   useEffect(() => {
     loading.current.clear();
     handledReveal.current = undefined;
-    setExpandedPaths(project ? new Set([project.root.path]) : new Set());
+    const preview = new URLSearchParams(window.location.search).has('preview-project');
+    setExpandedPaths(project ? new Set(preview ? Object.keys(childrenByPath) : [project.root.path]) : new Set());
     setLoadingPaths(new Set());
     setFailedPaths(new Set());
     setSelectedPath(undefined);
@@ -133,8 +135,8 @@ export function ProjectExplorer({ project, childrenByPath, reveal, treeChangedPa
   return <DockPane paneId="explorer" className="project-explorer" label="Projeto" headerClassName="panel-heading" header={<>
       <span>Projeto</span>
       <div className="panel-heading-actions">
-        <button type="button" onClick={onNewFile} aria-label="Novo arquivo"><EyeCodeIcon name="newFile" /></button>
-        <button type="button" onClick={() => void refreshExpandedPaths()} aria-label="Atualizar projeto"><EyeCodeIcon name="reload" /></button>
+        <button type="button" onClick={onNewFile} aria-label="Novo arquivo"><FolderPlus size={16} aria-hidden /></button>
+        <button type="button" onClick={() => void refreshExpandedPaths()} aria-label="Atualizar projeto"><RefreshCw size={16} aria-hidden /></button>
       </div>
     </>} bodyClassName="project-explorer-body">
     <div className="project-tree" role="tree">
@@ -264,11 +266,13 @@ function TreeNode({ node, depth, childrenByPath, expandedPaths, loadingPaths, fa
   return <div className="tree-node" role="treeitem" aria-expanded={directory ? expanded : undefined}
     ref={element => { if (element) nodeRefs.current.set(node.path, element); else nodeRefs.current.delete(node.path); }}>
     <button type="button" className={`tree-row tree-${node.kind}${selectedPath === node.path ? ' is-selected' : ''}`}
-      onClick={() => onToggle(node)} style={{ paddingLeft: `${8 + depth * 15}px` }}
+      onClick={() => onToggle(node)} style={{ paddingLeft: `${10 + depth * 16}px` }}
       onContextMenu={event => onContextMenu(node, event)}
       aria-busy={loadingPaths.has(node.path)} aria-invalid={failedPaths.has(node.path)}>
-      <span className={`tree-chevron ${directory && expanded ? 'is-open' : ''}`}>{directory && node.hasChildren ? '›' : ''}</span>
-      <EyeCodeIcon name={treeIcon(node, expanded)} className="tree-icon" />
+      <span className="tree-chevron">{directory && node.hasChildren
+        ? (expanded ? <ChevronDown aria-hidden /> : <ChevronRight aria-hidden />)
+        : null}</span>
+      {treeIcon(node, expanded)}
       <span className="tree-label">{node.name}</span>
     </button>
     {directory && expanded && children?.map(child => <TreeNode key={child.path} node={child} depth={depth + 1}
@@ -285,8 +289,13 @@ function dialogPlaceholder(operation: ExplorerOperation): string {
   return ({ createJavaClass: 'Nome da classe', createFile: 'Nome do arquivo', createPackage: 'com.example.feature', createDirectory: 'Nome da pasta', rename: 'Novo nome', delete: '', duplicate: '' })[operation];
 }
 
-function treeIcon(node: ProjectNode, expanded: boolean): string {
-  if (node.kind === 'file') return node.name.endsWith('.java') ? 'java' : 'file';
-  if (node.kind === 'project') return 'project';
-  return expanded ? 'folderOpen' : 'folder';
+function treeIcon(node: ProjectNode, expanded: boolean) {
+  if (node.kind === 'file') {
+    return node.name.endsWith('.java')
+      ? <img src={FigmaCoffee} alt="" className="tree-icon" />
+      : <File size={14} aria-hidden className="tree-icon" />;
+  }
+  return expanded
+    ? <FolderOpen size={14} aria-hidden className="tree-icon" />
+    : <Folder size={14} aria-hidden className="tree-icon" />;
 }

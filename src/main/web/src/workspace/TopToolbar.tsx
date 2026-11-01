@@ -1,7 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, CircleUserRound, Copy, GitBranch, Menu, Minus, Play, RotateCw, Search, Settings, Square, X } from 'lucide-react';
 import { bridge } from '../bridge/EyeCodeBridge';
 import type { RecentProject, RunState } from './protocol';
-import { EyeCodeIcon } from './EyeCodeIcon';
+import ToolbarCoffee from './assets/tb-coffee.svg';
+import ToolbarGitBranch from './assets/tb-git-branch.svg';
+import ToolbarFolderOpen from './assets/tb-folder-open.svg';
+import ToolbarRun from './assets/tb-run.svg';
+import ToolbarDebug from './assets/tb-debug.svg';
+import ToolbarStop from './assets/tb-stop.svg';
+import ToolbarOptions from './assets/tb-options.svg';
+import ToolbarSearch from './assets/tb-search.svg';
+import ToolbarSettings from './assets/tb-settings.svg';
+import ToolbarAccount from './assets/tb-account.svg';
+import ToolbarMinimize from './assets/tb-minimize.svg';
+import ToolbarMaximize from './assets/tb-maximize.svg';
+import ToolbarClose from './assets/tb-close.svg';
+import ToolbarMenu from './assets/tb-menu.svg';
 
 type Props = {
   learnMode?: boolean;
@@ -56,7 +70,7 @@ export function TopToolbar({ learnMode = false, projectName, projectPath, branch
     <div className="toolbar-brand">
       <div className="toolbar-menu">
         <button type="button" className="toolbar-icon" aria-label="Menu principal" onClick={() => setMenuOpen(value => !value)}>
-          <EyeCodeIcon name="hamburger" />
+          <img src={ToolbarMenu} alt="" width={16} height={16} aria-hidden />
         </button>
         {menuOpen && <div className="toolbar-menu-popover">
           <button type="button" onClick={() => { setMenuOpen(false); onNewProject(); }}>Novo Projeto</button>
@@ -65,10 +79,13 @@ export function TopToolbar({ learnMode = false, projectName, projectPath, branch
           {projectName && <button type="button" onClick={() => { setMenuOpen(false); onWelcome(); }}>Voltar à tela inicial</button>}
         </div>}
       </div>
-      <span className="brand-sign">EC</span>
+      <div className="toolbar-brand-ec">
+        <span>EC</span>
+      </div>
       <div className="project-switcher-wrap">
         <button type="button" className="project-switcher" onClick={() => setSwitcherOpen(value => !value)} aria-expanded={switcherOpen}>
-          <strong>{learnMode ? 'EyeCode Learn' : projectName || 'EyeCode Workspace'}</strong><span>⌄</span>
+          <strong>{learnMode ? 'EyeCode Learn' : projectName || 'EyeCode Workspace'}</strong>
+          <ChevronDown size={12} aria-hidden />
         </button>
         {switcherOpen && <div className="project-switcher-popover">
           {projectName && <div className="project-switcher-current"><strong>{projectName}</strong><span className="project-switcher-path">{projectPath}</span></div>}
@@ -88,40 +105,64 @@ export function TopToolbar({ learnMode = false, projectName, projectPath, branch
           </div>
         </div>}
       </div>
+      {!learnMode && <span className="toolbar-divider" aria-hidden="true" />}
       {!learnMode && <span className="toolbar-branch" title="Branch Git (indicador visual)">
-        <EyeCodeIcon name="branch" />
+        <img src={ToolbarGitBranch} alt="" width={14} height={14} aria-hidden />
         <span>{branch ?? 'main'}</span>
+        <ChevronDown size={12} aria-hidden />
       </span>}
     </div>
     <div className="toolbar-run-group">
       {learnMode && <span className="toolbar-mode-indicator" aria-label="Modo Aprender">Aprender <span aria-hidden="true">⌄</span></span>}
-      {!learnMode && <EyeCodeIcon name="completion/class" className="toolbar-config-icon" />}
-      {!learnMode && <select value={runState.selectedConfigurationId} onChange={event => onSelectConfiguration(event.target.value)}
-        aria-label="Configuração de execução" disabled={!runState.configurations.length}>
-        {runState.configurations.length === 0 && <option value="">Nenhuma configuração de execução</option>}
-        {runState.configurations.map(configuration => <option key={configuration.id} value={configuration.id}>
-          {configuration.name}
-        </option>)}
-      </select>}
+      <div className="toolbar-config">
+        <img src={ToolbarCoffee} alt="" width={14} height={14} aria-hidden />
+        <select value={runState.selectedConfigurationId} onChange={event => onSelectConfiguration(event.target.value)}
+          aria-label="Configuração de execução" disabled={!runState.configurations.length}>
+          {runState.configurations.length === 0 && <option value="">Nenhuma configuração</option>}
+          {runState.configurations.map(configuration => <option key={configuration.id} value={configuration.id}>
+            {configuration.name}
+          </option>)}
+        </select>
+        <ChevronDown size={12} aria-hidden />
+      </div>
       <button type="button" className="toolbar-run" onClick={runState.running ? onRerun : onRun}
         disabled={runState.running ? !runState.rerunAvailable : !runAvailable}
         aria-label={runState.running ? learnMode ? 'Reexecutando...' : 'Rerun' : learnMode ? 'Executar' : 'Run'}
         title={runState.running ? 'Rerun' : 'Run'}>
-        {runState.running ? <EyeCodeIcon name="reload" /> : <EyeCodeIcon name="run" />}
+        <img src={runState.running ? ToolbarRun : ToolbarFolderOpen} alt="" width={15} height={15} aria-hidden />
+        <span className="toolbar-run-label">{runState.running ? 'Rerun' : 'Run'}</span>
       </button>
-      {!learnMode && <button type="button" className="toolbar-icon" disabled aria-label="Debug" title="Debug (em breve)"><EyeCodeIcon name="debug" /></button>}
-      <button type="button" className="toolbar-icon stop" onClick={onStop} disabled={!runState.running} aria-label="Stop" title="Stop"><EyeCodeIcon name="stop" /></button>
-      {!learnMode && <button type="button" className="toolbar-icon" disabled aria-label="Run options" title="Main class / JVM options (em breve)"><EyeCodeIcon name="kebab" /></button>}
+      {!learnMode && <button type="button" className="toolbar-icon" disabled aria-label="Debug" title="Debug (em breve)">
+        <img src={ToolbarDebug} alt="" width={16} height={16} aria-hidden />
+      </button>}
+      <button type="button" className="toolbar-icon stop" onClick={onStop} disabled={!runState.running} aria-label="Stop" title="Stop">
+        <img src={ToolbarStop} alt="" width={16} height={16} aria-hidden />
+      </button>
+      {!learnMode && <button type="button" className="toolbar-icon" disabled aria-label="Run options" title="Main class / JVM options (em breve)">
+        <img src={ToolbarOptions} alt="" width={16} height={16} aria-hidden />
+      </button>}
     </div>
     <div className="toolbar-actions">
-      <button type="button" className="toolbar-icon" onClick={onOpenSearch} aria-label="Busca"><EyeCodeIcon name="search" /></button>
-      <button type="button" className="toolbar-icon" disabled aria-label="Conta" title="Conta (em breve)"><EyeCodeIcon name="account" /></button>
-      <button type="button" className="toolbar-icon" onClick={onOpenSettings} aria-label="Configurações"><EyeCodeIcon name="settings" /></button>
+      <button type="button" className="toolbar-icon" onClick={onOpenSearch} aria-label="Busca">
+        <img src={ToolbarSearch} alt="" width={16} height={16} aria-hidden />
+      </button>
+      <button type="button" className="toolbar-icon" disabled aria-label="Conta" title="Conta (em breve)">
+        <img src={ToolbarAccount} alt="" width={16} height={16} aria-hidden />
+      </button>
+      <button type="button" className="toolbar-icon" onClick={onOpenSettings} aria-label="Configurações">
+        <img src={ToolbarSettings} alt="" width={16} height={16} aria-hidden />
+      </button>
       <span className="toolbar-separator" />
       <div className="toolbar-window-controls">
-        <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowMinimize')} aria-label="Minimizar"><EyeCodeIcon name="minimize" /></button>
-        <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowToggleMaximize')} aria-label={maximized ? 'Restaurar' : 'Maximizar'}><EyeCodeIcon name={maximized ? 'restore' : 'maximize'} /></button>
-        <button type="button" className="toolbar-icon window-close" onClick={() => onWindowAction('windowClose')} aria-label="Fechar"><EyeCodeIcon name="close" /></button>
+        <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowMinimize')} aria-label="Minimizar">
+          <img src={ToolbarMinimize} alt="" width={16} height={16} aria-hidden />
+        </button>
+        <button type="button" className="toolbar-icon" onClick={() => onWindowAction('windowToggleMaximize')} aria-label={maximized ? 'Restaurar' : 'Maximizar'}>
+          <img src={maximized ? ToolbarMaximize : ToolbarMinimize} alt="" width={16} height={16} aria-hidden />
+        </button>
+        <button type="button" className="toolbar-icon window-close" onClick={() => onWindowAction('windowClose')} aria-label="Fechar">
+          <img src={ToolbarClose} alt="" width={16} height={16} aria-hidden />
+        </button>
       </div>
     </div>
   </header>;

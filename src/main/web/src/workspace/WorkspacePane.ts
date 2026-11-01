@@ -59,9 +59,9 @@ export const challengeDockRules: DockRules = {
 };
 
 export const projectDockTree: DockNode = {
-  type: 'split', orientation: 'vertical', ratio: 0.7,
+  type: 'split', orientation: 'vertical', ratio: 0.663,
   first: {
-    type: 'split', orientation: 'horizontal', ratio: 0.2,
+    type: 'split', orientation: 'horizontal', ratio: 0.244,
     first: { type: 'pane', paneId: 'explorer' },
     second: { type: 'pane', paneId: 'editor' }
   },

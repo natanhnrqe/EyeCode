@@ -4,6 +4,7 @@ import type { DocumentSnapshot } from '../document/protocol';
 import { nextTabIndex, tabIdFor } from './ariaTabs';
 import { resolveGroupDropTarget, zonePreviewRect, type EditorDropRect, type EditorGroupDropTarget } from './editorSplitDnd';
 import { EyeCodeIcon } from './EyeCodeIcon';
+import FigmaCoffee from './assets/figma-coffee.svg';
 
 type DocumentTab = Omit<DocumentSnapshot, 'content'>;
 
@@ -221,10 +222,13 @@ export function EditorTabs({ documents, activeUri, onActivate, onClose, closable
           }}
           title={document.displayName}
         >
-          <EyeCodeIcon
-            name={document.kind === 'documentation' || document.kind === 'guide' ? 'markdown' : document.readOnly ? 'file' : 'java'}
-            className="tab-file-mark"
-          />
+          {document.kind === 'documentation' || document.kind === 'guide' ? (
+            <EyeCodeIcon name="markdown" className="tab-file-mark" />
+          ) : document.readOnly ? (
+            <EyeCodeIcon name="file" className="tab-file-mark" />
+          ) : (
+            <img src={FigmaCoffee} alt="" className="tab-file-mark" />
+          )}
 
           <span className="editor-tab-name">
             {document.displayName}

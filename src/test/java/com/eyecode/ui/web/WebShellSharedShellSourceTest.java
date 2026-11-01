@@ -322,7 +322,7 @@ class WebShellSharedShellSourceTest {
 
         String projectTree = pane.substring(pane.indexOf("projectDockTree"), pane.indexOf("learnPracticeDockTree"));
         String learnTree = pane.substring(pane.indexOf("learnPracticeDockTree"), pane.indexOf("theoryDockTree"));
-        assertTrue(projectTree.contains("orientation: 'vertical', ratio: 0.7"));
+        assertTrue(projectTree.contains("orientation: 'vertical', ratio: 0.663"));
         assertTrue(projectTree.contains("paneId: 'bottom'"));
         assertTrue(learnTree.contains("orientation: 'vertical', ratio: 0.77"));
         assertTrue(learnTree.contains("paneId: 'lesson'"));
@@ -600,7 +600,7 @@ class WebShellSharedShellSourceTest {
         assertTrue(toolbar.contains("learnMode && <span className=\"toolbar-mode-indicator\""));
         assertTrue(toolbar.contains("Aprender <span aria-hidden=\"true\">⌄</span>"));
         assertTrue(toolbar.contains("learnMode ? 'Executar' : 'Run'"));
-        assertTrue(toolbar.contains("{!learnMode && <select"));
+        assertTrue(toolbar.contains("<select value={runState.selectedConfigurationId}"));
         assertTrue(workspace.contains("onClick={() => setLearnExplorerCollapsed(value => !value)}"));
         assertTrue(workspace.contains("const editorSurfaceKey = `${mode}:${learnNavigation.screen}:${layoutKind}`;"));
         assertTrue(workspace.contains("const slot = shell.querySelector<HTMLElement>('[data-editor-region-slot]');"));
@@ -637,8 +637,8 @@ class WebShellSharedShellSourceTest {
         String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
 
         String projectTree = pane.substring(pane.indexOf("projectDockTree"), pane.indexOf("learnPracticeDockTree"));
-        assertTrue(projectTree.contains("orientation: 'vertical', ratio: 0.7"));
-        assertTrue(projectTree.contains("orientation: 'horizontal', ratio: 0.2"));
+        assertTrue(projectTree.contains("orientation: 'vertical', ratio: 0.663"));
+        assertTrue(projectTree.contains("orientation: 'horizontal', ratio: 0.244"));
         assertTrue(projectTree.contains("second: { type: 'pane', paneId: 'editor' }"));
         assertTrue(projectTree.contains("second: { type: 'pane', paneId: 'bottom' }"));
         assertTrue(pane.contains("export const learnPracticeDockRules"));
@@ -742,7 +742,7 @@ class WebShellSharedShellSourceTest {
 
         assertTrue(protocol.contains("export type RunPhase = 'IDLE' | 'PREPARING' | 'COMPILING' | 'RUNNING';"));
         assertTrue(protocol.contains("phase: RunPhase;"));
-        assertTrue(toolbar.contains("runState.running ? <EyeCodeIcon name=\"reload\""));
+        assertTrue(toolbar.contains("runState.running ? ToolbarRun"));
         assertTrue(statusBar.contains("runState.phase === 'COMPILING'"));
         assertTrue(statusBar.contains("status-progress-track"));
         assertTrue(styles.contains("@media (prefers-reduced-motion: reduce)"));
@@ -852,7 +852,7 @@ class WebShellSharedShellSourceTest {
 
         assertTrue(welcome.contains("onDocumentation(): void;"));
         assertTrue(welcome.contains("Explorar Documentação Java (Tela Cheia)"));
-        assertTrue(welcome.contains("EyeCodeIcon name=\"markdown\""));
+        assertTrue(welcome.contains("EyeCodeIcon name=\"book-open\""));
         assertTrue(workspace.contains("onDocumentation={() => { void openDocumentationPage('java/jdk/fundamentos/variables')"));
         assertTrue(workspace.contains("if (opened) setDocsFullscreen(true)"));
         assertTrue(article.contains("bodyRef.current"));

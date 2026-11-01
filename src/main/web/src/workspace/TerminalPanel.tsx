@@ -40,7 +40,7 @@ export function TerminalPanel({ state }: Props) {
       fontFamily: 'JetBrains Mono, monospace',
       fontSize: 13,
       theme: {
-        background: token('--surface-editor', '#1a1b1d'),
+        background: token('--surface-canvas', '#101113'),
         foreground: token('--terminal-foreground', '#bbbfc8'),
         cursor: token('--terminal-cursor', '#e8e9ee'),
         selectionBackground: token('--terminal-selection', '#6352b855'),

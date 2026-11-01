@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import { BookOpen, Files, Search } from 'lucide-react';
 import { bridge, WebShellRequestError } from '../bridge/EyeCodeBridge';
 import type { ShellBootstrap, WebShellEnvelope } from '../bridge/protocol';
 import type { CompletionPopupState } from '../completion/protocol';
@@ -63,8 +64,6 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   const lessonEditor = useRef(new LessonEditorController(service)).current;
   const selectCompletion = useRef((index: number) => service.selectCompletion(index)).current;
   const acceptCompletion = useRef(() => service.acceptSelectedCompletion()).current;
-  const [documents, setDocuments] = useState<DocumentTab[]>([]);
-  const [activeUri, setActiveUri] = useState<string | null>(null);
   const [guidePages, setGuidePages] = useState<Record<string, DocumentationPage>>({});
   const [activeLessonFileId, setActiveLessonFileId] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
@@ -74,8 +73,6 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   const [diagnostics, setDiagnostics] = useState<DiagnosticsViewState | null>(null);
   const [learning, setLearning] = useState<LearningPopupState | null>(null);
   const [signature, setSignature] = useState<SignaturePopupState | null>(null);
-  const [workspace, setWorkspace] = useState<WorkspaceSnapshot>({ recentProjects: [] });
-  const [childrenByPath, setChildrenByPath] = useState<Record<string, ProjectNode[]>>({});
   const childrenCache = useRef<Record<string, ProjectNode[]>>({});
   const pendingChildren = useRef(new Map<string, Promise<void>>());
   const [treeChangedPath, setTreeChangedPath] = useState<string | undefined>(undefined);
@@ -93,7 +90,6 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   const [caret, setCaret] = useState({ line: 1, column: 1 });
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [newJavaClassOpen, setNewJavaClassOpen] = useState(false);
-  const [mode, setMode] = useState<AppMode>('WELCOME');
   const [selectedLearnLesson, setSelectedLearnLesson] = useState<LessonDescriptor | null>(null);
   const [selectedLearnRoadmapItemId, setSelectedLearnRoadmapItemId] = useState<string | null>(null);
   const [learnPath, setLearnPath] = useState<string[]>(['Java', 'Fundamentos', 'Tipos Primitivos']);
@@ -113,6 +109,11 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   const [learnPracticeDockLayout, setLearnPracticeDockLayout] = useState<DockNode>(() => learnPracticeDockTree);
   const [challengeDockLayout, setChallengeDockLayout] = useState<DockNode>(() => challengeDockTree);
   const [learnExplorerCollapsed, setLearnExplorerCollapsed] = useState(false);
+  const [documents, setDocuments] = useState<DocumentTab[]>([]);
+  const [activeUri, setActiveUri] = useState<string | null>(null);
+  const [workspace, setWorkspace] = useState<WorkspaceSnapshot>({ recentProjects: [] });
+  const [childrenByPath, setChildrenByPath] = useState<Record<string, ProjectNode[]>>({});
+  const [mode, setMode] = useState<AppMode>('WELCOME');
   const [challengePanelCollapsed, setChallengePanelCollapsed] = useState(false);
   const [editorGroupTree, setEditorGroupTree] = useState<EditorGroupNode>(primaryEditorGroup);
   const editorGroupCounter = useRef(0);
@@ -1016,10 +1017,10 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
     <span className="visually-hidden" aria-live="polite">{projectMode ? `Painel ${sideTitle(sidePanel)} aberto` : ''}</span>
     <div ref={shellWorkspace} className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}`} aria-hidden={mode === 'WELCOME'}>
       {projectMode ? <nav className="activity-bar" aria-label="Exibições do workspace">
-        {(['project', 'search', 'documentation', 'settings'] as SidePanelId[]).map(id => <button key={id}
+        {activityItems.map(id => <button key={id}
           type="button" className={sidePanel === id && !sidePanelCollapsed ? 'is-active' : ''} onClick={() => selectSidePanel(id)}
           aria-label={activityLabel(id)} aria-expanded={sidePanel === id ? !sidePanelCollapsed : undefined}>
-          <EyeCodeIcon name={sideIcon(id)} />
+          {activityIcon(id)}
           <span className="activity-label">{activityLabel(id)}</span>
         </button>)}
       </nav> : !learnNavigationVisible && <nav className="activity-bar learn-activity-bar" aria-label="Navegação da aula"><button type="button" className={!learnExplorerCollapsed ? 'is-active' : ''} onClick={() => setLearnExplorerCollapsed(value => !value)} aria-label={learnExplorerCollapsed ? 'Mostrar aulas' : 'Ocultar aulas'} aria-expanded={!learnExplorerCollapsed}><EyeCodeIcon name="learn" /><span className="activity-label">Aulas</span></button></nav>}
@@ -1079,8 +1080,12 @@ function isSameProjectPath(a: string, b: string): boolean {
   return normalize(a) === normalize(b);
 }
 
-function sideIcon(id: SidePanelId): string {
-  return ({ project: 'project', search: 'search', documentation: 'documentation', settings: 'settings' })[id];
+const activityItems: SidePanelId[] = ['project', 'search', 'documentation'];
+
+function activityIcon(id: SidePanelId) {
+  if (id === 'project') return <Files size={19} aria-hidden />;
+  if (id === 'search') return <Search size={19} aria-hidden />;
+  return <BookOpen size={19} aria-hidden />;
 }
 
 function activityLabel(id: SidePanelId): string {

@@ -1,7 +1,7 @@
 {
   "name": "eyecode-web-shell",
   "productName": "EyeCode",
-  "version": "0.1.0-beta.3",
+  "version": "0.1.0-beta.4",
   "author": "EyeCode",
   "private": true,
   "license": "GPL-3.0-or-later",
@@ -14,12 +14,20 @@
     "test": "vitest run",
     "webshell:dist": "mvn -f ../../../webshell-dist/pom.xml package",
     "electron:dev": "npm run build && npm run webshell:dist && electron electron/main.js",
-    "electron:package:win": "node scripts/package-win.mjs"
+    "electron:package:win": "node --max-old-space-size=6144 scripts/package-win.mjs",
+    "electron:package:linux": "node --max-old-space-size=6144 scripts/package-desktop.mjs --platform linux --arch x64",
+    "electron:package:mac": "npm run electron:package:mac:arm64 && npm run electron:package:mac:x64",
+    "electron:package:mac:arm64": "node --max-old-space-size=6144 scripts/package-desktop.mjs --platform darwin --arch arm64",
+    "electron:package:mac:x64": "node --max-old-space-size=6144 scripts/package-desktop.mjs --platform darwin --arch x64"
   },
   "dependencies": {
+    "@fontsource/geist": "^5.3.0",
+    "@fontsource/geist-mono": "^5.3.0",
     "@vitejs/plugin-react": "5.0.2",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
+    "lucide-react": "^1.65.0",
+    "motion": "^14.9.0",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "typescript": "5.8.3",
@@ -33,6 +41,7 @@
     "@types/react-dom": "19.1.7",
     "electron": "33.2.1",
     "jsdom": "^29.1.1",
+    "jszip": "^3.10.2",
     "vitest": "^5.0.2"
   }
 }
