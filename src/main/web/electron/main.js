@@ -154,6 +154,7 @@ function createWindow(url) {
     title: 'EyeCode',
     show: false,
     frame: false,
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' } : {}),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

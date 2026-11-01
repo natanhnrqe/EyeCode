@@ -555,6 +555,77 @@ describe('resolveMavenHome', () => {
   });
 });
 
+describe('POSIX platform resolution', () => {
+  const repoRoot = path.join('C:', 'repo');
+
+  it('isJdkHome on linux checks bin/java without .exe', () => {
+    const home = '/opt/eyecode/jdk';
+    const files = new Set([
+      path.join(home, 'bin', 'java'),
+      path.join(home, 'bin', 'javac'),
+    ]);
+    expect(isJdkHome(home, 'linux', existsFor(files))).toBe(true);
+    expect(isJdkHome(home, 'linux', never)).toBe(false);
+  });
+
+  it('isJdkHome on darwin checks bin/java without .exe', () => {
+    const home = '/Applications/EyeCode.app/Contents/Resources/jdk';
+    const files = new Set([
+      path.join(home, 'bin', 'java'),
+      path.join(home, 'bin', 'javac'),
+    ]);
+    expect(isJdkHome(home, 'darwin', existsFor(files))).toBe(true);
+  });
+
+  it('isMavenHome on linux and darwin checks bin/mvn', () => {
+    const home = '/opt/eyecode/maven';
+    const files = new Set([path.join(home, 'bin', 'mvn')]);
+    expect(isMavenHome(home, 'linux', existsFor(files))).toBe(true);
+    expect(isMavenHome(home, 'darwin', existsFor(files))).toBe(true);
+    expect(isMavenHome(home, 'linux', never)).toBe(false);
+  });
+
+  it('resolveMavenHome on linux prefers packaged resources/maven', () => {
+    const resourcesPath = path.join('C:', 'install', 'resources');
+    const packaged = path.join(resourcesPath, 'maven');
+    const files = new Set([path.join(packaged, 'bin', 'mvn')]);
+    expect(
+      resolveMavenHome({
+        repoRoot,
+        env: {},
+        platform: 'linux',
+        existsSync: existsFor(files),
+        resourcesPath,
+      })
+    ).toBe(packaged);
+  });
+
+  it('buildBackendLaunch on linux passes -Deyecode.maven.home and -Deyecode.jdk.home', () => {
+    const resourcesPath = path.join('C:', 'install', 'resources');
+    const packagedDist = path.join(resourcesPath, 'webshell-dist');
+    const packagedJdk = path.join(resourcesPath, 'jdk');
+    const packagedMaven = path.join(resourcesPath, 'maven');
+    const files = new Set([
+      path.join(packagedDist, 'eyecode-webshell.jar'),
+      path.join(packagedDist, 'lib'),
+      path.join(packagedJdk, 'bin', 'java'),
+      path.join(packagedJdk, 'bin', 'javac'),
+      path.join(packagedMaven, 'bin', 'mvn'),
+    ]);
+    const launch = buildBackendLaunch({
+      repoRoot: path.join('C:', 'nonexistent repo'),
+      env: {},
+      platform: 'linux',
+      existsSync: existsFor(files),
+      resourcesPath,
+    });
+    expect(launch.command).toBe(path.join(packagedJdk, 'bin', 'java'));
+    expect(launch.args).toContain(`-Deyecode.jdk.home=${packagedJdk}`);
+    expect(launch.args).toContain(`-Deyecode.maven.home=${packagedMaven}`);
+    expect(launch.mavenHome).toBe(packagedMaven);
+  });
+});
+
 describe('parseReadinessUrl', () => {
   it('parses the LocalWebShellLauncher readiness line', () => {
     const line = '[EyeCode] URL: http://127.0.0.1:5174/webshell/index.html\n';

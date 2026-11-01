@@ -7,12 +7,19 @@ const stagedJdk = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'j
 const stagedMaven = path.join(repoRoot, 'target', 'eyecode-desktop', 'runtime', 'maven');
 const thirdPartyNotices = path.join(repoRoot, 'third-party-notices');
 const eyeCodeLicense = path.join(repoRoot, 'LICENSE');
+const electronZipDir = process.env.EYECODE_ELECTRON_ZIP_DIR;
 
 module.exports = {
   packagerConfig: {
     name: 'EyeCode',
     asar: true,
     appVersion: require('./package.json').version,
+    overwrite: true,
+    ...(electronZipDir
+      ? {
+          electronZipDir,
+        }
+      : {}),
     ignore: (file) => {
       if (file === '') return false;
       if (file === '/package.json') return false;
@@ -25,7 +32,7 @@ module.exports = {
     {
       name: '@electron-forge/maker-zip',
       config: {},
-      platforms: ['win32'],
+      platforms: ['win32', 'linux', 'darwin'],
     },
   ],
 };
