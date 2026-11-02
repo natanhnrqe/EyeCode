@@ -1,0 +1,204 @@
+/* ==========================================================================
+   shell.css — Application shell grid, dock layout manager, split panes and shared page scaffolding.
+   ========================================================================== */
+
+/* ========================================================================== */
+/* Shell Layout */
+/* ========================================================================== */
+
+.dock-pane, .dock-pane-body {
+  min-width: 0;
+  min-height: 0;
+}
+
+.project-explorer > .dock-pane-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dock-layout {
+  display: grid;
+  grid-column: 2;
+  grid-row: 1 / 3;
+  padding-left: 5px;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dock-split {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  gap: 0;
+}
+
+.dock-split-root.dock-split-horizontal {
+  grid-template-columns: 356px 7px minmax(0, 1fr);
+}
+
+.dock-split-nested.dock-split-horizontal {
+  grid-template-columns: minmax(0, 55fr) 7px minmax(0, 45fr);
+}
+
+.dock-split-vertical {
+  grid-template-rows: minmax(0, 1fr) 7px minmax(170px, 30%);
+}
+
+.dock-leaf {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+}
+
+.dock-layout.is-theory .dock-split-nested.dock-split-horizontal > .dock-split-separator,
+.dock-leaf.is-theory-hidden {
+  display: none;
+}
+
+.dock-layout.is-theory [data-dock-path='root-second'] > [data-dock-leaf='lesson'] {
+  grid-column: 3;
+}
+
+.dock-leaf > .side-panel,
+.dock-leaf > .main-workspace,
+.dock-leaf > .bottom-panel,
+.dock-leaf > .lesson-panel,
+.dock-leaf > .learning-panel {
+  width: 100%;
+  height: 100%;
+}
+
+.dock-split-separator {
+  position: relative;
+  z-index: 3;
+  touch-action: none;
+  transition: background-color 120ms ease;
+}
+
+.dock-split-separator-horizontal {
+  cursor: col-resize;
+}
+
+.dock-split-separator-vertical {
+  cursor: row-resize;
+}
+
+.dock-leaf.is-draggable [data-dock-handle] { cursor: grab; user-select: none; -webkit-user-select: none; }
+.dock-leaf.is-draggable [data-dock-handle] button, .dock-leaf.is-draggable [data-dock-handle] a, .dock-leaf.is-draggable [data-dock-handle] input, .dock-leaf.is-draggable [data-dock-handle] select, .dock-leaf.is-draggable [data-dock-handle] textarea, .dock-leaf.is-draggable [data-dock-handle] [role='button'], .dock-leaf.is-draggable [data-dock-handle] [role='tab'] { cursor: pointer; }
+.dock-layout.is-dragging .dock-leaf.is-dragging [data-dock-handle] { cursor: grabbing; }
+.is-dock-dragging, .is-dock-dragging * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+.dock-drop-preview, .dock-drag-ghost { position: absolute; box-sizing: border-box; pointer-events: none; }
+.dock-drop-preview { z-index: 35; border: 2px solid var(--eyecode-accent-bright); border-radius: var(--eyecode-radius-sm); background: rgba(169, 146, 255, .05); box-shadow: inset 0 0 0 1px rgba(230, 225, 255, .22), 0 0 16px rgba(169, 146, 255, .18); }
+.dock-drag-ghost { z-index: 36; border: 1px solid rgba(230, 225, 255, .88); border-radius: var(--eyecode-radius-sm); background: rgba(169, 146, 255, .12); box-shadow: var(--shadow-float-soft); opacity: .72; }
+.dock-leaf.is-dragging [data-pane-id] { border-color: var(--eyecode-accent-bright); box-shadow: 0 10px 24px rgba(0, 0, 0, .26); opacity: .76; }
+.dock-leaf.is-dragging [data-pane-id] > .dock-pane-header { background: transparent; }
+
+.dock-split-separator::after {
+  position: absolute;
+  content: '';
+  background: rgba(255,255,255,.10);
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.dock-split-separator::before {
+  position: absolute;
+  content: '';
+}
+
+
+.dock-split-separator:hover::after, .dock-split-separator.is-active::after {
+  background: var(--eyecode-accent-bright);
+  box-shadow: 0 0 8px rgba(169, 146, 255, .42);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-split-separator,
+  .dock-split-separator::after {
+    transition: none;
+  }
+}
+
+.dock-split-grip {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  opacity: .45;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 48px minmax(0, 1fr) 27px;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  color: var(--eyecode-text);
+  background: var(--surface-canvas);
+}
+
+.shell-workspace {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  grid-template-rows: minmax(0, 1fr) minmax(170px, 30%);
+  gap: 0;
+  padding: 0 20px 0 5px;
+  position: relative;
+}
+.shell-workspace.is-welcome {
+  display: none;
+}
+
+
+.shell-status-spacer {
+  grid-row: 3;
+}
+
+.learn-activity-bar {
+  pointer-events: auto;
+}
+
+.dock-layout.is-learn-explorer-collapsed [data-dock-path='root-first'] {
+  grid-template-columns: 0 0 minmax(0, 1fr) !important;
+  transition: grid-template-columns 160ms ease;
+}
+
+.dock-layout.is-learn-explorer-collapsed.is-theory > .dock-split-root {
+  grid-template-columns: 0 0 minmax(0, 1fr) !important;
+}
+
+.dock-layout.is-learn-explorer-collapsed.is-theory > .dock-split-root > [data-dock-leaf='explorer'],
+.dock-layout.is-learn-explorer-collapsed.is-theory > .dock-split-root > .dock-split-separator {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.dock-layout.is-learn-explorer-collapsed [data-dock-path='root-first'] > [data-dock-leaf='explorer'],
+.dock-layout.is-learn-explorer-collapsed [data-dock-path='root-first'] > .dock-split-separator {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-layout.is-learn-explorer-collapsed [data-dock-path='root-first'] { transition: none; }
+}
+
+.shell-workspace.is-learn-navigation > .dock-layout {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+
+/* Shared shell pages */
+
+.shell-page-content {
+  width: min(calc(100% - 64px), 1180px);
+  min-width: 0;
+  margin-inline: auto;
+}

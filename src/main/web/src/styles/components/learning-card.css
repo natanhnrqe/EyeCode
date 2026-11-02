@@ -1,0 +1,800 @@
+/* ==========================================================================
+   components/learning-card.css — Learning card (hover lesson popup): header, breadcrumb, body content, footer, scrollbars.
+   ========================================================================== */
+
+/* ========================================================================== */
+/* Learning */
+/* ========================================================================== */
+
+.learning-popup {
+  position: fixed;
+
+  display: flex;
+  flex-direction: column;
+
+  width: min(720px, calc(100vw - 16px));
+  max-width: min(720px, calc(100vw - 16px));
+  max-height: min(600px, calc(100vh - 16px));
+
+  overflow: hidden;
+
+  border: 1px solid var(--eyecode-border);
+  border-radius: var(--eyecode-radius-md);
+
+  color: var(--eyecode-text);
+  background: var(--eyecode-surface);
+
+  box-shadow: var(--shadow-float);
+
+  pointer-events: auto;
+
+  font-family: var(--eyecode-font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+
+/* ========================================================================== */
+/* Sizes */
+/* ========================================================================== */
+
+.learning-popup.learning-size-quick {
+  width: min(430px, calc(100vw - 16px));
+  max-height: 360px;
+}
+
+.learning-popup.learning-size-medium {
+  width: min(640px, calc(100vw - 16px));
+  max-height: 500px;
+}
+
+.learning-popup.learning-size-full {
+  width: min(720px, calc(100vw - 16px));
+  max-height: 580px;
+}
+
+
+/* ========================================================================== */
+/* Header */
+/* ========================================================================== */
+
+.learning-header {
+  flex: 0 0 auto;
+
+  padding: 13px 16px 11px;
+
+  border-bottom: 1px solid var(--eyecode-border);
+
+  background: var(--eyecode-surface);
+}
+
+.learning-header-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 18px;
+}
+
+.learning-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.learning-title-row {
+  display: flex;
+  align-items: center;
+
+  min-width: 0;
+
+  gap: 8px;
+}
+
+.learning-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 18px;
+  height: 18px;
+
+  flex: 0 0 18px;
+
+  border: 1px solid currentColor;
+  border-radius: 50%;
+
+  color: var(--eyecode-accent-bright);
+
+  font-family: var(--eyecode-font-code);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+img.learning-icon {
+  border: 0;
+  border-radius: 0;
+
+  object-fit: contain;
+}
+
+.learning-title {
+  min-width: 0;
+
+  overflow: hidden;
+
+  color: var(--eyecode-text);
+
+  font-family: var(--eyecode-font-code);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.learning-subtitle {
+  margin: 3px 0 0 26px;
+
+  color: var(--eyecode-muted);
+
+  font-family: var(--eyecode-font-code);
+  font-size: 10px;
+
+  letter-spacing: .04em;
+}
+
+
+/* ========================================================================== */
+/* Header Actions */
+/* ========================================================================== */
+
+.learning-header-actions {
+  display: flex;
+  align-items: center;
+
+  flex: 0 0 auto;
+
+  gap: 7px;
+}
+
+.learning-header-actions button {
+  min-height: 28px;
+
+  padding: 5px 10px;
+
+  border: 1px solid var(--eyecode-border);
+  border-radius: var(--eyecode-radius-sm);
+
+  background: var(--eyecode-surface-elevated);
+  color: var(--eyecode-text-secondary);
+
+  font: 11px var(--eyecode-font-ui);
+
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  transition:
+    background-color 100ms ease,
+    border-color 100ms ease,
+    color 100ms ease,
+    transform 70ms ease;
+}
+
+.learning-header-actions button:hover {
+  border-color: var(--eyecode-accent);
+
+  background: var(--eyecode-hover);
+  color: var(--eyecode-text);
+}
+
+.learning-header-actions button:active {
+  transform: translateY(1px);
+}
+
+
+/* ========================================================================== */
+/* Breadcrumb */
+/* ========================================================================== */
+
+.learning-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+
+  gap: 2px;
+
+  margin: 7px 0 0 26px;
+
+  color: var(--eyecode-muted);
+
+  font-family: var(--eyecode-font-code);
+  font-size: 10px;
+}
+
+.learning-breadcrumb button {
+  padding: 2px 4px;
+
+  border: 0;
+  border-radius: var(--eyecode-radius-sm);
+
+  color: var(--eyecode-accent-bright);
+  background: transparent;
+
+  font: inherit;
+
+  cursor: pointer;
+
+  transition:
+    background-color 100ms ease,
+    color 100ms ease;
+}
+
+.learning-breadcrumb button::after {
+  content: '›';
+
+  margin-left: 4px;
+
+  color: var(--eyecode-muted);
+}
+
+.learning-breadcrumb button:hover {
+  color: var(--eyecode-text);
+  background: var(--eyecode-hover);
+}
+
+.learning-breadcrumb span {
+  color: var(--eyecode-muted);
+}
+
+
+/* ========================================================================== */
+/* Body */
+/* ========================================================================== */
+
+.learning-body {
+  flex: 1 1 auto;
+
+  min-width: 0;
+  min-height: 0;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  padding: 0 16px;
+
+  background: var(--eyecode-surface);
+  color: var(--eyecode-text-secondary);
+
+  font-family: var(--eyecode-font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+
+/* ========================================================================== */
+/* Content */
+/* ========================================================================== */
+
+.learning-body .learning-content,
+.learning-body .learning-content .learning-content {
+  max-width: none;
+
+  padding: 10px 0 12px;
+
+  background: transparent;
+}
+
+.learning-body p {
+  margin: 0 0 9px;
+}
+
+.learning-body h1,
+.learning-body h2,
+.learning-body h3,
+.learning-body h4,
+.learning-body h5,
+.learning-body h6 {
+  color: var(--eyecode-text);
+
+  font-family: var(--eyecode-font-ui);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.learning-body h1 {
+  margin: 4px 0 9px;
+  padding-bottom: 5px;
+
+  border-bottom: 1px solid var(--eyecode-border);
+
+  font-size: 18px;
+}
+
+.learning-body h2 {
+  margin: 14px 0 7px;
+  padding-bottom: 4px;
+
+  border-bottom: 1px solid var(--eyecode-border);
+
+  font-size: 15px;
+}
+
+.learning-body h3 {
+  margin: 12px 0 6px;
+
+  font-size: 14px;
+}
+
+.learning-body h4,
+.learning-body h5,
+.learning-body h6 {
+  margin: 10px 0 5px;
+
+  font-size: 13px;
+}
+
+
+/* ========================================================================== */
+/* Lists */
+/* ========================================================================== */
+
+.learning-body ul,
+.learning-body ol {
+  margin: 0 0 9px;
+
+  padding-left: 20px;
+}
+
+.learning-body li {
+  margin: 3px 0;
+}
+
+.learning-body strong {
+  color: var(--eyecode-text);
+}
+
+.learning-body em {
+  color: var(--eyecode-text-secondary);
+}
+
+
+/* ========================================================================== */
+/* Inline Code */
+/* ========================================================================== */
+
+.learning-body code {
+  padding: 1px 4px;
+
+  border: 1px solid var(--eyecode-border);
+  border-radius: var(--eyecode-radius-sm);
+
+  background: var(--eyecode-code-bg);
+  color: var(--eyecode-text);
+
+  font-family: var(--eyecode-font-code);
+  font-size: .9em;
+  line-height: 1.35;
+}
+
+
+/* ========================================================================== */
+/* Code Blocks */
+/* ========================================================================== */
+
+.learning-body pre {
+  margin: 9px 0 11px;
+
+  padding: 9px 10px;
+
+  overflow-x: auto;
+
+  border: 1px solid var(--eyecode-border-strong);
+  border-radius: var(--eyecode-radius-md);
+
+  background: var(--eyecode-code-bg);
+}
+
+.learning-body pre code {
+  display: block;
+
+  margin: 0;
+  padding: 0;
+
+  overflow: visible;
+
+  border: 0;
+  border-radius: 0;
+
+  background: transparent;
+  color: var(--eyecode-text);
+
+  font-family: var(--eyecode-font-code);
+  font-size: 11px;
+  line-height: 1.45;
+
+  white-space: pre;
+}
+
+
+/* ========================================================================== */
+/* Java Syntax Highlight */
+/* ========================================================================== */
+
+.learning-body pre code .learning-token-comment,
+.docs-article-content pre code .learning-token-comment,
+.learn-problem-source code .learning-token-comment,
+.learn-problem-pattern code .learning-token-comment,
+.learn-problem-example code .learning-token-comment,
+.learn-diagnostic-understanding code .learning-token-comment {
+  color: #8f9aa7;
+}
+
+.learning-body pre code .learning-token-keyword,
+.docs-article-content pre code .learning-token-keyword,
+.learn-problem-source code .learning-token-keyword,
+.learn-problem-pattern code .learning-token-keyword,
+.learn-problem-example code .learning-token-keyword,
+.learn-diagnostic-understanding code .learning-token-keyword {
+  color: #f0aa82;
+
+  font-weight: 500;
+}
+
+.learning-body pre code .learning-token-string,
+.docs-article-content pre code .learning-token-string,
+.learn-problem-source code .learning-token-string,
+.learn-problem-pattern code .learning-token-string,
+.learn-problem-example code .learning-token-string,
+.learn-diagnostic-understanding code .learning-token-string {
+  color: #9bd49f;
+}
+
+.learning-body pre code .learning-token-number,
+.docs-article-content pre code .learning-token-number,
+.learn-problem-source code .learning-token-number,
+.learn-problem-pattern code .learning-token-number,
+.learn-problem-example code .learning-token-number,
+.learn-diagnostic-understanding code .learning-token-number {
+  color: #62d3db;
+}
+
+.learning-body pre code .learning-token-type,
+.docs-article-content pre code .learning-token-type,
+.learn-problem-source code .learning-token-type,
+.learn-problem-pattern code .learning-token-type,
+.learn-problem-example code .learning-token-type,
+.learn-diagnostic-understanding code .learning-token-type {
+  color: #b4c8ff;
+
+  font-weight: 500;
+}
+
+
+/* ========================================================================== */
+/* Blockquote */
+/* ========================================================================== */
+
+.learning-body blockquote {
+  margin: 9px 0 11px;
+
+  padding: 6px 10px;
+
+  border-left: 3px solid var(--eyecode-accent);
+
+  background: var(--eyecode-accent-soft);
+  color: var(--eyecode-muted);
+}
+
+.learning-body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+
+/* ========================================================================== */
+/* Tables */
+/* ========================================================================== */
+
+.learning-body table {
+  width: 100%;
+
+  margin: 9px 0 11px;
+
+  border-collapse: collapse;
+
+  border: 1px solid var(--eyecode-border);
+}
+
+.learning-body th,
+.learning-body td {
+  padding: 5px 7px;
+
+  border: 1px solid var(--eyecode-border);
+
+  text-align: left;
+  vertical-align: top;
+}
+
+.learning-body th {
+  background: var(--eyecode-surface-elevated);
+  color: var(--eyecode-text);
+}
+
+
+/* ========================================================================== */
+/* Images */
+/* ========================================================================== */
+
+.learning-body img {
+  display: block;
+
+  max-width: 100%;
+  height: auto;
+}
+
+
+/* ========================================================================== */
+/* Links */
+/* ========================================================================== */
+
+.learning-body a,
+.learning-body a:visited {
+  color: var(--eyecode-accent-bright);
+
+  text-decoration: none;
+}
+
+.learning-body a:hover {
+  color: var(--eyecode-text);
+  background: var(--eyecode-hover);
+
+  text-decoration: none;
+}
+
+
+/* ========================================================================== */
+/* Common Methods */
+/* ========================================================================== */
+
+.learning-common-methods {
+  flex: 0 0 auto;
+
+  padding: 8px 16px;
+
+  border-top: 1px solid var(--eyecode-border);
+
+  background: var(--eyecode-surface);
+  color: var(--eyecode-muted);
+
+  font-size: 11px;
+}
+
+.learning-common-methods > span {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: var(--eyecode-muted);
+
+  font-size: 10px;
+
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.learning-common-methods > div {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 3px 7px;
+}
+
+.learning-common-methods button {
+  padding: 1px 3px;
+
+  border: 0;
+  border-radius: var(--eyecode-radius-sm);
+
+  background: transparent;
+  color: var(--eyecode-muted);
+
+  font-family: var(--eyecode-font-code);
+  font-size: 11px;
+  line-height: 1.35;
+
+  cursor: pointer;
+
+  transition:
+    background-color 100ms ease,
+    color 100ms ease;
+}
+
+.learning-common-methods button:hover {
+  background: var(--eyecode-hover);
+  color: var(--eyecode-text);
+}
+
+
+/* ========================================================================== */
+/* Footer — Related Learning */
+/* ========================================================================== */
+
+.learning-footer {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+
+  align-items: flex-start;
+
+  gap: 8px;
+
+  padding: 10px 16px 12px;
+
+  border-top: 1px solid var(--eyecode-border);
+
+  background: var(--eyecode-surface);
+}
+
+.learning-footer-label {
+  display: block;
+
+  margin: 0;
+
+  color: var(--eyecode-muted);
+
+  font-size: 9px;
+  font-weight: 600;
+
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.learning-related-items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px 10px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.learning-related-items button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 27px;
+  padding: 4px 9px;
+
+  border: 1px solid transparent;
+  border-radius: var(--eyecode-radius-sm);
+  background: transparent;
+
+  color: var(--eyecode-accent-bright);
+  font: 11px var(--eyecode-font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+
+  transition:
+    border-color 300ms ease,
+    color 300ms ease;
+}
+
+.learning-related-items button:hover,
+.learning-related-items button:focus-visible {
+  border-color: var(--eyecode-accent);
+  color: var(--eyecode-text);
+}
+
+/*
+ * A janela mostra exatamente UMA label.
+ * A segunda fica escondida logo abaixo.
+ */
+
+
+.learning-related-label-viewport {
+  display: block;
+  height: 1.2em;
+  line-height: 1.2;
+  overflow: hidden;
+}
+
+.learning-related-label-track {
+  display: flex;
+  flex-direction: column;
+  height: 2.4em;
+
+  transform: translateY(0);
+  transition:
+    transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.learning-related-label {
+  display: block;
+  flex: 0 0 1.2em;
+
+  height: 1.2em;
+  line-height: 1.2;
+}
+
+.learning-related-items button:hover .learning-related-label-track,
+.learning-related-items button:focus-visible .learning-related-label-track {
+  transform: translateY(-1.2em);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .learning-related-label-track {
+    transition: none;
+  }
+}
+
+
+/* ========================================================================== */
+/* Responsive */
+/* ========================================================================== */
+
+@media (max-width: 560px) {
+  .learning-header-main {
+    flex-direction: column;
+
+    gap: 9px;
+  }
+
+  .learning-header-actions {
+    align-self: stretch;
+
+    flex-wrap: wrap;
+  }
+
+  .learning-related-items {
+  }
+}
+
+@media (max-width: 420px) {
+  .learning-related-items {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ========================================================================== */
+/* Scrollbar */
+/* ========================================================================== */
+
+.learning-body,
+.learning-body pre {
+  scrollbar-width: thin;
+  scrollbar-color:
+    var(--eyecode-border-strong)
+    var(--eyecode-surface);
+}
+
+.learning-body::-webkit-scrollbar,
+.learning-body pre::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.learning-body::-webkit-scrollbar-track,
+.learning-body pre::-webkit-scrollbar-track {
+  background: var(--eyecode-surface);
+}
+
+.learning-body::-webkit-scrollbar-thumb,
+.learning-body pre::-webkit-scrollbar-thumb {
+  border: 2px solid var(--eyecode-surface);
+  border-radius: 999px;
+
+  background: var(--eyecode-border-strong);
+}
+
+.learning-body::-webkit-scrollbar-thumb:hover,
+.learning-body pre::-webkit-scrollbar-thumb:hover {
+  background: var(--eyecode-muted);
+}
+
+.learning-body::-webkit-scrollbar-corner,
+.learning-body pre::-webkit-scrollbar-corner {
+  background: var(--eyecode-surface);
+}

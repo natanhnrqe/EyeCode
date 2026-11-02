@@ -1,0 +1,152 @@
+/* ==========================================================================
+   tokens.css — Design tokens (:root variables), brand surface palette and font stacks.
+   ========================================================================== */
+
+/* ========================================================================== */
+/* Tokens & Fonts                                                             */
+/* ========================================================================== */
+
+:root {
+  font-family: "Geist", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: #eeeff3;
+  background: #101113;
+  font-synthesis: none;
+  --background: #101113;
+  --surface-canvas: #101113;
+  --surface-editor: #141518;
+  --surface-panel: #151a1e;
+  --surface-default: #191a1e;
+  --surface-raised: #202126;
+  --surface-hover: #292a31;
+  --surface-selected: #302a42;
+  --surface-float: #202126;
+  --border: #303138;
+  --border-strong: #50515d;
+  --text: #eeeff3;
+  --text-secondary: #b0b2bf;
+  --text-muted: #8e919f;
+  --accent: #b7a4f6;
+  --accent-bright: #c4b5fd;
+  --accent-ink: #201832;
+  --accent-hover: #a894f2;
+  --accent-press: #4a41a4;
+  --focus-ring: #c4b5fd;
+  --selection: rgba(183, 164, 246, .26);
+  --success-green: #98c6aa;
+  --pending-amber: #cf8e6d;
+  --error-rose: #e0848e;
+  --chip-violet-fill: rgba(183, 164, 246, .14);
+  --chip-violet-border: rgba(183, 164, 246, .38);
+  --chip-violet-text: #c4b5fd;
+  --white: #fff;
+  --text-faint: #737583;
+  --row-text: #b0b2bf;
+  --row-text-hover: #eeeff3;
+  --scrollbar-thumb: #545861;
+  --input-bg: #141518;
+  --input-bg-alt: #202126;
+  --status-rail-text: #b0b2bf;
+  --brand-violet-deep: #4a41a4;
+  --brand-violet-ink: #1a1526;
+  --brand-violet-border: #b7a4f6;
+  --cta-violet-deep: #b7a4f6;
+  --cta-violet-light: #c4b5fd;
+  --warning-amber: #d9a34a;
+  --error-rose-hot: #e0574f;
+  --error-rose-soft: #e8a6a1;
+  --success-mint: #4ed19b;
+  --success-mint-light: #60d5a5;
+  --success-status: #98c6aa;
+  --stop-salmon: #d8897a;
+  --label-active-blue: #c4b5fd;
+  --severity-error: #e36d78;
+  --severity-warning: #e5b45c;
+  --severity-info: #6eafff;
+  --severity-hint: #c4b5fd;
+  --dirty-dot-violet: #b7a4f6;
+  --read-only-gold: #bf9b67;
+  --read-only-gold-deep: #806641;
+  --inline-code-salmon: #e8b4a0;
+  --dialog-button-bg: #292a31;
+  --dialog-button-text: #d9dce4;
+  --docs-text: #d7d9e2;
+  --docs-text-muted: #8e919f;
+  --docs-heading: #f1f2f6;
+  --docs-quote: #a9adbd;
+  --callout-info-border: rgba(183, 164, 246, .34);
+  --callout-info-bg: rgba(183, 164, 246, .10);
+  --callout-quote-edge: rgba(183, 164, 246, .5);
+  --callout-warning-border: rgba(217, 163, 74, .35);
+  --callout-warning-bg: rgba(217, 163, 74, .08);
+  --callout-warning-title: #e2b671;
+  --callout-note-border: rgba(86, 156, 214, .35);
+  --callout-note-bg: rgba(86, 156, 214, .08);
+  --callout-note-title: #7fb3d5;
+  --callout-tip-border: rgba(87, 196, 138, .35);
+  --callout-tip-bg: rgba(87, 196, 138, .08);
+  --callout-tip-title: #7ec99b;
+  --terminal-foreground: #bbbfc8;
+  --terminal-cursor: #e8e9ee;
+  --terminal-selection: #6352b855;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-panel: 10px;
+  --radius-rail: 14px;
+  --radius-terminal: 16px;
+  --font-ui: "Geist", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-heading: "Geist Mono", "JetBrains Mono", Consolas, monospace;
+  --font-editor: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  --shadow-float: 0 12px 28px rgba(0, 0, 0, .42);
+  --shadow-float-soft: 0 12px 28px rgba(0, 0, 0, .32);
+  --shadow-modal: 0 18px 48px rgba(0, 0, 0, .55);
+  --shadow-panel-lift: 0 8px 22px rgba(0, 0, 0, .18);
+  --shadow-bevel: 4px 4px 0 rgba(26, 21, 38, .85), inset 0 1px 0 rgba(255, 255, 255, .06);
+  --shadow-bevel-hover: 2px 2px 0 rgba(26, 21, 38, .85), inset 0 1px 0 rgba(255, 255, 255, .07);
+  --shadow-bevel-press: 0 0 0 rgba(26, 21, 38, 0), inset 0 1px 2px rgba(0, 0, 0, .30);
+  --shadow-cta-glow: 0 6px 18px rgba(74, 65, 164, .22);
+  --eyecode-surface: var(--surface-panel);
+  --eyecode-surface-elevated: var(--surface-raised);
+  --eyecode-code-bg: #141518;
+  --eyecode-border: var(--border);
+  --eyecode-border-strong: var(--border-strong);
+  --eyecode-hover: var(--surface-hover);
+  --eyecode-accent: var(--accent);
+  --eyecode-accent-soft: var(--selection);
+  --eyecode-accent-bright: var(--accent-bright);
+  --eyecode-text: var(--text);
+  --eyecode-text-secondary: var(--text-secondary);
+  --eyecode-muted: var(--text-muted);
+  --eyecode-font-ui: var(--font-ui);
+  --eyecode-font-code: var(--font-editor);
+  --eyecode-radius-sm: var(--radius-sm);
+  --eyecode-radius-md: var(--radius-md);
+}
+
+@font-face {
+  font-family: "Emoji";
+  src: local("Segoe UI Emoji"), local("Apple Color Emoji"), local("Noto Color Emoji"), local("Segoe UI Symbol");
+  unicode-range: U+2000-2BFF, U+1F000-1FFFF, U+2600-26FF, U+2700-27BF, U+3000-30FF, U+FE00-FE0F, U+200D, U+231A-23FF;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

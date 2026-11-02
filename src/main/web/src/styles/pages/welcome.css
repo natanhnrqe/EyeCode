@@ -1,0 +1,437 @@
+/* ==========================================================================
+   pages/welcome.css — Welcome / recent projects surface (hero slide, recents slide, backdrop).
+   ========================================================================== */
+
+.welcome-mode {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-column: 1;
+  grid-row: 2 / 4;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.welcome-screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface-canvas);
+}
+
+.welcome-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.welcome-backdrop-glow {
+  position: absolute;
+}
+
+.welcome-backdrop-glow > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.welcome-backdrop-glow.is-top {
+  left: -10.62%;
+  top: -68.23%;
+  width: 112.25%;
+  height: 233.18%;
+}
+
+.welcome-backdrop-glow.is-bottom {
+  left: -69.7%;
+  top: -1.7%;
+  width: 144.08%;
+  height: 252.77%;
+}
+
+.welcome-backdrop-noise {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+  background-position: top left;
+  background-size: 300px 300px;
+  mix-blend-mode: color-burn;
+  opacity: .5;
+}
+
+.welcome-stage {
+  position: absolute;
+  inset: -58px 0 0 0;
+  display: grid;
+  place-items: center;
+  padding-block: clamp(32px, 6vh, 76px);
+  padding-inline: 32px;
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+.welcome-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  text-align: center;
+}
+
+.welcome-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.welcome-mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--accent-bright);
+  background: var(--surface-selected);
+  font: 400 17px/1.5 var(--font-ui);
+}
+
+.welcome-product {
+  display: grid;
+  gap: 1px;
+  justify-items: start;
+}
+
+.welcome-product span {
+  color: var(--text);
+  font: 600 19px/1.5 var(--font-ui);
+}
+
+.welcome-product small {
+  color: var(--text-muted);
+  font: 400 11px/1.5 var(--font-ui);
+}
+
+.welcome-message {
+  display: grid;
+  gap: 16px;
+  min-height: 197px;
+  place-content: center;
+  justify-items: center;
+  margin-bottom: 28px;
+}
+
+.welcome-hero h1 {
+  margin: 0;
+  color: var(--text);
+  font: 700 clamp(34px, 4.4vw, 64px)/1.3 var(--font-heading);
+  letter-spacing: 0;
+}
+
+.welcome-message p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--text-secondary);
+  font: 400 14px/1.8 var(--font-ui);
+}
+
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.welcome-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 34px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text);
+  background: transparent;
+  font: 400 13px/1.5 var(--font-ui);
+  cursor: pointer;
+}
+
+.welcome-actions .primary-action {
+  border-color: transparent;
+  color: var(--accent-ink);
+  background: var(--accent);
+  font-weight: 400;
+  box-shadow: none;
+}
+
+.welcome-actions .primary-action:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.welcome-actions .quiet-action {
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+.welcome-actions .quiet-action:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.welcome-actions button .eyecode-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.welcome-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding-top: 12px;
+  margin-bottom: 20px;
+}
+
+.welcome-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: transparent;
+  font: 400 13px/1.5 var(--font-ui);
+  cursor: pointer;
+}
+
+.welcome-link .eyecode-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.welcome-link:hover {
+  color: var(--text);
+}
+
+.welcome-link:focus-visible,
+.welcome-docs:focus-visible,
+.projects-open:focus-visible,
+.projects-remove:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.welcome-docs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--accent-bright);
+  background: transparent;
+  font: 400 12px/1.5 var(--font-ui);
+  cursor: pointer;
+}
+
+.welcome-docs .eyecode-icon {
+  flex: 0 0 auto;
+}
+
+.welcome-docs .eyecode-icon:first-child {
+  width: 15px;
+  height: 15px;
+}
+
+.welcome-docs .eyecode-icon:last-child {
+  width: 13px;
+  height: 13px;
+}
+
+.welcome-docs:hover {
+  color: var(--text);
+}
+
+.welcome-recents {
+  position: absolute;
+  inset: -48px 0 0 0;
+  overflow: hidden;
+  will-change: transform, opacity;
+}
+
+.welcome-recents-panel {
+  position: absolute;
+  top: 25%;
+  right: 6%;
+  bottom: 21.56%;
+  left: 6%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  min-height: 0;
+}
+
+.welcome-scroll-hint {
+  position: absolute;
+  left: calc(50% - 15px);
+  bottom: 22px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.welcome-screen:hover .welcome-scroll-hint,
+.welcome-scroll-hint:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .welcome-scroll-hint {
+    opacity: 1;
+  }
+}
+
+.welcome-scroll-hint:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.welcome-scroll-hint:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.projects-heading {
+  display: grid;
+  gap: 7px;
+  justify-items: center;
+  text-align: center;
+}
+
+.projects-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font: 700 clamp(34px, 4.4vw, 64px)/1.5 var(--font-heading);
+  letter-spacing: 0;
+}
+
+.projects-heading p {
+  margin: 0;
+  color: var(--text-muted);
+  font: 400 13px/1.5 var(--font-ui);
+}
+
+.projects-list {
+  flex: 0 1 auto;
+  align-self: center;
+  width: min(1316px, 100%);
+  min-height: 0;
+  border: 1px solid #24252b;
+  border-radius: 8px;
+  background: var(--surface-default);
+  overflow: hidden auto;
+}
+
+.projects-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 92px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #24252b;
+}
+
+.projects-row:last-child {
+  border-bottom: 0;
+}
+
+.projects-row:hover {
+  background: var(--surface-hover);
+}
+
+.projects-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.projects-folder {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+.projects-details {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.projects-details strong {
+  overflow: hidden;
+  color: #cdd0da;
+  font: 400 13px/1.5 var(--font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projects-details code {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font: 400 12px/1.7 var(--font-editor);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projects-remove {
+  padding: 6px 8px;
+  border: 0;
+  color: var(--text-muted);
+  background: transparent;
+  font: 400 12px var(--font-ui);
+  cursor: pointer;
+}
+
+.projects-remove:hover {
+  color: var(--text);
+}
+
+.projects-empty {
+  margin: 0;
+  padding: 24px 16px;
+  color: var(--text-muted);
+  font: 400 13px/1.5 var(--font-ui);
+}

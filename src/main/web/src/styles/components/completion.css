@@ -1,0 +1,334 @@
+/* ==========================================================================
+   components/completion.css — Completion popup island: list rows, detail pane, code tokens, responsive steps.
+   ========================================================================== */
+
+/* ========================================================================== */
+/* Completion */
+/* ========================================================================== */
+
+.completion-overlay-root {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  pointer-events: none;
+}
+
+.completion-popup {
+  position: absolute;
+  pointer-events: auto;
+  display: grid;
+  width: min(780px, calc(100vw - 16px));
+  max-height: min(760px, calc(100vh - 16px));
+  overflow: hidden;
+  border: 1px solid rgba(190,198,214,.28);
+  border-radius: 10px;
+  color: #dcdcdc;
+  background: #1c1f23;
+  box-shadow: var(--shadow-modal);
+  font-family: "JetBrains Mono", monospace;
+}
+
+.completion-list {
+  max-height: min(270px, 34vh);
+  overflow-y: auto;
+  padding: 0;
+  scrollbar-color: #666b73 rgba(0,0,0,.18);
+  scrollbar-width: thin;
+}
+
+
+
+.completion-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.completion-list::-webkit-scrollbar-track {
+  background: rgba(0,0,0,.18);
+}
+
+.completion-list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: rgba(156,160,169,.48);
+  background-clip: padding-box;
+}
+
+.completion-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(180,184,193,.62);
+  background-clip: padding-box;
+}
+
+.completion-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) minmax(90px, 140px) minmax(130px, 210px);
+  align-items: center;
+  width: 100%;
+  min-height: 30px;
+  gap: 7px;
+  padding: 2px 12px;
+  border: 0;
+  border-radius: 0;
+  color: #c7cad1;
+  background: transparent;
+  text-align: left;
+  font: 12px "JetBrains Mono", monospace;
+  cursor: pointer;
+}
+
+.completion-row:hover {
+  background: rgba(53,116,240,.18);
+}
+
+.completion-row.selected {
+  color: var(--white);
+  background: #31568e;
+}
+
+.completion-row img {
+  width: 19px;
+  height: 19px;
+  object-fit: contain;
+}
+
+.completion-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.completion-name strong {
+  color: #f0f1f4;
+  font-weight: 600;
+}
+
+.completion-name span {
+  color: #aeb3bd;
+  font-weight: 400;
+}
+
+.completion-name mark {
+  color: #d19cff;
+  background: transparent;
+  font-weight: 700;
+}
+
+.completion-return, .completion-owner {
+  min-width: 0;
+  overflow: hidden;
+  color: #aeb3bd;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.completion-owner {
+  color: #84b7ff;
+}
+
+.completion-details {
+  min-height: 112px;
+  padding: 14px 24px 16px;
+  border-top: 1px solid rgba(255,255,255,.14);
+  background: #1f2226;
+  font: 13px "Segoe UI", sans-serif;
+}
+
+.completion-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.completion-detail-title {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  min-width: 0;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.completion-detail-title span {
+  color: #c58af9;
+}
+
+.completion-detail-title strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #f0f1f4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.completion-detail-title strong span {
+  color: #b5bac4;
+  font-weight: 400;
+}
+
+.completion-detail-documentation {
+  margin: 12px 0 0;
+  color: #c7cad1;
+  line-height: 1.5;
+}
+
+.completion-detail-owner {
+  display: flex;
+  flex: 0 1 300px;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  color: #84b7ff;
+  font: 11px "JetBrains Mono", monospace;
+}
+
+.completion-detail-owner img {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.completion-detail-owner span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.completion-details p {
+  margin: 9px 0 0;
+  color: #c7cad1;
+  line-height: 1.45;
+}
+
+.completion-detail-sections {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 36px;
+  margin-top: 18px;
+}
+
+.completion-detail-section {
+  min-width: 0;
+}
+
+.completion-detail-section h4 {
+  margin: 0 0 7px;
+  color: #84b7ff;
+  font: 500 13px "Segoe UI", sans-serif;
+}
+
+.completion-detail-entries {
+  display: grid;
+  gap: 6px;
+}
+
+.completion-detail-entry {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 7px;
+  color: #c7cad1;
+  line-height: 1.45;
+}
+
+.completion-detail-entry code {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 4px;
+  color: #d1d5dc;
+  background: rgba(255,255,255,.045);
+  font: 12px "JetBrains Mono", monospace;
+}
+
+.completion-detail-entry-type {
+  color: #aeb3bd;
+}
+
+.completion-detail-separator {
+  color: #7f858f;
+}
+
+.completion-detail-description {
+  min-width: 0;
+  color: #c7cad1;
+}
+
+.completion-detail-more {
+  margin-top: 2px;
+  color: #858b95;
+  font: 11px "Segoe UI", sans-serif;
+}
+
+.completion-example {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.14);
+}
+
+.completion-example > span {
+  display: block;
+  margin-bottom: 8px;
+  color: #84b7ff;
+  font-size: 13px;
+}
+
+.completion-example pre {
+  max-width: 100%;
+  margin: 0;
+  overflow-x: auto;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px;
+  color: #b9c3d0;
+  background: #1b1d20;
+  font: 12px/1.5 "JetBrains Mono", monospace;
+  white-space: pre-wrap;
+}
+
+.completion-example-code {
+  line-height: 1.45;
+}
+
+.completion-code-keyword { color: #c58af9; }
+.completion-code-type { color: #8fc7ff; }
+.completion-code-string { color: #9acb8f; }
+.completion-code-comment { color: #78a878; }
+.completion-code-number { color: #e4b77b; }
+.completion-code-plain { color: #c6cad2; }
+
+@media (max-width: 900px) {
+  .completion-row {
+    grid-template-columns: 20px minmax(0, 1fr) minmax(80px, 120px) minmax(100px, 160px);
+  }
+}
+
+@media (max-width: 620px) {
+  .completion-row {
+    grid-template-columns: 20px minmax(0, 1fr) minmax(70px, 100px) minmax(0, 120px);
+    gap: 7px;
+    padding-inline: 8px;
+  }
+
+  .completion-detail-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .completion-detail-owner {
+    flex-basis: auto;
+    justify-content: flex-start;
+  }
+
+  .completion-detail-sections {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .completion-details {
+    padding-inline: 14px;
+  }
+}

@@ -30,7 +30,7 @@ class WebShellSharedShellSourceTest {
         String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
         String lessonPanel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
         String monaco = Files.readString(Path.of("src/main/web/src/monaco/MonacoWorkspaceService.ts"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertTrue(workspace.contains("type AppMode = 'WELCOME' | 'PROJECT' | 'LEARN'"));
         assertEquals(1, occurrences(workspace, "<MonacoHost"));
@@ -105,7 +105,7 @@ class WebShellSharedShellSourceTest {
     @Test
     void persistentEditorSurfaceIsTheRoundedMonacoClipBoundary() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         String surfaceRule = cssRule(styles, ".persistent-editor-surface");
         assertTrue(workspace.contains("className={`persistent-editor-surface"));
@@ -318,7 +318,7 @@ class WebShellSharedShellSourceTest {
         String pane = Files.readString(Path.of("src/main/web/src/workspace/WorkspacePane.ts"));
         String panel = Files.readString(Path.of("src/main/web/src/lessons/LearningPanel.tsx"));
         String controller = Files.readString(Path.of("src/main/web/src/lessons/LessonEditorController.ts"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         String projectTree = pane.substring(pane.indexOf("projectDockTree"), pane.indexOf("learnPracticeDockTree"));
         String learnTree = pane.substring(pane.indexOf("learnPracticeDockTree"), pane.indexOf("theoryDockTree"));
@@ -348,7 +348,7 @@ class WebShellSharedShellSourceTest {
         String pane = Files.readString(Path.of("src/main/web/src/workspace/WorkspacePane.ts"));
         String layout = Files.readString(Path.of("src/main/web/src/workspace/DockLayout.tsx"));
         String panel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertTrue(pane.contains("export const theoryDockTree"));
         assertTrue(pane.contains("ratio: 0"));
@@ -379,7 +379,7 @@ class WebShellSharedShellSourceTest {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
         String projectExplorer = Files.readString(Path.of("src/main/web/src/workspace/ProjectExplorer.tsx"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertTrue(learnWorkspace.contains("screen: 'HOME'"));
         assertTrue(learnWorkspace.contains("screen: 'ROADMAP'"));
@@ -410,7 +410,7 @@ class WebShellSharedShellSourceTest {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
         String welcome = Files.readString(Path.of("src/main/web/src/workspace/WelcomeScreen.tsx"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertTrue(workspace.contains("const [activeLearnTrackId, setActiveLearnTrackId]"));
         assertTrue(workspace.contains("setActiveLearnTrackId(lesson.categoryId);"));
@@ -430,7 +430,7 @@ class WebShellSharedShellSourceTest {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
         String model = Files.readString(Path.of("src/main/web/src/lessons/learnExplorerModel.ts"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertTrue(model.contains("export function buildLearnExplorer"),
                 "the explorer tree must be derived by a pure model");
@@ -471,7 +471,7 @@ class WebShellSharedShellSourceTest {
     void learnExplorerReportsHonestProgressAndAccessibleTreeSemantics() throws IOException {
         String model = Files.readString(Path.of("src/main/web/src/lessons/learnExplorerModel.ts"));
         String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertTrue(model.contains("export function withoutCompletedLessons"),
                 "hiding completed lessons must be derived by the pure model");
@@ -510,7 +510,7 @@ class WebShellSharedShellSourceTest {
         String learnContext = Files.readString(Path.of("src/main/web/src/lessons/LearnContextPanel.tsx"));
         String traceModel = Files.readString(Path.of("src/main/web/src/lessons/lessonTraceModel.ts"));
         String problems = Files.readString(Path.of("src/main/web/src/diagnostics/ProblemsPanel.tsx"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertTrue(service.contains("com.sun.jdi.Bootstrap"),
                 "the trace must come from a real debugged execution, never a parallel interpreter");
@@ -590,7 +590,7 @@ class WebShellSharedShellSourceTest {
     void learnUsesTheGlobalToolbarAndBottomBreadcrumbsWithoutAddingAnEditorHeader() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String toolbar = Files.readString(Path.of("src/main/web/src/workspace/TopToolbar.tsx"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertFalse(workspace.contains("collapsed-lesson-header"));
         assertFalse(styles.contains("collapsed-lesson-header"));
@@ -633,7 +633,7 @@ class WebShellSharedShellSourceTest {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
         String pane = Files.readString(Path.of("src/main/web/src/workspace/WorkspacePane.ts"));
         String layout = Files.readString(Path.of("src/main/web/src/workspace/DockLayout.tsx"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
         String learnWorkspace = Files.readString(Path.of("src/main/web/src/lessons/LearnWorkspace.tsx"));
 
         String projectTree = pane.substring(pane.indexOf("projectDockTree"), pane.indexOf("learnPracticeDockTree"));
@@ -737,7 +737,7 @@ class WebShellSharedShellSourceTest {
         String toolbar = Files.readString(Path.of("src/main/web/src/workspace/TopToolbar.tsx"));
         String statusBar = Files.readString(Path.of("src/main/web/src/workspace/StatusBar.tsx"));
         String protocol = Files.readString(Path.of("src/main/web/src/workspace/protocol.ts"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
         String execution = Files.readString(Path.of("src/main/java/com/eyecode/ui/web/WebShellExecutionController.java"));
 
         assertTrue(protocol.contains("export type RunPhase = 'IDLE' | 'PREPARING' | 'COMPILING' | 'RUNNING';"));
@@ -785,7 +785,7 @@ class WebShellSharedShellSourceTest {
 
     @Test
     void documentationCalloutsUseScopedTitleAndFlexBody() throws IOException {
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertFalse(styles.contains(".docs-callout strong"));
         assertFalse(styles.contains(".docs-callout-warning strong"));
@@ -801,7 +801,7 @@ class WebShellSharedShellSourceTest {
 
     @Test
     void documentationReaderKeepsTocVisibleAndExplorerCompact() throws IOException {
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         String toc = cssRule(styles, ".docs-toc");
         assertTrue(toc.contains("position: sticky"));
@@ -827,7 +827,7 @@ class WebShellSharedShellSourceTest {
     @Test
     void docsFullscreenIsATopLevelImmersiveView() throws IOException {
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertTrue(workspace.contains("{docsFullscreenActive && guidePage && <section className=\"docs-immersive\""));
         assertTrue(workspace.contains("docs-immersive-exit"));
@@ -885,7 +885,7 @@ class WebShellSharedShellSourceTest {
     void terminalPanelIsLazyLoadedOutOfTheInitialShellBundle() throws IOException {
         String bottomPanel = Files.readString(Path.of("src/main/web/src/workspace/BottomPanel.tsx"));
         String workspace = Files.readString(Path.of("src/main/web/src/workspace/Workspace.tsx"));
-        String stylesheet = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String stylesheet = WebShellStyles.all();
 
         assertFalse(bottomPanel.contains("import { TerminalPanel } from './TerminalPanel'"));
         assertTrue(bottomPanel.contains("lazy(() => import('./TerminalPanel')"));

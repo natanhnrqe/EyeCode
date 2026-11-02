@@ -1,0 +1,109 @@
+/* ==========================================================================
+   components/dialogs.css — Overlay layer: explorer context menu, explorer dialog, new project dialog.
+   ========================================================================== */
+
+.overlay-root .completion-popup, .overlay-root .learning-popup {
+  pointer-events: auto;
+}
+
+.explorer-context-menu {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 210px;
+  padding: 5px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 7px;
+  background: var(--surface-float);
+  box-shadow: var(--shadow-float);
+  pointer-events: auto;
+}
+
+.explorer-context-menu button {
+  height: 27px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 4px;
+  color: #d5d8df;
+  background: transparent;
+  text-align: left;
+  font: 12px var(--font-ui);
+}
+
+.explorer-context-menu button:hover { background: rgba(92, 106, 164, .38); }
+.explorer-context-menu button.is-danger { color: #e8a3a3; }
+.explorer-context-menu hr { width: 100%; height: 1px; margin: 4px 0; border: 0; background: rgba(255,255,255,.1); }
+
+.explorer-dialog-backdrop {
+  position: fixed;
+  z-index: 51;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.28);
+  pointer-events: auto;
+}
+
+.explorer-dialog {
+  display: grid;
+  gap: 12px;
+  width: min(360px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  color: #dedfe4;
+  background: var(--surface-float);
+  box-shadow: var(--shadow-modal);
+  font: 12px var(--font-ui);
+}
+
+.explorer-dialog p { margin: 0; color: #b8bdc8; line-height: 1.45; }
+.explorer-dialog input { height: 30px; padding: 0 9px; border: 1px solid rgba(255,255,255,.16); border-radius: 5px; color: #e6e8ed; background: var(--input-bg-alt); outline: none; font: 12px var(--font-ui); }
+.explorer-dialog input:focus { border-color: var(--accent); }
+.explorer-dialog input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.explorer-dialog > div { display: flex; justify-content: flex-end; gap: 7px; }
+.explorer-dialog button { height: 27px; padding: 0 11px; border: 1px solid rgba(255,255,255,.13); border-radius: 5px; color: var(--dialog-button-text); background: var(--dialog-button-bg); font: 12px var(--font-ui); }
+.explorer-dialog button[type='submit'] { border-color: color-mix(in srgb, var(--accent) 72%, transparent); background: var(--accent); color: var(--accent-ink); }
+
+.new-project-backdrop {
+  position: fixed;
+  z-index: 52;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0,0,0,.42);
+  pointer-events: auto;
+}
+
+.new-project-dialog {
+  display: grid;
+  gap: 13px;
+  width: min(440px, calc(100vw - 32px));
+  padding: 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: #20222a;
+  box-shadow: var(--shadow-modal);
+  color: var(--text);
+  font: 12px var(--font-ui);
+}
+
+.new-project-dialog header { display: grid; gap: 4px; }
+.new-project-dialog header strong { font-size: 15px; }
+.new-project-dialog header span, .new-project-build { color: var(--text-muted); }
+.new-project-dialog label { display: grid; gap: 6px; color: #cdd0da; }
+.new-project-dialog input { width: 100%; height: 32px; padding: 0 9px; border: 1px solid rgba(255,255,255,.16); border-radius: 5px; outline: none; color: #e6e8ed; background: var(--input-bg); font: 12px var(--font-ui); }
+.new-project-dialog input:focus { border-color: var(--accent); }
+.new-project-dialog input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.new-project-location { display: flex; gap: 7px; }
+.new-project-location input { min-width: 0; flex: 1; }
+.new-project-location button, .new-project-dialog footer button { height: 32px; padding: 0 11px; border: 1px solid rgba(255,255,255,.14); border-radius: 5px; color: var(--dialog-button-text); background: var(--dialog-button-bg); font: 12px var(--font-ui); }
+.new-project-location button:focus-visible, .new-project-dialog footer button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.new-project-dialog footer button[type='submit']:focus-visible { outline-color: var(--accent-bright); }
+.new-project-dialog footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 3px; }
+.new-project-dialog footer button[type='submit'] { border-color: color-mix(in srgb, var(--accent) 72%, transparent); color: var(--accent-ink); background: var(--accent); }
+.new-project-dialog button:disabled { opacity: .55; cursor: default; }
+.new-project-build, .new-project-error { margin: 0; }
+.new-project-error { color: #e8a3a3; line-height: 1.4; }

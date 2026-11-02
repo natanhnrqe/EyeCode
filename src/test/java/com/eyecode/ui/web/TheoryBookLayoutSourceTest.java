@@ -12,7 +12,7 @@ class TheoryBookLayoutSourceTest {
     @Test
     void theoryRendersAnEditorialArticleWithoutReplacingStructuredBlocks() throws Exception {
         String panel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertTrue(panel.contains("lesson-chapter-title"));
         assertTrue(panel.contains("<h1 className=\"lesson-chapter-title\">{session.title}</h1>"));

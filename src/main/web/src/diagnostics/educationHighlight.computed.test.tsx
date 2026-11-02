@@ -4,14 +4,21 @@ import { act } from 'react';
 import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { ProblemsPanel } from './ProblemsPanel';
 import { LearnContextPanel } from '../lessons/LearnContextPanel';
 import type { DiagnosticsViewState, WebDiagnostic } from './protocol';
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
-const styles = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8');
+const loadStylesheet = (file: string): string => {
+  const css = readFileSync(file, 'utf8');
+  const base = dirname(file);
+  return css.replace(/@import\s+['"](\.[^'"]+)['"];?/g, (_match, spec: string) =>
+    loadStylesheet(join(base, spec)));
+};
+
+const styles = loadStylesheet(join(__dirname, '..', 'styles', 'index.css'));
 
 const diagnostic: WebDiagnostic = {
   severity: 'ERROR', code: 'compiler.err.expected', message: "';' expected",

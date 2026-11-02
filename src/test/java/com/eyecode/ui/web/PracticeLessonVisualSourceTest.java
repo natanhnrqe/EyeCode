@@ -13,7 +13,7 @@ class PracticeLessonVisualSourceTest {
     @Test
     void practiceUsesItsOwnCompactGuideWithoutReplacingTheoryStructure() throws Exception {
         String panel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertTrue(panel.contains("const practiceLesson = session.kind === 'PRACTICE';"));
         assertTrue(panel.contains("const practiceActive = practiceLesson && session.phase === 'PRACTICE' && session.practice !== undefined;"));
@@ -40,7 +40,7 @@ class PracticeLessonVisualSourceTest {
 
     @Test
     void educationCodeBlocksReuseTheSharedTokenStyling() throws Exception {
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
         String panel = Files.readString(Path.of("src/main/web/src/diagnostics/ProblemsPanel.tsx"));
         String context = Files.readString(Path.of("src/main/web/src/lessons/LearnContextPanel.tsx"));
 
@@ -79,7 +79,7 @@ class PracticeLessonVisualSourceTest {
     @Test
     void practiceKeepsTheSharedCodeHighlighterAndCalloutSurface() throws Exception {
         String panel = Files.readString(Path.of("src/main/web/src/lessons/LessonPanel.tsx"));
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertTrue(panel.contains("highlightLearningJavaSource(block.code ?? '')"));
         assertTrue(panel.contains("return <aside className=\"lesson-callout\""));

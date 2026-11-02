@@ -1,0 +1,158 @@
+/* ==========================================================================
+   components/status-bar.css — Status bar: path, connection, breadcrumbs, editor meta, run feedback.
+   ========================================================================== */
+
+/* ========================================================================== */
+/* Status Bar */
+/* ========================================================================== */
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  padding: 0 14px;
+  border-top: 0;
+  color: var(--text-muted);
+  background: transparent;
+  font: 400 12px/1.5 var(--font-ui);
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  height: 27px;
+  min-height: 27px;
+}
+
+.status-bar > span:not(.status-path) {
+  white-space: nowrap;
+}
+
+.status-path {
+  flex: 1;
+  overflow: hidden;
+  color: #a5abb5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #c7976e;
+}
+
+.status-connection i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-connection.is-online {
+  color: var(--success-green);
+}
+
+.status-breadcrumbs, .status-editor-meta {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.status-breadcrumbs {
+  flex: 1 1 auto;
+  gap: 7px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.status-breadcrumbs span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-run-feedback {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 280px;
+  min-width: 0;
+  gap: 9px;
+  color: var(--eyecode-accent-bright);
+  font: 11px var(--font-ui);
+  white-space: nowrap;
+}
+
+.status-run-feedback > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-progress-track {
+  position: relative;
+  width: 74px;
+  height: 3px;
+  flex: 0 0 74px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(169,144,255,.18);
+}
+
+.status-progress-track span {
+  position: absolute;
+  top: 0;
+  left: -35%;
+  width: 35%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--eyecode-accent-bright);
+  animation: eyecode-run-progress 1.25s linear infinite;
+}
+
+@keyframes eyecode-run-progress {
+  to { left: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-progress-track span {
+    animation: none;
+    left: 33%;
+  }
+}
+
+.status-breadcrumbs button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.status-breadcrumbs button:hover,
+.status-breadcrumbs button:focus-visible {
+  color: var(--eyecode-accent-bright);
+  text-decoration: underline;
+}
+
+.status-breadcrumbs i {
+  margin-right: 7px;
+  color: #777d8d;
+  font-style: normal;
+}
+
+.status-breadcrumbs em {
+  overflow: hidden;
+  margin-left: 10px;
+  color: #d29b77;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-editor-meta {
+  flex: 0 0 auto;
+  gap: 24px;
+  margin-left: auto;
+  color: var(--text-muted);
+  white-space: nowrap;
+}

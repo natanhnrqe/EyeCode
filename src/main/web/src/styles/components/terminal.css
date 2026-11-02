@@ -1,0 +1,55 @@
+/* ==========================================================================
+   components/terminal.css — Native terminal host and xterm scrollbars.
+   ========================================================================== */
+
+.terminal-native-host {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface-canvas);
+}
+
+.terminal-pending {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--surface-canvas);
+}
+
+.terminal-native-host .xterm,
+.terminal-native-host .xterm-screen,
+.terminal-native-host .xterm-viewport,
+.terminal-native-host .xterm-helpers,
+.terminal-native-host .composition-view {
+  background: var(--surface-canvas);
+}
+
+.terminal-native-host .xterm-viewport {
+  scrollbar-color: var(--eyecode-border-strong) var(--surface-canvas);
+  scrollbar-width: thin;
+}
+
+.terminal-native-host .xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.terminal-native-host .xterm-viewport::-webkit-scrollbar-track,
+.terminal-native-host .xterm-viewport::-webkit-scrollbar-corner {
+  background: var(--surface-canvas);
+}
+
+.terminal-native-host .xterm-viewport::-webkit-scrollbar-thumb {
+  border: 2px solid var(--surface-canvas);
+  border-radius: 999px;
+  background: var(--eyecode-border-strong);
+}
+
+.terminal-native-host .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: var(--eyecode-muted);
+}
+
+.terminal-native-host .xterm-viewport::-webkit-scrollbar-thumb:active {
+  background: var(--eyecode-accent);
+}

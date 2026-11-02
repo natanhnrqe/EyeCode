@@ -185,7 +185,7 @@ class ChallengeModuleSourceTest {
 
     @Test
     void challengeStylesArePresent() throws IOException {
-        String styles = Files.readString(Path.of("src/main/web/src/styles.css"));
+        String styles = WebShellStyles.all();
 
         assertTrue(styles.contains(".challenge-panel {"));
         assertTrue(styles.contains(".dock-layout.is-challenge-panel-collapsed"),

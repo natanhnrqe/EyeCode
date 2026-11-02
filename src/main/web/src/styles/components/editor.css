@@ -1,0 +1,392 @@
+/* ==========================================================================
+   components/editor.css — Editor region: Monaco host, editor tabs, task cards, documentation viewer, editor status marks.
+   ========================================================================== */
+
+/* ========================================================================== */
+/* Editor */
+/* ========================================================================== */
+
+.editor-region {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface-editor);
+}
+
+.monaco-host {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  position: absolute;
+  inset: 0;
+}
+
+.persistent-editor-surface {
+  position: absolute;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: var(--eyecode-radius-md);
+  background: var(--surface-editor);
+}
+
+.persistent-editor-surface.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.lesson-task-card {
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  width: min(340px, calc(100% - 28px));
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--eyecode-border-strong);
+  border-bottom-width: 4px;
+  border-radius: var(--eyecode-radius-md);
+  background: var(--eyecode-surface-elevated);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, .26);
+  color: var(--eyecode-text);
+  font-family: var(--eyecode-font-ui);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.lesson-task-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 9px 18px rgba(0, 0, 0, .3);
+}
+
+.lesson-task-card:active {
+  transform: translateY(1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lesson-task-card {
+    transition: none;
+  }
+}
+
+.lesson-task-card header,
+.lesson-task-card footer {
+  display: flex;
+  align-items: center;
+}
+
+.lesson-task-card header span {
+  color: var(--eyecode-accent-bright);
+  font: 700 11px/1.2 var(--eyecode-font-ui);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.lesson-task-close {
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--eyecode-radius-sm);
+  background: transparent;
+  color: var(--eyecode-muted);
+  cursor: pointer;
+  font: 18px/1 var(--eyecode-font-ui);
+}
+
+.lesson-task-close:hover,
+.lesson-task-close:focus-visible {
+  background: var(--eyecode-surface-hover);
+  color: var(--eyecode-text);
+}
+
+.lesson-task-instruction {
+  margin: 0;
+  color: var(--eyecode-text);
+  font: 600 14px/1.55 var(--eyecode-font-ui);
+}
+
+.lesson-task-instruction code {
+  padding: 1px 4px;
+  border-radius: var(--eyecode-radius-sm);
+  background: var(--eyecode-code-bg);
+  color: var(--eyecode-accent-bright);
+}
+
+.lesson-task-feedback {
+  padding: 10px 11px;
+  border-left: 3px solid var(--eyecode-accent);
+  background: color-mix(in srgb, var(--eyecode-accent-soft) 30%, transparent);
+  color: var(--eyecode-text-secondary);
+  font: 12px/1.45 var(--eyecode-font-ui);
+}
+
+.lesson-task-feedback strong,
+.lesson-task-feedback p {
+  margin: 0;
+}
+
+.lesson-task-feedback p {
+  margin-top: 4px;
+}
+
+.lesson-task-card footer {
+  justify-content: flex-end;
+}
+
+.lesson-task-card .primary-action {
+  min-height: 30px;
+}
+
+.lesson-task-reopen {
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  right: 14px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--eyecode-border-strong);
+  border-bottom-width: 3px;
+  border-radius: var(--eyecode-radius-sm);
+  background: var(--eyecode-surface-elevated);
+  color: var(--eyecode-text-secondary);
+  cursor: pointer;
+  font: 600 11px/1 var(--eyecode-font-ui);
+}
+
+.lesson-task-reopen:hover,
+.lesson-task-reopen:focus-visible {
+  color: var(--eyecode-text);
+}
+
+.workspace-empty {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--eyecode-muted);
+  font: 12px var(--eyecode-font-ui);
+  pointer-events: none;
+  place-content: center;
+  justify-items: center;
+  gap: 9px;
+  background: radial-gradient(ellipse at center, rgba(86,72,166,.14), transparent 60%);
+}
+
+.main-workspace {
+  display: block;
+  grid-template-rows: minmax(220px, 1fr) minmax(146px, 27%);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: transparent;
+  position: relative;
+}
+
+.editor-stack {
+  display: grid;
+  grid-template-rows: 36px minmax(0, 1fr);
+
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface-editor);
+}
+
+.lesson-highlight {
+  background: color-mix(in srgb, var(--eyecode-accent-soft) 48%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--eyecode-accent) 72%, transparent);
+}
+
+.editor-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+
+  height: 36px;
+  padding: 0;
+
+  box-sizing: border-box;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-editor);
+}
+
+.editor-region {
+  min-width: 0;
+  min-height: 0;
+
+  overflow: hidden;
+}
+
+.documentation-viewer {
+  width: 100%;
+  height: 100%;
+  background: var(--surface-editor);
+}
+
+.documentation-viewer iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--surface-editor);
+}
+
+.documentation-viewer-fallback {
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  padding: 24px;
+  color: var(--eyecode-text-secondary);
+  text-align: center;
+}
+
+.documentation-viewer-fallback a {
+  color: var(--eyecode-accent-bright);
+}
+
+.editor-tab {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  height: 36px;
+  flex: 0 0 auto;
+
+  min-width: 0;
+  max-width: 260px;
+
+  padding: 0 14px;
+
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+
+  color: var(--text-secondary);
+  background: transparent;
+
+  font: 400 12px/1.5 var(--font-ui);
+  text-align: left;
+
+  -webkit-user-select: none;
+  user-select: none;
+
+  cursor: default;
+
+  transform: translate(0, 0);
+
+  box-shadow: none;
+
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.editor-tab:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+
+  transform: translate(0, 0);
+
+  box-shadow: none;
+}
+
+.editor-tab:active {
+  transform: translate(0, 0);
+
+  box-shadow: none;
+
+  transition:
+    background 70ms cubic-bezier(.4, 0, .2, 1),
+    border-color 70ms cubic-bezier(.4, 0, .2, 1),
+    color 70ms cubic-bezier(.4, 0, .2, 1);
+}
+
+.editor-tab.is-active {
+  color: var(--text);
+
+  background: var(--surface-editor);
+
+  border-bottom-color: var(--accent-bright);
+
+  transform: translate(0, 0);
+
+  box-shadow: none;
+}
+
+.editor-tab-name {
+  min-width: 0;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-file-mark {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+
+.editor-tab-close {
+  display: grid;
+  place-items: center;
+
+  width: 13px;
+  height: 13px;
+
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1;
+
+  cursor: pointer;
+
+  opacity: 0.55;
+}
+
+.editor-tab-close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.editor-tab:focus-visible,
+.editor-tab-close:focus-visible,
+.editor-group-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-tab {
+    transition: none;
+  }
+}
+
+.workspace-empty > div:last-child, .workspace-empty > button {
+  pointer-events: auto;
+}
+
+/* Editor rules that shipped after the welcome block in the old stylesheet.
+   Kept here (their semantic home) — both selectors are unique, so the move
+   cannot change the cascade. */
+
+.editor-tab.is-active .editor-tab-label {
+  color: #f0eff7;
+  font-weight: 500;
+}
+
+.editor-region .monaco-editor .margin {
+  border-right: 1px solid rgba(157, 163, 190, .15);
+}

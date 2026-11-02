@@ -1,4 +1,4 @@
-import './styles.css';
+import './styles/index.css';
 import { useEffect, useState } from 'react';
 import { ChallengeArena } from './challenge/ChallengeArena';
 import { ChallengeLobby } from './challenge/ChallengeLobby';

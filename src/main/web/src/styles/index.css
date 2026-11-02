@@ -1,0 +1,34 @@
+/* ==========================================================================
+   EyeCode Web Shell — stylesheet entry point
+   Import order defines the cascade order. Keep it stable.
+   ========================================================================== */
+
+@import "@fontsource/geist/400.css";
+@import "@fontsource/geist/500.css";
+@import "@fontsource/geist/600.css";
+@import "@fontsource/geist-mono/400.css";
+@import "@fontsource/geist-mono/500.css";
+@import "@fontsource/geist-mono/600.css";
+
+@import "./tokens.css";
+@import "./base.css";
+@import "./shell.css";
+@import "./pages/learn.css";
+@import "./components/top-toolbar.css";
+@import "./components/activity-bar.css";
+@import "./components/explorer.css";
+@import "./components/editor.css";
+@import "./pages/welcome.css";
+@import "./components/bottom-panel.css";
+@import "./components/status-bar.css";
+@import "./components/completion.css";
+@import "./components/dialogs.css";
+@import "./components/learning-card.css";
+@import "./responsive.css";
+@import "./components/terminal.css";
+@import "./components/diagnostics.css";
+@import "./components/signature.css";
+@import "./pages/docs.css";
+@import "./pages/desafios-panel.css";
+@import "./components/editor-groups.css";
+@import "./pages/desafios-lobby.css";
