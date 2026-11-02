@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import type { MotionValue } from 'motion/react';
 import { BookOpen, Files, Search } from 'lucide-react';
 import { bridge, WebShellRequestError } from '../bridge/EyeCodeBridge';
 import type { ShellBootstrap, WebShellEnvelope } from '../bridge/protocol';
@@ -25,6 +26,7 @@ import { ChallengeRightPanel } from '../challenge/ChallengeRightPanel';
 import { MonacoWorkspaceService } from '../monaco/MonacoWorkspaceService';
 import { SignaturePopup } from '../signature/SignaturePopup';
 import type { SignaturePopupState } from '../signature/protocol';
+import { AppBackdrop } from './AppBackdrop';
 import { BottomPanel } from './BottomPanel';
 import { DockLayout } from './DockLayout';
 import { DocumentationTab } from './DocumentationTab';
@@ -73,6 +75,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
   const [diagnostics, setDiagnostics] = useState<DiagnosticsViewState | null>(null);
   const [learning, setLearning] = useState<LearningPopupState | null>(null);
   const [signature, setSignature] = useState<SignaturePopupState | null>(null);
+  const [backdropScale, setBackdropScale] = useState<MotionValue<number> | null>(null);
   const childrenCache = useRef<Record<string, ProjectNode[]>>({});
   const pendingChildren = useRef(new Map<string, Promise<void>>());
   const [treeChangedPath, setTreeChangedPath] = useState<string | undefined>(undefined);
@@ -1013,6 +1016,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
     </main>;
   }
   return <main className="app-shell">
+    <AppBackdrop scale={backdropScale} />
     {toolbar}
     <span className="visually-hidden" aria-live="polite">{projectMode ? `Painel ${sideTitle(sidePanel)} aberto` : ''}</span>
     <div ref={shellWorkspace} className={`shell-workspace${mode === 'WELCOME' ? ' is-welcome' : ''}${learnNavigationVisible ? ' is-learn-navigation' : ''}`} aria-hidden={mode === 'WELCOME'}>
@@ -1048,7 +1052,7 @@ export function Workspace({ onOpenChallenges, challenge }: { onOpenChallenges?: 
       : learnMode && lessonSession ? <StatusBar breadcrumbs={learnStatusBreadcrumbs} caret={caret} message={message} runState={runState} /> : <div className="shell-status-spacer" />}
     {mode === 'WELCOME' && <section className="welcome-mode"><WelcomeScreen recentProjects={workspace.recentProjects} onNewProject={() => setNewProjectOpen(true)} onOpenProject={() => void openProject()}
       onOpenRecentProject={path => void openProject(path)} onRemoveRecentProject={path => void removeRecentProject(path)} onLessons={openLessons}
-      onChallenges={onOpenChallenges}
+      onChallenges={onOpenChallenges} onBackdropScale={setBackdropScale}
       onDocumentation={() => { void openDocumentationPage('java/jdk/fundamentos/variables').then(opened => { if (opened) setDocsFullscreen(true); }); }} /></section>}
     <div className="overlay-root">
       {signature && !completion && <SignaturePopup state={signature} />}

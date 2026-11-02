@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react';
+import { motion, useMotionValue, useReducedMotion, useSpring, useTransform, type MotionValue } from 'motion/react';
 import { ChevronDown, ChevronUp, Folder } from 'lucide-react';
 import { EyeCodeIcon } from './EyeCodeIcon';
 import type { RecentProject } from './protocol';
-import glowBottom from './assets/welcome-glow-a.svg';
-import glowTop from './assets/welcome-glow-b.svg';
-import noiseTile from './assets/welcome-noise-300.png';
 
 type Props = {
   recentProjects: RecentProject[];
@@ -16,11 +13,12 @@ type Props = {
   onLessons(): void;
   onChallenges?(): void;
   onDocumentation(): void;
+  onBackdropScale?(scale: MotionValue<number> | null): void;
 };
 
 const GESTURE_LOCK_MS = 760;
 
-export function WelcomeScreen({ recentProjects, onNewProject, onOpenProject, onOpenRecentProject, onRemoveRecentProject, onLessons, onChallenges, onDocumentation }: Props) {
+export function WelcomeScreen({ recentProjects, onNewProject, onOpenProject, onOpenRecentProject, onRemoveRecentProject, onLessons, onChallenges, onDocumentation, onBackdropScale }: Props) {
   const [page, setPage] = useState<0 | 1>(0);
   const screenRef = useRef<HTMLElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -44,6 +42,11 @@ export function WelcomeScreen({ recentProjects, onNewProject, onOpenProject, onO
     pageRef.current = page;
     progress.set(page);
   }, [page, progress]);
+
+  useEffect(() => {
+    onBackdropScale?.(backdropScale);
+    return () => onBackdropScale?.(null);
+  }, [backdropScale, onBackdropScale]);
 
   useEffect(() => {
     const screen = screenRef.current;
@@ -92,16 +95,6 @@ export function WelcomeScreen({ recentProjects, onNewProject, onOpenProject, onO
   }, []);
 
   return <section className="welcome-screen" ref={screenRef}>
-    <div className="welcome-backdrop" aria-hidden="true">
-      <motion.div className="welcome-backdrop-glow is-top" style={{ scale: backdropScale }}>
-        <img src={glowTop} alt="" />
-      </motion.div>
-      <div className="welcome-backdrop-glow is-bottom">
-        <img src={glowBottom} alt="" />
-      </div>
-      <div className="welcome-backdrop-noise" style={{ backgroundImage: `url(${noiseTile})` }} />
-    </div>
-
     <motion.div className="welcome-stage" style={{ x: heroX, scale: heroScale, opacity: heroOpacity, filter: heroBlur }} aria-hidden={page === 1} inert={page === 1}>
       <div className="welcome-hero shell-page-content">
         <div className="welcome-brand">

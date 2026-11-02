@@ -1,5 +1,6 @@
 /* ==========================================================================
-   pages/welcome.css — Welcome / recent projects surface (hero slide, recents slide, backdrop).
+   pages/welcome.css — Welcome / recent projects surface (hero slide, recents slide).
+   The app-wide backdrop lives in shell.css (.app-backdrop-*).
    ========================================================================== */
 
 .welcome-mode {
@@ -20,48 +21,7 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: var(--surface-canvas);
-}
-
-.welcome-backdrop {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.welcome-backdrop-glow {
-  position: absolute;
-}
-
-.welcome-backdrop-glow > img {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.welcome-backdrop-glow.is-top {
-  left: -10.62%;
-  top: -68.23%;
-  width: 112.25%;
-  height: 233.18%;
-}
-
-.welcome-backdrop-glow.is-bottom {
-  left: -69.7%;
-  top: -1.7%;
-  width: 144.08%;
-  height: 252.77%;
-}
-
-.welcome-backdrop-noise {
-  position: absolute;
-  inset: 0;
-  background-repeat: repeat;
-  background-position: top left;
-  background-size: 300px 300px;
-  mix-blend-mode: color-burn;
-  opacity: .5;
+  background: transparent;
 }
 
 .welcome-stage {

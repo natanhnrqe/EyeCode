@@ -137,8 +137,52 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
+  position: absolute;
+  isolation: isolate;
   color: var(--eyecode-text);
   background: var(--surface-canvas);
+}
+
+.app-background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.app-backdrop-glow {
+  position: absolute;
+}
+
+.app-backdrop-glow > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.app-backdrop-glow.is-top {
+  left: -10.62%;
+  top: -68.23%;
+  width: 112.25%;
+  height: 233.18%;
+}
+
+.app-backdrop-glow.is-bottom {
+  left: -69.7%;
+  top: -1.7%;
+  width: 144.08%;
+  height: 252.77%;
+}
+
+.app-backdrop-noise {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+  background-position: top left;
+  background-size: 300px 300px;
+  mix-blend-mode: color-burn;
+  opacity: .5;
 }
 
 .shell-workspace {
