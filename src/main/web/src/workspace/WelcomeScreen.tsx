@@ -70,7 +70,9 @@ export function WelcomeScreen({
   const reducedMotion = useReducedMotion();
   const reducedMotionRef = useRef(reducedMotion);
 
-  const trackX = useTransform(progress, [0, 1], ['0%', '-100%']);
+  const stageWidth = useTransform(progress, [0, 1], ['100%', '50%']);
+  const recentsWidth = useTransform(progress, [0, 1], ['0%', '50%']);
+  const recentsOpacity = useTransform(progress, [0, 0.14], [0, 1]);
   const backdropScale = useTransform(
     progress,
     [0, 1],
@@ -280,152 +282,141 @@ export function WelcomeScreen({
 
   return (
     <section className="welcome-screen" ref={screenRef}>
-      <motion.div className="welcome-track" style={{ x: trackX }}>
-        <div
-          className="welcome-stage"
-          style={{ pointerEvents: page === 0 ? 'auto' : 'none' }}
-          aria-hidden={page === 1}
-          inert={page === 1}
-        >
-          <div className="welcome-hero shell-page-content">
-            <div className="welcome-brand">
-              <div className="welcome-mark">EC</div>
+      <motion.div className="welcome-stage" style={{ width: stageWidth }}>
+        <div className="welcome-hero shell-page-content">
+          <div className="welcome-brand">
+            <div className="welcome-mark">EC</div>
 
-              <div className="welcome-product">
-                <span>EyeCode</span>
-                <small>Java IDE</small>
-              </div>
+            <div className="welcome-product">
+              <span>EyeCode</span>
+              <small>Java IDE</small>
             </div>
+          </div>
 
-            <div className="welcome-message">
-              <h1>The Learn Code Editor</h1>
+          <div className="welcome-message">
+            <h1>The Learn Code Editor</h1>
 
-              <p>
-                Crie um projeto Maven, abra um projeto existente ou continue de
-                onde parou.
-              </p>
-            </div>
+            <p>
+              Crie um projeto Maven, abra um projeto existente ou continue de
+              onde parou.
+            </p>
+          </div>
 
-            <div className="welcome-actions">
-              <button
-                type="button"
-                className="primary-action"
-                onClick={onNewProject}
-              >
-                <EyeCodeIcon name="plus-on-accent" />
-                Novo Projeto
-              </button>
-
-              <button
-                type="button"
-                className="quiet-action"
-                onClick={onOpenProject}
-              >
-                <EyeCodeIcon name="folder-open" />
-                Abrir Projeto
-              </button>
-            </div>
-
-            <div className="welcome-links">
-              <button
-                type="button"
-                className="welcome-link"
-                onClick={onLessons}
-              >
-                <EyeCodeIcon name="graduation-cap" />
-                Aulas
-              </button>
-
-              {onChallenges && (
-                <button
-                  type="button"
-                  className="welcome-link"
-                  onClick={onChallenges}
-                >
-                  <EyeCodeIcon name="trophy" />
-                  Desafios
-                </button>
-              )}
-            </div>
+          <div className="welcome-actions">
+            <button
+              type="button"
+              className="primary-action"
+              onClick={onNewProject}
+            >
+              <EyeCodeIcon name="plus-on-accent" />
+              Novo Projeto
+            </button>
 
             <button
               type="button"
-              className="welcome-docs"
-              onClick={onDocumentation}
+              className="quiet-action"
+              onClick={onOpenProject}
             >
-              <EyeCodeIcon name="book-open" />
-              Explorar Documentação Java (Tela Cheia)
-              <EyeCodeIcon name="arrow-up-right" />
+              <EyeCodeIcon name="folder-open" />
+              Abrir Projeto
             </button>
           </div>
-        </div>
 
-        <div
-          id="welcome-recents-panel"
-          className="welcome-recents"
-          style={{ pointerEvents: page === 1 ? 'auto' : 'none' }}
-          aria-hidden={page === 0}
-          inert={page === 0}
-        >
-          <div className="welcome-recents-panel">
-            <header className="projects-heading">
-              <h2>Projetos recentes</h2>
+          <div className="welcome-links">
+            <button type="button" className="welcome-link" onClick={onLessons}>
+              <EyeCodeIcon name="graduation-cap" />
+              Aulas
+            </button>
 
-              <p>
-                {recentProjects.length
-                  ? 'Continue de onde parou'
-                  : 'Nenhum projeto recente ainda'}
-              </p>
-            </header>
-
-            <div
-              className="projects-list"
-              ref={listRef}
-              tabIndex={page === 1 ? 0 : -1}
-              aria-label="Lista de projetos recentes"
-            >
-              {recentProjects.map((project) => (
-                <div className="projects-row" key={project.path}>
-                  <button
-                    type="button"
-                    className="projects-open"
-                    onClick={() => onOpenRecentProject(project.path)}
-                    tabIndex={page === 1 ? 0 : -1}
-                  >
-                    <Folder
-                      className="projects-folder"
-                      size={20}
-                      strokeWidth={1.75}
-                      aria-hidden="true"
-                    />
-
-                    <span className="projects-details">
-                      <strong>{project.name}</strong>
-                      <code>{project.path}</code>
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="projects-remove"
-                    aria-label={`Remover ${project.name} dos projetos recentes`}
-                    onClick={() => onRemoveRecentProject(project.path)}
-                    tabIndex={page === 1 ? 0 : -1}
-                  >
-                    Remover
-                  </button>
-                </div>
-              ))}
-
-              {!recentProjects.length && (
-                <p className="projects-empty">
-                  Crie um projeto Maven ou abra uma pasta existente. Seus
-                  projetos aparecerão aqui.
-                </p>
-              )}
-            </div>
+            {onChallenges && (
+              <button
+                type="button"
+                className="welcome-link"
+                onClick={onChallenges}
+              >
+                <EyeCodeIcon name="trophy" />
+                Desafios
+              </button>
+            )}
           </div>
+
+          <button
+            type="button"
+            className="welcome-docs"
+            onClick={onDocumentation}
+          >
+            <EyeCodeIcon name="book-open" />
+            Explorar Documentação Java (Tela Cheia)
+            <EyeCodeIcon name="arrow-up-right" />
+          </button>
         </div>
+      </motion.div>
+
+      <motion.div
+        id="welcome-recents-panel"
+        className="welcome-recents"
+        style={{ width: recentsWidth }}
+        aria-hidden={page === 0}
+        inert={page === 0}
+      >
+        <motion.div className="welcome-recents-panel" style={{ opacity: recentsOpacity }}>
+          <header className="projects-heading">
+            <h2>Projetos recentes</h2>
+
+            <p>
+              {recentProjects.length
+                ? 'Continue de onde parou'
+                : 'Nenhum projeto recente ainda'}
+            </p>
+          </header>
+
+          <div
+            className="projects-list"
+            ref={listRef}
+            tabIndex={page === 1 ? 0 : -1}
+            aria-label="Lista de projetos recentes"
+          >
+            {recentProjects.map((project) => (
+              <div className="projects-row" key={project.path}>
+                <button
+                  type="button"
+                  className="projects-open"
+                  onClick={() => onOpenRecentProject(project.path)}
+                  tabIndex={page === 1 ? 0 : -1}
+                >
+                  <Folder
+                    className="projects-folder"
+                    size={20}
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                  />
+
+                  <span className="projects-details">
+                    <strong>{project.name}</strong>
+                    <code>{project.path}</code>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className="projects-remove"
+                  aria-label={`Remover ${project.name} dos projetos recentes`}
+                  onClick={() => onRemoveRecentProject(project.path)}
+                  tabIndex={page === 1 ? 0 : -1}
+                >
+                  Remover
+                </button>
+              </div>
+            ))}
+
+            {!recentProjects.length && (
+              <p className="projects-empty">
+                Crie um projeto Maven ou abra uma pasta existente. Seus projetos
+                aparecerão aqui.
+              </p>
+            )}
+          </div>
+        </motion.div>
       </motion.div>
 
       <button
